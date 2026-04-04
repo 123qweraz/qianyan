@@ -71,7 +71,7 @@ fn play_letter_on_thread(handle: &OutputStreamHandle, c: char) {
     let sound_path = root
         .join("sounds")
         .join("letters")
-        .join(format!("{}.wav", c));
+        .join(format!("{}.mp3", c));
 
     if !sound_path.exists() {
         return;
