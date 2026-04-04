@@ -197,7 +197,10 @@
                             </select>
                         </div>
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #333;">
-                            <input type="checkbox" id="hideHintToggle" style="width: 18px; height: 18px;"> 隐藏编码提示
+                            <input type="checkbox" id="hideHintToggle" style="width: 18px; height: 18px;"> 隐藏编码
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #333;">
+                            <input type="checkbox" id="autoPronounceZhToggle" style="width: 18px; height: 18px;"> 自动发音
                         </label>
                         <button onclick="startPractice()" class="btn">开始 / 重置</button>
                     </div>
@@ -205,7 +208,10 @@
             </div>
 
             <div class="practice-card">
-                <div class="target-word" id="targetWord">...</div>
+                <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                    <div class="target-word" id="targetWord" style="flex: 1;">...</div>
+                    <button onclick="speakCurrent()" class="btn" style="padding: 10px 15px; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; line-height: 1;">🔊</button>
+                </div>
                 
                 <div class="hint-area">
                     <div class="hint-badge" id="codeHintBadge">编码提示: <b id="fullCodeHint">-</b></div>
@@ -373,6 +379,26 @@
             const input = document.getElementById('practiceInput');
             input.value = '';
             input.focus();
+
+            // 自动播放
+            if (document.getElementById('autoPronounceZhToggle').checked) {
+                speakCurrent();
+            }
+        }
+
+        function speak(text, lang) {
+            if (!text || text === "无" || !window.speechSynthesis) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            window.speechSynthesis.cancel(); // 停止当前正在播放的声音
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakCurrent() {
+            const target = document.getElementById('targetWord').innerText;
+            if (target && target !== "...") {
+                speak(target, 'zh-CN');
+            }
         }
 
         document.getElementById('hideHintToggle').addEventListener('change', (e) => {

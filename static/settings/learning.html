@@ -156,6 +156,14 @@
                         <span class="desc">显示英文辅助</span>
                         <label class="switch"><input type="checkbox" id="showEnglishToggle"><span class="slider"></span></label>
                     </div>
+                    <div class="switch-item">
+                        <span class="desc">自动播放中文发音</span>
+                        <label class="switch"><input type="checkbox" id="autoPronounceZhToggle"><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-item">
+                        <span class="desc">自动播放英文发音</span>
+                        <label class="switch"><input type="checkbox" id="autoPronounceEnToggle"><span class="slider"></span></label>
+                    </div>
                 </div>
 
                 <button onclick="startPractice()" class="btn" style="margin-top: 24px; width: 100%;">开始 / 重置练习</button>
@@ -163,7 +171,10 @@
 
             <div id="practiceArea" style="display: none;">
                 <div class="practice-card">
-                    <div class="target-word" id="targetWord">...</div>
+                    <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                        <div class="target-word" id="targetWord" style="flex: 1;">...</div>
+                        <button onclick="speakCurrent()" class="btn" style="padding: 10px 15px; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; line-height: 1;">🔊</button>
+                    </div>
                     
                     <div class="hint-area">
                         <div class="hint-badge" id="pinyinHintBadge">拼音: <b id="pinyinHint">-</b></div>
@@ -196,7 +207,7 @@
         let currentDict = {};
         let keys = [];
         let stats = { count: 0, correct: 0 };
-        let config = { appearance: { show_pinyin_hint: true, show_learning_stroke_hint: true, show_learning_english_hint: true } };
+        let config = { appearance: { show_pinyin_hint: true, show_learning_stroke_hint: true, show_learning_english_hint: true, auto_pronounce_zh: false, auto_pronounce_en: false } };
 
         async function init() {
             try {
@@ -215,17 +226,21 @@
             const mapping = {
                 'showPinyinToggle': 'show_pinyin_hint',
                 'showStrokeToggle': 'show_learning_stroke_hint',
-                'showEnglishToggle': 'show_learning_english_hint'
+                'showEnglishToggle': 'show_learning_english_hint',
+                'autoPronounceZhToggle': 'auto_pronounce_zh',
+                'autoPronounceEnToggle': 'auto_pronounce_en'
             };
 
             for (let [id, key] of Object.entries(mapping)) {
                 const el = document.getElementById(id);
-                el.checked = !!config.appearance[key];
-                el.onchange = async () => {
-                    config.appearance[key] = el.checked;
-                    updateHintVisibility();
-                    await saveConfig();
-                };
+                if (el) {
+                    el.checked = !!config.appearance[key];
+                    el.onchange = async () => {
+                        config.appearance[key] = el.checked;
+                        updateHintVisibility();
+                        await saveConfig();
+                    };
+                }
             }
             updateHintVisibility();
         }
@@ -244,6 +259,31 @@
             document.getElementById('pinyinHintBadge').style.display = config.appearance.show_pinyin_hint ? 'block' : 'none';
             document.getElementById('strokeHintBadge').style.display = config.appearance.show_learning_stroke_hint ? 'block' : 'none';
             document.getElementById('englishHintBadge').style.display = config.appearance.show_learning_english_hint ? 'block' : 'none';
+        }
+
+        function speak(text, lang) {
+            if (!text || text === "无" || !window.speechSynthesis) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            window.speechSynthesis.cancel(); // 停止当前正在播放的声音
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function speakCurrent() {
+            const target = document.getElementById('targetWord').innerText;
+            const english = document.getElementById('englishHint').innerText;
+            
+            // 尝试播放。如果目标是中文字符，播放中文。如果英语提示存在且不为“无”，播放英语。
+            if (/[^\x00-\xff]/.test(target)) {
+                speak(target, 'zh-CN');
+            } else {
+                speak(target, 'en-US');
+            }
+            
+            // 如果英语提示是词，可以单独播放
+            if (english !== "无" && english !== target) {
+                setTimeout(() => speak(english, 'en-US'), 1000);
+            }
         }
 
         async function startPractice() {
@@ -301,6 +341,19 @@
             document.getElementById('strokeHint').innerText = stroke;
             document.getElementById('englishHint').innerText = english;
             document.getElementById('practiceInput').dataset.target = target;
+
+            // 自动播放
+            if (config.appearance.auto_pronounce_zh && /[^\x00-\xff]/.test(target)) {
+                speak(target, 'zh-CN');
+            } else if (config.appearance.auto_pronounce_en && !/[^\x00-\xff]/.test(target)) {
+                speak(target, 'en-US');
+            }
+
+            if (config.appearance.auto_pronounce_en && english !== "无" && english !== target) {
+                // 如果是中文练习，且有英文提示，延迟播放英文
+                const delay = config.appearance.auto_pronounce_zh && /[^\x00-\xff]/.test(target) ? 1000 : 0;
+                setTimeout(() => speak(english, 'en-US'), delay);
+            }
         }
 
         document.getElementById('practiceInput').addEventListener('input', (e) => {

@@ -71,6 +71,8 @@ pub struct Appearance {
     pub show_learning_stroke_hint: bool,
     pub show_learning_english_hint: bool,
     pub auto_pronounce: bool,
+    pub auto_pronounce_zh: bool,
+    pub auto_pronounce_en: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -547,6 +549,8 @@ impl Config {
                 show_learning_stroke_hint: true,
                 show_learning_english_hint: true,
                 auto_pronounce: true,
+                auto_pronounce_zh: false,
+                auto_pronounce_en: false,
             },
             input: Input {
                 autostart: true,
