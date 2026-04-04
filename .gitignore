@@ -1,0 +1,32 @@
+# Rust
+target/
+Cargo.lock
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+*.log
+
+# Configuration
+data/
+ngram.json
+user_adapter.json
+ref/
+
+# Reference/External project
+webime/
+.tmp_libs/
+references/
+releases/
+rust-ime-windows-v0.1.0.zip
+rust-ime-windows-v*/
+rust-ime-windows-*
+
+# Build and Reference
+reference/
+release/
+
+# Project specific
+shian-ime-windows-*
+rust-ime-windows-v*

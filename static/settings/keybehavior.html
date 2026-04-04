@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>按键行为与匹配 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>按键行为与匹配</h1>
+        </header>
+
+        <h2>搜索与匹配逻辑</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
+                <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
+                <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配 (如 zshang -> 早上)</div></div>
+                <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">防呆模式 (Anti-Typo)</div><div class="desc">容忍常见的拼写错误</div></div>
+                <label class="switch"><input type="checkbox" id="enable_anti_typo"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用个人词库</div><div class="desc">记录选词频率，实现自学习排序</div></div>
+                <label class="switch"><input type="checkbox" id="enable_user_dict"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">编辑器预览模式</div>
+                    <div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div>
+                </div>
+                <select id="phantom_type" class="select-input">
+                    <option value="None">无预览 (None)</option>
+                    <option value="Hanzi">汉字预览 (Hanzi)</option>
+                    <option value="Pinyin">拼音预览 (Pinyin)</option>
+                </select>
+            </div>
+        </div>
+
+        <h2>按键功能开关</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
+                <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
+                <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetConfig()">重置默认</button>
+    </div>
+
+    <div id="toast" class="status-toast">已保存并应用</div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        async function init() {
+            await loadConfig();
+            
+            bindInput('auto_commit_unique_full_match', 'input');
+            bindInput('enable_prefix_matching', 'input');
+            bindInput('enable_abbreviation_matching', 'input');
+            bindInput('enable_anti_typo', 'input');
+            bindInput('enable_user_dict', 'input');
+            bindInput('enable_english_filter', 'input');
+            bindInput('enable_number_selection', 'input');
+            bindInput('phantom_type', 'input');
+        }
+
+        async function save() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

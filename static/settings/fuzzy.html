@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>模糊音设置 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .mapping-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .mapping-table th, .mapping-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--apple-border);
+        }
+        .mapping-input {
+            width: 80px;
+            padding: 6px;
+            border: 1px solid var(--apple-border);
+            border-radius: 4px;
+        }
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        .custom-area {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>模糊音设置</h1>
+        </header>
+
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">开启模糊音</div>
+                    <div class="desc">启用后，输入拼音时会自动匹配相似音节</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="enable_fuzzy_pinyin">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <h2>预设声母模糊</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">z ↔ zh</div><div class="desc">平舌音 z 与卷舌音 zh 互换</div></div>
+                <label class="switch"><input type="checkbox" id="z_zh"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">c ↔ ch</div><div class="desc">平舌音 c 与卷舌音 ch 互换</div></div>
+                <label class="switch"><input type="checkbox" id="c_ch"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">s ↔ sh</div><div class="desc">平舌音 s 与卷舌音 sh 互换</div></div>
+                <label class="switch"><input type="checkbox" id="s_sh"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">n ↔ l</div><div class="desc">鼻音 n 与边音 l 互换</div></div>
+                <label class="switch"><input type="checkbox" id="n_l"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">r ↔ l</div><div class="desc">卷舌音 r 与边音 l 互换</div></div>
+                <label class="switch"><input type="checkbox" id="r_l"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">f ↔ h</div><div class="desc">唇齿音 f 与舌根音 h 互换</div></div>
+                <label class="switch"><input type="checkbox" id="f_h"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <h2>预设韵母模糊</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">an ↔ ang</div><div class="desc">前鼻音 an 与后鼻音 ang 互换</div></div>
+                <label class="switch"><input type="checkbox" id="an_ang"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">en ↔ eng</div><div class="desc">前鼻音 en 与后鼻音 eng 互换</div></div>
+                <label class="switch"><input type="checkbox" id="en_eng"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">in ↔ ing</div><div class="desc">前鼻音 in 与后鼻音 ing 互换</div></div>
+                <label class="switch"><input type="checkbox" id="in_ing"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">ian ↔ iang</div><div class="desc">韵母 ian 与 iang 互换</div></div>
+                <label class="switch"><input type="checkbox" id="ian_iang"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">uan ↔ uang</div><div class="desc">韵母 uan 与 uang 互换</div></div>
+                <label class="switch"><input type="checkbox" id="uan_uang"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">u ↔ v (ü)</div><div class="desc">韵母 u 与 ü 互换</div></div>
+                <label class="switch"><input type="checkbox" id="u_v"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <h2>自定义模糊映射</h2>
+        <div class="card custom-area">
+            <p class="desc">在此添加任意拼音片段的替换规则（如将 `l` 替换为 `n`）。</p>
+            <table class="mapping-table" id="customMappingsTable">
+                <thead>
+                    <tr>
+                        <th>输入内容</th>
+                        <th>替换为</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JS 填充 -->
+                </tbody>
+            </table>
+            <button class="btn btn-sm" style="margin-top: 15px;" onclick="addMapping()">+ 添加映射对</button>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+    </div>
+
+    <div id="toast" class="status-toast">已保存并应用</div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        async function init() {
+            await loadConfig();
+            
+            // 基础开关
+            bindInput('enable_fuzzy_pinyin', 'input');
+            
+            // 预设开关
+            const presetIds = ['z_zh', 'c_ch', 's_sh', 'n_l', 'r_l', 'f_h', 'an_ang', 'en_eng', 'in_ing', 'ian_iang', 'uan_uang', 'u_v'];
+            presetIds.forEach(id => bindInput(id, 'input', 'fuzzy_config.' + id));
+
+            renderCustomMappings();
+        }
+
+        // 重写 bindInput 以支持嵌套属性（简单实现）
+        const originalBindInput = bindInput;
+        bindInput = function(id, section, propertyPath) {
+            const el = document.getElementById(id);
+            if (!el) return;
+
+            if (propertyPath && propertyPath.includes('.')) {
+                const parts = propertyPath.split('.');
+                const parent = parts[0]; // fuzzy_config
+                const attr = parts[1];   // z_zh
+                
+                el.checked = !!config[section][parent][attr];
+                el.onchange = () => {
+                    config[section][parent][attr] = el.checked;
+                };
+            } else {
+                originalBindInput(id, section, propertyPath);
+            }
+        };
+
+        function renderCustomMappings() {
+            const tbody = document.querySelector('#customMappingsTable tbody');
+            tbody.innerHTML = '';
+            
+            const mappings = config.input.fuzzy_config.custom_mappings || [];
+            mappings.forEach((pair, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" class="mapping-input" value="${pair[0]}" oninput="updateMapping(${index}, 0, this.value)"></td>
+                    <td><input type="text" class="mapping-input" value="${pair[1]}" oninput="updateMapping(${index}, 1, this.value)"></td>
+                    <td><button class="btn btn-danger btn-sm" onclick="removeMapping(${index})">删除</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addMapping() {
+            if (!config.input.fuzzy_config.custom_mappings) config.input.fuzzy_config.custom_mappings = [];
+            config.input.fuzzy_config.custom_mappings.push(["", ""]);
+            renderCustomMappings();
+        }
+
+        function updateMapping(index, pos, value) {
+            config.input.fuzzy_config.custom_mappings[index][pos] = value;
+        }
+
+        function removeMapping(index) {
+            config.input.fuzzy_config.custom_mappings.splice(index, 1);
+            renderCustomMappings();
+        }
+
+        async function save() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

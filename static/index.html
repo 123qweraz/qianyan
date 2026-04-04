@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rust-ime 控制中心</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .grid-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .nav-card {
+            background: var(--apple-card);
+            border-radius: 24px;
+            padding: 32px;
+            text-decoration: none;
+            color: var(--apple-text);
+            border: 1px solid var(--apple-border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+        }
+
+        .nav-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+            border-color: var(--apple-accent);
+        }
+
+        .nav-card .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .nav-card h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .nav-card p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--apple-secondary);
+            line-height: 1.4;
+        }
+
+        .logo-area {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .version {
+            display: inline-block;
+            background: #e1e1e6;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-area">
+            <h1>rust-ime 控制中心</h1>
+            <span class="version">v0.1.0-alpha</span>
+        </div>
+
+        <div class="grid-dashboard">
+            <a href="/static/settings/system.html" class="nav-card">
+                <div class="icon">⚙️</div>
+                <h3>系统设置</h3>
+                <p>输入方案、自启动、按键音及基础行为设置。</p>
+            </a>
+
+            <a href="/static/settings/appearance.html" class="nav-card">
+                <div class="icon">🎨</div>
+                <h3>候选栏设置</h3>
+                <p>调整候选框的颜色、字体、字号、排列及显示个数。</p>
+            </a>
+
+            <a href="/static/settings/keybehavior.html" class="nav-card">
+                <div class="icon">🖱️</div>
+                <h3>按键行为</h3>
+                <p>连按、长按映射及搜索匹配逻辑设置。</p>
+            </a>
+
+            <a href="/static/settings/fuzzy.html" class="nav-card">
+                <div class="icon">☁️</div>
+                <h3>模糊音设置</h3>
+                <p>自定义声母、韵母模糊映射及自定义拼音替换规则。</p>
+            </a>
+
+            <a href="/static/settings/doublepinyin.html" class="nav-card">
+                <div class="icon">🧬</div>
+                <h3>双拼方案</h3>
+                <p>自定义双拼映射、切换方案及开启双拼模式。</p>
+            </a>
+
+            <a href="/static/settings/dictionary.html" class="nav-card">
+                <div class="icon">📚</div>
+                <h3>词库管理</h3>
+                <p>启用或禁用词典、编译词库及在线编辑词条。</p>
+            </a>
+
+            <a href="/static/settings/hotkeys.html" class="nav-card">
+                <div class="icon">⚡</div>
+                <h3>快捷键</h3>
+                <p>管理全局功能快捷键及输入方案切换映射。</p>
+            </a>
+
+            
+
+            <a href="/static/settings/layout.html" class="nav-card">
+                <div class="icon">⌨️</div>
+                <h3>键盘布局</h3>
+                <p>统一管理多语言按键映射，支持标点、双击、长按与布局导入导出。</p>
+            </a>
+
+            <a href="/static/settings/stroke_practice.html" class="nav-card">
+                <div class="icon">📏</div>
+                <h3>笔画码练习</h3>
+                <p>专项练习 1-5 数字键位的笔画码输入，提升纯笔画模式输入效率。</p>
+            </a>
+
+            <a href="/static/settings/learning.html" class="nav-card">
+                <div class="icon">✍️</div>
+                <h3>练习与学习</h3>
+                <p>选择不同的词典进行汉字及词组练习，支持笔画辅助码辅助。</p>
+            </a>
+
+            <a href="/static/settings/dictionary_viewer.html" class="nav-card">
+                <div class="icon">🎓</div>
+                <h3>辅助码学习</h3>
+                <p>查看所有单字的英文含义辅助码及笔画码对照表。</p>
+            </a>
+
+            <a href="/static/help.html" class="nav-card">
+                <div class="icon">📖</div>
+                <h3>使用帮助</h3>
+                <p>查看详细的操作指南、快捷键说明及常见问题。</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

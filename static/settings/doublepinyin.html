@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>双拼方案设置 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .kb-key { height: 70px; min-width: 60px; }
+        .kb-key-sub { font-size: 11px; color: var(--apple-secondary); margin-top: 4px; line-height: 1.2; }
+        .kb-key.active .kb-key-main { color: var(--apple-accent); }
+        .mapping-editor {
+            display: none;
+            margin-top: 30px;
+            padding: 24px;
+            background: var(--apple-card);
+            border-radius: 20px;
+            border: 1px solid var(--apple-border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>双拼方案设置</h1>
+        </header>
+
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">启用双拼模式</div>
+                    <div class="desc">此页面只管理双拼映射；双击/长按等按键行为请前往“键盘布局”页统一管理</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_double_pinyin"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">方案名称</div></div>
+                <input type="text" id="scheme_name" style="width: 240px;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">预设方案</div></div>
+                <select id="preset-select" style="width: 240px;">
+                    <option value="xiaohe">小鹤双拼</option>
+                    <option value="ziranma">自然码双拼</option>
+                    <option value="sougou">搜狗双拼</option>
+                </select>
+                <button class="btn" onclick="importPresetScheme()">一键导入预设</button>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">方案文件</div><div class="desc">支持导入/导出双拼方案 JSON</div></div>
+                <button class="btn" onclick="exportScheme()">导出当前方案</button>
+                <label class="btn" style="cursor:pointer">导入方案
+                    <input type="file" id="import-file" style="display:none" onchange="importScheme(event)">
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>声韵母映射</h3>
+            <p class="desc" style="margin-bottom: 20px;">点击下方按键配置对应的声母(Initial)和韵母(Rime)</p>
+            <div class="keyboard" id="kb-doublepinyin"></div>
+        </div>
+
+        <div id="editor" class="mapping-editor">
+            <h3 id="edit-title">编辑按键: -</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                    <div class="info"><div class="title">声母映射 (Initial)</div><div class="desc">作为第一码时</div></div>
+                    <input type="text" id="input-initial" placeholder="留空按原键" style="width: 100%; margin-top: 8px;">
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                    <div class="info"><div class="title">韵母映射 (Rime)</div><div class="desc">作为第二码时</div></div>
+                    <input type="text" id="input-rime" placeholder="留空按原键" style="width: 100%; margin-top: 8px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        const KB_LAYOUT = [
+            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+            ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+        ];
+        let currentKey = '';
+
+        async function init() {
+            await loadConfig();
+            bindInput('enable_double_pinyin', 'input');
+
+            document.getElementById('scheme_name').value = config.input.double_pinyin_scheme.name;
+            document.getElementById('scheme_name').oninput = (e) => {
+                config.input.double_pinyin_scheme.name = e.target.value;
+            };
+
+            renderSchemeKeyboard();
+        }
+
+        function renderSchemeKeyboard() {
+            const container = document.getElementById('kb-doublepinyin');
+            const scheme = config.input.double_pinyin_scheme;
+            container.innerHTML = KB_LAYOUT.map(row => `
+                <div class="keyboard-row">
+                    ${row.map(k => {
+                        const ini = scheme.initials[k] || "";
+                        const rim = scheme.rimes[k] || "";
+                        const active = ini || rim;
+                        const sub = `${ini ? '初:' + ini : ''}${ini && rim ? ' ' : ''}${rim ? '末:' + rim : ''}`;
+                        return `<div class="kb-key ${active ? 'active' : ''} ${currentKey === k ? 'selected' : ''}" onclick="editKey('${k}')">
+                            <div class="kb-key-main">${k.toUpperCase()}</div>
+                            <div class="kb-key-sub">${sub}</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+
+        function editKey(key) {
+            currentKey = key;
+            const scheme = config.input.double_pinyin_scheme;
+            document.getElementById('editor').style.display = 'block';
+            document.getElementById('edit-title').innerText = `编辑按键: ${key.toUpperCase()}`;
+            const inIni = document.getElementById('input-initial');
+            const inRim = document.getElementById('input-rime');
+            inIni.value = scheme.initials[key] || '';
+            inRim.value = scheme.rimes[key] || '';
+
+            inIni.oninput = () => {
+                const v = inIni.value.trim().toLowerCase();
+                if (!v) delete scheme.initials[key];
+                else scheme.initials[key] = v;
+                renderSchemeKeyboard();
+            };
+            inRim.oninput = () => {
+                const v = inRim.value.trim().toLowerCase();
+                if (!v) delete scheme.rimes[key];
+                else scheme.rimes[key] = v;
+                renderSchemeKeyboard();
+            };
+
+            renderSchemeKeyboard();
+            document.getElementById('editor').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function importPresetScheme() {
+            const preset = document.getElementById('preset-select').value;
+            try {
+                const resp = await fetch(`/static/presets/double_pinyin_${preset}.json`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const imported = await resp.json();
+                if (!imported.initials || !imported.rimes) throw new Error('预设格式错误');
+                config.input.double_pinyin_scheme = imported;
+                document.getElementById('scheme_name').value = imported.name || '';
+                currentKey = '';
+                document.getElementById('editor').style.display = 'none';
+                renderSchemeKeyboard();
+                showToast('双拼预设已导入，请点击保存');
+            } catch (e) {
+                alert('导入预设失败: ' + e.message);
+            }
+        }
+
+        function exportScheme() {
+            const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(config.input.double_pinyin_scheme, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute('href', dataStr);
+            a.setAttribute('download', `double_pinyin_${(config.input.double_pinyin_scheme.name || 'custom').replace(/\s+/g, '_')}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function importScheme(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!imported.initials || !imported.rimes) throw new Error('无效双拼方案文件');
+                    config.input.double_pinyin_scheme = imported;
+                    document.getElementById('scheme_name').value = imported.name || '';
+                    currentKey = '';
+                    document.getElementById('editor').style.display = 'none';
+                    renderSchemeKeyboard();
+                    showToast('导入成功，请点击保存');
+                } catch (err) {
+                    alert('解析 JSON 失败: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function save() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

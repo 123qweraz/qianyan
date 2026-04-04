@@ -1,0 +1,2 @@
+// 核心：使用 ID 1 定义图标，确保 TSF 索引 0 能抓到它
+1 ICON "picture/rust-ime_v2.ico"

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rust-ime 终极使用指南</title>
+    <style>
+        :root {
+            --apple-bg: #f5f5f7;
+            --apple-card: #ffffff;
+            --apple-accent: #0071e3;
+            --apple-text: #1d1d1f;
+            --apple-secondary: #86868b;
+            --apple-border: #d2d2d7;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--apple-bg); color: var(--apple-text); margin: 0; display: flex; line-height: 1.6;
+        }
+
+        aside {
+            width: 260px; height: 100vh; position: sticky; top: 0; background: rgba(245, 245, 247, 0.85);
+            backdrop-filter: blur(25px); border-right: 1px solid var(--apple-border); padding: 40px 20px; box-sizing: border-box;
+        }
+
+        aside h3 { font-size: 18px; margin-bottom: 20px; padding-left: 15px; }
+        aside nav a {
+            display: block; color: var(--apple-text); text-decoration: none; padding: 12px 15px;
+            border-radius: 10px; font-size: 14px; margin-bottom: 5px; transition: all 0.2s;
+        }
+        aside nav a:hover { background: rgba(0,0,0,0.05); }
+        aside nav a.active { color: var(--apple-accent); font-weight: 600; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+        .keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            background: #f0f0f2;
+            padding: 15px;
+            border-radius: 16px;
+        }
+        .key-cap {
+            background: white;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .key-letter { font-weight: 800; color: var(--apple-accent); display: block; font-size: 18px; }
+        .key-desc { font-size: 12px; color: var(--apple-secondary); margin-top: 4px; }
+        .row-label { grid-column: 1 / -1; font-weight: 600; font-size: 13px; color: var(--apple-secondary); margin-top: 10px; border-top: 1px solid #e5e5e5; padding-top: 5px; }
+
+        main { flex: 1; padding: 60px 10%; max-width: 1000px; }
+
+        h1 { font-size: 44px; font-weight: 800; margin-bottom: 10px; letter-spacing: -1.5px; }
+        .subtitle { color: var(--apple-secondary); font-size: 20px; margin-bottom: 60px; }
+
+        section { margin-bottom: 80px; scroll-margin-top: 60px; }
+        h2 { font-size: 32px; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid var(--apple-accent); display: inline-block; padding-bottom: 5px; }
+        
+        .feature-card {
+            background: var(--apple-card); border-radius: 24px; padding: 35px; margin-bottom: 30px;
+            border: 1px solid var(--apple-border); box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+        }
+
+        .feature-card h3 { margin-top: 0; font-size: 22px; color: var(--apple-accent); margin-bottom: 15px; }
+        
+        .example-box {
+            background: #f8f9fa; border-left: 4px solid var(--apple-accent); padding: 15px 20px;
+            margin: 20px 0; border-radius: 0 12px 12px 0;
+        }
+        .example-box code { color: #d70022; font-weight: 700; font-size: 1.1em; }
+
+        .pro-tip {
+            background: #fff9e6; border: 1px solid #ffe58f; padding: 15px; border-radius: 12px;
+            font-size: 14px; color: #856404; margin-top: 15px;
+        }
+
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", monospace; }
+        .tag { font-size: 12px; background: #e1f0ff; color: #0071e3; padding: 3px 10px; border-radius: 12px; font-weight: 600; margin-left: 10px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 12px; }
+        b { color: var(--apple-accent); }
+    </style>
+</head>
+<body>
+    <aside>
+        <h3>文档导航</h3>
+        <nav>
+            <a href="#intro">1. 产品定位</a>
+            <a href="#aux-code">2. 核心：英文辅助码</a>
+            <a href="#stroke-aux">3. 进阶：笔画辅助码</a>
+            <a href="#proper-nouns">4. 专有名词原生隔离</a>
+            <a href="#mixed-input">5. 多方案混输</a>
+            <a href="#quick-rime">6. 长按与双击定制</a>
+            <a href="#nav-mode">7. 智能导航与平卷互换</a>
+            <a href="#sentence-mode">8. 智能长句模式</a>
+            <a href="#ui-custom">9. 视觉与样式定制</a>
+        </nav>
+    </aside>
+
+    <main>
+        <h1>rust-ime 终极指南</h1>
+        <div class="subtitle">一款专为程序员与效率极客设计的拼音输入法</div>
+
+        <section id="intro">
+            <h2>产品定位</h2>
+            <div class="feature-card">
+                <p>rust-ime 是一款基于 Rust 编写的高性能拼音输入法。它的设计核心是<b>“零干扰”</b>与<b>“极致效率”</b>。</p>
+                <p>对于普通用户，它表现得像任何主流输入法一样：支持全拼、简拼、模糊音。但为了效率，我们做了两个果断的选择：</p>
+                <ul>
+                    <li><b>Tab 键即正义</b>：摒弃了复杂的切换键，默认使用 <code>Tab</code> 键（单按）瞬间切换中英文。</li>
+                    <li><b>位置固定</b>：候选框不跟随光标（减少视觉抖动），默认固定在屏幕底部（位置可完全自定义）。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="aux-code">
+            <h2>核心：英文辅助码</h2>
+            <div class="feature-card">
+                <p>这是 rust-ime 的灵魂功能。在拼音重码极多（如同音字、简拼）时，您无需翻页，只需输入一个<b>大写字母</b>即可精准定位。</p>
+                
+                <h3>它是如何工作的？</h3>
+                <p>输入法会自动扫描候选词对应的<b>英文翻译/释义</b>。当您输入一个大写字母时，它会匹配释义中第一个大写单词的首字母。</p>
+
+                <div class="example-box">
+                    <p><b>场景 A：解决同音字重码</b></p>
+                    <p>输入 <code>li</code>，候选词可能有“里、离、礼、理...”。</p>
+                    <ul>
+                        <li>输入 <code>liC</code> ⮕ <b>礼</b> (Ceremony) 瞬间排到第一。</li>
+                        <li>输入 <code>liL</code> ⮕ <b>理</b> (Logic) 瞬间排到第一。</li>
+                    </ul>
+                </div>
+
+                <div class="example-box">
+                    <p><b>场景 B：简拼精准定位</b></p>
+                    <p>输入 <code>sh</code>，候选词可能有“书、水、数、树...”。</p>
+                    <ul>
+                        <li>输入 <code>shB</code> ⮕ <b>书</b> (Book) 瞬间出现。</li>
+                        <li>输入 <code>shW</code> ⮕ <b>水</b> (Water) 瞬间出现。</li>
+                        <li>输入 <code>shT</code> ⮕ <b>树</b> (Tree) 瞬间出现。</li>
+                    </ul>
+                </div>
+
+                <div class="example-box">
+                    <p><b>场景 C：长词组过滤</b></p>
+                    <p>输入 <code>ha</code>，想输入“号”。</p>
+                    <ul>
+                        <li>输入 <code>haN</code> ⮕ <b>号</b> (Number) 排除掉“好、哈”。</li>
+                    </ul>
+                </div>
+
+                <div class="pro-tip">
+                    <b>技巧：</b>该功能会自动跳过声调符号。例如翻译是 "ne Particle"，输入 <code>P</code> 即可精准匹配 "Particle"。
+                </div>
+            </div>
+        </section>
+
+        <section id="stroke-aux">
+            <h2>进阶：笔画输入法与辅助码 (SBSRF)</h2>
+            <div class="feature-card">
+                <p>这是本引擎最核心的原创设计方案。它不仅可以作为拼音的辅助过滤码，更可以作为一套<b>独立、高效的笔画输入法</b>。其核心逻辑是：<b>一键代表两个连续笔画</b>。</p>
+
+                <h3>1. 设计思想：双笔一键</h3>
+                <p>传统的笔画输入法（1-5数字键）效率低下，因为每输入一个笔画就需要点击一次按键。SBSRF 方案通过 5x5 的字母矩阵，让您每一次击键都能输入两个笔画，大幅提升了输入速度。</p>
+
+                <h3>2. 映射布局：5x5 视觉矩阵</h3>
+                <p>我们将键盘划分为 5 个逻辑区（横、竖、撇、捺、折）。每个按键代表两笔：<b>行代表第 1 笔，列代表第 2 笔</b>。</p>
+
+                <div class="keyboard-visual">
+                    <style>
+                        .keyboard-visual { background: #2c2c2e; padding: 20px; border_radius: 20px; color: white; margin: 20px 0; }
+                        .zone-row { display: flex; align-items: center; margin-bottom: 8px; }
+                        .zone-label { width: 100px; font-weight: bold; font-size: 14px; color: #ff9f0a; }
+                        .key-node { 
+                            width: 60px; height: 60px; border: 1px solid #48484a; border-radius: 10px;
+                            margin-right: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                            background: #3a3a3c;
+                        }
+                        .key-main { font-size: 18px; font-weight: 800; color: #0a84ff; }
+                        .key-sub { font-size: 10px; color: #8e8e93; }
+                        .h-zone { border-left: 4px solid #30d158; } /* 横 - 绿 */
+                        .v-zone { border-left: 4px solid #ff375f; } /* 竖 - 红 */
+                        .p-zone { border-left: 4px solid #5e5ce6; } /* 撇 - 蓝 */
+                        .n-zone { border-left: 4px solid #ffd60a; } /* 捺 - 黄 */
+                        .z-zone { border-left: 4px solid #bf5af2; } /* 折 - 紫 */
+                    </style>
+
+                    <div class="zone-row h-zone">
+                        <div class="zone-label">横区 (1)</div>
+                        <div class="key-node"><span class="key-main">G</span><span class="key-sub">11</span></div>
+                        <div class="key-node"><span class="key-main">F</span><span class="key-sub">12</span></div>
+                        <div class="key-node"><span class="key-main">D</span><span class="key-sub">13</span></div>
+                        <div class="key-node"><span class="key-main">S</span><span class="key-sub">14</span></div>
+                        <div class="key-node"><span class="key-main">A</span><span class="key-sub">15</span></div>
+                    </div>
+                    <div class="zone-row v-zone">
+                        <div class="zone-label">竖区 (2)</div>
+                        <div class="key-node"><span class="key-main">H</span><span class="key-sub">21</span></div>
+                        <div class="key-node"><span class="key-main">J</span><span class="key-sub">22</span></div>
+                        <div class="key-node"><span class="key-main">K</span><span class="key-sub">23</span></div>
+                        <div class="key-node"><span class="key-main">L</span><span class="key-sub">24</span></div>
+                        <div class="key-node"><span class="key-main">M</span><span class="key-sub">25</span></div>
+                    </div>
+                    <div class="zone-row p-zone">
+                        <div class="zone-label">撇区 (3)</div>
+                        <div class="key-node"><span class="key-main">T</span><span class="key-sub">31</span></div>
+                        <div class="key-node"><span class="key-main">R</span><span class="key-sub">32</span></div>
+                        <div class="key-node"><span class="key-main">E</span><span class="key-sub">33</span></div>
+                        <div class="key-node"><span class="key-main">W</span><span class="key-sub">34</span></div>
+                        <div class="key-node"><span class="key-main">Q</span><span class="key-sub">35</span></div>
+                    </div>
+                    <div class="zone-row n-zone">
+                        <div class="zone-label">捺区 (4)</div>
+                        <div class="key-node"><span class="key-main">Y</span><span class="key-sub">41</span></div>
+                        <div class="key-node"><span class="key-main">U</span><span class="key-sub">42</span></div>
+                        <div class="key-node"><span class="key-main">I</span><span class="key-sub">43</span></div>
+                        <div class="key-node"><span class="key-main">O</span><span class="key-sub">44</span></div>
+                        <div class="key-node"><span class="key-main">P</span><span class="key-sub">45</span></div>
+                    </div>
+                    <div class="zone-row z-zone">
+                        <div class="zone-label">折区 (5)</div>
+                        <div class="key-node"><span class="key-main">N</span><span class="key-sub">51</span></div>
+                        <div class="key-node"><span class="key-main">B</span><span class="key-sub">52</span></div>
+                        <div class="key-node"><span class="key-main">V</span><span class="key-sub">53</span></div>
+                        <div class="key-node"><span class="key-main">C</span><span class="key-sub">54</span></div>
+                        <div class="key-node"><span class="key-main">X</span><span class="key-sub">55</span></div>
+                    </div>
+                </div>
+
+                <h3>3. 编码规则</h3>
+                <ul>
+                    <li><b>单字输入 (全码)</b>：依次输入笔画对对应的字母。例如“的”的前两画为“撇、竖”（32=R），继续输入后续笔画即可。</li>
+                    <li><b>单字输入 (定长 4 键简码)</b>：为了提高长字的录入速度，所有 8 笔以上（编码超过 4 键）的汉字支持简码输入：
+                        <br><b>规则</b>：取该字全码的 <b>前 3 键 + 最后一个键</b>。
+                        <br>示例：<code>康</code> 全码为 <code>dy...a</code>，简码仅需输入 4 键。
+                    </li>
+                    <li><b>万能通配符 (Z 键)</b>：当您不确定中间某处的笔画时，可以使用 <code>z</code> 键占位：
+                        <br><b>规则</b>：<code>z</code> 匹配任意一个编码字母（即 2 个笔画）。
+                        <br>示例：输入 <code>fzh</code> 可匹配所有以 <code>f</code> 开头、<code>h</code> 结尾的三键编码（共 6 笔）。
+                    </li>
+                    <li><b>词组输入 (定长 4 键制)</b>：借鉴五笔逻辑，无论词组多长，统一使用 4 个按键完成编码：
+                        <ul>
+                            <li><b>2 字词</b>：取第 1 字的前 2 键 + 第 2 字的前 2 键。
+                                <br>示例：<code>中国</code> ⮕ <code>m</code>(中1)+<code>n</code>(中2) + <code>a</code>(国1)+<code>h</code>(国2) = <b><code>mnah</code></b></li>
+                            <li><b>3 字词</b>：取第 1 字首键 + 第 2 字首键 + 第 3 字前 2 键。
+                                <br>示例：<code>计算机</code> ⮕ <code>y</code>(计1) + <code>t</code>(算1) + <code>f</code>(机1)+<code>s</code>(机2) = <b><code>ytfs</code></b></li>
+                            <li><b>4 字及以上</b>：取前 3 个字的首键 + 最后一个字的第一个键。
+                                <br>示例：<code>中华人民共和国</code> ⮕ <code>m</code>(中1) + <code>r</code>(华1) + <code>r</code>(人1) + <code>a</code>(国1) = <b><code>mrra</code></b></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <h3>4. 使用场景</h3>
+
+                <div class="example-box">
+                    <p><b>实战演练</b></p>
+                    <ul>
+                        <li><b>人</b> (ren)：笔画为“撇、捺”(3、4)，对应坐标 (3,4) 即按键 <code>W</code>。输入 <code>ren;w</code> 瞬间定位。</li>
+                        <li><b>的</b> (de)：前两画“撇、竖”(3,2=R)，末两画“点、折”(4,5=P)。输入 <code>de;rp</code> 精准定位。</li>
+                    </ul>
+                </div>
+
+                <div class="pro-tip">
+                    <b>说明：</b>如果某个字映射结果与直觉不符，可以在 Web 端“辅助码对照表”中查看每个字的精确 <code>stroke_aux</code>。
+                </div>
+
+                <div class="pro-tip">
+                    <b>💡 笔画特征分析 (统计数据)：</b><br>
+                    • <b>重码率极低</b>：在全量 2 万字字典中，超过 <b>95%</b> 的编码是唯一的。即使在重码情况下，绝大多数编码也仅对应 2 个汉字，基本实现“所见即所得”的盲打体验。<br>
+                    • <b>笔画数分布</b>：6 笔及以下的汉字仅占总量的约 <b>6%</b> (常用字中约占 10%)。这意味着绝大多数汉字（7 笔及以上）通过 SBSRF 的 4 键编码即可实现精准区分，几乎不需要选词。
+                </div>
+
+                <h3>5. 汉字笔画纠错与编码手册</h3>
+                <div class="mistake-manual">
+                    <style>
+                        .mistake-manual { font-size: 14px; }
+                        .mistake-group { margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 16px; border: 1px solid #e5e5e5; }
+                        .mistake-group h4 { margin-top: 0; color: #ff3b30; border-bottom: 1px solid #ff3b30; display: inline-block; padding-bottom: 3px; }
+                        .mistake-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+                        .mistake-item { background: white; padding: 10px; border-radius: 8px; border: 1px solid #d2d2d7; }
+                        .mistake-char { font-weight: bold; font-size: 18px; color: var(--apple-accent); margin-right: 5px; }
+                        .mistake-code { color: #86868b; font-family: monospace; font-weight: bold; }
+                        .mistake-desc { display: block; font-size: 12px; color: #8e8e93; margin-top: 4px; }
+                    </style>
+
+                    <div class="mistake-group">
+                        <h4>一、笔顺易错 (最常写错顺序)</h4>
+                        <div class="mistake-list">
+                            <div class="mistake-item"><span class="mistake-char">火</span>编码: <span class="mistake-code">iw</span><span class="mistake-desc">点→撇→撇→捺 (❌先两边)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">方</span>编码: <span class="mistake-code">yv</span><span class="mistake-desc">点→横→横折钩→撇 (❌最后点)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">为</span>编码: <span class="mistake-code">ic</span><span class="mistake-desc">点→撇→横折钩→点 (❌先横折钩)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">片</span>编码: <span class="mistake-code">ra</span><span class="mistake-desc">撇→竖→横→横折 (❌先横折)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">九</span>编码: <span class="mistake-code">q</span><span class="mistake-desc">撇→横折弯钩 (❌先弯钩)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">万</span>编码: <span class="mistake-code">at</span><span class="mistake-desc">横→横折钩→撇 (❌最后捺)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">比</span>编码: <span class="mistake-code">aq</span><span class="mistake-desc">横→竖提→撇→竖弯钩</span></div>
+                            <div class="mistake-item"><span class="mistake-char">再</span>编码: <span class="mistake-code">fbg</span><span class="mistake-desc">横→竖→横折钩→竖→横→横</span></div>
+                            <div class="mistake-item"><span class="mistake-char">凸</span>编码: <span class="mistake-code">hmg</span><span class="mistake-desc">竖→横→竖→横折折折→横</span></div>
+                            <div class="mistake-item"><span class="mistake-char">凹</span>编码: <span class="mistake-code">mmg</span><span class="mistake-desc">竖→横折折→竖→横折→横</span></div>
+                            <div class="mistake-item"><span class="mistake-char">母</span>编码: <span class="mistake-code">xyy</span><span class="mistake-desc">竖折→横折钩→点→横→点</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mistake-group">
+                        <h4>二、笔画数量/长短易错</h4>
+                        <div class="mistake-list">
+                            <div class="mistake-item"><span class="mistake-char">具</span>编码: <span class="mistake-code">mggw</span><span class="mistake-desc">中间三横 (❌两横)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">冒</span>编码: <span class="mistake-code">mgmgg</span><span class="mistake-desc">上部是冃，两横不接框</span></div>
+                            <div class="mistake-item"><span class="mistake-char">肺</span>编码: <span class="mistake-code">qgfb</span><span class="mistake-desc">右边一竖到底 (❌多一横)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">黄</span>编码: <span class="mistake-code">fhmfdy</span><span class="mistake-desc">下部是“由” (❌写成田)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">考</span>编码: <span class="mistake-code">fda</span><span class="mistake-desc">下面是丂 (❌少笔)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">周</span>编码: <span class="mistake-code">qffn</span><span class="mistake-desc">上部是土 (上短下长)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">喜</span>编码: <span class="mistake-code">ffnifn</span><span class="mistake-desc">上部是士 (上长下短)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">身</span>编码: <span class="mistake-code">rngt</span><span class="mistake-desc">中间短提、末撇穿出</span></div>
+                            <div class="mistake-item"><span class="mistake-char">燕</span>编码: <span class="mistake-code">fhmfgqoo</span><span class="mistake-desc">上部是廿 (四横)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">录</span>编码: <span class="mistake-code">nfyw</span><span class="mistake-desc">下非“水”，左点+提</span></div>
+                            <div class="mistake-item"><span class="mistake-char">没</span>编码: <span class="mistake-code">odxy</span><span class="mistake-desc">右是殳，竖弯不出钩</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mistake-group">
+                        <h4>三、出头/不出头易错</h4>
+                        <div class="mistake-list">
+                            <div class="mistake-item"><span class="mistake-char">寻</span>编码: <span class="mistake-code">ngl</span><span class="mistake-desc">中横不出头</span></div>
+                            <div class="mistake-item"><span class="mistake-char">雪</span>编码: <span class="mistake-code">sboong</span><span class="mistake-desc">下部中横不出头</span></div>
+                            <div class="mistake-item"><span class="mistake-char">建</span>编码: <span class="mistake-code">ngfc</span><span class="mistake-desc">中横出头</span></div>
+                            <div class="mistake-item"><span class="mistake-char">康</span>编码: <span class="mistake-code">yqgldy</span><span class="mistake-desc">中横出头</span></div>
+                            <div class="mistake-item"><span class="mistake-char">临</span>编码: <span class="mistake-code">jtubg</span><span class="mistake-desc">左边是两竖 (❌写成撇)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">巷</span>编码: <span class="mistake-code">fhwnn</span><span class="mistake-desc">下部是巳 (❌写成㔾)</span></div>
+                            <div class="mistake-item"><span class="mistake-char">窗</span>编码: <span class="mistake-code">ovimqy</span><span class="mistake-desc">内非“夕”，点出头</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mistake-group">
+                        <h4>四、多撇/少撇易错</h4>
+                        <div class="mistake-list">
+                            <div class="mistake-item"><span class="mistake-char">免</span>编码: <span class="mistake-code">qmdn</span><span class="mistake-desc">第六笔撇通下来</span></div>
+                            <div class="mistake-item"><span class="mistake-char">象</span>编码: <span class="mistake-code">qmdvey</span><span class="mistake-desc">撇通下来</span></div>
+                            <div class="mistake-item"><span class="mistake-char">卑</span>编码: <span class="mistake-code">rndf</span><span class="mistake-desc">撇通下来</span></div>
+                            <div class="mistake-item"><span class="mistake-char">畏</span>编码: <span class="mistake-code">mfgvy</span><span class="mistake-desc">不要多一撇</span></div>
+                            <div class="mistake-item"><span class="mistake-char">展</span>编码: <span class="mistake-code">ntjaw</span><span class="mistake-desc">不要多一撇</span></div>
+                            <div class="mistake-item"><span class="mistake-char">武</span>编码: <span class="mistake-code">ghhc</span><span class="mistake-desc">不要多一撇</span></div>
+                        </div>
+                    </div>
+
+                    <div class="mistake-group">
+                        <h4>五、点画易错 (有点/无点/顺序)</h4>
+                        <div class="mistake-list">
+                            <div class="mistake-item"><span class="mistake-char">市</span>编码: <span class="mistake-code">ymh</span><span class="mistake-desc">顶部有点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">沛</span>编码: <span class="mistake-code">ogmh</span><span class="mistake-desc">右侧无点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">尧</span>编码: <span class="mistake-code">atq</span><span class="mistake-desc">无点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">步</span>编码: <span class="mistake-code">hhkt</span><span class="mistake-desc">下部无点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">纸</span>编码: <span class="mistake-code">xdnn</span><span class="mistake-desc">右侧无点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">义</span>编码: <span class="mistake-code">iy</span><span class="mistake-desc">先写点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">发</span>编码: <span class="mistake-code">vcy</span><span class="mistake-desc">后写点</span></div>
+                            <div class="mistake-item"><span class="mistake-char">成</span>编码: <span class="mistake-code">dxw</span><span class="mistake-desc">后写点</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>6. 学习与练习模式</h3>
+                <p>本引擎支持强大的<b>学习模式</b>。您可以在 Web 配置中心开启“显示笔画提示 (show_stroke_aux)”。</p>
+                <ul>
+                    <li>开启后，无论您是在打拼音、英语还是日语，候选词后面都会实时展示该字的<b>完整笔画字母编码</b>。</li>
+                    <li>这能帮助您在日常输入中潜移默化地记住汉字的笔画结构，为极速盲打打下基础。</li>
+                </ul>
+            </div>
+        </section>
+        <section id="proper-nouns">
+            <h2>4. 专有名词原生隔离</h2>
+            <div class="feature-card">
+                <p>在普通输入法中，输入 <code>beijing</code> 可能会混杂“背景”和“北京”。在 rust-ime 中：</p>
+                <ul>
+                    <li><b>全小写</b>：<code>beijing</code> 只会匹配普通词汇（如：背景）。</li>
+                    <li><b>首字母大写</b>：<code>Beijing</code> 或 <code>Be</code> 将触发<b>专有名词索引</b>，精准匹配“北京”，完全隔离干扰。</li>
+                </ul>
+                <p>这对于输入人名、地名、软件名非常有效，实现了索引层面的清爽。</p>
+            </div>
+        </section>
+
+        <section id="mixed-input">
+            <h2>5. 多方案混输</h2>
+            <div class="feature-card">
+                <p>rust-ime 允许您在网页端自由组合活跃方案（如 <b>中文+英文</b>）。</p>
+                <ul>
+                    <li><b>程序员友好</b>：在写注释时，不需要切换模式，直接输入 <code>git</code>, <code>cargo</code>, <code>sudo</code>，它们会出现在候选词中。</li>
+                    <li><b>英文自动补全</b>：支持英文前缀联想。输入 <code>com</code> 即可选择 <code>complete</code>, <code>command</code> 等词。</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="quick-rime">
+            <h2>6. 长按与双击定制 <span class="tag">New</span></h2>
+            <div class="feature-card">
+                <p>rust-ime 提供了极致的按键行为定制能力，您可以利用<b>双击</b>或<b>长按</b>来实现极速输入。</p>
+                
+                <h3>1. 双击快捷输入 (Double-Tap)</h3>
+                <p>快速点击同一个字母键两次，注入长韵母或常用短语。例如：</p>
+                <ul>
+                    <li><code>i, i</code> ⮕ 注入 <code>ing</code></li>
+                    <li><code>u, u</code> ⮕ 注入 <code>sh</code></li>
+                </ul>
+
+                <h3>2. 长按行为定制 (Long Press)</h3>
+                <p>按住字母键不放（约 400ms），触发预设操作。默认映射为该字母的<b>大写形式</b>。</p>
+
+                <div class="pro-tip">
+                    <b>配置提示：</b>访问配置中心，点击可视化键盘上的字母，即可分别为“双击”和“长按”分配任何您想要的字符串、变音字符或音调符号。
+                </div>
+            </div>
+        </section>
+
+        <section id="nav-mode">
+            <h2>7. 智能导航与平卷互换 <span class="tag">New</span></h2>
+            <div class="feature-card">
+                <h3>1. HJKL 导航模式</h3>
+                <p>在输入拼音的过程中，按下 <code>`</code> (反引号) 即可进入导航模式。此时您可以像使用 Vim 一样操作候选词：</p>
+                <ul>
+                    <li><code>H</code> / <code>L</code>：切换上一个/下一个候选词</li>
+                    <li><code>J</code> / <code>K</code>：向下/向上翻页</li>
+                </ul>
+                <p>按任意其他字母键将自动退出导航并继续拼写。</p>
+
+                <h3>2. 平卷舌一键互换 (/)</h3>
+                <p>拼错平/卷舌音时无需删除重打。在输入 <code>zan</code> 时发现应该是 <code>zhan</code>？只需按一下 <code>/</code> 键，系统会自动完成互换。</p>
+
+                <h3>3. 提示词上屏 (Shift + Space)</h3>
+                <p>如果您想直接输入候选词旁边的英文提示或注音，只需按下 <code>Shift + Space</code> 即可将其直接上屏。</p>
+            </div>
+        </section>
+
+        <section id="sentence-mode">
+            <h2>8. 智能长句模式</h2>
+            <div class="feature-card">
+                <p>在“系统总览”中将上屏模式切换为<b>“双空格上屏”</b>即可进入长句模式。</p>
+                <p>在此模式下，输入法会尝试进行全句切分和联想。虽然目前仍处于完善阶段，但我们计划在未来引入基于语境的智能纠错，让长篇大论的输入更加流畅。</p>
+            </div>
+        </section>
+
+        <section id="ui-custom">
+            <h2>9. 视觉与样式定制</h2>
+            <div class="feature-card">
+                <p>我们提供了一个极致自由的皮肤引擎，全部可通过网页控制中心调节：</p>
+                <ul>
+                    <li><b>双模选择</b>：传统横向窗 vs 现代侧边卡片窗。</li>
+                    <li><b>精准调色</b>：点击颜色球，为背景、高亮、文字选择任何您喜欢的颜色（支持透明度）。</li>
+                    <li><b>字号调节</b>：主词条与辅助码（Hint）的字号可以分开控制，满足不同的视力习惯。</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const links = document.querySelectorAll('aside nav a');
+        const sections = document.querySelectorAll('section');
+
+        window.onscroll = () => {
+            let current = "";
+            sections.forEach(s => {
+                const top = s.offsetTop;
+                if (pageYOffset >= top - 150) { current = s.getAttribute('id'); }
+            });
+            links.forEach(l => {
+                l.classList.remove('active');
+                if (l.getAttribute('href').includes(current)) { l.classList.add('active'); }
+            });
+        };
+    </script>
+</body>
+</html>

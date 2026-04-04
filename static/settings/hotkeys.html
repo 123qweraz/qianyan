@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>快捷键 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>快捷键</h1>
+        </header>
+
+        <h2>全局快捷键</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">翻到上一页</div>
+                    <div class="desc">触发翻页的按键列表，使用逗号分隔</div>
+                </div>
+                <input type="text" id="page_up_input" style="width: 250px; text-align: right;" placeholder="例如: Up,PageUp,-">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">翻到下一页</div>
+                    <div class="desc">触发翻页的按键列表，使用逗号分隔</div>
+                </div>
+                <input type="text" id="page_down_input" style="width: 250px; text-align: right;" placeholder="例如: Down,PageDown,=">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">选择上一词</div>
+                    <div class="desc">触发选择上一个候选词的按键列表</div>
+                </div>
+                <input type="text" id="prev_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Left">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">选择下一词</div>
+                    <div class="desc">触发选择下一个候选词的按键列表</div>
+                </div>
+                <input type="text" id="next_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Right">
+            </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">启用 Tab 键切换输入法</div>
+                    <div class="desc">在输入码为空时，允许按 Tab 键切换中英文模式</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_tab_toggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">启用 Ctrl + Space 切换输入法</div>
+                    <div class="desc">经典的输入法切换组合键</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <h2>方案快速切换映射</h2>
+        <div class="card">
+            <div class="info" style="margin-bottom: 20px;">
+                <div class="desc">在输入缓冲区为空时，按 CapsLock 进入切换模式，随后按下以下映射的按键即可快速切换方案。</div>
+            </div>
+            <div class="keyboard" id="kb-profilekeys"></div>
+            <div id="edit-profilekeys" class="kb-edit-box">
+                <h3 id="pk-edit-title">编辑切换键</h3>
+                <div class="setting-item">
+                    <div class="info">
+                        <div class="title">目标方案</div>
+                        <div class="desc">按下此键后切换到的方案名称</div>
+                    </div>
+                    <input type="text" id="pk-edit-input" style="width: 200px;" placeholder="例如: chinese">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetConfig()">重置默认</button>
+    </div>
+
+    <div id="toast" class="status-toast">已保存并应用</div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        const KB_LAYOUT = [
+            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+            ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+        ];
+
+        async function init() {
+            await loadConfig();
+            
+            // 绑定开关
+            bindInput('enable_tab_toggle', 'hotkeys');
+            bindInput('enable_ctrl_space_toggle', 'hotkeys');
+
+            // 加载翻页键并回填
+            document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
+            document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
+            document.getElementById('prev_candidate_input').value = (config.hotkeys.prev_candidate || []).join(', ');
+            document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
+
+            renderKeyboard('kb-profilekeys', 'profile_keys');
+        }
+
+        function renderKeyboard(containerId, configKey) {
+            const container = document.getElementById(containerId);
+            const mappings = config.input[configKey] || [];
+            
+            container.innerHTML = KB_LAYOUT.map(row => `
+                <div class="keyboard-row">
+                    ${row.map(key => {
+                        const entry = mappings.find(m => m.key === key);
+                        const mapping = entry ? entry.profile : "";
+                        return `
+                            <div class="kb-key ${mapping ? 'active' : ''} type-profile" onclick="editKey('${containerId}', '${configKey}', '${key}')">
+                                <div class="kb-key-main">${key.toUpperCase()}</div>
+                                <div class="kb-key-sub">${mapping}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+
+        function editKey(containerId, configKey, key) {
+            const editBox = document.getElementById('edit-profilekeys');
+            const title = document.getElementById('pk-edit-title');
+            const input = document.getElementById('pk-edit-input');
+            
+            editBox.style.display = 'block';
+            title.innerText = `编辑切换键: ${key.toUpperCase()}`;
+            
+            const mappings = config.input[configKey];
+            const entry = mappings.find(m => m.key === key);
+            input.value = entry ? entry.profile : "";
+            
+            input.oninput = () => {
+                const val = input.value;
+                const idx = mappings.findIndex(m => m.key === key);
+                if (val === "") { if (idx !== -1) mappings.splice(idx, 1); }
+                else { if (idx !== -1) mappings[idx].profile = val; else mappings.push({ key: key, profile: val }); }
+                renderKeyboard(containerId, configKey);
+            };
+        }
+
+        async function save() {
+            // 在保存前，将翻页键输入框的字符串解析回列表
+            config.hotkeys.page_up = document.getElementById('page_up_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.page_down = document.getElementById('page_down_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.prev_candidate = document.getElementById('prev_candidate_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.next_candidate = document.getElementById('next_candidate_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+[package]
+name = "shian-ime-ui"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+shian-ime-core = { path = "../core" }
+shian-ime-engine = { path = "../engine" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+slint = { workspace = true }
+slint-build = { workspace = true }
+axum = { workspace = true }
+tower-http = { workspace = true }
+mime_guess = { workspace = true }
+rust-embed = { workspace = true }
+image = { workspace = true }
+walkdir = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+notify-rust = { workspace = true }
+ksni = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.52", features = ["Win32_System_Registry", "Win32_Foundation"] }
+
+[build-dependencies]
+slint-build = { workspace = true }

@@ -1,0 +1,23 @@
+# Clippy configuration
+
+# Warn on unwrap usage (related to BUG-001)
+warn-on-all-wildcard-imports = true
+
+# Deny certain patterns
+disallowed-methods = [
+    "std::option::Option::unwrap",
+    "std::result::Result::unwrap",
+]
+
+# Max function size
+too-many-arguments-threshold = 7
+
+# Cognitive complexity
+cognitive-complexity-threshold = 30
+
+# Type complexity
+type-complexity-threshold = 250
+
+# Allow certain clippy lints
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true

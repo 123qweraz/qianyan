@@ -1,0 +1,156 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/engine",
+    "crates/ui",
+    "crates/platform-linux",
+    "crates/platform-windows",
+    "crates/resources",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Shian"]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+walkdir = "2.3"
+notify-rust = "4"
+arboard = "3.2"
+arc-swap = "1.7"
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+rust-embed = "8.2"
+tower-http = { version = "0.5", features = ["full"] }
+mime_guess = "2.0"
+atty = "0.2"
+reqwest = { version = "0.12", features = ["blocking"] }
+urlencoding = "2.1"
+open = "5.1"
+fst = "0.4"
+lru = "0.12"
+memmap2 = "0.9"
+rand = "0.8"
+bitflags = "2.4"
+image = "0.24"
+log = "0.4"
+tracing = "0.1"
+thiserror = "1.0"
+sled = "0.34"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "local-time"] }
+raw-window-handle = "0.6"
+slint = "1.9"
+slint-build = "1.9"
+winres = "0.1.12"
+embed-resource = "1.8"
+
+# Linux
+evdev = "0.12.1"
+users = "0.11"
+signal-hook = "0.4.1"
+daemonize = "0.5"
+libc = "0.2.180"
+ksni = "0.2.1"
+nix = { version = "0.27", features = ["poll"] }
+wayland-client = "0.31"
+wayland-protocols = { version = "0.31", features = ["client", "staging", "unstable"] }
+wayland-cursor = "0.31"
+zbus = { version = "4.4", features = ["blocking"] }
+
+# Windows
+windows = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_UI_TextServices",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_System_Ole",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_System_Console",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Shell",
+    "Win32_Media",
+    "Win32_Media_Audio",
+    "implement",
+] }
+windows-core = "0.52"
+
+[package]
+name = "shian-ime"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+shian-ime-core = { path = "crates/core" }
+shian-ime-engine = { path = "crates/engine" }
+shian-ime-ui = { path = "crates/ui" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+walkdir = { workspace = true }
+notify-rust = { workspace = true }
+arboard = { workspace = true }
+arc-swap = { workspace = true }
+axum = { workspace = true }
+tokio = { workspace = true }
+rust-embed = { workspace = true }
+tower-http = { workspace = true }
+mime_guess = { workspace = true }
+atty = { workspace = true }
+reqwest = { workspace = true }
+urlencoding = { workspace = true }
+open = { workspace = true }
+fst = { workspace = true }
+lru = { workspace = true }
+memmap2 = { workspace = true }
+rand = { workspace = true }
+bitflags = { workspace = true }
+image = { workspace = true }
+log = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+sled = { workspace = true }
+tracing-subscriber = { workspace = true }
+raw-window-handle = { workspace = true }
+slint = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = { workspace = true }
+users = { workspace = true }
+signal-hook = { workspace = true }
+daemonize = { workspace = true }
+libc = { workspace = true }
+ksni = { workspace = true }
+nix = { workspace = true }
+wayland-client = { workspace = true }
+wayland-protocols = { workspace = true }
+wayland-cursor = { workspace = true }
+zbus = { workspace = true }
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = { workspace = true }
+embed-resource = { workspace = true }
+
+[[bin]]
+name = "shian-ime"
+path = "src/main.rs"
+
+[lib]
+name = "shian_ime_tsf"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"

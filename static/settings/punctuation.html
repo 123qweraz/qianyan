@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标点符号设置 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .punc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .punc-card {
+            background: var(--apple-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--apple-border);
+        }
+        .punc-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .punc-key {
+            font-weight: bold;
+            width: 30px;
+            text-align: center;
+            background: #eee;
+            border-radius: 4px;
+            padding: 4px;
+        }
+        .punc-input {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--apple-border);
+            padding-bottom: 10px;
+        }
+        .tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: transparent;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: var(--apple-accent);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-btn">← 返回首页</a>
+            <h1>标点符号设置</h1>
+            <p>自定义不同语言方案下的标点映射，以及长按功能。</p>
+        </div>
+
+        <div class="section">
+            <h2>长按标点输出英文</h2>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">开启长按标点转换</div>
+                    <div class="desc">在中文模式下，长按标点符号键（如逗号）将输出对应的英文标点。</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="enable_punctuation_long_press">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>自定义标点映射</h2>
+            <div class="tab-container" id="lang-tabs">
+                <div class="tab active" data-lang="chinese">中文 (Chinese)</div>
+                <div class="tab" data-lang="japanese">日文 (Japanese)</div>
+                <div class="tab" data-lang="english">英文 (English)</div>
+            </div>
+
+            <div id="punc-editor" class="punc-grid">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="savePuncConfig()">保存设置</button>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        let currentLang = 'chinese';
+        const defaultKeys = [",", ".", "?", "!", ";", ":", "\"", "'", "(", ")", "[", "]", "{", "}", "<", ">", "\\\\", "/", "~", "`", "@", "#", "$", "%", "^", "&", "*", "-", "_", "=", "+"];
+
+        async function init() {
+            await loadConfig();
+            bindInput('enable_punctuation_long_press', 'input');
+            
+            // 初始化标点编辑器
+            renderPuncEditor();
+
+            // 绑定标签切换
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentLang = tab.getAttribute('data-lang');
+                    renderPuncEditor();
+                };
+            });
+        }
+
+        function renderPuncEditor() {
+            const container = document.getElementById('punc-editor');
+            container.innerHTML = '';
+
+            const langPuncs = config.input.punctuations[currentLang] || {};
+
+            defaultKeys.forEach(key => {
+                const entries = langPuncs[key] || [];
+                const val = entries.map(e => e.char).join(' '); // 简易编辑，空格分隔多个候选
+
+                const card = document.createElement('div');
+                card.className = 'punc-card';
+                card.innerHTML = `
+                    <div class="punc-row">
+                        <div class="punc-key">${key}</div>
+                        <input type="text" class="punc-input" value="${val}" 
+                               oninput="updatePunc('${key}', this.value)" 
+                               placeholder="映射字符">
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updatePunc(key, value) {
+            if (!config.input.punctuations[currentLang]) {
+                config.input.punctuations[currentLang] = {};
+            }
+            
+            const chars = value.split(/\s+/).filter(s => s.length > 0);
+            config.input.punctuations[currentLang][key] = chars.map(c => ({ char: c, desc: "" }));
+        }
+
+        async function savePuncConfig() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

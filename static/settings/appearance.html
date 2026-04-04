@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>候选栏设置 - rust-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>候选栏设置</h1>
+        </header>
+
+        <div class="card">
+            <h2>候选框显示</h2>
+            <div class="grid-2">
+                <div class="setting-item">
+                    <div class="info"><div class="title">主题模式</div><div class="desc">选择候选栏的配色方案</div></div>
+                    <select id="theme_mode">
+                        <option value="light">浅色 (Light)</option>
+                        <option value="dark">深色 (Dark)</option>
+                        <option value="auto">跟随系统 (Auto)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
+                    <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">显示状态显示栏</div><div class="desc">控制输入状态（中/英）浮窗的显示</div></div>
+                    <label class="switch"><input type="checkbox" id="show_status_bar"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">显示英文翻译</div><div class="desc">在英文方案中显示对应的中文含义</div></div>
+                    <label class="switch"><input type="checkbox" id="show_english_translation"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">笔画辅助码显示</div><div class="desc">控制是否在候选词旁显示笔画辅助码提示</div></div>
+                    <label class="switch"><input type="checkbox" id="show_stroke_aux"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">随机高亮颜色</div><div class="desc">每次选词时随机变换选中项的背景色</div></div>
+                    <label class="switch"><input type="checkbox" id="enable_random_highlight"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">候选词数量</div><div class="desc">每页显示的候选词个数 (1-10)。</div></div>
+                    <input type="number" id="page_size" min="1" max="10" step="1" style="width: 80px;">
+                </div>
+                <div class="setting-item">
+                    <div class="info"><div class="title">辅助码模式</div><div class="desc">选择候选词旁显示的提示类型</div></div>
+                    <select id="aux_mode">
+                        <option value="None">无</option>
+                        <option value="English">英文辅助码</option>
+                        <option value="Stroke">笔画辅助码 (QWER布局)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <h2>候选框样式 (UI)</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">候选词排列</div><div class="desc">横向或纵向展示候选词</div></div>
+                <select id="candidate_layout">
+                    <option value="horizontal">横向排列 (默认)</option>
+                    <option value="vertical">纵向排列</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">背景颜色</div></div>
+                <div class="color-picker-group">
+                    <input type="text" id="window_bg_color" style="width:100px;">
+                    <div class="color-preview"><input type="color" id="window_bg_color_picker"></div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">边框颜色</div></div>
+                <div class="color-picker-group">
+                    <input type="text" id="window_border_color" style="width:100px;">
+                    <div class="color-preview"><input type="color" id="window_border_color_picker"></div>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">选中项背景色</div></div>
+                <div class="color-picker-group">
+                    <input type="text" id="window_highlight_color" style="width:100px;">
+                    <div class="color-preview"><input type="color" id="window_highlight_color_picker"></div>
+                </div>
+            </div>
+        </div>
+
+        <h2>字体与大小</h2>
+        <div class="card">
+            <h3>拼音行 (Pinyin)</h3>
+            <div class="setting-item">
+                <div class="info"><div class="title">字号</div></div>
+                <input type="number" id="pinyin_font_size">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">字体粗细</div></div>
+                <select id="pinyin_font_weight">
+                    <option value="100">100 - Thin</option>
+                    <option value="200">200 - Extra Light</option>
+                    <option value="300">300 - Light</option>
+                    <option value="400">400 - Normal</option>
+                    <option value="500">500 - Medium</option>
+                    <option value="600">600 - Semi Bold</option>
+                    <option value="700">700 - Bold</option>
+                    <option value="800">800 - Extra Bold</option>
+                    <option value="900">900 - Black</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">文字颜色</div></div>
+                <div class="color-picker-group">
+                    <input type="text" id="pinyin_color" style="width:100px;">
+                    <div class="color-preview"><input type="color" id="pinyin_color_picker"></div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:20px;">候选词行 (Candidate)</h3>
+            <div class="setting-item">
+                <div class="info"><div class="title">字号</div></div>
+                <input type="number" id="candidate_font_size">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">字体粗细</div></div>
+                <select id="candidate_font_weight">
+                    <option value="100">100 - Thin</option>
+                    <option value="200">200 - Extra Light</option>
+                    <option value="300">300 - Light</option>
+                    <option value="400">400 - Normal</option>
+                    <option value="500">500 - Medium</option>
+                    <option value="600">600 - Semi Bold</option>
+                    <option value="700">700 - Bold</option>
+                    <option value="800">800 - Extra Bold</option>
+                    <option value="900">900 - Black</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">文字颜色</div></div>
+                <div class="color-picker-group">
+                    <input type="text" id="candidate_color" style="width:100px;">
+                    <div class="color-preview"><input type="color" id="candidate_color_picker"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetConfig()">重置默认</button>
+    </div>
+
+    <div id="toast" class="status-toast">已保存并应用</div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        async function init() {
+            await loadConfig();
+            
+            // 1. 基础外观设置
+            bindInput('theme_mode', 'appearance');
+            bindInput('show_candidates', 'appearance');
+            bindInput('show_status_bar', 'appearance');
+            bindInput('show_english_translation', 'appearance');
+            bindInput('show_stroke_aux', 'appearance');
+            bindInput('enable_random_highlight', 'appearance');
+            bindInput('aux_mode', 'appearance');
+            bindInput('candidate_layout', 'appearance');
+            
+            // 2. 窗口样式设置
+            bindInput('window_bg_color', 'appearance');
+            bindInput('window_border_color', 'appearance');
+            bindInput('window_highlight_color', 'appearance');
+            
+            // 颜色选择器同步
+            linkColor('window_bg_color', 'appearance');
+            linkColor('window_border_color', 'appearance');
+            linkColor('window_highlight_color', 'appearance');
+
+            // 3. 分页大小 (page_size)
+            bindInput('page_size', 'appearance');
+
+            // 4. 拼音样式设置 (嵌套对象 pinyin_text)
+            bindInput('pinyin_font_size', 'appearance', 'pinyin_text.font_size');
+            bindInput('pinyin_font_weight', 'appearance', 'pinyin_text.font_weight');
+            bindInput('pinyin_color', 'appearance', 'pinyin_text.color');
+            
+            linkColor('pinyin_color', 'appearance', 'pinyin_text.color');
+            
+            // 5. 候选词样式设置 (嵌套对象 candidate_text)
+            bindInput('candidate_font_size', 'appearance', 'candidate_text.font_size');
+            bindInput('candidate_font_weight', 'appearance', 'candidate_text.font_weight');
+            bindInput('candidate_color', 'appearance', 'candidate_text.color');
+
+            linkColor('candidate_color', 'appearance', 'candidate_text.color');
+        }
+
+        async function save() {
+            // 所有绑定已经通过 bindInput 自动更新了 config 对象
+            // 且类型转换在 settings.js 的 bindInput 中处理
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>
