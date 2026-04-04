@@ -1,10 +1,10 @@
-use shian_ime_core::{InputMethodHost, Rect};
 use super::vkbd::Vkbd;
-use shian_ime_ui::GuiEvent;
 use evdev::{Device, InputEventKind, Key};
+use shian_ime_core::{InputMethodHost, Rect};
 use shian_ime_engine::keys::VirtualKey;
 use shian_ime_engine::processor::Action;
 use shian_ime_engine::Processor;
+use shian_ime_ui::GuiEvent;
 use std::collections::HashSet;
 use std::sync::mpsc::Sender;
 use std::sync::{
@@ -366,11 +366,12 @@ impl InputMethodHost for EvdevHost {
                                     // 如果状态发生了变化，同步到托盘
                                     let enabled = p_locked.ctx.session_state.chinese_enabled;
                                     let profile = p_locked.get_current_profile_display();
-                                    let _ =
-                                        self.tray_tx.send(shian_ime_ui::tray::TrayEvent::SyncStatus {
+                                    let _ = self.tray_tx.send(
+                                        shian_ime_ui::tray::TrayEvent::SyncStatus {
                                             chinese_enabled: enabled,
                                             active_profile: profile,
-                                        });
+                                        },
+                                    );
 
                                     if let Ok(vkbd) = self.vkbd.lock() {
                                         execute_action(&vkbd, action, Some((key, val)));
@@ -483,6 +484,7 @@ fn execute_action(vkbd: &Vkbd, action: Action, raw_key: Option<(Key, i32)>) {
         }
         Action::DeleteAndEmit { delete, insert } => {
             if delete > 0 {
+                vkbd.send_text(" ");
                 vkbd.backspace(delete);
             }
             if !insert.is_empty() {
