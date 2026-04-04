@@ -50,6 +50,15 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                 }
             }
 
+            if ctx.config.firefox_space_interrupt() {
+                let out = ctx.session.buffer.clone();
+                ctx.reset();
+                return Action::DeleteAndEmit {
+                    delete: 1,
+                    insert: out,
+                };
+            }
+
             let out = Arc::from(ctx.session.buffer.as_str());
             commit_candidate(ctx, out, 99)
         }

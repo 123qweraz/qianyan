@@ -177,6 +177,7 @@ pub mod config {
         pub fuzzy_config: FuzzyPinyinConfig,
         pub enable_traditional: bool,
         pub ranking: RankingConfig,
+        pub firefox_space_interrupt: bool,
     }
 
     #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -711,6 +712,7 @@ pub mod config {
                         exact_match_bonus: 10000000.0,
                         single_char_bonus: 1000000.0,
                     },
+                    firefox_space_interrupt: false,
                 },
                 hotkeys: Hotkeys {
                     switch_language: Hotkey {
