@@ -261,12 +261,26 @@
             document.getElementById('englishHintBadge').style.display = config.appearance.show_learning_english_hint ? 'block' : 'none';
         }
 
+        let audioPlayer = null;
+
         function speak(text, lang) {
-            if (!text || text === "无" || !window.speechSynthesis) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang;
-            window.speechSynthesis.cancel(); // 停止当前正在播放的声音
-            window.speechSynthesis.speak(utterance);
+            if (!text || text === "无") return;
+            
+            // 停止当前正在播放的声音
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer = null;
+            }
+
+            // 使用有道发音接口 (le=zh 代表中文, le=en 代表英文)
+            const le = lang.startsWith('zh') ? 'zh' : 'en';
+            const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&le=${le}`;
+            
+            audioPlayer = new Audio(url);
+            audioPlayer.play().catch(e => {
+                console.warn("[Learning] 自动发音被拦截或失败:", e);
+                // 某些浏览器可能需要用户交互后才能播放
+            });
         }
 
         function speakCurrent() {

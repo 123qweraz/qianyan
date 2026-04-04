@@ -386,12 +386,25 @@
             }
         }
 
+        let audioPlayer = null;
+
         function speak(text, lang) {
-            if (!text || text === "无" || !window.speechSynthesis) return;
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang;
-            window.speechSynthesis.cancel(); // 停止当前正在播放的声音
-            window.speechSynthesis.speak(utterance);
+            if (!text || text === "无") return;
+            
+            // 停止当前正在播放的声音
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer = null;
+            }
+
+            // 有道 TTS 接口
+            const le = lang.startsWith('zh') ? 'zh' : 'en';
+            const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&le=${le}`;
+            
+            audioPlayer = new Audio(url);
+            audioPlayer.play().catch(e => {
+                console.warn("[Stroke] 发音播放失败:", e);
+            });
         }
 
         function speakCurrent() {
