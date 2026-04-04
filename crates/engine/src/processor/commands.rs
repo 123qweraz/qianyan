@@ -52,10 +52,11 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
 
             if ctx.config.firefox_space_interrupt() {
                 let out = ctx.session.buffer.clone();
+                let delete_count = out.chars().count() + 1;
                 ctx.reset();
                 return Action::DeleteAndEmit {
-                    delete: 1,
-                    insert: format!(" {}", out),
+                    delete: delete_count,
+                    insert: out,
                 };
             }
 
