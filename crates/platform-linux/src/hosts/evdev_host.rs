@@ -484,7 +484,6 @@ fn execute_action(vkbd: &Vkbd, action: Action, raw_key: Option<(Key, i32)>) {
         }
         Action::DeleteAndEmit { delete, insert } => {
             if delete > 0 {
-                vkbd.send_text(" ");
                 vkbd.backspace(delete);
             }
             if !insert.is_empty() {
