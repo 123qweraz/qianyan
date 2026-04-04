@@ -42,14 +42,6 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                 return Action::PassThrough;
             }
 
-            if !ctx.session.candidates.is_empty() {
-                let idx = ctx.session.selected;
-                if let Some(cand) = ctx.session.candidates.get(idx) {
-                    let word = cand.text.clone();
-                    return commit_candidate(ctx, word, idx);
-                }
-            }
-
             if ctx.config.firefox_space_interrupt() {
                 let out = ctx.session.buffer.clone();
                 let delete_count = out.chars().count() + 1;
@@ -58,6 +50,14 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                     delete: delete_count,
                     insert: out,
                 };
+            }
+
+            if !ctx.session.candidates.is_empty() {
+                let idx = ctx.session.selected;
+                if let Some(cand) = ctx.session.candidates.get(idx) {
+                    let word = cand.text.clone();
+                    return commit_candidate(ctx, word, idx);
+                }
             }
 
             let out = Arc::from(ctx.session.buffer.as_str());
