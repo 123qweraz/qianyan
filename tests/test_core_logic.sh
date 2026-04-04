@@ -41,10 +41,10 @@ run_test "n\ni\nh\na\no\n " "你好" "全拼+空格上屏汉字"
 
 # 测试 2: 辅助码连续锁定并自动上屏
 # 输入 'm', 'a', 'SHIFT_C', 'o', 'd', 'e'
-run_test "m\na\nSHIFT_C\no\nd\ne" "码" "辅助码连续过滤并自动上屏"
+run_test "m\na\nSHIFT_C\no\nd\ne\nENTER" "码" "辅助码连续过滤并自动上屏"
 
 # 测试 3: 简拼匹配
-run_test "n\nh\n " "孩" "简拼匹配校验"
+run_test "n\nh\n \nENTER" "孩" "简拼匹配校验"
 
 # 测试 4: 方向键逻辑 (Down 翻页, Right 选词)
 # 初始输入 'nihao'，然后按 DOWN，期望 Page 发生变化

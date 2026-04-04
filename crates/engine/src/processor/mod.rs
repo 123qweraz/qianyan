@@ -258,6 +258,13 @@ impl Processor {
                 }
                 self.ctx.last_key_time = now;
             }
+        } else if is_press && !is_letter(key) && perform_lookup && !self.ctx.pending_key_buffer.is_empty() {
+            let buffered = self.ctx.pending_key_buffer.clone();
+            self.ctx.pending_key_buffer.clear();
+            let action = self.process_batched_keys(&buffered);
+            if !matches!(action, Action::Consume) {
+                return action;
+            }
         }
 
         self.handle_fsm_transition(
