@@ -1,4 +1,3 @@
-use crate::processor::strip_tones;
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 
 pub struct ChineseScheme;
@@ -16,7 +15,7 @@ impl ChineseScheme {
     }
 
     fn parse_buffer(&self, buffer: &str) -> Vec<ParsedPart> {
-        let buffer_normalized = strip_tones(buffer);
+        let buffer_normalized = buffer.to_lowercase();
         let parts: Vec<&str> = buffer_normalized
             .split(' ')
             .filter(|s| !s.is_empty())
@@ -70,65 +69,59 @@ impl ChineseScheme {
     }
 
     fn get_fuzzy_variants(&self, pinyin: &str, context: &SchemeContext) -> Vec<String> {
-        let mut new_variants = std::collections::HashSet::new();
-        new_variants.insert(pinyin.to_string());
-
         if !context.config.input.enable_fuzzy_pinyin {
-            return vec![pinyin.to_string()];
+            return vec![pinyin.to_lowercase()];
         }
+
+        let mut new_variants = std::collections::HashSet::new();
+        new_variants.insert(pinyin.to_lowercase());
 
         let cfg = &context.config.input.fuzzy_config;
 
-        // 声母转换
-        let initial_list: Vec<String> = new_variants.iter().cloned().collect();
-        for v in initial_list {
+        let mut to_process: Vec<String> = new_variants.iter().cloned().collect();
+        while let Some(v) = to_process.pop() {
             if cfg.z_zh {
                 if v.starts_with("zh") {
-                    new_variants.insert(v.replacen("zh", "z", 1));
+                    new_variants.insert(v.replace("zh", "z"));
                 } else if v.starts_with("z") {
-                    new_variants.insert(v.replacen("z", "zh", 1));
+                    new_variants.insert(v.replace("z", "zh"));
                 }
             }
             if cfg.c_ch {
                 if v.starts_with("ch") {
-                    new_variants.insert(v.replacen("ch", "c", 1));
+                    new_variants.insert(v.replace("ch", "c"));
                 } else if v.starts_with("c") {
-                    new_variants.insert(v.replacen("c", "ch", 1));
+                    new_variants.insert(v.replace("c", "ch"));
                 }
             }
             if cfg.s_sh {
                 if v.starts_with("sh") {
-                    new_variants.insert(v.replacen("sh", "s", 1));
+                    new_variants.insert(v.replace("sh", "s"));
                 } else if v.starts_with("s") {
-                    new_variants.insert(v.replacen("s", "sh", 1));
+                    new_variants.insert(v.replace("s", "sh"));
                 }
             }
             if cfg.n_l {
                 if v.starts_with('n') {
-                    new_variants.insert(v.replacen('n', "l", 1));
+                    new_variants.insert(v.replace('n', "l"));
                 } else if v.starts_with('l') {
-                    new_variants.insert(v.replacen('l', "n", 1));
+                    new_variants.insert(v.replace('l', "n"));
                 }
             }
             if cfg.r_l {
                 if v.starts_with('r') {
-                    new_variants.insert(v.replacen('r', "l", 1));
+                    new_variants.insert(v.replace('r', "l"));
                 } else if v.starts_with('l') {
-                    new_variants.insert(v.replacen('l', "r", 1));
+                    new_variants.insert(v.replace('l', "r"));
                 }
             }
             if cfg.f_h {
                 if v.starts_with('f') {
-                    new_variants.insert(v.replacen('f', "h", 1));
+                    new_variants.insert(v.replace('f', "h"));
                 } else if v.starts_with('h') {
-                    new_variants.insert(v.replacen('h', "f", 1));
+                    new_variants.insert(v.replace('h', "f"));
                 }
             }
-        }
-
-        // 韵母转换
-        let current_list: Vec<String> = new_variants.iter().cloned().collect();
-        for v in current_list {
             if cfg.an_ang {
                 if v.ends_with("ang") {
                     new_variants.insert(v.replace("ang", "an"));
@@ -171,11 +164,6 @@ impl ChineseScheme {
                     new_variants.insert(v.replace('v', "u"));
                 }
             }
-        }
-
-        // 自定义映射
-        let current_list: Vec<String> = new_variants.iter().cloned().collect();
-        for v in current_list {
             for (from, to) in &cfg.custom_mappings {
                 if v.contains(from) {
                     new_variants.insert(v.replace(from, to));
@@ -187,42 +175,47 @@ impl ChineseScheme {
     }
 
     fn segment_buffer(&self, input: &str, context: &SchemeContext) -> Vec<String> {
+        let input_lower = input.to_lowercase();
+        let bytes = input_lower.as_bytes();
         let mut segments = Vec::new();
-        let mut remaining = input.to_lowercase();
+        let mut pos = 0;
 
-        while !remaining.is_empty() {
+        while pos < bytes.len() {
+            let remaining = &bytes[pos..];
             let mut matched = false;
-            for len in (1..=6).rev() {
-                if len <= remaining.len() {
-                    let part = &remaining[..len];
-                    if context.syllables.contains(part) {
-                        segments.push(part.to_string());
-                        remaining = remaining[len..].to_string();
-                        matched = true;
-                        break;
-                    }
+
+            for len in (1..=6.min(remaining.len())).rev() {
+                let part = std::str::from_utf8(&remaining[..len]).unwrap_or("");
+                if context.syllables.contains(part) {
+                    segments.push(part.to_string());
+                    pos += len;
+                    matched = true;
+                    break;
                 }
             }
+
             if matched {
                 continue;
             }
 
-            let c = remaining.chars().next().unwrap_or('\0');
+            let c = remaining[0] as char;
             let is_initial = "bpmfdtnlgkhjqxzcsryw".contains(c);
             if is_initial {
-                let initial_len = if remaining.starts_with("zh")
-                    || remaining.starts_with("ch")
-                    || remaining.starts_with("sh")
+                let initial_len = if remaining.starts_with(b"zh")
+                    || remaining.starts_with(b"ch")
+                    || remaining.starts_with(b"sh")
                 {
                     2
                 } else {
                     1
                 };
-                segments.push(remaining[..initial_len].to_string());
-                remaining = remaining[initial_len..].to_string();
+                let part = std::str::from_utf8(&remaining[..initial_len]).unwrap_or("");
+                segments.push(part.to_string());
+                pos += initial_len;
             } else {
-                segments.push(remaining[..1].to_string());
-                remaining = remaining[1..].to_string();
+                let part = std::str::from_utf8(&remaining[..1]).unwrap_or("");
+                segments.push(part.to_string());
+                pos += 1;
             }
         }
         segments
@@ -238,6 +231,9 @@ impl InputScheme for ChineseScheme {
         let raw_parsed = self.parse_buffer(query);
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
+
+        let min_results_needed = 6;
+        let max_results = 50;
 
         // 策略 1: 全量/简拼/前缀匹配
         let mut smart_segments = Vec::new();
@@ -267,6 +263,9 @@ impl InputScheme for ChineseScheme {
                                     3,
                                 ));
                             }
+                            if matches.len() >= min_results_needed {
+                                break;
+                            }
                         }
                         if context.config.input.enable_prefix_matching && !py.is_empty() {
                             let limit = if part.stroke_aux.is_some() || part.english_aux.is_some() {
@@ -288,7 +287,13 @@ impl InputScheme for ChineseScheme {
                                     1,
                                 ));
                             }
+                            if matches.len() >= max_results {
+                                break;
+                            }
                         }
+                    }
+                    if matches.len() >= max_results {
+                        break;
                     }
                 }
             }
@@ -331,7 +336,8 @@ impl InputScheme for ChineseScheme {
         }
 
         // 策略 2: 简拼检索
-        if context.config.input.enable_abbreviation_matching
+        if final_results.len() < min_results_needed
+            && context.config.input.enable_abbreviation_matching
             && !smart_segments.is_empty()
             && smart_segments.len() > 1
         {
@@ -340,8 +346,11 @@ impl InputScheme for ChineseScheme {
                 let mut modified_segments = smart_segments.clone();
                 modified_segments[0] = v1.clone();
                 if let Some(d) = context.tries.get("chinese") {
-                    let m = d.search_abbreviation(&modified_segments, context.syllables, 500);
+                    let m = d.search_abbreviation(&modified_segments, context.syllables, 200);
                     for tr in m {
+                        if final_results.len() >= max_results {
+                            break;
+                        }
                         let last_part = raw_parsed.last();
                         if let Some(aux) = last_part.and_then(|p| p.stroke_aux.as_ref()) {
                             let aux_lower = aux.to_lowercase();
