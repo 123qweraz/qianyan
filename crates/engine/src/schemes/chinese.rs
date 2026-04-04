@@ -15,7 +15,11 @@ impl ChineseScheme {
     }
 
     fn parse_buffer(&self, buffer: &str) -> Vec<ParsedPart> {
-        let buffer_normalized = buffer.to_lowercase();
+        let buffer_normalized = if buffer.bytes().all(|b| b.is_ascii_lowercase() || b == b' ') {
+            buffer
+        } else {
+            return Self::parse_buffer(self, &buffer.to_lowercase());
+        };
         let parts: Vec<&str> = buffer_normalized
             .split(' ')
             .filter(|s| !s.is_empty())
@@ -70,11 +74,19 @@ impl ChineseScheme {
 
     fn get_fuzzy_variants(&self, pinyin: &str, context: &SchemeContext) -> Vec<String> {
         if !context.config.input.enable_fuzzy_pinyin {
+            if pinyin.bytes().all(|b| b.is_ascii_lowercase()) {
+                return vec![pinyin.to_string()];
+            }
             return vec![pinyin.to_lowercase()];
         }
 
+        let pinyin_lower = if pinyin.bytes().all(|b| b.is_ascii_lowercase()) {
+            pinyin.to_string()
+        } else {
+            pinyin.to_lowercase()
+        };
         let mut new_variants = std::collections::HashSet::new();
-        new_variants.insert(pinyin.to_lowercase());
+        new_variants.insert(pinyin_lower);
 
         let cfg = &context.config.input.fuzzy_config;
 
@@ -175,8 +187,13 @@ impl ChineseScheme {
     }
 
     fn segment_buffer(&self, input: &str, context: &SchemeContext) -> Vec<String> {
-        let input_lower = input.to_lowercase();
-        let bytes = input_lower.as_bytes();
+        if !input
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+        {
+            return Self::segment_buffer(self, &input.to_lowercase(), context);
+        }
+        let bytes = input.as_bytes();
         let mut segments = Vec::new();
         let mut pos = 0;
 

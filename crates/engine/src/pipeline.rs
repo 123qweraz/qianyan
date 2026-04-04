@@ -1,9 +1,9 @@
 use crate::config_manager::UserDictData;
 use crate::processor::Action;
 use crate::trie::TrieResult;
+use crate::Config;
 use crate::EngineContext;
 use crate::Trie;
-use crate::Config;
 use arc_swap::ArcSwap;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -802,9 +802,8 @@ impl SearchEngine {
         }
         let filter_lower = filter.to_lowercase();
         let hint_lower = candidate.hint.to_lowercase();
-        let hint_clean = crate::processor::strip_tones(&hint_lower);
-        let parts: Vec<&str> = hint_clean.split([' ', '/', '(', ')', ',']).collect();
-        parts.iter().any(|p| p.starts_with(&filter_lower)) || hint_clean.starts_with(&filter_lower)
+        let parts: Vec<&str> = hint_lower.split([' ', '/', '(', ')', ',']).collect();
+        parts.iter().any(|p| p.starts_with(&filter_lower)) || hint_lower.starts_with(&filter_lower)
     }
 }
 
@@ -828,9 +827,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
             ctx.session.candidates = filtered;
             if ctx.session.candidates.len() == 1 {
                 let word = ctx.session.candidates[0].text.clone();
-                return Some(crate::processor::commands::commit_candidate(
-                    ctx, word, 0,
-                ));
+                return Some(crate::processor::commands::commit_candidate(ctx, word, 0));
             }
         } else {
             ctx.session.candidates.clear();
@@ -869,9 +866,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
 
     if ctx.session.candidates.len() == 1 && ctx.session.filter_mode == FilterMode::Global {
         let word = ctx.session.candidates[0].text.clone();
-        return Some(crate::processor::commands::commit_candidate(
-            ctx, word, 0,
-        ));
+        return Some(crate::processor::commands::commit_candidate(ctx, word, 0));
     }
 
     if ctx.session.candidates.is_empty() {
