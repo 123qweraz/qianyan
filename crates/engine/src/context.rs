@@ -14,6 +14,7 @@ pub struct EngineContext {
     pub dispatcher: crate::KeyDispatcher,
     pub last_key_time: std::time::Instant,
     pub pending_key_buffer: String,
+    pub sound_manager: crate::sound::SoundManager,
 }
 
 impl EngineContext {
@@ -61,6 +62,7 @@ impl EngineContext {
             dispatcher: crate::KeyDispatcher::new(),
             last_key_time: std::time::Instant::now(),
             pending_key_buffer: String::new(),
+            sound_manager: crate::sound::SoundManager::new(),
         }
     }
 

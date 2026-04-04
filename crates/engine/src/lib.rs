@@ -9,9 +9,12 @@ pub mod processor;
 pub mod scheme;
 pub mod schemes;
 pub mod session;
+pub mod sound;
 pub mod traits;
 pub mod trie;
 pub mod user_data;
+
+pub use sound::SoundManager;
 
 pub use config_manager::ConfigManager;
 pub use context::EngineContext;

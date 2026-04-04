@@ -1,5 +1,5 @@
-use shian_ime_core::config::Config;
 use crate::pipeline::{Candidate, SearchQuery};
+use shian_ime_core::config::Config;
 use std::sync::Arc;
 
 #[allow(dead_code)]

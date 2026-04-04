@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use wayland_client::{
     protocol::{wl_registry, wl_seat},
-    Connection, EventQueue, QueueHandle, Dispatch,
+    Connection, Dispatch, EventQueue, QueueHandle,
 };
 
 pub struct WaylandHost {
@@ -22,7 +22,10 @@ struct WaylandState {
 }
 
 impl WaylandHost {
-    pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(
+        processor: Arc<Mutex<Processor>>,
+        gui_tx: Option<Sender<GuiEvent>>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let conn = Connection::connect_to_env()?;
         let mut event_queue = conn.new_event_queue();
         let qh = event_queue.handle();
@@ -49,14 +52,18 @@ impl WaylandHost {
 impl InputMethodHost for WaylandHost {
     fn set_preedit(&self, _text: &str, _cursor_pos: usize) {}
     fn commit_text(&self, _text: &str) {}
-    fn get_cursor_rect(&self) -> Option<Rect> { None }
+    fn get_cursor_rect(&self) -> Option<Rect> {
+        None
+    }
 
     fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         println!("[WaylandHost] 原生探测服务已就绪。");
         if self.state._found_input_method {
             println!("[WaylandHost] 系统支持 input-method 协议接口。");
         } else {
-            println!("[WaylandHost] 警告：KWin 隐藏了 input-method 接口。请确认 KDE 设置或环境变量。");
+            println!(
+                "[WaylandHost] 警告：KWin 隐藏了 input-method 接口。请确认 KDE 设置或环境变量。"
+            );
         }
         loop {
             self.event_queue.blocking_dispatch(&mut self.state)?;
@@ -65,8 +72,21 @@ impl InputMethodHost for WaylandHost {
 }
 
 impl Dispatch<wl_registry::WlRegistry, ()> for WaylandState {
-    fn event(state: &mut Self, proxy: &wl_registry::WlRegistry, event: wl_registry::Event, _: &(), _: &Connection, qh: &QueueHandle<Self>) {
-        if let wl_registry::Event::Global { interface, name, version, .. } = event {
+    fn event(
+        state: &mut Self,
+        proxy: &wl_registry::WlRegistry,
+        event: wl_registry::Event,
+        _: &(),
+        _: &Connection,
+        qh: &QueueHandle<Self>,
+    ) {
+        if let wl_registry::Event::Global {
+            interface,
+            name,
+            version,
+            ..
+        } = event
+        {
             match interface.as_str() {
                 "wl_seat" => {
                     state._seat = Some(proxy.bind::<wl_seat::WlSeat, _, _>(name, version, qh, ()));
@@ -82,5 +102,13 @@ impl Dispatch<wl_registry::WlRegistry, ()> for WaylandState {
 }
 
 impl Dispatch<wl_seat::WlSeat, ()> for WaylandState {
-    fn event(_: &mut Self, _: &wl_seat::WlSeat, _: wl_seat::Event, _: &(), _: &Connection, _: &QueueHandle<Self>) {}
+    fn event(
+        _: &mut Self,
+        _: &wl_seat::WlSeat,
+        _: wl_seat::Event,
+        _: &(),
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
 }

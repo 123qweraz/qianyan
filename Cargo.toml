@@ -19,6 +19,7 @@ authors = ["Shian"]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 walkdir = "2.3"
+rodio = "0.19"
 notify-rust = "4"
 arboard = "3.2"
 arc-swap = "1.7"
@@ -125,6 +126,7 @@ sled = { workspace = true }
 tracing-subscriber = { workspace = true }
 raw-window-handle = { workspace = true }
 slint = { workspace = true }
+rodio = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = { workspace = true }

@@ -44,11 +44,6 @@ pub fn run_input_host(
                 let mut host = linux::wayland::WaylandHost::new(processor, Some(gui_tx))?;
                 host.run()?;
             }
-            LinuxBackend::IBus => {
-                println!("[Main] 强制启动 IBus 伪装模式 (免 Root)...");
-                let mut host = linux::ibus_host::IBusHost::new(processor, Some(gui_tx));
-                host.run()?;
-            }
             LinuxBackend::Evdev => {
                 println!("[Main] 强制启动 Evdev 拦截模式...");
                 let mut host =
@@ -66,9 +61,8 @@ pub fn run_input_host(
                     host.run()?;
                 }
                 Err(e) => {
-                    println!("[Main] Evdev 启动失败 ({e:?})，尝试回落到 IBus 模式...");
-                    let mut host = linux::ibus_host::IBusHost::new(processor, Some(gui_tx));
-                    host.run()?;
+                    println!("[Main] Evdev 启动失败 ({e:?})，请尝试 Wayland 模式...");
+                    return Err(e.into());
                 }
             },
         }
@@ -91,9 +85,6 @@ mod tests {
 
         let args = vec!["rust-ime".to_string(), "evdev".to_string()];
         assert_eq!(parse_linux_backend(&args), LinuxBackend::Evdev);
-
-        let args = vec!["rust-ime".to_string(), "--backend=ibus".to_string()];
-        assert_eq!(parse_linux_backend(&args), LinuxBackend::IBus);
     }
 
     #[test]

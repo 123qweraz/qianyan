@@ -11,9 +11,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use shian_ime_core::config::Config;
 use crate::keys::VirtualKey;
 use crate::{Command, EngineContext, InputEvent};
+use shian_ime_core::config::Config;
 
 pub use fsm::ImeState;
 pub use utils::*;
@@ -258,7 +258,11 @@ impl Processor {
                 }
                 self.ctx.last_key_time = now;
             }
-        } else if is_press && !is_letter(key) && perform_lookup && !self.ctx.pending_key_buffer.is_empty() {
+        } else if is_press
+            && !is_letter(key)
+            && perform_lookup
+            && !self.ctx.pending_key_buffer.is_empty()
+        {
             let buffered = self.ctx.pending_key_buffer.clone();
             self.ctx.pending_key_buffer.clear();
             let action = self.process_batched_keys(&buffered);

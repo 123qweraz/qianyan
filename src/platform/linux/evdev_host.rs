@@ -304,10 +304,11 @@ impl InputMethodHost for EvdevHost {
                         && self.meta_was_pressed
                         && !self.is_grabbed
                         && held_keys.is_empty()
-                        && grab_guard.re_grab() {
-                            self.is_grabbed = true;
-                            self.meta_was_pressed = false;
-                        }
+                        && grab_guard.re_grab()
+                    {
+                        self.is_grabbed = true;
+                        self.meta_was_pressed = false;
+                    }
 
                     // 4. 快捷键透传判断
                     // 如果是 Meta 组合键、或者 Meta 键被按住、或者已释放 grab (系统正在处理)，则直接透传并跳过 IME

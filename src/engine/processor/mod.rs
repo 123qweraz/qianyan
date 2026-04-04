@@ -208,9 +208,10 @@ impl Processor {
         }
 
         if ((ctrl_pressed || alt_pressed) || (key == VirtualKey::Control || key == VirtualKey::Alt))
-            && get_punctuation_key(key, shift_pressed).is_none() {
-                return Action::PassThrough;
-            }
+            && get_punctuation_key(key, shift_pressed).is_none()
+        {
+            return Action::PassThrough;
+        }
 
         if is_press && ctrl_pressed && !alt_pressed {
             if let Some(action) = self.handle_ctrl_punctuation(key, shift_pressed) {
@@ -235,6 +236,10 @@ impl Processor {
         if is_press && is_letter(key) && perform_lookup {
             let elapsed = now.duration_since(self.ctx.last_key_time);
 
+            if let Some(c) = key_to_char(key, shift_pressed, false) {
+                self.ctx.sound_manager.play_letter(c);
+            }
+
             if elapsed < Duration::from_millis(KEY_BATCH_DELAY_MS) {
                 if let Some(c) = key_to_char(key, shift_pressed, false) {
                     self.ctx.pending_key_buffer.push(c);
@@ -257,7 +262,11 @@ impl Processor {
                 }
                 self.ctx.last_key_time = now;
             }
-        } else if is_press && !is_letter(key) && perform_lookup && !self.ctx.pending_key_buffer.is_empty() {
+        } else if is_press
+            && !is_letter(key)
+            && perform_lookup
+            && !self.ctx.pending_key_buffer.is_empty()
+        {
             let buffered = self.ctx.pending_key_buffer.clone();
             self.ctx.pending_key_buffer.clear();
             let action = self.process_batched_keys(&buffered);
@@ -553,27 +562,30 @@ impl Processor {
 
         let raw_input = &self.ctx.session.buffer;
 
-        if self.ctx.config.auto_commit_stroke() && self.ctx.session_state.is_stroke_mode()
+        if self.ctx.config.auto_commit_stroke()
+            && self.ctx.session_state.is_stroke_mode()
             && !self.ctx.session.candidates.is_empty()
-                && self.ctx.session.candidates[0].match_level == 3
-            {
-                let is_unique_exact = self.ctx.session.candidates.len() == 1
-                    || self.ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = self.ctx.session.candidates[0].text.clone();
-                    return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-                }
+            && self.ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact = self.ctx.session.candidates.len() == 1
+                || self.ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = self.ctx.session.candidates[0].text.clone();
+                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
             }
+        }
 
-        if raw_input.contains(';') && !self.ctx.session.candidates.is_empty()
-            && self.ctx.session.candidates[0].match_level == 3 {
-                let is_unique_exact = self.ctx.session.candidates.len() == 1
-                    || self.ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = self.ctx.session.candidates[0].text.clone();
-                    return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-                }
+        if raw_input.contains(';')
+            && !self.ctx.session.candidates.is_empty()
+            && self.ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact = self.ctx.session.candidates.len() == 1
+                || self.ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = self.ctx.session.candidates[0].text.clone();
+                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
             }
+        }
 
         if !self.ctx.config.auto_commit_unique_full_match()
             || self.ctx.session.candidates.len() != 1

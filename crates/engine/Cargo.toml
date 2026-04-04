@@ -10,6 +10,7 @@ serde_json = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+rodio = { workspace = true }
 walkdir = { workspace = true }
 fst = { workspace = true }
 lru = { workspace = true }
