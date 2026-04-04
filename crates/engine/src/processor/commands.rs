@@ -55,7 +55,7 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                 ctx.reset();
                 return Action::DeleteAndEmit {
                     delete: 1,
-                    insert: out,
+                    insert: format!(" {}", out),
                 };
             }
 
