@@ -155,10 +155,7 @@ impl Translator for TableTranslator {
                 // 新的查询是之前查询的前缀，复用缓存
                 let filtered: Vec<Candidate> = cached
                     .iter()
-                    .filter(|c| {
-                        let word = c.simplified.as_ref();
-                        word.starts_with(&query) || word.starts_with(last_q)
-                    })
+                    .filter(|c| c.simplified.starts_with(&query))
                     .take(limit)
                     .cloned()
                     .collect();
@@ -560,8 +557,7 @@ pub struct SearchEngine {
     usage_history: Arc<ArcSwap<UserDictData>>,
     ngram_history: Arc<ArcSwap<UserDictData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
-    pipelines: Arc<RwLock<HashMap<String, Arc<Pipeline>>>>,
-    pipeline_access_order: Arc<RwLock<Vec<String>>>,
+    pipelines: Arc<RwLock<(HashMap<String, Arc<Pipeline>>, Vec<String>)>>,
 }
 
 const MAX_CACHED_PIPELINES: usize = 10;
@@ -593,8 +589,7 @@ impl SearchEngine {
             usage_history,
             ngram_history,
             schemes,
-            pipelines: Arc::new(RwLock::new(HashMap::new())),
-            pipeline_access_order: Arc::new(RwLock::new(Vec::new())),
+            pipelines: Arc::new(RwLock::new((HashMap::new(), Vec::new()))),
         }
     }
 
@@ -689,15 +684,13 @@ impl SearchEngine {
     fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
         // 1. 尝试读取现有
         {
-            let p_map = self.pipelines.read().ok()?;
+            let mut cache = self.pipelines.write().ok()?;
+            let (p_map, access_order) = &mut *cache;
             if let Some(p) = p_map.get(profile) {
-                // 更新访问顺序（LRU）
-                if let Ok(mut access_order) = self.pipeline_access_order.write() {
-                    if let Some(pos) = access_order.iter().position(|p| p == profile) {
-                        access_order.remove(pos);
-                    }
-                    access_order.push(profile.to_string());
+                if let Some(pos) = access_order.iter().position(|p| p == profile) {
+                    access_order.remove(pos);
                 }
+                access_order.push(profile.to_string());
                 return Some(p.clone());
             }
         }
@@ -729,31 +722,16 @@ impl SearchEngine {
 
         // LRU eviction: 如果缓存超过限制，移除最久未使用的
         {
-            let maybe_oldest = {
-                let access_order = self.pipeline_access_order.read().ok()?;
-                if access_order.len() >= MAX_CACHED_PIPELINES {
-                    access_order.first().cloned()
-                } else {
-                    None
-                }
-            };
-
-            if let Some(oldest) = maybe_oldest {
-                if let Ok(mut p_map) = self.pipelines.write() {
+            let mut cache = self.pipelines.write().ok()?;
+            let (p_map, access_order) = &mut *cache;
+            if access_order.len() >= MAX_CACHED_PIPELINES {
+                if let Some(oldest) = access_order.first().cloned() {
                     p_map.remove(&oldest);
-                }
-                if let Ok(mut access_order) = self.pipeline_access_order.write() {
                     access_order.remove(0);
+                    tracing::debug!(profile = %oldest, "Evicted pipeline from cache");
                 }
-                tracing::debug!(profile = %oldest, "Evicted pipeline from cache");
             }
-        }
-
-        // 插入新 pipeline
-        let mut p_map = self.pipelines.write().ok()?;
-        p_map.insert(profile.to_string(), arc_p.clone());
-
-        if let Ok(mut access_order) = self.pipeline_access_order.write() {
+            p_map.insert(profile.to_string(), arc_p.clone());
             if !access_order.contains(&profile.to_string()) {
                 access_order.push(profile.to_string());
             }
@@ -773,11 +751,9 @@ impl SearchEngine {
     }
 
     pub fn clear_cache(&self) {
-        if let Ok(mut p_map) = self.pipelines.write() {
-            p_map.clear();
-        }
-        if let Ok(mut access_order) = self.pipeline_access_order.write() {
-            access_order.clear();
+        if let Ok(mut cache) = self.pipelines.write() {
+            cache.0.clear();
+            cache.1.clear();
         }
     }
 

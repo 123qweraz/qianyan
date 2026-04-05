@@ -344,9 +344,7 @@ impl Processor {
             fsm::FsmEffect::Commit首选 => self.execute_command(Command::Commit),
             fsm::FsmEffect::CommitRaw => self.execute_command(Command::CommitRaw),
             fsm::FsmEffect::Clear => self.execute_command(Command::Clear),
-            fsm::FsmEffect::Consume => {
-                handlers::handle_composing(&mut self.ctx, key, shift_pressed, perform_lookup)
-            }
+            fsm::FsmEffect::Consume => Action::Consume,
             fsm::FsmEffect::Alert => Action::Alert,
         }
     }
@@ -642,13 +640,12 @@ impl Processor {
                 self.ctx.session_state.caps_lock_enabled =
                     !self.ctx.session_state.caps_lock_enabled;
                 Action::PassThrough
+            } else if self.ctx.session.buffer.is_empty() {
+                self.ctx.session_state.capslock_pending = true;
+                Action::PassThrough
             } else {
                 self.ctx.session_state.capslock_down = true;
-                if !self.ctx.session.buffer.is_empty() {
-                    self.ctx.session.nav_mode = true;
-                } else {
-                    self.ctx.session_state.capslock_pending = true;
-                }
+                self.ctx.session.nav_mode = true;
                 Action::Consume
             });
         }

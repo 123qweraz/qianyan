@@ -287,7 +287,7 @@ pub fn handle_composing(
 
             if ctx.session.buffer.is_empty() {
                 ctx.session_state.commit_history.clear();
-                return Action::PassThrough;
+                return Action::Consume;
             }
 
             let old_phantom_len = ctx.session.phantom_text.chars().count();

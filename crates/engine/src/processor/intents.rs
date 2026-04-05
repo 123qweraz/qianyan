@@ -247,7 +247,9 @@ pub fn process_switch_mode(
                     }
                 }
             }
-            _ => {}
+            _ => {
+                ctx.session.switch_mode = false;
+            }
         }
         return Some(Action::Consume);
     }

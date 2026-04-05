@@ -144,10 +144,11 @@ fn record_usage(ctx: &mut EngineContext, pinyin: &str, word: &str, context: Opti
         }
     }
 
-    if ctx.config.master_config.input.enable_word_discovery && word_len > 1
-        && !ctx.engine.has_exact_match(&profile, pinyin, word) {
-            let updated =
-                learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
-            ctx.config.insert_learned(&profile, pinyin, &updated);
-        }
+    if ctx.config.master_config.input.enable_word_discovery
+        && word_len > 1
+        && !ctx.engine.has_exact_match(&profile, pinyin, word)
+    {
+        let updated = learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
+        ctx.config.insert_learned(&profile, pinyin, &updated);
+    }
 }
