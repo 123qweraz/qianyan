@@ -41,6 +41,7 @@ pub trait Translator: Send + Sync + 'static {
         config: &Config,
         limit: usize,
     ) -> Vec<Candidate>;
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 pub trait Filter: Send + Sync {
@@ -284,6 +285,10 @@ impl Translator for TableTranslator {
 
         candidates
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 /// 用户词库翻译器 (仅处理用户自造词)
@@ -318,6 +323,10 @@ impl Translator for UserDictTranslator {
             }
         }
         results
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -671,15 +680,10 @@ impl SearchEngine {
         false
     }
 
-    fn get_trie_from_pipeline(&self, pipeline: &Pipeline) -> Option<&Trie> {
-        use std::any::{Any, TypeId};
+    fn get_trie_from_pipeline<'a>(&self, pipeline: &'a Pipeline) -> Option<&'a Trie> {
         for t in &pipeline.translators {
-            if TypeId::of::<TableTranslator>() == t.as_ref().type_id() {
-                let ptr = t.as_ref() as *const dyn Translator;
-                let table_ptr = ptr as *const TableTranslator;
-                unsafe {
-                    return Some(&(*table_ptr).trie);
-                }
+            if let Some(table) = t.as_any().downcast_ref::<TableTranslator>() {
+                return Some(&table.trie);
             }
         }
         None
