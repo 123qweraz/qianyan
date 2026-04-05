@@ -8,6 +8,7 @@ pub mod session_state;
 pub mod utils;
 
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -57,6 +58,7 @@ pub enum FilterMode {
 
 pub struct Processor {
     pub ctx: EngineContext,
+    prefetch_running: Arc<AtomicBool>,
 }
 
 impl Processor {
@@ -66,6 +68,7 @@ impl Processor {
     ) -> Self {
         Self {
             ctx: EngineContext::new(trie_paths, syllables),
+            prefetch_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -483,6 +486,14 @@ impl Processor {
             return;
         }
 
+        if self
+            .prefetch_running
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            return;
+        }
+
         let buffer = self.ctx.session.buffer.clone();
         let profile = self
             .ctx
@@ -494,6 +505,7 @@ impl Processor {
         let syllables = self.ctx.syllables.clone();
         let config = self.ctx.config.master_config.clone();
         let engine = self.ctx.engine.clone();
+        let flag = self.prefetch_running.clone();
 
         std::thread::spawn(move || {
             let common_suffixes = [
@@ -514,6 +526,8 @@ impl Processor {
                 };
                 let _ = engine.search(query);
             }
+
+            flag.store(false, Ordering::Release);
         });
     }
 
