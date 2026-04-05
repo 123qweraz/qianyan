@@ -1,20 +1,21 @@
-use shian_ime_core::InputMethodHost;
+use crate::hosts::vkbd::Vkbd;
 use crate::hosts::{evdev_host, ibus_host, wayland};
-use shian_ime_ui::GuiEvent;
 use shian_ime_core::config::LinuxConfig;
 use shian_ime_core::Config;
+use shian_ime_core::InputMethodHost;
 use shian_ime_engine::Processor;
+use shian_ime_ui::GuiEvent;
 use std::error::Error;
 use std::sync::{Arc, Mutex, RwLock};
 
-pub fn run_input_host(
+pub fn create_input_host(
     args: &[String],
     processor: Arc<Mutex<Processor>>,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     config: Arc<RwLock<Config>>,
     tray_tx: std::sync::mpsc::Sender<shian_ime_ui::tray::TrayEvent>,
     app_state: Arc<Mutex<shian_ime_ui::AppState>>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
     let linux_config = config
         .read()
         .map(|c| c.linux.clone())
@@ -25,24 +26,36 @@ pub fn run_input_host(
         });
 
     let dev_path = linux_config.device_path.clone();
-
     let backend = parse_backend(args);
 
     match backend {
         BackendType::Wayland => {
-            println!("[Main] 强制启动 Wayland 原生协议模式...");
             let mut host = wayland::WaylandHost::new(processor, Some(gui_tx))?;
-            host.run()?;
+            Ok((
+                None,
+                Box::new(move || {
+                    let _ = host.run();
+                }),
+            ))
         }
         BackendType::IBus => {
-            println!("[Main] 强制启动 IBus 伪装模式 (免 Root)...");
             let mut host = ibus_host::IBusHost::new(processor, Some(gui_tx));
-            host.run()?;
+            Ok((
+                None,
+                Box::new(move || {
+                    host.run();
+                }),
+            ))
         }
         BackendType::Evdev => {
-            println!("[Main] 强制启动 Evdev 拦截模式...");
             let mut host = evdev_host::EvdevHost::new(processor, &dev_path, Some(gui_tx), tray_tx)?;
-            host.run()?;
+            let vkbd = host.vkbd.clone();
+            Ok((
+                Some(vkbd),
+                Box::new(move || {
+                    let _ = host.run();
+                }),
+            ))
         }
         BackendType::Auto => {
             match evdev_host::EvdevHost::new(
@@ -53,18 +66,27 @@ pub fn run_input_host(
             ) {
                 Ok(mut host) => {
                     println!("[Main] 成功启动 Evdev 拦截模式。");
-                    host.run()?;
+                    let vkbd = host.vkbd.clone();
+                    Ok((
+                        Some(vkbd),
+                        Box::new(move || {
+                            let _ = host.run();
+                        }),
+                    ))
                 }
                 Err(e) => {
                     println!("[Main] Evdev 启动失败 ({:?})，尝试回落到 IBus 模式...", e);
                     let mut host = ibus_host::IBusHost::new(processor, Some(gui_tx));
-                    host.run()?;
+                    Ok((
+                        None,
+                        Box::new(move || {
+                            host.run();
+                        }),
+                    ))
                 }
             }
         }
     }
-
-    Ok(())
 }
 
 enum BackendType {

@@ -16,8 +16,9 @@ pub enum TrayEvent {
         chinese_enabled: bool,
         active_profile: String,
     },
-    ShowNotification(String), // 显示通知
+    ShowNotification(String),
     ClearUserDict,
+    SendKey(String), // key code like "a", "Enter", "Backspace"
 }
 
 pub struct TrayParams {

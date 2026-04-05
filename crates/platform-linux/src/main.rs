@@ -57,12 +57,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let should_daemonize = match cli::handle_startup(&args)? {
         cli::StartupAction::Exit => return Ok(()),
         cli::StartupAction::Continue { should_daemonize } => should_daemonize,
-    }?;
+    };
 
     let root = find_project_root();
 
     if should_daemonize {
-        if let Ok(pid_file) = std::fs::File::create("/tmp/rust-ime.pid") {
+        if let Ok(mut pid_file) = std::fs::File::create("/tmp/rust-ime.pid") {
             use std::io::Write;
             let _ = writeln!(pid_file, "{}", std::process::id());
         }
@@ -149,11 +149,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         status_text: "中".into(),
     }));
 
+    // 创建输入主机，获取 vkbd 引用
+    let vkbd_ref = match runtime::create_input_host(
+        &args,
+        processor.clone(),
+        gui_tx.clone(),
+        config.clone(),
+        tray_tx.clone(),
+        app_state.clone(),
+    ) {
+        Ok((vkbd, run_fn)) => {
+            // 保存 run_fn 以便后续执行
+            (vkbd, Some(run_fn))
+        }
+        Err(e) => {
+            eprintln!("创建输入主机失败: {}", e);
+            (None, None)
+        }
+    };
+
     let processor_clone = processor.clone();
     let gui_tx_tray = gui_tx.clone();
     let tray_tx_for_main_loop = tray_tx.clone();
     let config_msg = config.clone();
     let app_state_tray = app_state.clone();
+    let vkbd_for_event = vkbd_ref.0;
 
     std::thread::spawn(move || {
         while let Ok(event) = tray_rx.recv() {
@@ -253,18 +273,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 ui::tray::TrayEvent::Exit => std::process::exit(0),
+                ui::tray::TrayEvent::SendKey(key) => {
+                    if let Some(ref vkbd) = vkbd_for_event {
+                        if let Ok(mut vk) = vkbd.lock() {
+                            vk.send_key(&key);
+                        }
+                    }
+                }
             }
         }
     });
 
-    runtime::run_input_host(
-        &args,
-        processor,
-        gui_tx,
-        config.clone(),
-        tray_tx,
-        app_state.clone(),
-    )?;
+    // 执行输入主机的 run 函数
+    if let Some(run_fn) = vkbd_ref.1 {
+        run_fn();
+    }
 
     Ok(())
 }

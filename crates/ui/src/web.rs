@@ -5,7 +5,7 @@ use axum::{
     http::{StatusCode, Uri},
     Router,
 };
-use serde::{Serialize};
+use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::HashMap;
@@ -60,6 +60,7 @@ impl WebServer {
             .route("/api/dict/update", post(update_dict_entry))
             .route("/api/dict/add", post(add_dict_entry))
             .route("/api/dict/clear_user", post(clear_user_dict))
+            .route("/api/keyboard/send", post(send_key_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
@@ -315,28 +316,38 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
     let mut results = Vec::new();
     let q = query.q.to_lowercase();
     
+    if q.is_empty() {
+        return Json(results);
+    }
+    
     // 遍历 dicts 目录下所有有效的 json
     let root = "dicts";
     let entries = walkdir::WalkDir::new(root);
     for entry in entries.into_iter().filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
         if entry.path().extension().is_some_and(|ext: &std::ffi::OsStr| ext == "json") {
             let path_str = entry.path().to_string_lossy().to_string();
+            // 跳过 disabled 文件
+            if path_str.contains(".disabled") {
+                continue;
+            }
             if let Ok(f) = std::fs::File::open(entry.path()) {
                 if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
                     if let Some(obj) = json.as_object() {
                         for (pinyin, val) in obj {
+                            // 精确匹配或前缀匹配
+                            if !pinyin.to_lowercase().starts_with(&q) && pinyin.to_lowercase() != q {
+                                continue;
+                            }
                             if let Some(arr) = val.as_array() {
                                 for v in arr {
                                     let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
                                     let hint = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
-                                    if pinyin.to_lowercase().contains(&q) || word.contains(&q) {
-                                        results.push(SearchResult {
-                                            pinyin: pinyin.clone(),
-                                            word: word.to_string(),
-                                            hint: hint.to_string(),
-                                            file: path_str.clone(),
-                                        });
-                                    }
+                                    results.push(SearchResult {
+                                        pinyin: pinyin.clone(),
+                                        word: word.to_string(),
+                                        hint: hint.to_string(),
+                                        file: path_str.clone(),
+                                    });
                                 }
                             }
                         }
@@ -520,4 +531,23 @@ async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictVi
         }
     }
     Json(results).into_response()
+}
+
+#[derive(Deserialize)]
+struct SendKeyRequest {
+    key: String,  // key code: "a", "Enter", "Backspace", "Space", etc.
+    action: Option<String>, // "tap" (default), "down", "up"
+}
+
+async fn send_key_handler(
+    State(state): State<WebState>,
+    Json(req): Json<SendKeyRequest>
+) -> StatusCode {
+    let key = req.key.to_lowercase();
+    let _action = req.action.unwrap_or_else(|| "tap".to_string());
+    
+    let tray_tx = state.2.clone();
+    let _ = tray_tx.send(TrayEvent::SendKey(key));
+    
+    StatusCode::OK
 }

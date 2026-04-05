@@ -85,7 +85,7 @@ fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
 
 pub struct EvdevHost {
     processor: Arc<Mutex<Processor>>,
-    vkbd: Arc<Mutex<Vkbd>>,
+    pub vkbd: Arc<Mutex<Vkbd>>,
     dev: Arc<Mutex<Device>>,
     gui_tx: Option<Sender<GuiEvent>>,
     tray_tx: Sender<shian_ime_ui::tray::TrayEvent>,
