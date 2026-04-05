@@ -299,11 +299,6 @@ async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     StatusCode::OK
 }
 
-#[derive(serde::Deserialize)]
-struct SearchQuery {
-    q: String,
-}
-
 #[derive(Serialize)]
 struct SearchResult {
     pinyin: String,
@@ -312,21 +307,34 @@ struct SearchResult {
     file: String,
 }
 
+#[derive(serde::Deserialize)]
+struct SearchQuery {
+    q: String,
+    ime: Option<String>,
+}
+
 async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQuery>) -> Json<Vec<SearchResult>> {
     let mut results = Vec::new();
     let q = query.q.to_lowercase();
+    let ime = query.ime.as_deref().unwrap_or("chinese");
     
     if q.is_empty() {
         return Json(results);
     }
     
-    // 遍历 dicts 目录下所有有效的 json
-    let root = "dicts";
-    let entries = walkdir::WalkDir::new(root);
+    // 确定搜索路径
+    let search_root = match ime {
+        "japanese" => "dicts/japanese",
+        "stroke" => "dicts/stroke",
+        "english" => "dicts/english",
+        _ => "dicts/chinese",
+    };
+    
+    // 遍历指定目录下的 json
+    let entries = walkdir::WalkDir::new(search_root);
     for entry in entries.into_iter().filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
         if entry.path().extension().is_some_and(|ext: &std::ffi::OsStr| ext == "json") {
             let path_str = entry.path().to_string_lossy().to_string();
-            // 跳过 disabled 文件
             if path_str.contains(".disabled") {
                 continue;
             }
@@ -334,7 +342,6 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
                 if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
                     if let Some(obj) = json.as_object() {
                         for (pinyin, val) in obj {
-                            // 精确匹配或前缀匹配
                             if !pinyin.to_lowercase().starts_with(&q) && pinyin.to_lowercase() != q {
                                 continue;
                             }
@@ -355,7 +362,7 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
                 }
             }
         }
-        if results.len() > 100 { break; } // 限制结果数量
+        if results.len() > 100 { break; }
     }
     Json(results)
 }
@@ -533,10 +540,10 @@ async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictVi
     Json(results).into_response()
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct SendKeyRequest {
-    key: String,  // key code: "a", "Enter", "Backspace", "Space", etc.
-    action: Option<String>, // "tap" (default), "down", "up"
+    key: String,
+    action: Option<String>,
 }
 
 async fn send_key_handler(

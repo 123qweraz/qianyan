@@ -11,7 +11,7 @@
             min-height: 100vh;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -25,22 +25,25 @@
             font-size: 24px;
             color: var(--apple-text);
         }
-        .layout-select {
+        .ime-select {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            background: var(--apple-card);
+            padding: 6px;
+            border-radius: 14px;
         }
-        .layout-btn {
+        .ime-btn {
             padding: 10px 20px;
             border: none;
-            background: var(--apple-card);
-            border-radius: 12px;
+            background: transparent;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
             color: var(--apple-secondary);
             transition: all 0.2s;
         }
-        .layout-btn.active {
+        .ime-btn.active {
             background: var(--apple-accent);
             color: white;
         }
@@ -48,12 +51,12 @@
             background: white;
             border-radius: 16px;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             border: 1px solid var(--apple-border);
         }
         .input-area textarea {
             width: 100%;
-            min-height: 80px;
+            min-height: 60px;
             border: none;
             font-size: 24px;
             resize: none;
@@ -87,116 +90,74 @@
         }
         .keyboard {
             background: #e5e5ea;
-            padding: 24px;
-            border-radius: 24px;
+            padding: 16px;
+            border-radius: 20px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             user-select: none;
         }
         .kb-row {
             display: flex;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
         }
         .key {
-            width: 70px;
-            height: 70px;
+            min-width: 48px;
+            height: 52px;
             background: white;
-            border-radius: 12px;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 0 #d1d1d6;
+            box-shadow: 0 3px 0 #d1d1d6;
             cursor: pointer;
-            transition: all 0.1s;
+            transition: all 0.08s;
             position: relative;
+            padding: 0 8px;
         }
         .key:active, .key.pressed {
-            transform: translateY(4px);
+            transform: translateY(3px);
             box-shadow: 0 0 0 #d1d1d6;
             background: var(--apple-accent);
             color: white;
         }
+        .key.shift-on {
+            background: var(--apple-accent);
+            color: white;
+        }
+        .key.caps-on {
+            background: #007aff;
+            color: white;
+        }
         .key .char {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 18px;
+            font-weight: 600;
         }
         .key .sub {
-            font-size: 12px;
-            color: #8e8e93;
-            position: absolute;
-            top: 4px;
-            right: 6px;
-        }
-        .key:active .sub, .key.pressed .sub {
-            color: rgba(255,255,255,0.7);
-        }
-        .key.wide {
-            width: 100px;
-        }
-        .key.wider {
-            width: 130px;
-        }
-        .key.space {
-            width: 300px;
-        }
-        .key .hint {
             font-size: 10px;
             color: #8e8e93;
-            margin-top: 4px;
+            position: absolute;
+            top: 3px;
+            right: 5px;
         }
-        .key:active .hint, .key.pressed .hint {
+        .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.caps-on .sub {
             color: rgba(255,255,255,0.7);
         }
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;
-            background: var(--apple-card);
-            border-radius: 16px;
-            margin-bottom: 20px;
-        }
-        .status-info {
-            display: flex;
-            gap: 20px;
-        }
-        .status-item {
-            font-size: 14px;
-            color: var(--apple-secondary);
-        }
-        .status-item b {
-            color: var(--apple-accent);
-        }
-        .help-text {
-            font-size: 12px;
-            color: var(--apple-secondary);
-        }
-        .notice {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #856404;
-        }
-        .notice strong {
-            color: #d39e00;
-        }
+        .key.wide { min-width: 80px; }
+        .key.wider { min-width: 100px; }
+        .key.space { min-width: 280px; }
+        
         .candidates {
             background: var(--apple-card);
             border: 1px solid var(--apple-border);
             border-radius: 16px;
             padding: 16px 20px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: none;
         }
-        .candidates.show {
-            display: block;
-        }
+        .candidates.show { display: block; }
         .candidates .pinyin {
             color: var(--apple-secondary);
             font-size: 14px;
@@ -230,6 +191,18 @@
             font-size: 12px;
             margin-right: 6px;
         }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--apple-card);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--apple-secondary);
+        }
+        .status-bar b { color: var(--apple-accent); }
         .toast {
             position: fixed;
             bottom: 30px;
@@ -244,8 +217,11 @@
             transition: opacity 0.3s;
             z-index: 1000;
         }
-        .toast.show {
-            opacity: 1;
+        .toast.show { opacity: 1; }
+        .help-tip {
+            font-size: 12px;
+            color: var(--apple-secondary);
+            text-align: center;
         }
     </style>
 </head>
@@ -253,22 +229,23 @@
     <div class="container">
         <div class="header">
             <h1>⌨️ 虚拟键盘</h1>
-            <div class="layout-select">
-                <button class="layout-btn active" data-layout="chinese">中文</button>
-                <button class="layout-btn" data-layout="english">英文</button>
-                <button class="layout-btn" data-layout="japanese">日文</button>
-                <button class="layout-btn" data-layout="stroke">笔画</button>
+            <div class="ime-select">
+                <button class="ime-btn active" data-ime="chinese">中文</button>
+                <button class="ime-btn" data-ime="english">英文</button>
+                <button class="ime-btn" data-ime="japanese">日文</button>
+                <button class="ime-btn" data-ime="stroke">笔画</button>
             </div>
         </div>
 
-        <div class="notice">
-            <strong>💡 提示：</strong>输入拼音后按 <strong>空格键</strong> 选词，按 <strong>数字键 1-9</strong> 直接选择候选词。候选框显示在下方。
+        <div class="status-bar">
+            <span>当前: <b id="current-ime">中文</b></span>
+            <span>字符: <b id="char-count">0</b></span>
         </div>
 
         <div class="input-area">
-            <textarea id="input-text" placeholder="点击按键输入文字... 输入拼音后按空格选词"></textarea>
+            <textarea id="input-text" placeholder="点击按键输入..."></textarea>
             <div class="input-actions">
-                <button class="btn btn-primary" id="btn-copy">📋 复制到剪贴板</button>
+                <button class="btn btn-primary" id="btn-copy">📋 复制</button>
                 <button class="btn btn-secondary" id="btn-clear">🗑️ 清空</button>
             </div>
         </div>
@@ -278,286 +255,94 @@
             <div class="words" id="cand-words"></div>
         </div>
 
-        <div class="status-bar">
-            <div class="status-info">
-                <div class="status-item">当前布局: <b id="current-layout">中文</b></div>
-                <div class="status-item">字符数: <b id="char-count">0</b></div>
-            </div>
-            <div class="help-text">
-                左键单击: 输入 | 右键: Shift | 双击: 双击映射 | 长按: 长按映射
-            </div>
-        </div>
-
         <div class="keyboard" id="keyboard"></div>
+        
+        <div class="help-tip">空格选词 | 数字1-9直接选 | Backspace删除</div>
     </div>
 
-    <div class="toast" id="toast">已复制到剪贴板!</div>
+    <div class="toast" id="toast">已复制!</div>
 
     <script>
-        const KEYBOARD_DATA = {
-            chinese: [
-                [
-                    { id: '`', label: '`', sub: '~' },
-                    { id: '1', label: '1', sub: '!' },
-                    { id: '2', label: '2', sub: '@' },
-                    { id: '3', label: '3', sub: '#' },
-                    { id: '4', label: '4', sub: '$' },
-                    { id: '5', label: '5', sub: '%' },
-                    { id: '6', label: '6', sub: '^' },
-                    { id: '7', label: '7', sub: '&' },
-                    { id: '8', label: '8', sub: '*' },
-                    { id: '9', label: '9', sub: '(' },
-                    { id: '0', label: '0', sub: ')' },
-                    { id: '-', label: '-', sub: '_' },
-                    { id: '=', label: '=', sub: '+' },
-                    { id: 'Backspace', label: '⌫', className: 'wide' }
-                ],
-                [
-                    { id: 'Tab', label: 'Tab', className: 'wide' },
-                    { id: 'q', label: 'q', sub: '÷' },
-                    { id: 'w', label: 'w', sub: '×' },
-                    { id: 'e', label: 'e' },
-                    { id: 'r', label: 'r' },
-                    { id: 't', label: 't' },
-                    { id: 'y', label: 'y' },
-                    { id: 'u', label: 'u' },
-                    { id: 'i', label: 'i' },
-                    { id: 'o', label: 'o' },
-                    { id: 'p', label: 'p' },
-                    { id: '[', label: '[', sub: '{' },
-                    { id: ']', label: ']', sub: '}' },
-                    { id: '\\', label: '\\', sub: '|' }
-                ],
-                [
-                    { id: 'CapsLock', label: 'Caps', className: 'wider' },
-                    { id: 'a', label: 'a' },
-                    { id: 's', label: 's' },
-                    { id: 'd', label: 'd' },
-                    { id: 'f', label: 'f' },
-                    { id: 'g', label: 'g' },
-                    { id: 'h', label: 'h' },
-                    { id: 'j', label: 'j' },
-                    { id: 'k', label: 'k' },
-                    { id: 'l', label: 'l' },
-                    { id: ';', label: ';', sub: ':' },
-                    { id: "'", label: "'", sub: '"' },
-                    { id: 'Enter', label: 'Enter', className: 'wider' }
-                ],
-                [
-                    { id: 'Shift', label: 'Shift', className: 'wider' },
-                    { id: 'z', label: 'z' },
-                    { id: 'x', label: 'x' },
-                    { id: 'c', label: 'c' },
-                    { id: 'v', label: 'v' },
-                    { id: 'b', label: 'b' },
-                    { id: 'n', label: 'n' },
-                    { id: 'm', label: 'm' },
-                    { id: ',', label: ',', sub: '<' },
-                    { id: '.', label: '.', sub: '>' },
-                    { id: '/', label: '/', sub: '?' },
-                    { id: 'Shift', label: 'Shift', className: 'wider' }
-                ],
-                [
-                    { id: 'Ctrl', label: 'Ctrl' },
-                    { id: 'Win', label: 'Win' },
-                    { id: 'Alt', label: 'Alt' },
-                    { id: 'Space', label: '空格', className: 'space' },
-                    { id: 'Alt', label: 'Alt' },
-                    { id: 'Win', label: 'Win' },
-                    { id: 'Menu', label: 'Menu' },
-                    { id: 'Ctrl', label: 'Ctrl' }
-                ]
+        const KEYBOARD = [
+            [
+                { id: '`', label: '`', sub: '~' },
+                { id: '1', label: '1', sub: '!' },
+                { id: '2', label: '2', sub: '@' },
+                { id: '3', label: '3', sub: '#' },
+                { id: '4', label: '4', sub: '$' },
+                { id: '5', label: '5', sub: '%' },
+                { id: '6', label: '6', sub: '^' },
+                { id: '7', label: '7', sub: '&' },
+                { id: '8', label: '8', sub: '*' },
+                { id: '9', label: '9', sub: '(' },
+                { id: '0', label: '0', sub: ')' },
+                { id: '-', label: '-', sub: '_' },
+                { id: '=', label: '=', sub: '+' },
+                { id: 'Backspace', label: '⌫', className: 'wide' }
             ],
-            english: [
-                [
-                    { id: '`', label: '`', sub: '~' },
-                    { id: '1', label: '1', sub: '!' },
-                    { id: '2', label: '2', sub: '@' },
-                    { id: '3', label: '3', sub: '#' },
-                    { id: '4', label: '4', sub: '$' },
-                    { id: '5', label: '5', sub: '%' },
-                    { id: '6', label: '6', sub: '^' },
-                    { id: '7', label: '7', sub: '&' },
-                    { id: '8', label: '8', sub: '*' },
-                    { id: '9', label: '9', sub: '(' },
-                    { id: '0', label: '0', sub: ')' },
-                    { id: '-', label: '-', sub: '_' },
-                    { id: '=', label: '=', sub: '+' },
-                    { id: 'Backspace', label: '⌫', className: 'wide' }
-                ],
-                [
-                    { id: 'Tab', label: 'Tab', className: 'wide' },
-                    { id: 'q', label: 'Q' },
-                    { id: 'w', label: 'W' },
-                    { id: 'e', label: 'E' },
-                    { id: 'r', label: 'R' },
-                    { id: 't', label: 'T' },
-                    { id: 'y', label: 'Y' },
-                    { id: 'u', label: 'U' },
-                    { id: 'i', label: 'I' },
-                    { id: 'o', label: 'O' },
-                    { id: 'p', label: 'P' },
-                    { id: '[', label: '[', sub: '{' },
-                    { id: ']', label: ']', sub: '}' },
-                    { id: '\\', label: '\\', sub: '|' }
-                ],
-                [
-                    { id: 'CapsLock', label: 'Caps', className: 'wider' },
-                    { id: 'a', label: 'A' },
-                    { id: 's', label: 'S' },
-                    { id: 'd', label: 'D' },
-                    { id: 'f', label: 'F' },
-                    { id: 'g', label: 'G' },
-                    { id: 'h', label: 'H' },
-                    { id: 'j', label: 'J' },
-                    { id: 'k', label: 'K' },
-                    { id: 'l', label: 'L' },
-                    { id: ';', label: ';', sub: ':' },
-                    { id: "'", label: "'", sub: '"' },
-                    { id: 'Enter', label: 'Enter', className: 'wider' }
-                ],
-                [
-                    { id: 'Shift', label: 'Shift', className: 'wider' },
-                    { id: 'z', label: 'Z' },
-                    { id: 'x', label: 'X' },
-                    { id: 'c', label: 'C' },
-                    { id: 'v', label: 'V' },
-                    { id: 'b', label: 'B' },
-                    { id: 'n', label: 'N' },
-                    { id: 'm', label: 'M' },
-                    { id: ',', label: ',', sub: '<' },
-                    { id: '.', label: '.', sub: '>' },
-                    { id: '/', label: '/', sub: '?' },
-                    { id: 'Shift', label: 'Shift', className: 'wider' }
-                ],
-                [
-                    { id: 'Ctrl', label: 'Ctrl' },
-                    { id: 'Win', label: 'Win' },
-                    { id: 'Alt', label: 'Alt' },
-                    { id: 'Space', label: 'Space', className: 'space' },
-                    { id: 'Alt', label: 'Alt' },
-                    { id: 'Win', label: 'Win' },
-                    { id: 'Menu', label: 'Menu' },
-                    { id: 'Ctrl', label: 'Ctrl' }
-                ]
+            [
+                { id: 'Tab', label: 'Tab', className: 'wide' },
+                { id: 'q', label: 'q', sub: '÷' },
+                { id: 'w', label: 'w', sub: '×' },
+                { id: 'e', label: 'e' },
+                { id: 'r', label: 'r' },
+                { id: 't', label: 't' },
+                { id: 'y', label: 'y' },
+                { id: 'u', label: 'u' },
+                { id: 'i', label: 'i' },
+                { id: 'o', label: 'o' },
+                { id: 'p', label: 'p' },
+                { id: '[', label: '[', sub: '{' },
+                { id: ']', label: ']', sub: '}' },
+                { id: '\\', label: '\\', sub: '|' }
             ],
-            japanese: [
-                [
-                    { id: '1', label: '1' },
-                    { id: '2', label: '2' },
-                    { id: '3', label: '3' },
-                    { id: '4', label: '4' },
-                    { id: '5', label: '5' },
-                    { id: '6', label: '6' },
-                    { id: '7', label: '7' },
-                    { id: '8', label: '8' },
-                    { id: '9', label: '9' },
-                    { id: '0', label: '0' },
-                    { id: '-', label: '-' },
-                    { id: '^', label: '^' },
-                    { id: 'Backspace', label: '⌫', className: 'wide' }
-                ],
-                [
-                    { id: 'q', label: 'あ' },
-                    { id: 'w', label: 'い' },
-                    { id: 'e', label: 'う' },
-                    { id: 'r', label: 'え' },
-                    { id: 't', label: 'お' },
-                    { id: 'y', label: 'か' },
-                    { id: 'u', label: 'き' },
-                    { id: 'i', label: 'く' },
-                    { id: 'o', label: 'け' },
-                    { id: 'p', label: 'こ' },
-                    { id: '@', label: '@' },
-                    { id: '[', label: '[' },
-                    { id: 'Enter', label: 'Enter', className: 'wider' }
-                ],
-                [
-                    { id: 'a', label: 'さ' },
-                    { id: 's', label: 'し' },
-                    { id: 'd', label: 'す' },
-                    { id: 'f', label: 'せ' },
-                    { id: 'g', label: 'そ' },
-                    { id: 'h', label: 'た' },
-                    { id: 'j', label: 'ち' },
-                    { id: 'k', label: 'つ' },
-                    { id: 'l', label: 'て' },
-                    { id: ';', label: 'と' },
-                    { id: ':', label: ':' },
-                    { id: ']', label: ']' }
-                ],
-                [
-                    { id: 'z', label: 'な' },
-                    { id: 'x', label: 'に' },
-                    { id: 'c', label: 'ぬ' },
-                    { id: 'v', label: 'ね' },
-                    { id: 'b', label: 'の' },
-                    { id: 'n', label: 'は' },
-                    { id: 'm', label: 'ひ' },
-                    { id: ',', label: 'ふ' },
-                    { id: '.', label: 'へ' },
-                    { id: '/', label: 'ほ' },
-                    { id: '\\', label: '\\' }
-                ],
-                [
-                    { id: 'Space', label: 'スペース', className: 'space' },
-                    { id: 'Alt', label: 'Alt' },
-                    { id: 'Convert', label: '変換' },
-                    { id: 'NonConvert', label: '無変換' }
-                ]
+            [
+                { id: 'CapsLock', label: 'Caps', className: 'wider' },
+                { id: 'a', label: 'a' },
+                { id: 's', label: 's' },
+                { id: 'd', label: 'd' },
+                { id: 'f', label: 'f' },
+                { id: 'g', label: 'g' },
+                { id: 'h', label: 'h' },
+                { id: 'j', label: 'j' },
+                { id: 'k', label: 'k' },
+                { id: 'l', label: 'l' },
+                { id: ';', label: ';', sub: ':' },
+                { id: "'", label: "'", sub: '"' },
+                { id: 'Enter', label: 'Enter', className: 'wider' }
             ],
-            stroke: [
-                [
-                    { id: '1', label: '1', hint: '横', sub: '一' },
-                    { id: '2', label: '2', hint: '竖', sub: '丨' },
-                    { id: '3', label: '3', hint: '撇', sub: '丿' },
-                    { id: '4', label: '4', hint: '捺', sub: '丶' },
-                    { id: '5', label: '5', hint: '折', sub: '乙' }
-                ],
-                [
-                    { id: 'q', label: 'Q', hint: '横横' },
-                    { id: 'w', label: 'W', hint: '横竖' },
-                    { id: 'e', label: 'E', hint: '横撇' },
-                    { id: 'r', label: 'R', hint: '横捺' },
-                    { id: 't', label: 'T', hint: '横折' },
-                    { id: 'y', label: 'Y', hint: '竖横' },
-                    { id: 'u', label: 'U', hint: '竖竖' },
-                    { id: 'i', label: 'I', hint: '竖撇' },
-                    { id: 'o', label: 'O', hint: '竖捺' },
-                    { id: 'p', label: 'P', hint: '竖折' }
-                ],
-                [
-                    { id: 'a', label: 'A', hint: '撇横' },
-                    { id: 's', label: 'S', hint: '撇竖' },
-                    { id: 'd', label: 'D', hint: '撇撇' },
-                    { id: 'f', label: 'F', hint: '撇捺' },
-                    { id: 'g', label: 'G', hint: '撇折' },
-                    { id: 'h', label: 'H', hint: '捺横' },
-                    { id: 'j', label: 'J', hint: '捺竖' },
-                    { id: 'k', label: 'K', hint: '捺撇' },
-                    { id: 'l', label: 'L', hint: '捺捺' },
-                    { id: ';', label: ';', hint: '捺折' }
-                ],
-                [
-                    { id: 'z', label: 'Z', hint: '折横' },
-                    { id: 'x', label: 'X', hint: '折竖' },
-                    { id: 'c', label: 'C', hint: '折撇' },
-                    { id: 'v', label: 'V', hint: '折捺' },
-                    { id: 'b', label: 'B', hint: '折折' },
-                    { id: 'Backspace', label: '⌫', className: 'wide' }
-                ],
-                [
-                    { id: 'Space', label: '空格', className: 'space' },
-                    { id: 'Enter', label: '确认', className: 'wide' }
-                ]
+            [
+                { id: 'Shift', label: 'Shift', className: 'wider' },
+                { id: 'z', label: 'z' },
+                { id: 'x', label: 'x' },
+                { id: 'c', label: 'c' },
+                { id: 'v', label: 'v' },
+                { id: 'b', label: 'b' },
+                { id: 'n', label: 'n' },
+                { id: 'm', label: 'm' },
+                { id: ',', label: ',', sub: '<' },
+                { id: '.', label: '.', sub: '>' },
+                { id: '/', label: '/', sub: '?' },
+                { id: 'Shift', label: 'Shift', className: 'wider' }
+            ],
+            [
+                { id: 'Ctrl', label: 'Ctrl' },
+                { id: 'Win', label: 'Win' },
+                { id: 'Alt', label: 'Alt' },
+                { id: 'Space', label: '空格', className: 'space' },
+                { id: 'Alt', label: 'Alt' },
+                { id: 'Win', label: 'Win' },
+                { id: 'Menu', label: 'Menu' },
+                { id: 'Ctrl', label: 'Ctrl' }
             ]
-        };
+        ];
 
-        let currentLayout = 'chinese';
-        let longPressTimer = null;
+        let currentIme = 'chinese';
         let isShift = false;
         let isCapsLock = false;
         let currentPinyin = '';
+        let currentPage = 0;
+        let allCandidates = []; // 存储所有候选词
 
         const inputText = document.getElementById('input-text');
 
@@ -565,8 +350,7 @@
             const container = document.getElementById('keyboard');
             container.innerHTML = '';
 
-            const rows = KEYBOARD_DATA[currentLayout] || KEYBOARD_DATA.chinese;
-            rows.forEach(row => {
+            KEYBOARD.forEach(row => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'kb-row';
                 
@@ -575,46 +359,21 @@
                     keyDiv.className = `key ${key.className || ''}`;
                     keyDiv.dataset.key = key.id;
                     
+                    // Shift 状态高亮
+                    if (key.id === 'Shift' && isShift) {
+                        keyDiv.classList.add('shift-on');
+                    }
+                    // CapsLock 状态高亮
+                    if (key.id === 'CapsLock' && isCapsLock) {
+                        keyDiv.classList.add('caps-on');
+                    }
+                    
                     keyDiv.innerHTML = `
                         <span class="sub">${key.sub || ''}</span>
                         <span class="char">${key.label}</span>
-                        ${key.hint ? `<span class="hint">${key.hint}</span>` : ''}
                     `;
 
-                    // Click handler - simple tap
                     keyDiv.addEventListener('click', () => handleKey(key.id, key.label));
-
-                    // Right click - Shift
-                    keyDiv.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        handleKey('Shift', 'Shift');
-                    });
-
-                    // Double click - double_tap mapping
-                    keyDiv.addEventListener('dblclick', () => {
-                        handleKey(key.id, key.label);
-                    });
-
-                    // Long press - long_press mapping
-                    keyDiv.addEventListener('mousedown', () => {
-                        longPressTimer = setTimeout(() => {
-                            handleKey(key.id, key.label);
-                        }, 500);
-                    });
-
-                    keyDiv.addEventListener('mouseup', () => {
-                        if (longPressTimer) {
-                            clearTimeout(longPressTimer);
-                            longPressTimer = null;
-                        }
-                    });
-
-                    keyDiv.addEventListener('mouseleave', () => {
-                        if (longPressTimer) {
-                            clearTimeout(longPressTimer);
-                            longPressTimer = null;
-                        }
-                    });
 
                     rowDiv.appendChild(keyDiv);
                 });
@@ -623,18 +382,34 @@
         }
 
         function handleKey(keyId, keyLabel) {
+            // 数字键：没有拼音buffer时直接输出数字
+            if (keyId >= '0' && keyId <= '9') {
+                if (currentIme === 'chinese' && currentPinyin.length > 0 && isCandidatesVisible()) {
+                    selectCandidate(keyId === '0' ? 9 : parseInt(keyId) - 1);
+                } else {
+                    // 直接输出数字
+                    insertText(keyId);
+                }
+                return;
+            }
+            
+            // - = 用于翻页（有拼音buffer时）
+            if ((keyId === '-' || keyId === '=') && currentIme === 'chinese' && currentPinyin.length > 0) {
+                if (keyId === '-') pageUp();
+                else pageDown();
+                return;
+            }
+
             if (keyId === 'Space') {
-                // 空格键：在中文模式下查询候选词或输入空格
-                if (currentLayout === 'chinese' && currentPinyin.length > 0) {
-                    selectCandidate(0); // 选择第一个候选词
+                if (currentIme === 'chinese' && currentPinyin.length > 0) {
+                    selectCandidate(0);
                 } else {
                     insertText(' ');
                 }
             } else if (keyId === 'Backspace') {
                 deleteChar();
             } else if (keyId === 'Enter') {
-                if (currentLayout === 'chinese' && currentPinyin.length > 0) {
-                    // 直接提交原始拼音
+                if (currentIme === 'chinese' && currentPinyin.length > 0) {
                     commitPinyin();
                 } else {
                     insertText('\n');
@@ -642,42 +417,85 @@
             } else if (keyId === 'Tab') {
                 insertText('\t');
             } else if (keyId === 'Shift') {
-                isShift = !isShift;
+                isShift = true;
                 renderKeyboard();
             } else if (keyId === 'CapsLock') {
                 isCapsLock = !isCapsLock;
                 renderKeyboard();
-            } else if (keyId >= '1' && keyId <= '9') {
-                // 数字键选择候选词
-                const idx = parseInt(keyId) - 1;
-                selectCandidate(idx);
-            } else if (keyId === '0') {
-                // 0 选择第10个
-                selectCandidate(9);
-            } else if (keyId === 'Ctrl' || keyId === 'Win' || keyId === 'Alt' || keyId === 'Menu') {
-                // 忽略修饰键
+            } else if (['Ctrl', 'Win', 'Alt', 'Menu'].includes(keyId)) {
+                // 忽略
             } else {
                 let char = keyLabel;
-                if (!isShift && char.length === 1 && char >= 'A' && char <= 'Z') {
-                    char = char.toLowerCase();
-                } else if (isShift && char.length === 1) {
+                
+                // 大小写处理
+                if ((isCapsLock || isShift) && char.length === 1 && char >= 'a' && char <= 'z') {
                     char = char.toUpperCase();
-                    isShift = false;
-                    renderKeyboard();
+                } else if (!isShift && char.length === 1 && char >= 'A' && char <= 'Z') {
+                    char = char.toLowerCase();
                 }
                 
-                if (currentLayout === 'chinese') {
-                    // 中文模式：积累拼音
-                    currentPinyin += char;
+                // Shift 用完就复位
+                if (isShift && char.length === 1) {
+                    isShift = false;
+                }
+                
+                if (currentIme === 'chinese') {
+                    currentPinyin += char.toLowerCase();
+                    currentPage = 0; // 切新拼音时重置页码
                     insertText(char);
                     queryCandidates();
+                    renderKeyboard();
+                } else if (currentIme === 'japanese') {
+                    currentPinyin += char.toLowerCase();
+                    insertText(char);
+                    queryJapaneseCandidates();
+                } else if (currentIme === 'stroke') {
+                    currentPinyin += char.toLowerCase();
+                    insertText(char);
+                    queryStrokeCandidates();
                 } else {
                     insertText(char);
+                    renderKeyboard();
                 }
             }
         }
 
-        // 查询候选词
+        function insertText(text) {
+            const start = inputText.selectionStart;
+            const end = inputText.selectionEnd;
+            inputText.value = inputText.value.substring(0, start) + text + inputText.value.substring(end);
+            inputText.selectionStart = inputText.selectionEnd = start + text.length;
+            inputText.focus();
+            updateCharCount();
+        }
+
+        function deleteChar() {
+            const start = inputText.selectionStart;
+            const end = inputText.selectionEnd;
+            
+            if (currentIme === 'chinese' && currentPinyin.length > 0 && start > 0) {
+                currentPinyin = currentPinyin.slice(0, -1);
+            }
+            
+            if (start === end && start > 0) {
+                inputText.value = inputText.value.substring(0, start - 1) + inputText.value.substring(start);
+                inputText.selectionStart = inputText.selectionEnd = start - 1;
+            } else if (start !== end) {
+                inputText.value = inputText.value.substring(0, start) + inputText.value.substring(end);
+                inputText.selectionStart = inputText.selectionEnd = start;
+            }
+            inputText.focus();
+            updateCharCount();
+            
+            if (currentIme === 'chinese') {
+                queryCandidates();
+            }
+        }
+
+        function updateCharCount() {
+            document.getElementById('char-count').textContent = inputText.value.length;
+        }
+
         async function queryCandidates() {
             if (!currentPinyin) {
                 hideCandidates();
@@ -685,15 +503,69 @@
             }
             
             try {
-                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin));
+                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=chinese');
                 const results = await resp.json();
+                allCandidates = results;
+                currentPage = 0;
                 showCandidates(results);
             } catch (e) {
-                console.error('查询候选词失败:', e);
+                console.error('查询失败:', e);
             }
         }
 
-        // 显示候选词
+        async function queryJapaneseCandidates() {
+            if (!currentPinyin) {
+                hideCandidates();
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=japanese');
+                const results = await resp.json();
+                allCandidates = results;
+                currentPage = 0;
+                showJapaneseCandidates(results);
+            } catch (e) {
+                console.error('查询失败:', e);
+            }
+        }
+
+        async function queryStrokeCandidates() {
+            if (!currentPinyin) {
+                hideCandidates();
+                return;
+            }
+            
+            try {
+                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=stroke');
+                const results = await resp.json();
+                allCandidates = results;
+                currentPage = 0;
+                showStrokeCandidates(results);
+            } catch (e) {
+                console.error('查询失败:', e);
+            }
+        }
+
+        function isCandidatesVisible() {
+            return document.getElementById('candidates').classList.contains('show');
+        }
+
+        function pageUp() {
+            if (currentPage > 0) {
+                currentPage--;
+                showCandidates(allCandidates);
+            }
+        }
+
+        function pageDown() {
+            const maxPage = Math.ceil(allCandidates.length / 9) - 1;
+            if (currentPage < maxPage) {
+                currentPage++;
+                showCandidates(allCandidates);
+            }
+        }
+
         function showCandidates(results) {
             const container = document.getElementById('candidates');
             const pinyinEl = document.getElementById('cand-pinyin');
@@ -704,12 +576,9 @@
                 return;
             }
             
-            // 按拼音分组显示
             const pinyinMap = {};
             results.forEach(r => {
-                if (!pinyinMap[r.pinyin]) {
-                    pinyinMap[r.pinyin] = [];
-                }
+                if (!pinyinMap[r.pinyin]) pinyinMap[r.pinyin] = [];
                 pinyinMap[r.pinyin].push(r);
             });
             
@@ -717,34 +586,19 @@
             wordsEl.innerHTML = '';
             
             let idx = 0;
-            outer: for (const pinyin in pinyinMap) {
-                for (const item of pinyinMap[pinyin]) {
+            outer: for (const py in pinyinMap) {
+                for (const item of pinyinMap[py]) {
                     if (idx >= 9) break outer;
                     const wordEl = document.createElement('div');
                     wordEl.className = 'word';
-                    wordEl.dataset.index = idx;
                     wordEl.dataset.word = item.word;
                     wordEl.dataset.pinyin = item.pinyin;
                     wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
                     
-                    // 直接添加点击事件
                     wordEl.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
-                        const word = this.dataset.word;
-                        const pinyinLen = currentPinyin.length;
-                        const start = inputText.selectionStart;
-                        
-                        // 删除已输入的拼音
-                        const before = inputText.value.substring(0, start - pinyinLen);
-                        const after = inputText.value.substring(start);
-                        inputText.value = before + word + after;
-                        inputText.selectionStart = inputText.selectionEnd = start - pinyinLen + word.length;
-                        
-                        currentPinyin = '';
-                        hideCandidates();
-                        inputText.focus();
-                        updateCharCount();
+                        doSelectCandidate(this.dataset.word);
                     });
                     
                     wordsEl.appendChild(wordEl);
@@ -755,21 +609,86 @@
             container.classList.add('show');
         }
 
+        function showJapaneseCandidates(results) {
+            const container = document.getElementById('candidates');
+            const pinyinEl = document.getElementById('cand-pinyin');
+            const wordsEl = document.getElementById('cand-words');
+            
+            if (!results || results.length === 0) {
+                container.classList.remove('show');
+                return;
+            }
+            
+            pinyinEl.innerHTML = '<span>' + currentPinyin + '</span>';
+            wordsEl.innerHTML = '';
+            
+            results.slice(0, 9).forEach((item, idx) => {
+                const wordEl = document.createElement('div');
+                wordEl.className = 'word';
+                wordEl.dataset.word = item.word;
+                wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
+                
+                wordEl.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    doSelectCandidate(this.dataset.word);
+                });
+                
+                wordsEl.appendChild(wordEl);
+            });
+            
+            container.classList.add('show');
+        }
+
+        function showStrokeCandidates(results) {
+            const container = document.getElementById('candidates');
+            const pinyinEl = document.getElementById('cand-pinyin');
+            const wordsEl = document.getElementById('cand-words');
+            
+            if (!results || results.length === 0) {
+                container.classList.remove('show');
+                return;
+            }
+            
+            pinyinEl.innerHTML = '<span>' + currentPinyin + '</span>';
+            wordsEl.innerHTML = '';
+            
+            results.slice(0, 9).forEach((item, idx) => {
+                const wordEl = document.createElement('div');
+                wordEl.className = 'word';
+                wordEl.dataset.word = item.word;
+                wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
+                
+                wordEl.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    doSelectCandidate(this.dataset.word);
+                });
+                
+                wordsEl.appendChild(wordEl);
+            });
+            
+            container.classList.add('show');
+        }
+
         function hideCandidates() {
             document.getElementById('candidates').classList.remove('show');
         }
 
-        // 选择候选词
         function selectCandidate(idx) {
             const words = document.querySelectorAll('#cand-words .word');
-            if (!words[idx]) return;
-            
-            const word = words[idx].dataset.word;
-            
-            // 删除已输入的拼音
+            if (words[idx]) {
+                doSelectCandidate(words[idx].dataset.word);
+            }
+        }
+
+        function doSelectCandidate(word) {
             const pinyinLen = currentPinyin.length;
             const start = inputText.selectionStart;
-            inputText.value = inputText.value.substring(0, start - pinyinLen) + word + inputText.value.substring(start);
+            
+            const before = inputText.value.substring(0, start - pinyinLen);
+            const after = inputText.value.substring(start);
+            inputText.value = before + word + after;
             inputText.selectionStart = inputText.selectionEnd = start - pinyinLen + word.length;
             
             currentPinyin = '';
@@ -778,73 +697,27 @@
             updateCharCount();
         }
 
-        // 提交原始拼音（未找到匹配时）
         function commitPinyin() {
             currentPinyin = '';
             hideCandidates();
         }
 
-        function insertText(text) {
-            const start = inputText.selectionStart;
-            const end = inputText.selectionEnd;
-            const before = inputText.value.substring(0, start);
-            const after = inputText.value.substring(end);
-            inputText.value = before + text + after;
-            inputText.selectionStart = inputText.selectionEnd = start + text.length;
-            inputText.focus();
-            updateCharCount();
-        }
-
-        function deleteChar() {
-            const start = inputText.selectionStart;
-            const end = inputText.selectionEnd;
-            
-            if (currentLayout === 'chinese' && currentPinyin.length > 0 && start > 0) {
-                // 删除拼音的最后一个字符
-                currentPinyin = currentPinyin.slice(0, -1);
-            }
-            
-            if (start === end) {
-                // 删除光标前的字符
-                inputText.value = inputText.value.substring(0, start - 1) + inputText.value.substring(start);
-                inputText.selectionStart = inputText.selectionEnd = start - 1;
-            } else {
-                // 删除选中文本
-                inputText.value = inputText.value.substring(0, start) + inputText.value.substring(end);
-                inputText.selectionStart = inputText.selectionEnd = start;
-            }
-            inputText.focus();
-            updateCharCount();
-            
-            // 更新候选词
-            if (currentLayout === 'chinese') {
-                queryCandidates();
-            }
-        }
-
-        function updateCharCount() {
-            document.getElementById('char-count').textContent = inputText.value.length;
-        }
-
-        // 复制到剪贴板
+        // 复制
         document.getElementById('btn-copy').addEventListener('click', async () => {
             const text = inputText.value;
-            if (!text) {
-                showToast('没有内容可复制');
-                return;
-            }
+            if (!text) { showToast('没有内容'); return; }
             try {
                 await navigator.clipboard.writeText(text);
-                showToast('已复制到剪贴板!');
-            } catch (e) {
-                showToast('复制失败: ' + e.message);
-            }
+                showToast('已复制!');
+            } catch (e) { showToast('复制失败'); }
         });
 
         // 清空
         document.getElementById('btn-clear').addEventListener('click', () => {
             inputText.value = '';
+            currentPinyin = '';
             updateCharCount();
+            hideCandidates();
             inputText.focus();
             showToast('已清空');
         });
@@ -856,18 +729,21 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
 
-        // Layout switch
-        document.querySelectorAll('.layout-btn').forEach(btn => {
+        // 切换输入法
+        document.querySelectorAll('.ime-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.ime-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                currentLayout = btn.dataset.layout;
-                document.getElementById('current-layout').textContent = btn.textContent;
+                currentIme = btn.dataset.ime;
+                document.getElementById('current-ime').textContent = btn.textContent;
+                
+                // 切换时清空拼音
+                currentPinyin = '';
+                hideCandidates();
                 renderKeyboard();
             });
         });
 
-        // Initial render
         renderKeyboard();
     </script>
 </body>
