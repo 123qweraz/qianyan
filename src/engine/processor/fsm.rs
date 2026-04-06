@@ -74,6 +74,8 @@ impl StateMachine {
             VirtualKey::Apostrophe | VirtualKey::Semicolon => {
                 (ImeState::Composing, FsmEffect::UpdateLookup)
             }
+            // 数字键需要走 handle_composing 以支持选词和输入数字
+            k if Self::is_digit(k) => (ImeState::Composing, FsmEffect::UpdateLookup),
             _ => (ImeState::Composing, FsmEffect::Consume),
         }
     }
@@ -95,7 +97,9 @@ impl StateMachine {
     }
 
     fn is_coding_key(key: VirtualKey) -> bool {
-        Self::is_letter(key) || matches!(key, VirtualKey::Apostrophe | VirtualKey::Semicolon)
+        Self::is_letter(key)
+            || Self::is_digit(key)
+            || matches!(key, VirtualKey::Apostrophe | VirtualKey::Semicolon)
     }
 
     fn is_letter(key: VirtualKey) -> bool {
@@ -127,6 +131,21 @@ impl StateMachine {
                 | VirtualKey::X
                 | VirtualKey::Y
                 | VirtualKey::Z
+        )
+    }
+
+    fn is_digit(key: VirtualKey) -> bool {
+        matches!(
+            key,
+            VirtualKey::Digit1
+                | VirtualKey::Digit2
+                | VirtualKey::Digit3
+                | VirtualKey::Digit4
+                | VirtualKey::Digit5
+                | VirtualKey::Digit6
+                | VirtualKey::Digit7
+                | VirtualKey::Digit8
+                | VirtualKey::Digit9
         )
     }
 
