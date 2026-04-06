@@ -89,6 +89,7 @@ impl StateMachine {
             VirtualKey::Space => (ImeState::Idle, FsmEffect::Commit首选),
             VirtualKey::Enter => (ImeState::Idle, FsmEffect::CommitRaw),
             k if Self::is_selection_key(k) => (ImeState::Selecting, Self::map_selection_effect(k)),
+            k if Self::is_digit(k) => (ImeState::Composing, FsmEffect::UpdateLookup),
             k if Self::is_letter(k) => (ImeState::Composing, FsmEffect::UpdateLookup),
             VirtualKey::Backspace => (ImeState::Composing, FsmEffect::UpdateLookup),
             VirtualKey::Esc => (ImeState::Idle, FsmEffect::Clear),
