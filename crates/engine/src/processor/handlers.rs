@@ -383,15 +383,14 @@ pub fn handle_composing(
 
         _ if is_digit(key) => {
             let digit = key_to_digit(key).unwrap_or(0);
-            // 只有在有候选词且启用数字选词时才选词，否则输入数字
-            if ctx.config.enable_number_selection()
-                && ctx.config.commit_mode() == "single"
+            // 有候选词时选词，没有候选词时直接上屏（像标点符号一样）
+            if !ctx.session.candidates.is_empty()
                 && digit >= 1
-                && digit <= ctx.config.page_size()
-                && !ctx.session.candidates.is_empty()
+                && digit as usize <= ctx.session.candidates.len()
             {
                 return commands::execute_command(ctx, Command::Select(digit as usize - 1));
             }
+            // 没有候选词或数字超出候选范围时，输入数字字符
             let old_buffer = ctx.session.buffer.clone();
             ctx.session.push_char(
                 key_to_char(key, false, ctx.session_state.caps_lock_enabled).unwrap_or('0'),
