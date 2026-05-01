@@ -49,7 +49,5 @@
   "show_tone_hint": true,
   "show_learning_stroke_hint": true,
   "show_learning_english_hint": true,
-  "auto_pronounce": true,
-  "auto_pronounce_zh": false,
-  "auto_pronounce_en": false
+  "auto_pronounce": true
 }

@@ -13,37 +13,37 @@
   "long_press_mappings": [],
   "enable_punctuation_long_press": true,
   "punctuation_long_press_mappings": {
-    "#": "#",
-    "\"": "\"",
-    "+": "+",
-    "]": "]",
-    ":": ":",
-    "}": "}",
-    "!": "!",
-    "$": "$",
-    "`": "`",
-    "@": "@",
-    "%": "%",
-    ";": ";",
-    "<": "<",
-    "-": "-",
-    "(": "(",
-    "'": "'",
-    "^": "^",
-    "[": "[",
-    "_": "_",
-    "*": "*",
-    "~": "~",
     "/": "/",
-    ")": ")",
-    "{": "{",
-    "&": "&",
-    ".": ".",
-    ">": ">",
-    "=": "=",
     "\\": "\\",
+    "&": "&",
+    "*": "*",
+    "]": "]",
+    ";": ";",
+    "$": "$",
+    "\"": "\"",
+    ")": ")",
+    "@": "@",
+    "_": "_",
+    "!": "!",
+    ">": ">",
+    "}": "}",
+    "%": "%",
+    "+": "+",
+    "`": "`",
+    "?": "?",
+    "~": "~",
+    "^": "^",
+    ":": ":",
+    "[": "[",
+    "(": "(",
+    "-": "-",
+    "<": "<",
+    "{": "{",
+    "'": "'",
     ",": ",",
-    "?": "?"
+    "=": "=",
+    "#": "#",
+    ".": "."
   },
   "punctuations": {},
   "keyboard_layouts": {},
@@ -85,7 +85,7 @@
   ],
   "swap_arrow_keys": false,
   "enable_error_sound": true,
-  "enable_keyboard_voice": true,
+  "enable_keyboard_voice": false,
   "enable_english_filter": true,
   "enable_caps_selection": true,
   "enable_number_selection": true,
@@ -93,40 +93,9 @@
   "enable_auto_reorder": true,
   "enable_fixed_first_candidate": false,
   "layouts": {
-    "english": {
-      "name": "English Default Layout",
-      "mappings": {
-        ",": {
-          "tap": ",",
-          "shift": "<",
-          "description": "英文逗号"
-        },
-        ";": {
-          "tap": ";",
-          "shift": ":",
-          "description": "英文分号"
-        },
-        ".": {
-          "tap": ".",
-          "shift": ">",
-          "description": "英文句号"
-        }
-      }
-    },
     "japanese": {
       "name": "日本語デフォルト配列",
       "mappings": {
-        "[": {
-          "tap": "「",
-          "shift": "{",
-          "description": "日文左引号"
-        },
-        ".": {
-          "tap": "。",
-          "shift": ">",
-          "long_press": "・",
-          "description": "日文句号"
-        },
         "/": {
           "tap": "・",
           "shift": "?",
@@ -137,16 +106,69 @@
           "shift": "<",
           "description": "日文顿号"
         },
+        ".": {
+          "tap": "。",
+          "shift": ">",
+          "long_press": "・",
+          "description": "日文句号"
+        },
         "]": {
           "tap": "」",
           "shift": "}",
           "description": "日文右引号"
+        },
+        "[": {
+          "tap": "「",
+          "shift": "{",
+          "description": "日文左引号"
         }
       }
+    },
+    "english": {
+      "name": "English Default Layout",
+      "mappings": {
+        ".": {
+          "tap": ".",
+          "shift": ">",
+          "description": "英文句号"
+        },
+        ";": {
+          "tap": ";",
+          "shift": ":",
+          "description": "英文分号"
+        },
+        ",": {
+          "tap": ",",
+          "shift": "<",
+          "description": "英文逗号"
+        }
+      }
+    },
+    "stroke": {
+      "name": "笔画默认布局",
+      "mappings": {}
     },
     "chinese": {
       "name": "中文默认布局",
       "mappings": {
+        ",": {
+          "tap": "，",
+          "shift": "<",
+          "long_press": "、",
+          "description": "中文逗号"
+        },
+        "!": {
+          "tap": "！",
+          "shift": "!",
+          "description": "中文叹号"
+        },
+        ";": {
+          "tap": "；",
+          "shift": ":",
+          "double_tap": ";",
+          "long_press": "……",
+          "description": "中文分号"
+        },
         "?": {
           "tap": "？",
           "shift": "?",
@@ -158,30 +180,8 @@
           "double_tap": "...",
           "long_press": "·",
           "description": "中文句号"
-        },
-        ",": {
-          "tap": "，",
-          "shift": "<",
-          "long_press": "、",
-          "description": "中文逗号"
-        },
-        ";": {
-          "tap": "；",
-          "shift": ":",
-          "double_tap": ";",
-          "long_press": "……",
-          "description": "中文分号"
-        },
-        "!": {
-          "tap": "！",
-          "shift": "!",
-          "description": "中文叹号"
         }
       }
-    },
-    "stroke": {
-      "name": "笔画默认布局",
-      "mappings": {}
     }
   },
   "enable_smart_backspace": false,
@@ -189,28 +189,28 @@
   "double_pinyin_scheme": {
     "name": "小鹤双拼",
     "initials": {
-      "u": "sh",
+      "v": "zh",
       "i": "ch",
-      "v": "zh"
+      "u": "sh"
     },
     "rimes": {
-      "d": "ai",
-      "w": "ei",
-      "s": "ong",
-      "m": "ian",
-      "j": "an",
-      "q": "iu",
-      "p": "ie",
-      "b": "in",
-      "y": "un",
-      "l": "iang",
-      "t": "ue",
-      "x": "ia",
-      "f": "en",
-      "r": "uan",
       "c": "ao",
+      "q": "iu",
       "z": "ou",
-      "k": "ao"
+      "d": "ai",
+      "y": "un",
+      "k": "ao",
+      "m": "ian",
+      "x": "ia",
+      "s": "ong",
+      "f": "en",
+      "j": "an",
+      "b": "in",
+      "r": "uan",
+      "t": "ue",
+      "l": "iang",
+      "w": "ei",
+      "p": "ie"
     }
   },
   "enable_fuzzy_pinyin": false,
@@ -235,5 +235,6 @@
     "user_dict_bonus": 10000000.0,
     "exact_match_bonus": 10000000.0,
     "single_char_bonus": 1000000.0
-  }
+  },
+  "firefox_space_interrupt": false
 }
