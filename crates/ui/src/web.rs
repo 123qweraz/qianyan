@@ -5,7 +5,7 @@ use axum::{
     http::{StatusCode, Uri},
     Router,
 };
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::HashMap;

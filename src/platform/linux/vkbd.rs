@@ -5,18 +5,12 @@ use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use zbus::blocking::Connection;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PasteMode {
     CtrlV,
-    #[allow(dead_code)]
     CtrlShiftV,
-    #[allow(dead_code)]
     ShiftInsert,
-    #[allow(dead_code)]
-    UnicodeHex, // Ctrl+Shift+U method
-    Fcitx5, // Native D-Bus CommitString method
 }
 
 enum VkbdTask {
@@ -65,7 +59,6 @@ impl Vkbd {
         let dev = Arc::new(Mutex::new(dev_raw));
         let paste_mode = Arc::new(Mutex::new(PasteMode::ShiftInsert));
         let clipboard_delay_ms = Arc::new(Mutex::new(50));
-        let dbus_conn = Connection::session().ok();
 
         let (task_tx, task_rx) = mpsc::channel::<VkbdTask>();
         let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
@@ -88,7 +81,7 @@ impl Vkbd {
                             Err(_) => 50,
                         };
                         Self::do_send_text(
-                            &dev_bg, is_wayland, p_mode, delay, &dbus_conn, &text, highlight,
+                            &dev_bg, is_wayland, p_mode, delay, &text, highlight,
                         );
                     }
                     VkbdTask::Backspace(count) => {
@@ -112,9 +105,7 @@ impl Vkbd {
             *mode_lock = match *mode_lock {
                 PasteMode::ShiftInsert => PasteMode::CtrlV,
                 PasteMode::CtrlV => PasteMode::CtrlShiftV,
-                PasteMode::CtrlShiftV => PasteMode::UnicodeHex,
-                PasteMode::UnicodeHex => PasteMode::Fcitx5,
-                PasteMode::Fcitx5 => PasteMode::ShiftInsert,
+                PasteMode::CtrlShiftV => PasteMode::ShiftInsert,
             };
 
             let new_mode = *mode_lock;
@@ -124,18 +115,20 @@ impl Vkbd {
                 PasteMode::ShiftInsert => "通用模式 (Shift+Insert)".to_string(),
                 PasteMode::CtrlV => "标准模式 (Ctrl+V)".to_string(),
                 PasteMode::CtrlShiftV => "终端模式 (Ctrl+Shift+V)".to_string(),
-                PasteMode::UnicodeHex => "Unicode编码输入 (Ctrl+Shift+U)".to_string(),
-                PasteMode::Fcitx5 => "Fcitx5 接口".to_string(),
             }
         } else {
-            "无法切换模式 (锁中毒)".to_string()
+            "切换失败".to_string()
         }
     }
 
-    pub fn send_text(&self, text: &str) {
-        let _ = self
-            .task_tx
-            .send(VkbdTask::SendText(text.to_string(), false));
+    pub fn send_key(&self, key_name: &str) {
+        if let Some(key) = key_name_to_key(key_name) {
+            Self::do_tap(&self.dev, key);
+        }
+    }
+
+    pub fn send_text(&self, text: &str, highlight: bool) {
+        let _ = self.task_tx.send(VkbdTask::SendText(text.to_string(), highlight));
     }
 
     pub fn backspace(&self, count: usize) {
@@ -153,7 +146,6 @@ impl Vkbd {
         is_wayland: bool,
         mode: PasteMode,
         delay: u64,
-        dbus: &Option<Connection>,
         text: &str,
         highlight: bool,
     ) {
@@ -179,29 +171,13 @@ impl Vkbd {
 
         println!("[Vkbd BG] 正在通过剪贴板路径发送文字: {text} (模式={mode:?})");
 
-        if mode == PasteMode::UnicodeHex {
-            for c in text.chars() {
-                Self::do_send_char_via_unicode(dev, c);
-            }
-            return;
-        }
-
-        if mode == PasteMode::Fcitx5 && Self::do_send_via_fcitx(dbus, text) {
-            return;
-        }
-
         // 优先使用命令行工具 wl-copy/xclip，解决库调用超时问题
         if Self::do_send_via_clipboard_cmd(dev, is_wayland, mode, delay, text) {
             return;
         }
 
-        // 兜底 1: 尝试使用 arboard 库
-        if Self::do_send_via_clipboard_lib(dev, mode, delay, text) {
-            return;
-        }
-
-        // 兜底 2: ydotool (最后手段)
-        let _ = Self::do_send_via_ydotool(text);
+        // 兜底: 尝试使用 arboard 库
+        let _ = Self::do_send_via_clipboard_lib(dev, mode, delay, text);
     }
 
     /// 使用命令行工具 wl-copy 或 xclip (更稳定)
@@ -212,28 +188,69 @@ impl Vkbd {
         delay: u64,
         text: &str,
     ) -> bool {
-        let cmd = if is_wayland { "wl-copy" } else { "xclip" };
-        let child = if is_wayland {
-            Command::new(cmd).arg(text).spawn()
+        // 尝试所有可能的工具，直到一个成功
+        let mut tools = if is_wayland {
+            vec![("wl-copy", vec![text.to_string()]), ("xclip", vec!["-selection".to_string(), "clipboard".to_string()])]
         } else {
-            Command::new(cmd).arg("-selection").arg("clipboard").spawn()
+            vec![("xclip", vec!["-selection".to_string(), "clipboard".to_string()]), ("wl-copy", vec![text.to_string()])]
         };
+        // 增加 xsel 作为最后手段
+        tools.push(("xsel", vec!["--clipboard".to_string(), "--input".to_string()]));
 
-        match child {
-            Ok(mut c) => {
-                if !is_wayland {
-                    // xclip 需要通过 stdin 写入
+        let mut success = false;
+
+        for (cmd, args) in tools {
+            let child = if cmd == "wl-copy" {
+                Command::new(cmd).args(&args).spawn()
+            } else {
+                use std::process::Stdio;
+                Command::new(cmd)
+                    .args(&args)
+                    .stdin(Stdio::piped())
+                    .spawn()
+            };
+
+            if let Ok(mut c) = child {
+                if cmd != "wl-copy" {
                     if let Some(mut stdin) = c.stdin.take() {
                         use std::io::Write;
                         let _ = stdin.write_all(text.as_bytes());
                     }
                 }
-                let _ = c.wait();
-                thread::sleep(Duration::from_millis(delay));
-                Self::perform_paste(dev, mode);
-                true
+                let status = c.wait();
+                if status.is_ok() && status.unwrap().success() {
+                    success = true;
+                    
+                    // 如果是 ShiftInsert 模式且不是 wl-copy (wl-copy 默认可能不设 primary)，
+                    // 我们额外尝试设置 PRIMARY 选区
+                    if mode == PasteMode::ShiftInsert && cmd != "wl-copy" {
+                        let p_args = if cmd == "xclip" {
+                            vec!["-selection", "primary"]
+                        } else {
+                            vec!["--primary", "--input"]
+                        };
+                        if let Ok(mut p_c) = Command::new(cmd).args(p_args).stdin(std::process::Stdio::piped()).spawn() {
+                            if let Some(mut stdin) = p_c.stdin.take() {
+                                use std::io::Write;
+                                let _ = stdin.write_all(text.as_bytes());
+                            }
+                            let _ = p_c.wait();
+                        }
+                    } else if mode == PasteMode::ShiftInsert && cmd == "wl-copy" {
+                         let _ = Command::new("wl-copy").arg("--primary").arg(text).spawn();
+                    }
+
+                    break; // 成功一个就够了
+                }
             }
-            Err(_) => false,
+        }
+
+        if success {
+            thread::sleep(Duration::from_millis(delay));
+            Self::perform_paste(dev, mode);
+            true
+        } else {
+            false
         }
     }
 
@@ -282,7 +299,6 @@ impl Vkbd {
                 Self::do_emit(dev, Key::KEY_LEFTSHIFT, false);
                 Self::do_emit(dev, Key::KEY_LEFTCTRL, false);
             }
-            _ => {}
         }
     }
 
@@ -301,84 +317,17 @@ impl Vkbd {
         }
     }
 
-    fn do_send_via_fcitx(dbus: &Option<Connection>, text: &str) -> bool {
-        if let Some(ref conn) = dbus {
-            conn.call_method(
-                Some("org.fcitx.Fcitx5"),
-                "/controller",
-                Some("org.fcitx.Fcitx.Controller1"),
-                "CommitString",
-                &(text),
-            )
-            .is_ok()
-        } else {
-            false
-        }
-    }
-
-    fn do_send_via_ydotool(text: &str) -> bool {
-        let mut cmd = Command::new("ydotool");
-
-        // 自动检测常见的 Socket 路径
-        let mut socket_paths = vec![
-            "/tmp/.ydotool_socket".to_string(),
-            "/run/ydotool.socket".to_string(),
-        ];
-
-        // 动态添加当前用户的标准运行目录路径
-        let uid = users::get_current_uid();
-        socket_paths.push(format!("/run/user/{}/.ydotool_socket", uid));
-
-        for path in socket_paths {
-            if std::path::Path::new(&path).exists() {
-                cmd.env("YDOTOOL_SOCKET", path);
-                break;
-            }
-        }
-
-        cmd.arg("type")
-            .arg(text)
-            .status()
-            .is_ok_and(|s| s.success())
-    }
-
-    fn do_send_char_via_unicode(dev: &Arc<Mutex<VirtualDevice>>, ch: char) {
-        Self::do_emit(dev, Key::KEY_LEFTCTRL, true);
-        Self::do_emit(dev, Key::KEY_LEFTSHIFT, true);
-        Self::do_tap(dev, Key::KEY_U);
-        Self::do_emit(dev, Key::KEY_LEFTCTRL, false);
-        Self::do_emit(dev, Key::KEY_LEFTSHIFT, false);
-        thread::sleep(Duration::from_millis(15));
-        let hex_str = format!("{:x}", ch as u32);
-        for hex_char in hex_str.chars() {
-            if let Some(key) = hex_char_to_key(hex_char) {
-                Self::do_tap(dev, key);
-                thread::sleep(Duration::from_micros(500));
-            }
-        }
-        Self::do_tap(dev, Key::KEY_ENTER);
-        thread::sleep(Duration::from_millis(10));
-    }
-
     fn do_tap(dev: &Arc<Mutex<VirtualDevice>>, key: Key) {
         Self::do_emit(dev, key, true);
         thread::sleep(Duration::from_micros(100));
         Self::do_emit(dev, key, false);
-        thread::sleep(Duration::from_micros(50));
     }
 
     fn do_emit_raw(dev: &Arc<Mutex<VirtualDevice>>, key: Key, value: i32) {
-        let msc = InputEvent::new(
-            EventType::MISC,
-            evdev::MiscType::MSC_SCAN.0,
-            key.code() as i32,
-        );
-        let ev = InputEvent::new(EventType::KEY, key.code(), value);
-        let syn = InputEvent::new(EventType::SYNCHRONIZATION, 0, 0);
         if let Ok(mut d) = dev.lock() {
-            let _ = d.emit(&[msc, ev, syn]);
+            let ev = InputEvent::new(EventType::KEY, key.code(), value);
+            let _ = d.emit(&[ev]);
         }
-        thread::sleep(Duration::from_micros(300));
     }
 
     fn do_emit(dev: &Arc<Mutex<VirtualDevice>>, key: Key, down: bool) {
@@ -393,8 +342,6 @@ impl Vkbd {
             *mode = match config.linux.paste_method.as_str() {
                 "ctrl_v" => PasteMode::CtrlV,
                 "ctrl_shift_v" => PasteMode::CtrlShiftV,
-                "unicode" => PasteMode::UnicodeHex,
-                "fcitx5" => PasteMode::Fcitx5,
                 _ => PasteMode::ShiftInsert,
             };
         }
@@ -402,7 +349,7 @@ impl Vkbd {
 }
 
 fn char_to_key(c: char) -> Option<Key> {
-    match c.to_ascii_lowercase() {
+    match c {
         'a' => Some(Key::KEY_A),
         'b' => Some(Key::KEY_B),
         'c' => Some(Key::KEY_C),
@@ -455,24 +402,59 @@ fn char_to_key(c: char) -> Option<Key> {
     }
 }
 
-fn hex_char_to_key(c: char) -> Option<Key> {
-    match c.to_ascii_lowercase() {
-        '0' => Some(Key::KEY_0),
-        '1' => Some(Key::KEY_1),
-        '2' => Some(Key::KEY_2),
-        '3' => Some(Key::KEY_3),
-        '4' => Some(Key::KEY_4),
-        '5' => Some(Key::KEY_5),
-        '6' => Some(Key::KEY_6),
-        '7' => Some(Key::KEY_7),
-        '8' => Some(Key::KEY_8),
-        '9' => Some(Key::KEY_9),
-        'a' => Some(Key::KEY_A),
-        'b' => Some(Key::KEY_B),
-        'c' => Some(Key::KEY_C),
-        'd' => Some(Key::KEY_D),
-        'e' => Some(Key::KEY_E),
-        'f' => Some(Key::KEY_F),
+fn key_name_to_key(name: &str) -> Option<Key> {
+    match name.to_lowercase().as_str() {
+        "a" => Some(Key::KEY_A),
+        "b" => Some(Key::KEY_B),
+        "c" => Some(Key::KEY_C),
+        "d" => Some(Key::KEY_D),
+        "e" => Some(Key::KEY_E),
+        "f" => Some(Key::KEY_F),
+        "g" => Some(Key::KEY_G),
+        "h" => Some(Key::KEY_H),
+        "i" => Some(Key::KEY_I),
+        "j" => Some(Key::KEY_J),
+        "k" => Some(Key::KEY_K),
+        "l" => Some(Key::KEY_L),
+        "m" => Some(Key::KEY_M),
+        "n" => Some(Key::KEY_N),
+        "o" => Some(Key::KEY_O),
+        "p" => Some(Key::KEY_P),
+        "q" => Some(Key::KEY_Q),
+        "r" => Some(Key::KEY_R),
+        "s" => Some(Key::KEY_S),
+        "t" => Some(Key::KEY_T),
+        "u" => Some(Key::KEY_U),
+        "v" => Some(Key::KEY_V),
+        "w" => Some(Key::KEY_W),
+        "x" => Some(Key::KEY_X),
+        "y" => Some(Key::KEY_Y),
+        "z" => Some(Key::KEY_Z),
+        "0" => Some(Key::KEY_0),
+        "1" => Some(Key::KEY_1),
+        "2" => Some(Key::KEY_2),
+        "3" => Some(Key::KEY_3),
+        "4" => Some(Key::KEY_4),
+        "5" => Some(Key::KEY_5),
+        "6" => Some(Key::KEY_6),
+        "7" => Some(Key::KEY_7),
+        "8" => Some(Key::KEY_8),
+        "9" => Some(Key::KEY_9),
+        "enter" => Some(Key::KEY_ENTER),
+        "esc" => Some(Key::KEY_ESC),
+        "backspace" => Some(Key::KEY_BACKSPACE),
+        "tab" => Some(Key::KEY_TAB),
+        "space" => Some(Key::KEY_SPACE),
+        "left" => Some(Key::KEY_LEFT),
+        "right" => Some(Key::KEY_RIGHT),
+        "up" => Some(Key::KEY_UP),
+        "down" => Some(Key::KEY_DOWN),
+        "home" => Some(Key::KEY_HOME),
+        "end" => Some(Key::KEY_END),
+        "pageup" => Some(Key::KEY_PAGEUP),
+        "pagedown" => Some(Key::KEY_PAGEDOWN),
+        "insert" => Some(Key::KEY_INSERT),
+        "delete" => Some(Key::KEY_DELETE),
         _ => None,
     }
 }

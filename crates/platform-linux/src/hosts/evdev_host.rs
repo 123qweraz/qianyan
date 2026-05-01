@@ -223,7 +223,7 @@ impl InputMethodHost for EvdevHost {
     fn set_preedit(&self, _text: &str, _cursor_pos: usize) {}
     fn commit_text(&self, text: &str) {
         if let Ok(vkbd) = self.vkbd.lock() {
-            vkbd.send_text(text);
+            vkbd.send_text(text, false);
         }
     }
 
@@ -480,14 +480,14 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
 fn execute_action(vkbd: &Vkbd, action: Action, raw_key: Option<(Key, i32)>) {
     match action {
         Action::Emit(s) => {
-            vkbd.send_text(&s);
+            vkbd.send_text(&s, false);
         }
         Action::DeleteAndEmit { delete, insert } => {
             if delete > 0 {
                 vkbd.backspace(delete);
             }
             if !insert.is_empty() {
-                vkbd.send_text(&insert);
+                vkbd.send_text(&insert, false);
             }
         }
         Action::PassThrough => {

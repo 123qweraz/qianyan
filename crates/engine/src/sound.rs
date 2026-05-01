@@ -4,13 +4,12 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex};
 use std::thread;
 use tracing::warn;
 
 pub struct SoundManager {
-    handle: Option<OutputStreamHandle>,
-    sound_cache: HashMap<char, Vec<u8>>,
+    _handle: Option<OutputStreamHandle>,
+    _sound_cache: HashMap<char, Vec<u8>>,
     enabled: bool,
     tx: Option<Sender<char>>,
 }
@@ -39,8 +38,8 @@ impl SoundManager {
         drop(stream);
 
         Self {
-            handle,
-            sound_cache: HashMap::new(),
+            _handle: handle,
+            _sound_cache: HashMap::new(),
             enabled: false,
             tx: Some(tx),
         }

@@ -13,7 +13,7 @@ pub struct Config {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct LinuxConfig {
     pub device_path: String,
-    pub paste_method: String, // "shift_insert", "ctrl_v", "ctrl_shift_v", "unicode", "fcitx5"
+    pub paste_method: String, // "shift_insert", "ctrl_v", "ctrl_shift_v"
     pub enable_notification_candidates: bool,
 }
 
@@ -434,6 +434,11 @@ impl Config {
                 conf.files = f;
             }
         }
+        if let Some(v) = load_file("linux") {
+            if let Ok(l) = serde_json::from_value(v) {
+                conf.linux = l;
+            }
+        }
 
         conf
     }
@@ -470,6 +475,12 @@ impl Config {
             let p = config_dir.join("files.json");
             let f = std::fs::File::create(&p)?;
             serde_json::to_writer_pretty(f, &self.files)?;
+        }
+
+        {
+            let p = config_dir.join("linux.json");
+            let f = std::fs::File::create(&p)?;
+            serde_json::to_writer_pretty(f, &self.linux)?;
         }
 
         Ok(())
