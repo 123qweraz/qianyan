@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    slint_build::compile("src/ui/main.slint").expect("Failed to compile Slint UI");
+    slint_build::compile("crates/ui/src/main.slint").expect("Failed to compile Slint UI");
 
     // 为 Wayland 协议生成 Rust 绑定
     if cfg!(target_os = "linux") {

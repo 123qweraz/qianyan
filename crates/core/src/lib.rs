@@ -447,6 +447,12 @@ pub mod config {
                     conf.files = f;
                 }
             }
+            #[cfg(target_os = "linux")]
+            if let Some(v) = load_file("linux") {
+                if let Ok(l) = serde_json::from_value(v) {
+                    conf.linux = l;
+                }
+            }
 
             conf
         }
@@ -483,6 +489,13 @@ pub mod config {
                 let p = config_dir.join("files.json");
                 let f = std::fs::File::create(&p)?;
                 serde_json::to_writer_pretty(f, &self.files)?;
+            }
+
+            #[cfg(target_os = "linux")]
+            {
+                let p = config_dir.join("linux.json");
+                let f = std::fs::File::create(&p)?;
+                serde_json::to_writer_pretty(f, &self.linux)?;
             }
 
             Ok(())

@@ -5420,6 +5420,7 @@ dependencies = [
  "serde_json",
  "shian-ime-core",
  "shian-ime-engine",
+ "shian-ime-linux",
  "shian-ime-ui",
  "signal-hook",
  "sled",

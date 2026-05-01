@@ -6,15 +6,12 @@ mod constants;
 #[cfg(windows)]
 pub use crate::constants::{IME_ID, LANG_PROFILE_ID};
 
-mod app;
-mod config;
-mod engine;
-mod error;
-mod platform;
-mod ui;
+// 使用 crates/ 库替代本地模块
+use shian_ime_core::config::Config;
+use shian_ime_engine::processor::Processor;
+use shian_ime_engine::compiler;
+use shian_ime_ui::GuiEvent;
 
-pub use config::Config;
-use engine::Processor;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
@@ -22,7 +19,6 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
-use ui::GuiEvent;
 
 static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
@@ -49,7 +45,7 @@ pub fn find_project_root() -> PathBuf {
 }
 
 #[must_use]
-pub fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<config::PunctuationEntry>> {
+pub fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<shian_ime_core::config::PunctuationEntry>> {
     let mut m = HashMap::new();
     if let Ok(f) = File::open(p) {
         if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
@@ -61,7 +57,7 @@ pub fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<config::Punctuation
                             .filter_map(|item| {
                                 let c = item.get("char")?.as_str()?;
                                 let d = item.get("desc").and_then(|d| d.as_str()).unwrap_or("");
-                                Some(config::PunctuationEntry {
+                                Some(shian_ime_core::config::PunctuationEntry {
                                     char: c.to_string(),
                                     desc: d.to_string(),
                                 })
@@ -107,9 +103,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("SLINT_BACKEND", "skia");
 
     let args: Vec<String> = env::args().collect();
-    let should_daemonize = match app::cli::handle_startup(&args)? {
-        app::cli::StartupAction::Exit => return Ok(()),
-        app::cli::StartupAction::Continue { should_daemonize } => should_daemonize,
+    let should_daemonize = match shian_ime_linux::cli::handle_startup(&args)? {
+        shian_ime_linux::cli::StartupAction::Exit => return Ok(()),
+        shian_ime_linux::cli::StartupAction::Continue { should_daemonize } => should_daemonize,
     };
 
     #[cfg(target_os = "windows")]
@@ -162,7 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !root.join("data/chinese/trie.index").exists() {
-        let _ = engine::compiler::check_and_compile_all();
+        let _ = compiler::check_and_compile_all();
     }
 
     let mut current_config = Config::load();
@@ -192,7 +188,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_or_else(|_| Config::default_config(), |c| c.clone());
     let tray_tx_for_gui = tray_tx.clone();
     std::thread::spawn(move || {
-        ui::gui::start_gui(gui_rx, gui_config, tray_tx_for_gui);
+        shian_ime_ui::gui::start_gui(gui_rx, gui_config, tray_tx_for_gui);
     });
 
     let mut trie_paths = HashMap::new();
@@ -221,13 +217,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let processor = Arc::new(Mutex::new(processor_obj));
 
     let tray_handle = if let Ok(conf) = config.read() {
-        ui::tray::start_tray(ui::tray::TrayParams {
+        shian_ime_ui::tray::start_tray(shian_ime_ui::tray::TrayParams {
             active_profile: conf.input.default_profile.clone(),
             show_status_bar: conf.appearance.show_status_bar,
             tx: tray_tx.clone(),
         })
     } else {
-        ui::tray::start_tray(ui::tray::TrayParams {
+        shian_ime_ui::tray::start_tray(shian_ime_ui::tray::TrayParams {
             active_profile: "chinese".into(),
             show_status_bar: true,
             tx: tray_tx.clone(),
@@ -235,7 +231,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // 全局状态维护
-    let app_state = Arc::new(Mutex::new(ui::AppState {
+    let app_state = Arc::new(Mutex::new(shian_ime_ui::AppState {
         chinese_enabled: true,
         active_profile: "".into(),
         show_status_bar_pref: config.read().map_or(true, |c| c.appearance.show_status_bar),
@@ -256,7 +252,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::thread::spawn(move || {
         while let Ok(event) = tray_rx.recv() {
             match event {
-                ui::tray::TrayEvent::ToggleIme => {
+                shian_ime_ui::tray::TrayEvent::ToggleIme => {
                     if let Ok(mut p) = processor_clone.lock() {
                         p.toggle();
                         let enabled = p.ctx.session_state.chinese_enabled;
@@ -270,7 +266,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                ui::tray::TrayEvent::NextProfile => {
+                shian_ime_ui::tray::TrayEvent::NextProfile => {
                     if let Ok(mut p) = processor_clone.lock() {
                         let profile = p.next_profile();
                         let enabled = p.ctx.session_state.chinese_enabled;
@@ -284,7 +280,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                ui::tray::TrayEvent::ToggleStatusBar => {
+                shian_ime_ui::tray::TrayEvent::ToggleStatusBar => {
                     let mut new_show = false;
                     if let Ok(mut w) = config_msg.write() {
                         w.appearance.show_status_bar = !w.appearance.show_status_bar;
@@ -298,7 +294,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let _ = gui_tx_tray.send(GuiEvent::ForceStatusVisible(new_show));
                     }
                 }
-                ui::tray::TrayEvent::SyncStatus {
+                shian_ime_ui::tray::TrayEvent::SyncStatus {
                     chinese_enabled,
                     active_profile,
                 } => {
@@ -307,7 +303,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         state.active_profile = active_profile;
                     }
                 }
-                ui::tray::TrayEvent::OpenConfig => {
+                shian_ime_ui::tray::TrayEvent::OpenConfig => {
                     if !WEB_SERVER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
                         WEB_SERVER_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
                         let config_web = config_msg.clone();
@@ -315,7 +311,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         std::thread::spawn(move || {
                             if let Ok(rt) = tokio::runtime::Runtime::new() {
                                 rt.block_on(async {
-                                    let server = ui::web::WebServer::new(
+                                    let server = shian_ime_ui::web::WebServer::new(
                                         18765,
                                         Arc::new(std::sync::atomic::AtomicU16::new(18765)),
                                         config_web,
@@ -339,20 +335,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .arg("http://localhost:18765")
                         .spawn();
                 }
-                ui::tray::TrayEvent::ReloadConfig => {
+                shian_ime_ui::tray::TrayEvent::ReloadConfig => {
                     let new_conf = Config::load();
                     if let Ok(mut p) = processor_clone.lock() {
                         p.apply_config(&new_conf);
                     }
                     let _ = gui_tx_tray.send(GuiEvent::ApplyConfig(Box::new(new_conf)));
                 }
-                ui::tray::TrayEvent::ShowNotification(msg) => {
+                shian_ime_ui::tray::TrayEvent::ShowNotification(msg) => {
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.status_text = msg;
                         let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }
-                ui::tray::TrayEvent::ClearUserDict => {
+                shian_ime_ui::tray::TrayEvent::ClearUserDict => {
                     if let Ok(mut p) = processor_clone.lock() {
                         let profiles = p.ctx.config.list_profiles();
                         for profile in profiles {
@@ -362,22 +358,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                ui::tray::TrayEvent::Exit => std::process::exit(0),
+                shian_ime_ui::tray::TrayEvent::Exit => std::process::exit(0),
+                shian_ime_ui::tray::TrayEvent::SendKey(_) => {
+                    // 暂不处理 SendKey 事件
+                }
             }
         }
     });
 
-    app::runtime::run_input_host(
+    let (vkbd_option, host_run) = shian_ime_linux::runtime::create_input_host(
         &args,
-        processor,
-        gui_tx,
+        processor.clone(),
+        gui_tx.clone(),
         config.clone(),
-        tray_tx,
+        tray_tx.clone(),
         app_state.clone(),
     )?;
 
+    // 如果有 vkbd（Evdev 模式），可以在这里使用
+    let _ = vkbd_option;
+
+    // 在新线程中运行输入主机
+    std::thread::spawn(move || {
+        host_run();
+    });
+
+    // 主线程等待（简单实现，实际可能需要更好的退出处理）
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
     Ok(())
 }
+
 #[cfg(target_os = "windows")]
 pub fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
     let exe = std::env::current_exe()?;

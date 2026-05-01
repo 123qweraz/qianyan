@@ -383,10 +383,12 @@ pub fn handle_composing(
 
         _ if is_digit(key) => {
             let digit = key_to_digit(key).unwrap_or(0);
+            // 只有在有候选词且启用数字选词时才选词，否则输入数字
             if ctx.config.enable_number_selection()
                 && ctx.config.commit_mode() == "single"
                 && digit >= 1
                 && digit <= ctx.config.page_size()
+                && !ctx.session.candidates.is_empty()
             {
                 return commands::execute_command(ctx, Command::Select(digit as usize - 1));
             }
