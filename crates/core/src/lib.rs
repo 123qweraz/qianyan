@@ -581,7 +581,7 @@ pub mod config {
                     autostart: true,
                     commit_mode: "single".to_string(),
                     default_profile: "chinese".to_string(),
-                    phantom_type: PhantomType::Hanzi,
+                    phantom_type: PhantomType::Pinyin,
                     clipboard_delay_ms: 50,
                     anti_typo_mode: AntiTypoMode::None,
                     enable_double_tap: false,
