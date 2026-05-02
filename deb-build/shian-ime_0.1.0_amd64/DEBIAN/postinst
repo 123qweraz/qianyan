@@ -1,0 +1,39 @@
+#!/bin/bash
+# Post-installation script for shian-ime
+
+set -e
+
+echo "Configuring shian-ime..."
+
+# Add current user to input group (for uinput access)
+if [ -n "$SUDO_USER" ]; then
+    USERNAME="$SUDO_USER"
+else
+    USERNAME=$(logname 2>/dev/null || echo "")
+fi
+
+# If we have a username, add to input group
+if [ -n "$USERNAME" ] && id "$USERNAME" &>/dev/null; then
+    if ! groups "$USERNAME" | grep -q "\binput\b"; then
+        echo "Adding user $USERNAME to input group..."
+        usermod -aG input "$USERNAME" || true
+    fi
+fi
+
+# Set up udev rules for uinput
+RULES_FILE="/etc/udev/rules.d/99-shian-ime-uinput.rules"
+if [ ! -f "$RULES_FILE" ]; then
+    echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' > "$RULES_FILE"
+    echo "Created udev rule: $RULES_FILE"
+    udevadm control --reload-rules 2>/dev/null || true
+    udevadm trigger 2>/dev/null || true
+fi
+
+# Update desktop database
+update-desktop-database /usr/share/applications 2>/dev/null || true
+
+# Run first-time installation tasks
+/usr/local/bin/shian-ime --install 2>/dev/null || true
+
+echo "shian-ime installation completed!"
+echo "Please logout and login again for group changes to take effect."

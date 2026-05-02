@@ -5492,7 +5492,6 @@ dependencies = [
  "serde_json",
  "shian-ime-core",
  "shian-ime-engine",
- "shian-ime-resources",
  "shian-ime-ui",
  "signal-hook",
  "slint",
@@ -5507,13 +5506,6 @@ dependencies = [
  "wayland-cursor",
  "wayland-protocols 0.31.2",
  "zbus 4.4.0",
-]
-
-[[package]]
-name = "shian-ime-resources"
-version = "0.1.0"
-dependencies = [
- "rust-embed",
 ]
 
 [[package]]
@@ -5555,7 +5547,6 @@ dependencies = [
  "serde_json",
  "shian-ime-core",
  "shian-ime-engine",
- "shian-ime-resources",
  "shian-ime-ui",
  "slint",
  "slint-build",

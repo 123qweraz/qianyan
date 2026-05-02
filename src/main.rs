@@ -8,85 +8,16 @@ pub use crate::constants::{IME_ID, LANG_PROFILE_ID};
 
 // 使用 crates/ 库替代本地模块
 use shian_ime_core::config::Config;
+use shian_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllables};
 use shian_ime_engine::processor::Processor;
 use shian_ime_engine::compiler;
 use shian_ime_ui::GuiEvent;
-
-use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 
 static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
-
-#[must_use]
-pub fn find_project_root() -> PathBuf {
-    if let Ok(mut exe_path) = env::current_exe() {
-        exe_path.pop();
-        if exe_path.join("dicts").exists() {
-            return exe_path;
-        }
-    }
-
-    let mut curr = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for _ in 0..3 {
-        if curr.join("dicts").exists() {
-            return curr;
-        }
-        if !curr.pop() {
-            break;
-        }
-    }
-    env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-}
-
-#[must_use]
-pub fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<shian_ime_core::config::PunctuationEntry>> {
-    let mut m = HashMap::new();
-    if let Ok(f) = File::open(p) {
-        if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
-            if let Some(obj) = v.as_object() {
-                for (k, val) in obj {
-                    if let Some(arr) = val.as_array() {
-                        let entries = arr
-                            .iter()
-                            .filter_map(|item| {
-                                let c = item.get("char")?.as_str()?;
-                                let d = item.get("desc").and_then(|d| d.as_str()).unwrap_or("");
-                                Some(shian_ime_core::config::PunctuationEntry {
-                                    char: c.to_string(),
-                                    desc: d.to_string(),
-                                })
-                            })
-                            .collect();
-                        m.insert(k.clone(), entries);
-                    }
-                }
-            }
-        }
-    }
-    m
-}
-
-pub fn load_syllables(root: &Path) -> std::collections::HashSet<String> {
-    let mut set = std::collections::HashSet::new();
-    let path = root.join("dicts/chinese/syllables.txt");
-    if let Ok(f) = File::open(&path) {
-        use std::io::BufRead;
-        let reader = std::io::BufReader::new(f);
-        for line in reader.lines().map_while(Result::ok) {
-            let s = line.trim().to_lowercase();
-            if !s.is_empty() {
-                set.insert(s);
-            }
-        }
-    }
-    set
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化结构化日志

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Rust-IME
+Comment=High-performance Input Method Engine for Linux
+Exec=rust-ime
+Icon=rust-ime
+Terminal=false
+Type=Application
+Categories=Settings;Utility;
+Keywords=input;ime;pinyin;
+StartupNotify=true
+X-GNOME-Autostart-enabled=true

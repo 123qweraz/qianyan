@@ -1,0 +1,11 @@
+Package: shian-ime
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: dbus, libdbus-1-3
+Maintainer: Shian <shian@example.com>
+Description: High-performance Input Method Engine for Linux
+ Rust-IME is a high-performance input method engine written in Rust,
+ providing excellent Chinese input experience with support for various
+ input methods including Pinyin, Shuangpin, and more.

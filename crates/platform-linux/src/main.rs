@@ -1,45 +1,13 @@
 use shian_ime_ui as ui;
 
 use shian_ime_core::Config;
+use shian_ime_core::utils::load_punctuation_dict;
 use shian_ime_engine::Processor;
 use shian_ime_linux::{cli, runtime, find_project_root, load_syllables};
-use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, RwLock};
-use std::sync::mpsc;
+use std::sync::{Arc, RwLock};
 use daemonize::Daemonize;
-
-fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<shian_ime_core::config::PunctuationEntry>> {
-// ... (remove load_syllables later in the file)
-    let mut m = HashMap::new();
-    if let Ok(f) = File::open(p) {
-        if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
-            if let Some(obj) = v.as_object() {
-                for (k, val) in obj {
-                    if let Some(arr) = val.as_array() {
-                        let entries = arr
-                            .iter()
-                            .filter_map(|item| {
-                                let c = item.get("char")?.as_str()?;
-                                let d = item.get("desc").and_then(|d| d.as_str()).unwrap_or("");
-                                Some(shian_ime_core::config::PunctuationEntry {
-                                    char: c.to_string(),
-                                    desc: d.to_string(),
-                                })
-                            })
-                            .collect();
-                        m.insert(k.clone(), entries);
-                    }
-                }
-            }
-        }
-    }
-    m
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()

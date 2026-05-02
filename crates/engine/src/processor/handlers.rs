@@ -383,31 +383,21 @@ pub fn handle_composing(
 
         _ if is_digit(key) => {
             let digit = key_to_digit(key).unwrap_or(0);
-            // 有候选词时选词，没有候选词时直接上屏（像标点符号一样）
+            let digit_char = key_to_char(key, false, ctx.session_state.caps_lock_enabled).unwrap_or('0');
+
+            // 有候选词且数字在候选范围内 -> 选词上屏
             if !ctx.session.candidates.is_empty()
                 && digit >= 1
                 && digit as usize <= ctx.session.candidates.len()
             {
                 return commands::execute_command(ctx, Command::Select(digit as usize - 1));
             }
-            // 没有候选词或数字超出候选范围时，输入数字字符
-            let old_buffer = ctx.session.buffer.clone();
-            ctx.session.push_char(
-                key_to_char(key, false, ctx.session_state.caps_lock_enabled).unwrap_or('0'),
-            );
-            if perform_lookup {
-                if let Some(act) = lookup(ctx) {
-                    return act;
-                }
-            }
 
-            if should_block_invalid_input(ctx, &old_buffer) {
-                return Action::Alert;
-            }
-            if let Some(act) = Compositor::check_auto_commit(ctx) {
-                return act;
-            }
-            return Compositor::update_phantom_action(ctx);
+            // 没有候选词或数字超出范围 -> 直接上屏数字字符（像标点符号一样）
+            // 清空当前 buffer 和候选词（数字直接上屏，不需要拼音）
+            ctx.session.buffer.clear();
+            ctx.session.candidates.clear();
+            return Action::Emit(digit_char.to_string());
         }
         _ => {
             if get_punctuation_key(key, shift_pressed).is_some() {
