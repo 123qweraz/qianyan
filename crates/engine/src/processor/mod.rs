@@ -175,9 +175,10 @@ impl Processor {
         let is_release = val == 0;
 
         if is_press {
-            if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed) {
+            if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, shift_pressed) {
                 return action;
             }
+
             if self.ctx.session.nav_mode && !self.ctx.session.buffer.is_empty() {
                 match key {
                     VirtualKey::H => return self.execute_command(Command::PrevCandidate),
@@ -615,7 +616,12 @@ impl Processor {
         None
     }
 
-    fn handle_global_hotkey(&mut self, key: VirtualKey, ctrl_pressed: bool) -> Option<Action> {
+    fn handle_global_hotkey(
+        &mut self,
+        key: VirtualKey,
+        ctrl_pressed: bool,
+        shift_pressed: bool,
+    ) -> Option<Action> {
         if key == VirtualKey::Space
             && ctrl_pressed
             && self
@@ -638,18 +644,23 @@ impl Processor {
         }
 
         if key == VirtualKey::CapsLock {
-            return Some(if !self.ctx.session_state.chinese_enabled {
+            // Shift + CapsLock -> 切换大写锁定状态
+            if shift_pressed {
                 self.ctx.session_state.caps_lock_enabled =
                     !self.ctx.session_state.caps_lock_enabled;
-                Action::PassThrough
-            } else if self.ctx.session.buffer.is_empty() {
-                self.ctx.session_state.capslock_pending = true;
-                Action::PassThrough
+                return Some(Action::PassThrough);
+            }
+
+            // 单击 CapsLock -> 切换中英文模式
+            if self.ctx.session.buffer.is_empty() {
+                self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+                return Some(Action::Consume);
             } else {
+                // 有内容时，CapsLock 作为功能键（如导航或方案切换预选）
                 self.ctx.session_state.capslock_down = true;
                 self.ctx.session.nav_mode = true;
-                Action::Consume
-            });
+                return Some(Action::Consume);
+            }
         }
 
         None

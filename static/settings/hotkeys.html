@@ -45,11 +45,11 @@
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">启用 Tab 键切换输入法</div>
-                    <div class="desc">在输入码为空时，允许按 Tab 键切换中英文模式</div>
+                    <div class="title">中英文切换 (CapsLock)</div>
+                    <div class="desc">默认使用 CapsLock 键切换中英文模式。Shift + CapsLock 用于切换大写锁定。</div>
                 </div>
-                <label class="switch"><input type="checkbox" id="enable_tab_toggle"><span class="slider"></span></label>
             </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <div class="setting-item">
                 <div class="info">
                     <div class="title">启用 Ctrl + Space 切换输入法</div>
@@ -97,7 +97,6 @@
             await loadConfig();
             
             // 绑定开关
-            bindInput('enable_tab_toggle', 'hotkeys');
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
 
             // 加载翻页键并回填

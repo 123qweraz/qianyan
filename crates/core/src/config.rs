@@ -713,7 +713,7 @@ impl Config {
             },
             hotkeys: Hotkeys {
                 switch_language: Hotkey {
-                    key: "tab".to_string(),
+                    key: "CapsLock".to_string(),
                     description: "核心: 切换中/英文模式".to_string(),
                 },
                 page_up: vec![
@@ -732,7 +732,7 @@ impl Config {
                 ],
                 prev_candidate: vec!["Left".into()],
                 next_candidate: vec!["Right".into()],
-                enable_tab_toggle: true,
+                enable_tab_toggle: false,
                 enable_ctrl_space_toggle: false,
             },
             #[cfg(target_os = "linux")]
