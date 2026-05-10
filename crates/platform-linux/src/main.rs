@@ -6,7 +6,7 @@ use shian_ime_engine::Processor;
 use shian_ime_linux::{cli, runtime, find_project_root, load_syllables};
 use std::collections::HashMap;
 use std::env;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use daemonize::Daemonize;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

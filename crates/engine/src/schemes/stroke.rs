@@ -4,6 +4,12 @@ use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 
 pub struct StrokeScheme;
 
+impl Default for StrokeScheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StrokeScheme {
     pub fn new() -> Self {
         Self

@@ -17,6 +17,12 @@ pub struct ConfigManager {
     pub user_data: Option<Arc<UserDataManager>>,
 }
 
+impl Default for ConfigManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfigManager {
     pub fn new() -> Self {
         let master = Config::default_config();
@@ -153,7 +159,7 @@ impl ConfigManager {
             .hotkeys
             .page_up
             .iter()
-            .filter_map(|s| VirtualKey::from_str(s))
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
             .collect()
     }
 
@@ -162,7 +168,7 @@ impl ConfigManager {
             .hotkeys
             .page_down
             .iter()
-            .filter_map(|s| VirtualKey::from_str(s))
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
             .collect()
     }
 
@@ -171,7 +177,7 @@ impl ConfigManager {
             .hotkeys
             .prev_candidate
             .iter()
-            .filter_map(|s| VirtualKey::from_str(s))
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
             .collect()
     }
 
@@ -180,7 +186,7 @@ impl ConfigManager {
             .hotkeys
             .next_candidate
             .iter()
-            .filter_map(|s| VirtualKey::from_str(s))
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
             .collect()
     }
 

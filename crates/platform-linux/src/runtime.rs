@@ -8,14 +8,16 @@ use shian_ime_ui::GuiEvent;
 use std::error::Error;
 use std::sync::{Arc, Mutex, RwLock};
 
+pub type InputHostResult = Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>>;
+
 pub fn create_input_host(
     args: &[String],
     processor: Arc<Mutex<Processor>>,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     config: Arc<RwLock<Config>>,
     tray_tx: std::sync::mpsc::Sender<shian_ime_ui::tray::TrayEvent>,
-    app_state: Arc<Mutex<shian_ime_ui::AppState>>,
-) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
+    _app_state: Arc<Mutex<shian_ime_ui::AppState>>,
+) -> InputHostResult {
     let linux_config = config
         .read()
         .map(|c| c.linux.clone())
@@ -43,7 +45,7 @@ pub fn create_input_host(
             Ok((
                 None,
                 Box::new(move || {
-                    host.run();
+                    let _ = host.run();
                 }),
             ))
         }
@@ -80,7 +82,7 @@ pub fn create_input_host(
                     Ok((
                         None,
                         Box::new(move || {
-                            host.run();
+                            let _ = host.run();
                         }),
                     ))
                 }

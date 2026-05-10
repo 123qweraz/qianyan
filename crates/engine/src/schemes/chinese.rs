@@ -9,6 +9,12 @@ struct ParsedPart {
     english_aux: Option<String>,
 }
 
+impl Default for ChineseScheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChineseScheme {
     pub fn new() -> Self {
         Self

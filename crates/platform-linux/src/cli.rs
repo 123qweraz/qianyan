@@ -248,11 +248,11 @@ fn run_test_mode() {
             continue;
         }
 
-        if let Some(vk) = engine::keys::VirtualKey::from_str(&input) {
+        if let Ok(vk) = input.parse::<engine::keys::VirtualKey>() {
             let action = processor.handle_key(vk, val, shift, ctrl, alt);
             println!("动作反馈: {action:?}");
         } else if input.len() == 1 {
-            let c = input.chars().next().unwrap();
+            let c = input.chars().next().expect("Checked len == 1");
             let vk = match c {
                 '0' => engine::keys::VirtualKey::Digit0,
                 '1' => engine::keys::VirtualKey::Digit1,
@@ -265,7 +265,7 @@ fn run_test_mode() {
                 '8' => engine::keys::VirtualKey::Digit8,
                 '9' => engine::keys::VirtualKey::Digit9,
                 'a'..='z' | 'A'..='Z' => {
-                    engine::keys::VirtualKey::from_str(&c.to_string()).unwrap()
+                    c.to_string().parse::<engine::keys::VirtualKey>().unwrap_or(engine::keys::VirtualKey::A)
                 }
                 ';' => engine::keys::VirtualKey::Semicolon,
                 ',' => engine::keys::VirtualKey::Comma,

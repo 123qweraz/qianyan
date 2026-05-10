@@ -14,6 +14,12 @@ pub struct SoundManager {
     tx: Option<Sender<char>>,
 }
 
+impl Default for SoundManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SoundManager {
     pub fn new() -> Self {
         let (stream, handle) = match OutputStream::try_default() {

@@ -4,6 +4,12 @@ use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 
 pub struct EnglishScheme;
 
+impl Default for EnglishScheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnglishScheme {
     pub fn new() -> Self {
         Self

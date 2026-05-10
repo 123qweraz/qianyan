@@ -4,6 +4,12 @@ use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 
 pub struct JapaneseScheme;
 
+impl Default for JapaneseScheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JapaneseScheme {
     pub fn new() -> Self {
         Self

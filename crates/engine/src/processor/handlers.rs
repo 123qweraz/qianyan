@@ -395,20 +395,20 @@ pub fn handle_composing(
             // 有候选词且数字在候选范围内 -> 选词上屏
             if !ctx.session.candidates.is_empty()
                 && digit >= 1
-                && digit as usize <= ctx.session.candidates.len()
+                && digit <= ctx.session.candidates.len()
             {
-                return commands::execute_command(ctx, Command::Select(digit as usize - 1));
+                return commands::execute_command(ctx, Command::Select(digit - 1));
             }
 
             // 没有候选词或数字超出范围 -> 直接上屏数字字符（像标点符号一样）
             // 清空当前 buffer 和候选词（数字直接上屏，不需要拼音）
             ctx.session.buffer.clear();
             ctx.session.candidates.clear();
-            return Action::Emit(digit_char.to_string());
+            Action::Emit(digit_char.to_string())
         }
         _ => {
             if get_punctuation_key(key, shift_pressed).is_some() {
-                return handle_punctuation(ctx, key, shift_pressed);
+                handle_punctuation(ctx, key, shift_pressed)
             } else if let Some(c) =
                 key_to_char(key, shift_pressed, ctx.session_state.caps_lock_enabled)
             {
@@ -425,9 +425,9 @@ pub fn handle_composing(
                 if let Some(act) = Compositor::check_auto_commit(ctx) {
                     return act;
                 }
-                return Compositor::update_phantom_action(ctx);
+                Compositor::update_phantom_action(ctx)
             } else {
-                return Action::PassThrough;
+                Action::PassThrough
             }
         }
     }

@@ -63,9 +63,8 @@ impl UserDataManager {
     fn timestamp() -> String {
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            .to_string()
+            .map(|d| d.as_secs().to_string())
+            .unwrap_or_else(|_| "0".to_string())
     }
 
     pub fn load(&self, profile: &str, data_type: DataType) -> HashMap<String, Vec<(String, u32)>> {

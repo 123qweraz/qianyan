@@ -16,9 +16,7 @@ impl Compositor {
             .iter()
             .any(|profile| profile == "stroke");
 
-        let mut pinyin = if is_stroke {
-            ctx.session.buffer.clone()
-        } else if ctx.session.best_segmentation.is_empty() {
+        let mut pinyin = if is_stroke || ctx.session.best_segmentation.is_empty() {
             ctx.session.buffer.clone()
         } else {
             let mut result = String::new();
@@ -150,25 +148,28 @@ impl Compositor {
 
         let raw_input = &ctx.session.buffer;
 
-        if ctx.config.auto_commit_stroke() && ctx.session_state.is_stroke_mode() {
-            if !ctx.session.candidates.is_empty() && ctx.session.candidates[0].match_level == 3 {
-                let is_unique_exact =
-                    ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = ctx.session.candidates[0].text.clone();
-                    return Some(commit_candidate(ctx, word, 0));
-                }
+        if ctx.config.auto_commit_stroke()
+            && ctx.session_state.is_stroke_mode()
+            && !ctx.session.candidates.is_empty()
+            && ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact =
+                ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = ctx.session.candidates[0].text.clone();
+                return Some(commit_candidate(ctx, word, 0));
             }
         }
 
-        if raw_input.contains(';') && !ctx.session.candidates.is_empty() {
-            if ctx.session.candidates[0].match_level == 3 {
-                let is_unique_exact =
-                    ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = ctx.session.candidates[0].text.clone();
-                    return Some(commit_candidate(ctx, word, 0));
-                }
+        if raw_input.contains(';')
+            && !ctx.session.candidates.is_empty()
+            && ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact =
+                ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = ctx.session.candidates[0].text.clone();
+                return Some(commit_candidate(ctx, word, 0));
             }
         }
 

@@ -233,8 +233,8 @@ pub fn process_switch_mode(
                         .collect();
                     if !profiles.is_empty() {
                         ctx.session_state.active_profiles = profiles;
-                        let display = get_current_profile_display(&ctx);
-                        let short_display = get_short_display(&ctx);
+                        let display = get_current_profile_display(ctx);
+                        let short_display = get_short_display(ctx);
                         let _ = crate::pipeline::lookup(ctx);
                         ctx.session.switch_mode = false;
                         return Some(Action::Notify(short_display, format!("方案: {}", display)));

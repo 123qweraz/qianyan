@@ -114,7 +114,7 @@ pub(crate) fn commit_candidate(
 
     if ctx.session_state.is_english_mode()
         && !cand.is_empty()
-        && cand.chars().last().unwrap_or(' ').is_alphanumeric()
+        && cand.chars().next_back().unwrap_or(' ').is_alphanumeric()
     {
         let mut s = cand.to_string();
         s.push(' ');
@@ -154,11 +154,11 @@ fn record_usage(ctx: &mut EngineContext, pinyin: &str, word: &str, context: Opti
         }
     }
 
-    if ctx.config.master_config.input.enable_word_discovery && word_len > 1 {
-        if !ctx.engine.has_exact_match(&profile, pinyin, word) {
-            let updated =
-                learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
-            ctx.config.insert_learned(&profile, pinyin, &updated);
-        }
+    if ctx.config.master_config.input.enable_word_discovery
+        && word_len > 1
+        && !ctx.engine.has_exact_match(&profile, pinyin, word)
+    {
+        let updated = learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
+        ctx.config.insert_learned(&profile, pinyin, &updated);
     }
 }

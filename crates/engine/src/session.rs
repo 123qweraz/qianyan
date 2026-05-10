@@ -28,6 +28,12 @@ pub struct InputSession {
     pub single_quote_open: bool,
 }
 
+impl Default for InputSession {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InputSession {
     pub fn new() -> Self {
         Self {

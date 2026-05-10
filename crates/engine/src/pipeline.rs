@@ -63,7 +63,7 @@ impl Segmentor for DefaultSegmentor {
         // 快速路径：如果输入已经是小写字母/数字，直接使用（避免 to_lowercase 分配）
         let needs_lowercase = !input
             .bytes()
-            .all(|b| (b >= b'a' && b <= b'z') || (b >= b'0' && b <= b'9'));
+            .all(|b: u8| b.is_ascii_lowercase() || b.is_ascii_digit());
 
         if needs_lowercase {
             let input_lower = input.to_lowercase();
@@ -98,9 +98,12 @@ impl DefaultSegmentor {
             }
 
             if !matched {
-                let ch = input[pos..].chars().next().unwrap();
-                segments.push(ch.to_string());
-                pos += ch.len_utf8();
+                if let Some(ch) = input[pos..].chars().next() {
+                    segments.push(ch.to_string());
+                    pos += ch.len_utf8();
+                } else {
+                    break;
+                }
             }
         }
         segments
@@ -147,21 +150,25 @@ impl Translator for TableTranslator {
 
         // 检查缓存是否可以复用（增量搜索优化）
         {
-            let cached = self.cached_candidates.read().unwrap();
-            let (last_q, last_time) = &*self.last_query.read().unwrap();
-
-            if last_q.starts_with(&query) && last_time.elapsed().as_millis() < CACHE_TTL_MS as u128
+            if let (Ok(cached), Ok(last_q_guard)) =
+                (self.cached_candidates.read(), self.last_query.read())
             {
-                // 新的查询是之前查询的前缀，复用缓存
-                let filtered: Vec<Candidate> = cached
-                    .iter()
-                    .filter(|c| c.simplified.starts_with(&query))
-                    .take(limit)
-                    .cloned()
-                    .collect();
+                let (last_q, last_time) = &*last_q_guard;
 
-                if !filtered.is_empty() {
-                    return filtered;
+                if last_q.starts_with(&query)
+                    && last_time.elapsed().as_millis() < CACHE_TTL_MS as u128
+                {
+                    // 新的查询是之前查询的前缀，复用缓存
+                    let filtered: Vec<Candidate> = cached
+                        .iter()
+                        .filter(|c| c.simplified.starts_with(&query))
+                        .take(limit)
+                        .cloned()
+                        .collect();
+
+                    if !filtered.is_empty() {
+                        return filtered;
+                    }
                 }
             }
         }
@@ -270,10 +277,10 @@ impl Translator for TableTranslator {
         }
 
         // 更新缓存
+        if let (Ok(mut last_q), Ok(mut cached)) =
+            (self.last_query.write(), self.cached_candidates.write())
         {
-            let mut last_q = self.last_query.write().unwrap();
             *last_q = (query, std::time::Instant::now());
-            let mut cached = self.cached_candidates.write().unwrap();
             *cached = candidates.clone();
         }
 
@@ -548,6 +555,8 @@ impl Pipeline {
     }
 }
 
+type PipelineCache = (HashMap<String, Arc<Pipeline>>, Vec<String>);
+
 /// 搜索引擎：协调所有的 Pipeline
 #[derive(Clone)]
 pub struct SearchEngine {
@@ -557,7 +566,7 @@ pub struct SearchEngine {
     usage_history: Arc<ArcSwap<UserDictData>>,
     ngram_history: Arc<ArcSwap<UserDictData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
-    pipelines: Arc<RwLock<(HashMap<String, Arc<Pipeline>>, Vec<String>)>>,
+    pipelines: Arc<RwLock<PipelineCache>>,
 }
 
 const MAX_CACHED_PIPELINES: usize = 10;

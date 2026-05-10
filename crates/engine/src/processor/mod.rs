@@ -210,10 +210,10 @@ impl Processor {
             return Action::PassThrough;
         }
 
-        if (ctrl_pressed || alt_pressed) || (key == VirtualKey::Control || key == VirtualKey::Alt) {
-            if get_punctuation_key(key, shift_pressed).is_none() {
-                return Action::PassThrough;
-            }
+        if ((ctrl_pressed || alt_pressed) || (key == VirtualKey::Control || key == VirtualKey::Alt))
+            && get_punctuation_key(key, shift_pressed).is_none()
+        {
+            return Action::PassThrough;
         }
 
         if is_press && ctrl_pressed && !alt_pressed {
@@ -571,27 +571,28 @@ impl Processor {
 
         let raw_input = &self.ctx.session.buffer;
 
-        if self.ctx.config.auto_commit_stroke() && self.ctx.session_state.is_stroke_mode() {
-            if !self.ctx.session.candidates.is_empty()
-                && self.ctx.session.candidates[0].match_level == 3
-            {
-                let is_unique_exact = self.ctx.session.candidates.len() == 1
-                    || self.ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = self.ctx.session.candidates[0].text.clone();
-                    return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-                }
+        if self.ctx.config.auto_commit_stroke()
+            && self.ctx.session_state.is_stroke_mode()
+            && !self.ctx.session.candidates.is_empty()
+            && self.ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact = self.ctx.session.candidates.len() == 1
+                || self.ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = self.ctx.session.candidates[0].text.clone();
+                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
             }
         }
 
-        if raw_input.contains(';') && !self.ctx.session.candidates.is_empty() {
-            if self.ctx.session.candidates[0].match_level == 3 {
-                let is_unique_exact = self.ctx.session.candidates.len() == 1
-                    || self.ctx.session.candidates[1].match_level != 3;
-                if is_unique_exact {
-                    let word = self.ctx.session.candidates[0].text.clone();
-                    return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-                }
+        if raw_input.contains(';')
+            && !self.ctx.session.candidates.is_empty()
+            && self.ctx.session.candidates[0].match_level == 3
+        {
+            let is_unique_exact = self.ctx.session.candidates.len() == 1
+                || self.ctx.session.candidates[1].match_level != 3;
+            if is_unique_exact {
+                let word = self.ctx.session.candidates[0].text.clone();
+                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
             }
         }
 

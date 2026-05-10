@@ -35,7 +35,7 @@ pub fn update_mru(
         }
 
         if sort_by_count {
-            entries.sort_by(|a, b| b.1.cmp(&a.1));
+            entries.sort_by_key(|b| std::cmp::Reverse(b.1));
         } else if entries.len() > 10 {
             entries.truncate(10);
         }
@@ -66,7 +66,7 @@ mod tests {
             .push(("你".to_string(), 1));
 
         assert_eq!(data.len(), 1);
-        let profile_data = data.get("profile1").unwrap();
+        let profile_data = data.get("profile1").expect("profile1 should exist");
         assert_eq!(profile_data.len(), 1);
     }
 }

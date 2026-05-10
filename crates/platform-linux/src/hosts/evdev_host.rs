@@ -299,24 +299,21 @@ impl InputMethodHost for EvdevHost {
 
                     // Meta 键释放：检测是否重新获取拦截
                     // 只有当 meta_was_pressed 为 true 且所有按键都释放后，才重新 grab
-                    if is_meta_key && val == 0 && !meta_is_held && self.meta_was_pressed {
-                        if !self.is_grabbed && held_keys.is_empty() {
-                            if grab_guard.re_grab() {
-                                self.is_grabbed = true;
-                                self.meta_was_pressed = false;
-                            }
-                        }
+                    if is_meta_key && val == 0 && !meta_is_held && self.meta_was_pressed
+                        && !self.is_grabbed && held_keys.is_empty()
+                        && grab_guard.re_grab() {
+                            self.is_grabbed = true;
+                            self.meta_was_pressed = false;
                     }
 
                     // 4. 快捷键透传判断
                     // 如果是 Meta 组合键、或者 Meta 键被按住、或者已释放 grab (系统正在处理)，则直接透传并跳过 IME
                     if is_meta_key || meta_is_held || !self.is_grabbed {
                         // 当 meta_was_pressed 为 true 且所有按键都释放后，重新 grab 键盘
-                        if self.meta_was_pressed && !self.is_grabbed && held_keys.is_empty() {
-                            if grab_guard.re_grab() {
+                        if self.meta_was_pressed && !self.is_grabbed && held_keys.is_empty()
+                            && grab_guard.re_grab() {
                                 self.is_grabbed = true;
                                 self.meta_was_pressed = false;
-                            }
                         }
                         if let Ok(vkbd) = self.vkbd.lock() {
                             vkbd.emit_raw(key, val);

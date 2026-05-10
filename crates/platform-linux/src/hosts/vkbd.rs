@@ -218,7 +218,7 @@ impl Vkbd {
                     }
                 }
                 let status = c.wait();
-                if status.is_ok() && status.unwrap().success() {
+                if status.is_ok() && status.expect("is_ok check").success() {
                     success = true;
                     
                     // 如果是 ShiftInsert 模式且不是 wl-copy (wl-copy 默认可能不设 primary)，

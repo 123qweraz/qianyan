@@ -48,6 +48,12 @@ pub struct KeyDispatcher {
     pub long_press_triggered: bool,
 }
 
+impl Default for KeyDispatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyDispatcher {
     pub fn new() -> Self {
         Self {
