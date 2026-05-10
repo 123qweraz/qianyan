@@ -16,6 +16,13 @@ pub fn handle_idle(
     if key == VirtualKey::Enter || key == VirtualKey::Space {
         return Action::PassThrough;
     }
+
+    if is_digit(key) {
+        if let Some(c) = key_to_char(key, shift_pressed, ctx.session_state.caps_lock_enabled) {
+            return Action::Emit(c.to_string());
+        }
+    }
+
     if is_letter(key) {
         if let Some(c) = key_to_char(key, shift_pressed, ctx.session_state.caps_lock_enabled) {
             let lang = ctx

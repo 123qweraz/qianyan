@@ -321,6 +321,7 @@ impl Processor {
             },
             buffer_empty: self.ctx.session.buffer.is_empty(),
             has_candidates: !self.ctx.session.candidates.is_empty(),
+            is_stroke_mode: self.ctx.session_state.is_stroke_mode(),
         };
 
         let (new_state, effect) = fsm::StateMachine::transition(self.ctx.session.state, &input);

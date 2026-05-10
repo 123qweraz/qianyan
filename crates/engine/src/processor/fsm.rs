@@ -14,6 +14,7 @@ pub struct FsmInput {
     pub mods: ModifierState,
     pub buffer_empty: bool,
     pub has_candidates: bool,
+    pub is_stroke_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,6 +44,12 @@ impl StateMachine {
     fn handle_idle(input: &FsmInput) -> (ImeState, FsmEffect) {
         if Self::is_coding_key(input.key) {
             (ImeState::Composing, FsmEffect::UpdateLookup)
+        } else if Self::is_digit(input.key) {
+            if input.is_stroke_mode {
+                (ImeState::Composing, FsmEffect::UpdateLookup)
+            } else {
+                (ImeState::Idle, FsmEffect::PassThrough)
+            }
         } else {
             (ImeState::Idle, FsmEffect::PassThrough)
         }
@@ -98,9 +105,7 @@ impl StateMachine {
     }
 
     fn is_coding_key(key: VirtualKey) -> bool {
-        Self::is_letter(key)
-            || Self::is_digit(key)
-            || matches!(key, VirtualKey::Apostrophe | VirtualKey::Semicolon)
+        Self::is_letter(key) || matches!(key, VirtualKey::Apostrophe | VirtualKey::Semicolon)
     }
 
     fn is_letter(key: VirtualKey) -> bool {
@@ -147,6 +152,7 @@ impl StateMachine {
                 | VirtualKey::Digit7
                 | VirtualKey::Digit8
                 | VirtualKey::Digit9
+                | VirtualKey::Digit0
         )
     }
 
@@ -184,6 +190,18 @@ mod tests {
         buffer_empty: bool,
         has_candidates: bool,
     ) -> FsmInput {
+        make_input_ext(key, shift, ctrl, alt, buffer_empty, has_candidates, false)
+    }
+
+    fn make_input_ext(
+        key: VirtualKey,
+        shift: bool,
+        ctrl: bool,
+        alt: bool,
+        buffer_empty: bool,
+        has_candidates: bool,
+        is_stroke_mode: bool,
+    ) -> FsmInput {
         FsmInput {
             key,
             mods: ModifierState {
@@ -194,12 +212,29 @@ mod tests {
             },
             buffer_empty,
             has_candidates,
+            is_stroke_mode,
         }
     }
 
     #[test]
     fn test_idle_state_letter_key() {
         let input = make_input(VirtualKey::A, false, false, false, true, false);
+        let (new_state, effect) = StateMachine::transition(ImeState::Idle, &input);
+        assert_eq!(new_state, ImeState::Composing);
+        assert_eq!(effect, FsmEffect::UpdateLookup);
+    }
+
+    #[test]
+    fn test_idle_state_digit_passthrough() {
+        let input = make_input(VirtualKey::Digit1, false, false, false, true, false);
+        let (new_state, effect) = StateMachine::transition(ImeState::Idle, &input);
+        assert_eq!(new_state, ImeState::Idle);
+        assert_eq!(effect, FsmEffect::PassThrough);
+    }
+
+    #[test]
+    fn test_idle_state_digit_stroke_mode() {
+        let input = make_input_ext(VirtualKey::Digit1, false, false, false, true, false, true);
         let (new_state, effect) = StateMachine::transition(ImeState::Idle, &input);
         assert_eq!(new_state, ImeState::Composing);
         assert_eq!(effect, FsmEffect::UpdateLookup);
@@ -248,6 +283,14 @@ mod tests {
     #[test]
     fn test_composing_state_letter_updates_lookup() {
         let input = make_input(VirtualKey::B, false, false, false, false, false);
+        let (new_state, effect) = StateMachine::transition(ImeState::Composing, &input);
+        assert_eq!(new_state, ImeState::Composing);
+        assert_eq!(effect, FsmEffect::UpdateLookup);
+    }
+
+    #[test]
+    fn test_composing_state_digit_selection() {
+        let input = make_input(VirtualKey::Digit1, false, false, false, false, true);
         let (new_state, effect) = StateMachine::transition(ImeState::Composing, &input);
         assert_eq!(new_state, ImeState::Composing);
         assert_eq!(effect, FsmEffect::UpdateLookup);
