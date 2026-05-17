@@ -7,22 +7,35 @@ use serde_json::Value;
 use crate::config::PunctuationEntry;
 
 pub fn find_project_root() -> PathBuf {
+    // 1. 检查可执行文件同级目录 (适用于绿色版/便携版)
     if let Ok(mut exe_path) = env::current_exe() {
         exe_path.pop();
-        if exe_path.join("dicts").exists() {
+        if exe_path.join("data").exists() || exe_path.join("dicts").exists() {
             return exe_path;
         }
     }
 
+    // 2. 检查 Linux 系统标准路径 (适用于 .deb 安装版)
+    #[cfg(target_os = "linux")]
+    {
+        let share_path = PathBuf::from("/usr/share/shian-ime");
+        if share_path.exists() {
+            return share_path;
+        }
+    }
+
+    // 3. 检查当前工作目录及其父目录 (适用于开发环境)
     let mut curr = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    for _ in 0..3 {
-        if curr.join("dicts").exists() {
+    for _ in 0..4 {
+        if curr.join("dicts").exists() || curr.join("data").exists() {
             return curr;
         }
         if !curr.pop() {
             break;
         }
     }
+    
+    // 默认兜底到当前目录
     env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 

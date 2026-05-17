@@ -37,6 +37,7 @@ pub struct ImeTray {
 
 #[cfg(target_os = "linux")]
 fn load_icon() -> Vec<ksni::Icon> {
+    let root = shian_ime_core::utils::find_project_root();
     let icon_paths = [
         "picture/rust-ime_v2.ico",
         "picture/rust-ime.ico",
@@ -45,7 +46,8 @@ fn load_icon() -> Vec<ksni::Icon> {
     ];
 
     for path in &icon_paths {
-        if let Ok(img) = image::open(path) {
+        let full_path = root.join(path);
+        if let Ok(img) = image::open(full_path) {
             let rgba = img.to_rgba8();
             let (width, height) = rgba.dimensions();
             let data = rgba.into_raw();

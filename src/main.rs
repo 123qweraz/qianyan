@@ -72,7 +72,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
     }
 
-    let root = find_project_root();
+    let mut root = find_project_root();
+    let mut current_config = Config::load();
+    
+    // 如果配置中指定了数据目录，则优先使用
+    if let Some(ref custom_root) = current_config.files.data_dir {
+        let p = std::path::PathBuf::from(custom_root);
+        if p.exists() {
+            root = p;
+        }
+    }
 
     if should_daemonize {
         #[cfg(target_os = "windows")]
@@ -92,7 +101,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = compiler::check_and_compile_all();
     }
 
-    let mut current_config = Config::load();
     {
         let mut punctuations = HashMap::new();
         if let Ok(entries) = std::fs::read_dir(root.join("dicts")) {
@@ -315,9 +323,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // 主线程等待（简单实现，实际可能需要更好的退出处理）
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
+    std::thread::park();
 
     Ok(())
 }

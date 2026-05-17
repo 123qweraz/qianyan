@@ -92,12 +92,21 @@ echo -e "\n[4/4] Executing installation..."
 # Get absolute path
 INSTALL_PATH=$(pwd)
 
+# 4.0 Install resources
+SHARE_DIR="/usr/share/shian-ime"
+echo "Installing resources to $SHARE_DIR..."
+sudo mkdir -p "$SHARE_DIR"
+sudo cp -r "$INSTALL_PATH/data" "$SHARE_DIR/"
+sudo cp -r "$INSTALL_PATH/dicts" "$SHARE_DIR/"
+sudo cp -r "$INSTALL_PATH/picture" "$SHARE_DIR/"
+echo "✅ Installed resources to: $SHARE_DIR"
+
 # 4.1 Install binary
 sudo cp -f "$INSTALL_PATH/shian-ime" /usr/local/bin/shian-ime
 sudo chmod +x /usr/local/bin/shian-ime
 echo "✅ Installed binary to: /usr/local/bin/shian-ime"
 
-# 4.2 Install icon
+# 4.2 Install icon (system-wide)
 ICON_DIR="/usr/share/icons/hicolor/256x256/apps"
 sudo mkdir -p "$ICON_DIR"
 if [ -f "$INSTALL_PATH/picture/rust-ime_v2.png" ]; then
@@ -110,7 +119,7 @@ APP_DIR="/usr/share/applications"
 if [ -f "$INSTALL_PATH/shian-ime.desktop" ]; then
     sudo cp -f "$INSTALL_PATH/shian-ime.desktop" "$APP_DIR/shian-ime.desktop"
     sudo update-desktop-database "$APP_DIR" || true
-    echo "✅ Installed desktop shortcut. You can now find Rust-IME in your application menu."
+    echo "✅ Installed desktop shortcut."
 fi
 
 # 4.4 Trigger first-time installation tasks

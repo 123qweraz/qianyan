@@ -21,6 +21,7 @@ pub struct LinuxConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Files {
+    pub data_dir: Option<String>,
     pub punctuation_file: String,
     pub profiles: Vec<Profile>,
 }
@@ -486,6 +487,7 @@ impl Config {
     pub fn default_config() -> Self {
         Config {
             files: Files {
+                data_dir: None,
                 punctuation_file: "dicts/chinese/punctuation.json".to_string(),
                 profiles: vec![
                     Profile {

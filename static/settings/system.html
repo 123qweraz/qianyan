@@ -72,6 +72,17 @@
             </div>
         </div>
 
+        <h2>路径设置</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">数据目录 (Data Directory)</div>
+                    <div class="desc">词库、图标等资源的根目录。留空则使用程序自动探测的路径。</div>
+                </div>
+                <input type="text" id="files_data_dir" placeholder="例如: /usr/share/shian-ime">
+            </div>
+        </div>
+
         <h2>Linux 设置</h2>
         <div class="card">
             <div class="setting-item">
@@ -128,6 +139,9 @@
             bindInput('enable_auto_reorder', 'input');
             bindInput('commit_mode', 'input');
             bindInput('autostart', 'input');
+
+            // 路径设置
+            bindInput('files_data_dir', 'files', 'data_dir');
             
             // Linux 专属
             bindInput('linux_enable_notification_candidates', 'linux', 'enable_notification_candidates');
