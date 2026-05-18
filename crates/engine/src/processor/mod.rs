@@ -508,25 +508,26 @@ impl Processor {
         let flag = self.prefetch_running.clone();
 
         std::thread::spawn(move || {
-            let common_suffixes = [
-                "a", "i", "n", "g", "o", "e", "u", "an", "ang", "en", "ong", "ian", "iao",
-            ];
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let common_suffixes = [
+                    "a", "i", "n", "g", "o", "e", "u", "an", "ang", "en", "ong", "ian", "iao",
+                ];
 
-            for suffix in &common_suffixes {
-                let next_buffer = format!("{}{}", buffer, suffix);
-                let query = crate::pipeline::SearchQuery {
-                    buffer: &next_buffer,
-                    profile: &profile,
-                    syllables: &syllables,
-                    config: &config,
-                    limit: 3,
-                    filter_mode: FilterMode::None,
-                    aux_filter: "",
-                    context: None,
-                };
-                let _ = engine.search(query);
-            }
-
+                for suffix in &common_suffixes {
+                    let next_buffer = format!("{}{}", buffer, suffix);
+                    let query = crate::pipeline::SearchQuery {
+                        buffer: &next_buffer,
+                        profile: &profile,
+                        syllables: &syllables,
+                        config: &config,
+                        limit: 3,
+                        filter_mode: FilterMode::None,
+                        aux_filter: "",
+                        context: None,
+                    };
+                    let _ = engine.search(query);
+                }
+            }));
             flag.store(false, Ordering::Release);
         });
     }
