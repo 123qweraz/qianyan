@@ -19,10 +19,7 @@ signal-hook = { workspace = true }
 daemonize = { workspace = true }
 libc = { workspace = true }
 nix = { workspace = true }
-wayland-client = { workspace = true }
-wayland-protocols = { workspace = true }
-wayland-cursor = { workspace = true }
-zbus = { workspace = true }
+
 rust-embed = { workspace = true }
 notify-rust = { workspace = true }
 reqwest = { workspace = true }

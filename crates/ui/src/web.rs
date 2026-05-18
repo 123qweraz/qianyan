@@ -2,7 +2,7 @@ use axum::{
     routing::{get, post},
     extract::{State, Json},
     response::{IntoResponse, Html},
-    http::{StatusCode, Uri},
+    http::{StatusCode, Uri, HeaderName, header},
     Router,
 };
 use serde::Serialize;
@@ -112,7 +112,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         if disk_path.exists() {
             if let Ok(content) = std::fs::read(&disk_path) {
                 let mime = mime_guess::from_path(path).first_or_octet_stream();
-                return ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content).into_response();
+                let headers = [
+                    (header::CONTENT_TYPE, mime.as_ref()),
+                    (HeaderName::from_static("cache-control"), "no-cache"),
+                ];
+                return (headers, content).into_response();
             }
         }
     }
@@ -121,7 +125,11 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     match Assets::get(path) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
-            ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
+            let headers = [
+                (header::CONTENT_TYPE, mime.as_ref()),
+                (HeaderName::from_static("cache-control"), "no-cache"),
+            ];
+            (headers, content.data).into_response()
         }
         None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
     }

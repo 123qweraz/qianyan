@@ -5502,10 +5502,6 @@ dependencies = [
  "tracing-subscriber",
  "urlencoding",
  "users",
- "wayland-client",
- "wayland-cursor",
- "wayland-protocols 0.31.2",
- "zbus 4.4.0",
 ]
 
 [[package]]

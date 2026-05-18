@@ -1,5 +1,5 @@
 use crate::hosts::vkbd::Vkbd;
-use crate::hosts::{evdev_host, ibus_host, wayland};
+use crate::hosts::evdev_host;
 use shian_ime_core::config::LinuxConfig;
 use shian_ime_core::Config;
 use shian_ime_core::InputMethodHost;
@@ -31,24 +31,6 @@ pub fn create_input_host(
     let backend = parse_backend(args);
 
     match backend {
-        BackendType::Wayland => {
-            let mut host = wayland::WaylandHost::new(processor, Some(gui_tx))?;
-            Ok((
-                None,
-                Box::new(move || {
-                    let _ = host.run();
-                }),
-            ))
-        }
-        BackendType::IBus => {
-            let mut host = ibus_host::IBusHost::new(processor, Some(gui_tx));
-            Ok((
-                None,
-                Box::new(move || {
-                    let _ = host.run();
-                }),
-            ))
-        }
         BackendType::Evdev => {
             let mut host = evdev_host::EvdevHost::new(processor, &dev_path, Some(gui_tx), tray_tx)?;
             let vkbd = host.vkbd.clone();
@@ -77,14 +59,8 @@ pub fn create_input_host(
                     ))
                 }
                 Err(e) => {
-                    println!("[Main] Evdev 启动失败 ({:?})，尝试回落到 IBus 模式...", e);
-                    let mut host = ibus_host::IBusHost::new(processor, Some(gui_tx));
-                    Ok((
-                        None,
-                        Box::new(move || {
-                            let _ = host.run();
-                        }),
-                    ))
+                    println!("[Main] Evdev 启动失败 ({:?})，请检查设备路径。", e);
+                    Err(e.into())
                 }
             }
         }
@@ -93,21 +69,12 @@ pub fn create_input_host(
 
 enum BackendType {
     Auto,
-    Wayland,
-    IBus,
     Evdev,
 }
 
 fn parse_backend(args: &[String]) -> BackendType {
-    if args
-        .iter()
-        .any(|a| a == "--backend=wayland" || a == "wayland")
-    {
-        BackendType::Wayland
-    } else if args.iter().any(|a| a == "--backend=evdev" || a == "evdev") {
+    if args.iter().any(|a| a == "--backend=evdev" || a == "evdev") {
         BackendType::Evdev
-    } else if args.iter().any(|a| a == "--backend=ibus" || a == "ibus") {
-        BackendType::IBus
     } else {
         BackendType::Auto
     }
