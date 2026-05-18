@@ -108,6 +108,11 @@
             transition: color 0.15s, background 0.15s;
             border-radius: 3px;
             padding: 1px 0;
+            cursor: pointer;
+        }
+
+        .article-display .art-char:hover {
+            background: rgba(0,113,227,0.12) !important;
         }
 
         .article-display .art-done {
@@ -291,6 +296,100 @@
             background: #e3f2fd;
             color: #1976d2;
         }
+
+        .position-selector {
+            margin: 16px 0;
+            padding: 16px;
+            background: #f8f8fa;
+            border-radius: 14px;
+            border: 1px solid #eee;
+        }
+
+        .position-selector .pos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .position-selector .pos-header label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .position-selector .pos-header .pos-info {
+            font-size: 13px;
+            color: var(--apple-secondary);
+        }
+
+        .position-selector input[type="range"] {
+            width: 100%;
+            margin: 6px 0;
+            accent-color: var(--apple-accent);
+        }
+
+        .position-selector .pos-preview {
+            font-size: 14px;
+            color: var(--apple-secondary);
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            margin-top: 6px;
+            line-height: 1.6;
+            min-height: 20px;
+        }
+
+        .position-selector .pos-preview b {
+            color: var(--apple-accent);
+            font-size: 18px;
+        }
+
+        .jump-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 10px 16px;
+            background: #f8f8fa;
+            border-radius: 12px;
+        }
+
+        .jump-btn {
+            background: white;
+            border: 1px solid var(--apple-border);
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--apple-text);
+            line-height: 1;
+        }
+
+        .jump-btn:hover {
+            border-color: var(--apple-accent);
+            background: rgba(0,113,227,0.06);
+        }
+
+        .jump-btn:active {
+            transform: scale(0.95);
+        }
+
+        .jump-btn.icon-btn {
+            padding: 8px 12px;
+            font-size: 16px;
+        }
+
+        .jump-control .jump-info {
+            font-size: 13px;
+            color: var(--apple-secondary);
+            font-weight: 600;
+            min-width: 52px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -310,6 +409,15 @@
                         📂 导入TXT
                         <input type="file" id="fileInput" accept=".txt" style="display:none">
                     </label>
+                </div>
+
+                <div class="position-selector" id="positionSelector" style="display:none">
+                    <div class="pos-header">
+                        <label>起始位置</label>
+                        <span class="pos-info" id="posInfo">第 1 字 / 0%</span>
+                    </div>
+                    <input type="range" id="posSlider" min="0" max="1000" value="0">
+                    <div class="pos-preview" id="posPreview"></div>
                 </div>
 
                 <div class="switch-group">
@@ -345,8 +453,16 @@
 
                     <input type="text" id="practiceInput" class="practice-input" placeholder="在此输入当前字符..." autocomplete="off">
 
+                    <div class="jump-control">
+                        <button class="jump-btn icon-btn" onclick="jumpStep(-50)" title="向前50字">⏪</button>
+                        <button class="jump-btn icon-btn" onclick="jumpStep(-1)" title="向前1字">◀</button>
+                        <span class="jump-info" id="jumpInfo">0%</span>
+                        <button class="jump-btn icon-btn" onclick="jumpStep(1)" title="向后1字">▶</button>
+                        <button class="jump-btn icon-btn" onclick="jumpStep(50)" title="向后50字">⏩</button>
+                    </div>
+
                     <div class="progress-section">
-                        <div class="progress-bar-track">
+                        <div class="progress-bar-track" id="progressTrack" style="cursor:pointer">
                             <div class="progress-bar-fill" id="progressFill"></div>
                         </div>
                         <div class="stats-grid">
@@ -434,6 +550,7 @@
         let startTime = null;
         let timerInterval = null;
         let isPracticing = false;
+        let isComposing = false;
 
         // ===== Article Management =====
         function loadArticles() {
@@ -542,7 +659,8 @@
                 return;
             }
 
-            currentIndex = 0;
+            const startPos = parseInt(document.getElementById('posSlider').value) || 0;
+            currentIndex = Math.min(startPos, targets.length - 1);
             stats = { total: targets.length, correct: 0, errors: 0 };
             startTime = Date.now();
             isPracticing = true;
@@ -553,6 +671,8 @@
             const badge = document.getElementById('articleNameBadge');
             badge.textContent = article.name;
             badge.className = 'article-name-badge' + (article.builtin ? ' builtin' : '');
+
+            document.getElementById('jumpInfo').textContent = Math.round((currentIndex / targets.length) * 100) + '%';
 
             renderArticle();
             updateCurrentChar();
@@ -579,6 +699,22 @@
             currentArticle = null;
         }
 
+        function jumpToPosition(pos) {
+            if (!isPracticing || targets.length === 0) return;
+            if (isNaN(pos) || pos < 0 || pos >= targets.length) return;
+            currentIndex = pos;
+            document.getElementById('jumpInfo').textContent = Math.round((pos / targets.length) * 100) + '%';
+            renderArticle();
+            updateCurrentChar();
+            updateStats();
+            document.getElementById('practiceInput').value = '';
+            document.getElementById('practiceInput').focus();
+        }
+
+        function jumpStep(step) {
+            jumpToPosition(currentIndex + step);
+        }
+
         function renderArticle() {
             const container = document.getElementById('articleDisplay');
             const text = currentArticle ? currentArticle.text : '';
@@ -603,7 +739,7 @@
                 } else {
                     cls += ' art-pending';
                 }
-                html += `<span class="${cls}">${ch}</span>`;
+                html += `<span class="${cls}" data-idx="${charIdx}">${ch}</span>`;
                 charIdx++;
             }
 
@@ -645,6 +781,7 @@
 
         function handleCharInput(e) {
             if (!isPracticing || currentIndex >= targets.length) return;
+            if (isComposing) return;
 
             const input = e.target;
             const val = input.value.trim();
@@ -798,7 +935,14 @@
         }
 
         // ===== Event Binding =====
-        document.getElementById('practiceInput').addEventListener('input', handleCharInput);
+        const practiceInput = document.getElementById('practiceInput');
+
+        practiceInput.addEventListener('compositionstart', () => { isComposing = true; });
+        practiceInput.addEventListener('compositionend', () => {
+            isComposing = false;
+            handleCharInput({ target: practiceInput });
+        });
+        practiceInput.addEventListener('input', handleCharInput);
 
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && isPracticing) {
@@ -820,6 +964,86 @@
             toast.className = 'status-toast show';
             setTimeout(() => { toast.className = 'status-toast'; }, 2000);
         }
+
+        // ===== Position Selection =====
+        function getTargetsForArticle(articleIdx) {
+            if (articleIdx < 0 || articleIdx >= articles.length) return [];
+            const text = articles[articleIdx].text;
+            const result = [];
+            for (const ch of text) {
+                if (ch !== ' ' && ch !== '\n' && ch !== '\r' && ch !== '\t') {
+                    result.push(ch);
+                }
+            }
+            return result;
+        }
+
+        function updatePositionSelector() {
+            const select = document.getElementById('articleSelect');
+            const idx = parseInt(select.value);
+            const selector = document.getElementById('positionSelector');
+
+            if (isNaN(idx) || idx < 0 || idx >= articles.length) {
+                selector.style.display = 'none';
+                return;
+            }
+
+            const t = getTargetsForArticle(idx);
+            if (t.length === 0) {
+                selector.style.display = 'none';
+                return;
+            }
+
+            selector.style.display = 'block';
+            const slider = document.getElementById('posSlider');
+            slider.max = t.length - 1;
+            updatePosPreview(t);
+        }
+
+        function updatePosPreview(targets) {
+            const val = parseInt(document.getElementById('posSlider').value) || 0;
+            const total = targets.length;
+            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+            document.getElementById('posInfo').textContent = `第 ${val + 1} 字 / ${pct}%`;
+
+            const start = Math.max(0, val - 3);
+            const end = Math.min(total, val + 4);
+            let preview = '';
+            for (let i = start; i < end; i++) {
+                if (i === val) {
+                    preview += `<b>${targets[i]}</b>`;
+                } else {
+                    preview += targets[i];
+                }
+            }
+            document.getElementById('posPreview').innerHTML = preview;
+        }
+
+        document.getElementById('articleSelect').addEventListener('change', function() {
+            updatePositionSelector();
+        });
+
+        document.getElementById('posSlider').addEventListener('input', function() {
+            const idx = parseInt(document.getElementById('articleSelect').value);
+            if (isNaN(idx)) return;
+            const t = getTargetsForArticle(idx);
+            updatePosPreview(t);
+        });
+
+        document.getElementById('articleDisplay').addEventListener('click', function(e) {
+            const span = e.target.closest('.art-char');
+            if (!span || !isPracticing) return;
+            const idx = parseInt(span.dataset.idx);
+            if (!isNaN(idx)) jumpToPosition(idx);
+        });
+
+        document.getElementById('progressTrack').addEventListener('click', function(e) {
+            if (!isPracticing || targets.length === 0) return;
+            const rect = this.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            const pos = Math.round(pct * (targets.length - 1));
+            jumpToPosition(pos);
+        });
 
         // ===== Init =====
         loadArticles();

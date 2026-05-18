@@ -104,6 +104,20 @@ async fn index_handler() -> impl IntoResponse {
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     let path = uri.path().trim_start_matches("/static/").trim_start_matches("/");
+
+    // 开发模式：优先从磁盘读取，修改后无需重新编译
+    let dev_root = find_static_root();
+    if let Some(dev_root) = dev_root {
+        let disk_path = dev_root.join(path);
+        if disk_path.exists() {
+            if let Ok(content) = std::fs::read(&disk_path) {
+                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                return ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content).into_response();
+            }
+        }
+    }
+
+    // 生产模式：使用编译时嵌入的资源
     match Assets::get(path) {
         Some(content) => {
             let mime = mime_guess::from_path(path).first_or_octet_stream();
@@ -111,6 +125,29 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
         }
         None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
     }
+}
+
+fn find_static_root() -> Option<std::path::PathBuf> {
+    let candidates = [
+        std::path::PathBuf::from("static"),
+        std::env::current_exe().ok()?.parent()?.join("static"),
+    ];
+    for p in &candidates {
+        if p.is_dir() {
+            return Some(p.clone());
+        }
+    }
+    // 从工作目录向上查找最多3层
+    if let Ok(mut cwd) = std::env::current_dir() {
+        for _ in 0..3 {
+            let check = cwd.join("static");
+            if check.is_dir() {
+                return Some(check);
+            }
+            cwd.pop();
+        }
+    }
+    None
 }
 
 async fn dicts_handler(uri: Uri) -> impl IntoResponse {
