@@ -77,8 +77,7 @@ impl Processor {
     }
 
     pub fn handle_event(&mut self, event: InputEvent) -> Action {
-        let span = tracing::info_span!("handle_event", ?event);
-        let _enter = span.enter();
+        log::info!("handle_event: {:?}", event);
         match event {
             InputEvent::Key {
                 key,
@@ -390,8 +389,7 @@ impl Processor {
     }
 
     pub fn lookup_with_limit(&mut self, limit: usize) -> Option<Action> {
-        let span = tracing::debug_span!("lookup", buffer = %self.ctx.session.buffer, limit);
-        let _enter = span.enter();
+        log::debug!("lookup: buffer={}, limit={}", self.ctx.session.buffer, limit);
         if self.ctx.session.buffer.is_empty() {
             self.reset();
             return None;

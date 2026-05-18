@@ -25,24 +25,14 @@ arc-swap = "1.7"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 rust-embed = "8.2"
-tower-http = { version = "0.5", features = ["full"] }
 mime_guess = "2.0"
-atty = "0.2"
-reqwest = { version = "0.12", features = ["blocking"] }
-urlencoding = "2.1"
 open = "5.1"
 fst = "0.4"
-lru = "0.12"
 memmap2 = "0.9"
-rand = "0.8"
-bitflags = "2.4"
 image = "0.24"
 log = "0.4"
-tracing = "0.1"
+env_logger = "0.11"
 thiserror = "1.0"
-sled = "0.34"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "time", "local-time"] }
-raw-window-handle = "0.6"
 slint = "1.9"
 slint-build = "1.9"
 winres = "0.1.12"
@@ -50,16 +40,8 @@ embed-resource = "1.8"
 
 # Linux
 evdev = "0.12.1"
-users = "0.11"
-signal-hook = "0.4.1"
 daemonize = "0.5"
-libc = "0.2.180"
 ksni = "0.2.1"
-nix = { version = "0.27", features = ["poll"] }
-wayland-client = "0.31"
-wayland-protocols = { version = "0.31", features = ["client", "staging", "unstable"] }
-wayland-cursor = "0.31"
-zbus = { version = "4.4", features = ["blocking"] }
 
 # Windows
 windows = { version = "0.52", features = [
@@ -107,40 +89,22 @@ arc-swap = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 rust-embed = { workspace = true }
-tower-http = { workspace = true }
 mime_guess = { workspace = true }
-atty = { workspace = true }
-reqwest = { workspace = true }
-urlencoding = { workspace = true }
 open = { workspace = true }
 fst = { workspace = true }
-lru = { workspace = true }
 memmap2 = { workspace = true }
-rand = { workspace = true }
-bitflags = { workspace = true }
 image = { workspace = true }
 log = { workspace = true }
-tracing = { workspace = true }
+env_logger = { workspace = true }
 thiserror = { workspace = true }
-sled = { workspace = true }
-tracing-subscriber = { workspace = true }
-raw-window-handle = { workspace = true }
 slint = { workspace = true }
 rodio = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 shian-ime-linux = { path = "crates/platform-linux" }
 evdev = { workspace = true }
-users = { workspace = true }
-signal-hook = { workspace = true }
 daemonize = { workspace = true }
-libc = { workspace = true }
 ksni = { workspace = true }
-nix = { workspace = true }
-wayland-client = { workspace = true }
-wayland-protocols = { workspace = true }
-wayland-cursor = { workspace = true }
-zbus = { workspace = true }
 
 [build-dependencies]
 slint-build = { workspace = true }

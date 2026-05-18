@@ -11,25 +11,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
-tokio = { workspace = true }
-slint = { workspace = true }
 evdev = { workspace = true }
-users = { workspace = true }
-signal-hook = { workspace = true }
 daemonize = { workspace = true }
-libc = { workspace = true }
-nix = { workspace = true }
-
-rust-embed = { workspace = true }
-notify-rust = { workspace = true }
-reqwest = { workspace = true }
-urlencoding = { workspace = true }
-open = { workspace = true }
-image = { workspace = true }
 arboard = { workspace = true }
-ksni = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-
-[build-dependencies]
-slint-build = { workspace = true }

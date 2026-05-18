@@ -11,14 +11,7 @@ pub mod tray;
 pub mod runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
-        .with_target(false)
-        .with_thread_ids(true)
-        .init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     std::env::set_var("SLINT_BACKEND", "skia");
 

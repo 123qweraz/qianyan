@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::thread;
-use tracing::warn;
+
 
 pub struct SoundManager {
     _handle: Option<OutputStreamHandle>,
@@ -25,7 +25,7 @@ impl SoundManager {
         let (stream, handle) = match OutputStream::try_default() {
             Ok((s, h)) => (Some(s), Some(h)),
             Err(e) => {
-                warn!("[Sound] 无法初始化音频输出: {}", e);
+                log::warn!("[Sound] 无法初始化音频输出: {}", e);
                 (None, None)
             }
         };
@@ -91,7 +91,7 @@ fn play_letter_on_thread(handle: &OutputStreamHandle, c: char) {
                 }
             }
         }
-        Err(e) => warn!("[Sound] 无法打开音频文件 {:?}: {}", sound_path, e),
+        Err(e) => log::warn!("[Sound] 无法打开音频文件 {:?}: {}", sound_path, e),
     }
 }
 

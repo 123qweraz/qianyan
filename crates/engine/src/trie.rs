@@ -74,7 +74,7 @@ impl Trie {
         pinyin: &str,
         level_filter: Option<&str>,
     ) -> Option<Vec<TrieResult<'_>>> {
-        let _span = tracing::debug_span!("trie_exact", %pinyin, ?level_filter).entered();
+        log::debug!("trie_exact: pinyin={}, level_filter={:?}", pinyin, level_filter);
         let offset = self.index.get(pinyin)? as usize;
         let mut results = Vec::new();
         self.read_block(offset, |tr| {
@@ -140,7 +140,7 @@ impl Trie {
         limit: usize,
         level_filter: Option<&str>,
     ) -> Vec<TrieResult<'_>> {
-        let _span = tracing::debug_span!("trie_bfs", %prefix, limit, ?level_filter).entered();
+        log::debug!("trie_bfs: prefix={}, limit={}, level_filter={:?}", prefix, limit, level_filter);
         let mut results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
@@ -349,33 +349,7 @@ impl Trie {
         false
     }
 
-    #[allow(dead_code)]
-    pub fn get_random_entry(&self) -> Option<TrieResult<'_>> {
-        let len = self.index.len();
-        if len == 0 {
-            return None;
-        }
 
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let target_idx = rng.gen_range(0..len);
-
-        let mut stream = self.index.stream();
-        let mut current = 0;
-        while let Some((_, offset)) = stream.next() {
-            if current == target_idx {
-                let mut result = None;
-                self.read_block(offset as usize, |pair| {
-                    if result.is_none() {
-                        result = Some(pair);
-                    }
-                });
-                return result;
-            }
-            current += 1;
-        }
-        None
-    }
 
     fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
         let data = self.data.as_ref();

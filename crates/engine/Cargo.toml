@@ -9,13 +9,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
-tracing = { workspace = true }
 rodio = { workspace = true }
 walkdir = { workspace = true }
 fst = { workspace = true }
-lru = { workspace = true }
 memmap2 = { workspace = true }
-rand = { workspace = true }
-bitflags = { workspace = true }
-sled = { workspace = true }
 arc-swap = { workspace = true }

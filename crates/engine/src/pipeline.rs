@@ -607,9 +607,7 @@ impl SearchEngine {
     }
 
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
-        let span =
-            tracing::info_span!("engine_search", profile = %query.profile, buffer = %query.buffer);
-        let _enter = span.enter();
+        log::info!("engine_search: profile={}, buffer={}", query.profile, query.buffer);
 
         if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
             let results = pipeline.run(
@@ -706,7 +704,7 @@ impl SearchEngine {
 
         // 2. 如果不存在，尝试创建
         let paths = self.trie_paths.get(profile)?;
-        tracing::info!(%profile, "Lazy loading dictionary...");
+        log::info!("Lazy loading dictionary: profile={}", profile);
         let trie = Trie::load(&paths.0, &paths.1, true).ok()?;
 
         let mut pipeline = Pipeline::new(Box::new(DefaultSegmentor));
@@ -737,7 +735,7 @@ impl SearchEngine {
                 if let Some(oldest) = access_order.first().cloned() {
                     p_map.remove(&oldest);
                     access_order.remove(0);
-                    tracing::debug!(profile = %oldest, "Evicted pipeline from cache");
+                    log::debug!("Evicted pipeline from cache: profile={}", oldest);
                 }
             }
             p_map.insert(profile.to_string(), arc_p.clone());
@@ -768,12 +766,11 @@ impl SearchEngine {
 
     /// 预加载并初始化指定方案的 Pipeline
     pub fn prewarm_profile(&self, profile: &str) {
-        let span = tracing::info_span!("prewarm_profile", %profile);
-        let _enter = span.enter();
+        log::info!("prewarm_profile: profile={}", profile);
 
         // 直接调用 get_or_create_pipeline，这将触发完整的加载和缓存流程
         if let Some(_pipeline) = self.get_or_create_pipeline(profile) {
-            tracing::info!(%profile, "Pipeline eagerly initialized and cached.");
+            log::info!("Pipeline eagerly initialized and cached: profile={}", profile);
             // 顺便触发一次内部 trie 的预热（如果是 Mmap 模式）
             // 虽然目前默认是全内存加载，但保留此逻辑以增强兼容性
             if let Some(paths) = self.trie_paths.get(profile) {
