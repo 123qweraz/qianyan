@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章练习 - shian-ime</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .practice-layout {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .config-card {
+            background: var(--apple-card);
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid var(--apple-border);
+            margin-bottom: 24px;
+        }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .config-row select {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 2px solid #8e8e93;
+            font-size: 14px;
+            font-weight: 600;
+            background: white;
+            outline: none;
+        }
+
+        .config-row select:focus {
+            border-color: var(--apple-accent);
+            box-shadow: 0 0 0 4px rgba(0,113,227,0.15);
+        }
+
+        .import-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f2f2f7;
+            border: 2px dashed var(--apple-border);
+            padding: 10px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--apple-text);
+            transition: all 0.2s;
+        }
+
+        .import-btn:hover {
+            border-color: var(--apple-accent);
+            background: rgba(0,113,227,0.05);
+        }
+
+        .switch-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .switch-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .switch-item .desc {
+            font-size: 14px;
+            color: var(--apple-text);
+        }
+
+        .practice-card {
+            background: white;
+            border-radius: 32px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.05);
+            border: 1px solid var(--apple-border);
+        }
+
+        .article-display {
+            background: #fafafa;
+            border-radius: 16px;
+            padding: 24px;
+            font-size: 18px;
+            line-height: 2;
+            letter-spacing: 1px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 32px;
+            border: 1px solid #eee;
+            font-family: "STSong", "SimSun", "Noto Serif CJK SC", serif;
+        }
+
+        .article-display .art-char {
+            transition: color 0.15s, background 0.15s;
+            border-radius: 3px;
+            padding: 1px 0;
+        }
+
+        .article-display .art-done {
+            color: #34c759;
+        }
+
+        .article-display .art-current {
+            color: var(--apple-text);
+            background: #cce4ff;
+            border-radius: 4px;
+            padding: 2px 1px;
+            box-shadow: 0 0 0 2px #0071e3;
+            font-weight: 700;
+        }
+
+        .article-display .art-pending {
+            color: #c7c7cc;
+        }
+
+        .article-display .art-space {
+            display: inline;
+        }
+
+        .current-char-area {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .current-char {
+            font-size: 100px;
+            font-weight: 700;
+            color: var(--apple-text);
+            line-height: 1.2;
+            display: inline-block;
+            min-width: 120px;
+        }
+
+        .current-context {
+            font-size: 16px;
+            color: var(--apple-secondary);
+            margin-top: 8px;
+            letter-spacing: 2px;
+        }
+
+        .current-context .ctx-current {
+            color: var(--apple-accent);
+            font-weight: 700;
+            font-size: 20px;
+            border-bottom: 2px solid var(--apple-accent);
+        }
+
+        .practice-input {
+            width: 100%;
+            max-width: 500px;
+            font-size: 32px;
+            padding: 20px;
+            border-radius: 20px;
+            border: 2px solid #e1e1e6;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s;
+            box-sizing: border-box;
+            display: block;
+            margin: 0 auto 32px;
+        }
+
+        .practice-input:focus {
+            border-color: var(--apple-accent);
+            box-shadow: 0 0 0 4px rgba(0,122,255,0.1);
+        }
+
+        .practice-input.input-error {
+            border-color: #ff3b30;
+            animation: shake 0.3s ease-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .progress-section {
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #eee;
+        }
+
+        .progress-bar-track {
+            width: 100%;
+            height: 8px;
+            background: #e1e1e6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #34c759, #30d158);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: #f5f5f7;
+            border-radius: 12px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--apple-secondary);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--apple-text);
+        }
+
+        @keyframes success-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); color: #34c759; }
+            100% { transform: scale(1); }
+        }
+
+        .success-anim {
+            animation: success-pop 0.4s ease-out;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--apple-secondary);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ff3b30;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+            background: rgba(255,59,48,0.1);
+        }
+
+        .article-name-badge {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #34a853;
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .article-name-badge.builtin {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回</a>
+            <h1>文章练习</h1>
+        </header>
+
+        <div class="practice-layout">
+            <div class="config-card" id="configCard">
+                <div class="config-row">
+                    <select id="articleSelect" style="flex:2">
+                        <option value="">选择文章...</option>
+                    </select>
+                    <label class="import-btn">
+                        📂 导入TXT
+                        <input type="file" id="fileInput" accept=".txt" style="display:none">
+                    </label>
+                </div>
+
+                <div class="switch-group">
+                    <div class="switch-item">
+                        <span class="desc">显示上下文提示</span>
+                        <label class="switch"><input type="checkbox" id="showContextToggle" checked><span class="slider"></span></label>
+                    </div>
+                    <div class="switch-item">
+                        <span class="desc">自动朗读</span>
+                        <label class="switch"><input type="checkbox" id="autoSpeakToggle"><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <button onclick="startPractice()" class="btn" style="width:100%">开始练习</button>
+            </div>
+
+            <div id="practiceArea" style="display:none">
+                <div class="practice-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                        <span id="articleNameBadge" class="article-name-badge">千字文</span>
+                        <button onclick="stopPractice()" class="btn btn-danger" style="padding:8px 16px;font-size:13px">退出练习</button>
+                    </div>
+
+                    <div class="article-display" id="articleDisplay"></div>
+
+                    <div class="current-char-area">
+                        <div style="display:flex;justify-content:center;align-items:center;gap:20px">
+                            <div class="current-char" id="currentChar">天</div>
+                            <button onclick="speakCurrentChar()" class="btn" style="padding:10px 15px;border-radius:50%;width:50px;height:50px;font-size:24px;line-height:1">🔊</button>
+                        </div>
+                        <div class="current-context" id="currentContext"></div>
+                    </div>
+
+                    <input type="text" id="practiceInput" class="practice-input" placeholder="在此输入当前字符..." autocomplete="off">
+
+                    <div class="progress-section">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="progressFill"></div>
+                        </div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">进度</div>
+                                <div class="stat-value" id="progressStat">0/0</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">正确率</div>
+                                <div class="stat-value" id="accuracyStat">0%</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">速度</div>
+                                <div class="stat-value" id="speedStat">0</div>
+                                <div style="font-size:11px;color:var(--apple-secondary)">字/分钟</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">用时</div>
+                                <div class="stat-value" id="timeStat">00:00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 千字文（内置） =====
+        const QIANZIWEN = `天地玄黄 宇宙洪荒 日月盈昃 辰宿列张 寒来暑往 秋收冬藏
+闰余成岁 律吕调阳 云腾致雨 露结为霜 金生丽水 玉出昆冈
+剑号巨阙 珠称夜光 果珍李柰 菜重芥姜 海咸河淡 鳞潜羽翔
+龙师火帝 鸟官人皇 始制文字 乃服衣裳 推位让国 有虞陶唐
+吊民伐罪 周发殷汤 坐朝问道 垂拱平章 爱育黎首 臣伏戎羌
+遐迩一体 率宾归王 鸣凤在竹 白驹食场 化被草木 赖及万方
+盖此身发 四大五常 恭惟鞠养 岂敢毁伤 女慕贞洁 男效才良
+知过必改 得能莫忘 罔谈彼短 靡恃己长 信使可覆 器欲难量
+墨悲丝染 诗赞羔羊 景行维贤 克念作圣 德建名立 形端表正
+空谷传声 虚堂习听 祸因恶积 福缘善庆 尺璧非宝 寸阴是竞
+资父事君 曰严与敬 孝当竭力 忠则尽命 临深履薄 夙兴温凊
+似兰斯馨 如松之盛 川流不息 渊澄取映 容止若思 言辞安定
+笃初诚美 慎终宜令 荣业所基 籍甚无竟 学优登仕 摄职从政
+存以甘棠 去而益咏 乐殊贵贱 礼别尊卑 上和下睦 夫唱妇随
+外受傅训 入奉母仪 诸姑伯仲 犹子比儿 孔怀兄弟 同气连枝
+交友投分 切磨箴规 仁慈隐恻 造次弗离 节义廉退 颠沛匪亏
+性静情逸 心动神疲 守真志满 逐物意移 坚持雅操 好爵自縻
+都邑华夏 东西二京 背邙面洛 浮渭据泾 宫殿盘郁 楼观飞惊
+图写禽兽 画彩仙灵 丙舍旁启 甲帐对楹 肆筵设席 鼓瑟吹笙
+升阶纳陛 弁转疑星 右通广内 左达承明 既集坟典 亦聚群英
+杜稿钟隶 漆书壁经 府罗将相 路侠槐卿 户封八县 家给千兵
+高冠陪辇 驱毂振缨 世禄侈富 车驾肥轻 策功茂绩 勒碑刻铭
+盘溪伊尹 佐时阿衡 奄宅曲阜 微旦孰营 桓公匡合 济弱扶倾
+绮回汉惠 说感武丁 俊义密勿 多士实宁 晋楚更霸 赵魏困横
+假途灭虢 践土会盟 何遵约法 韩弊烦刑 起翦颇牧 用军最精
+宣威沙漠 驰誉丹青 九州禹迹 百郡秦并 岳宗泰岱 禅主云亭
+雁门紫塞 鸡田赤城 昆池碣石 巨野洞庭 旷远绵邈 岩岫杳冥
+治本于农 务兹稼穑 俶载南亩 我艺黍稷 税熟贡新 劝赏黜陟
+孟轲敦素 史鱼秉直 庶几中庸 劳谦谨敕 聆音察理 鉴貌辨色
+贻厥嘉猷 勉其祗植 省躬讥诫 宠增抗极 殆辱近耻 林皋幸即
+两疏见机 解组谁逼 索居闲处 沉默寂寥 求古寻论 散虑逍遥
+欣奏累遣 戚谢欢招 渠荷的历 园莽抽条 枇杷晚翠 梧桐早凋
+陈根委翳 落叶飘摇 游鹍独运 凌摩绛霄 耽读玩市 寓目囊箱
+易攸畏属 墙垣具膳 餐饭适口 充肠饱饫 饥厌糟糠 亲戚故旧
+老少异粮 妾御绩纺 侍巾帷房 纨扇圆絜 银烛炜煌 昼眠夕寐
+蓝笋象床 弦歌酒宴 接杯举觞 矫手顿足 悦豫且康 嫡后嗣续
+祭祀烝尝 稽颡再拜 悚惧恐惶 笺牒简要 顾答审详 骸垢想浴
+执热愿凉 驴骡犊特 骇跃超骡 诛斩贼盗 捕获叛亡 布射僚丸
+嵇琴阮箫 恬笔伦纸 钧巧任钓 释纷利俗 并皆佳妙 毛施淑姿
+工嚬妍笑 年矢每催 曦晖朗曜 璇玑悬斡 晦魄环照 指薪修祜
+永绥吉劭 矩步引领 俯仰廊庙 束带矜庄 徘徊瞻眺 孤陋寡闻
+愚蒙等诮 谓语助者 焉哉乎也`;
+
+        const BUILTIN_ARTICLES = [
+            { name: '千字文', text: QIANZIWEN, builtin: true }
+        ];
+
+        const STORAGE_KEY = 'article_practice_list';
+
+        // ===== State =====
+        let articles = [];
+        let currentArticle = null;
+        let targets = [];
+        let currentIndex = 0;
+        let stats = { total: 0, correct: 0, errors: 0 };
+        let startTime = null;
+        let timerInterval = null;
+        let isPracticing = false;
+
+        // ===== Article Management =====
+        function loadArticles() {
+            articles = [...BUILTIN_ARTICLES];
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        articles = articles.concat(parsed);
+                    }
+                }
+            } catch (e) {
+                console.warn('加载导入文章失败:', e);
+            }
+            populateSelect();
+        }
+
+        function saveImportedArticles() {
+            const imported = articles.filter(a => !a.builtin);
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+            } catch (e) {
+                console.warn('保存导入文章失败:', e);
+            }
+        }
+
+        function populateSelect() {
+            const select = document.getElementById('articleSelect');
+            select.innerHTML = '<option value="">选择文章...</option>';
+            articles.forEach((a, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = a.name + (a.builtin ? ' (内置)' : '');
+                select.appendChild(opt);
+            });
+        }
+
+        function addImportedArticle(name, text) {
+            articles.push({ name, text, builtin: false });
+            saveImportedArticles();
+            populateSelect();
+            const select = document.getElementById('articleSelect');
+            select.value = articles.length - 1;
+        }
+
+        function deleteImportedArticle(index) {
+            if (index < BUILTIN_ARTICLES.length) return;
+            articles.splice(index, 1);
+            saveImportedArticles();
+            populateSelect();
+        }
+
+        // ===== File Import =====
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const text = ev.target.result;
+                let name = file.name;
+                if (name.endsWith('.txt')) name = name.slice(0, -4);
+
+                let exists = false;
+                for (const a of articles) {
+                    if (a.name === name && !a.builtin) {
+                        a.text = text;
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    addImportedArticle(name, text);
+                } else {
+                    saveImportedArticles();
+                }
+                showToast(`已导入: ${name}`);
+            };
+            reader.readAsText(file, 'UTF-8');
+            e.target.value = '';
+        });
+
+        // ===== Practice Logic =====
+        function startPractice() {
+            const select = document.getElementById('articleSelect');
+            const idx = parseInt(select.value);
+            if (isNaN(idx) || idx < 0 || idx >= articles.length) {
+                showToast('请先选择一篇文章');
+                return;
+            }
+
+            const article = articles[idx];
+            currentArticle = article;
+
+            const raw = article.text;
+            targets = [];
+            for (const ch of raw) {
+                if (ch !== ' ' && ch !== '\n' && ch !== '\r' && ch !== '\t') {
+                    targets.push(ch);
+                }
+            }
+
+            if (targets.length === 0) {
+                showToast('文章内容为空');
+                return;
+            }
+
+            currentIndex = 0;
+            stats = { total: targets.length, correct: 0, errors: 0 };
+            startTime = Date.now();
+            isPracticing = true;
+
+            document.getElementById('configCard').style.display = 'none';
+            document.getElementById('practiceArea').style.display = 'block';
+
+            const badge = document.getElementById('articleNameBadge');
+            badge.textContent = article.name;
+            badge.className = 'article-name-badge' + (article.builtin ? ' builtin' : '');
+
+            renderArticle();
+            updateCurrentChar();
+            updateStats();
+            startTimer();
+
+            if (document.getElementById('autoSpeakToggle').checked) {
+                setTimeout(() => speakCurrentChar(), 300);
+            }
+
+            const input = document.getElementById('practiceInput');
+            input.value = '';
+            input.focus();
+        }
+
+        function stopPractice() {
+            isPracticing = false;
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            document.getElementById('configCard').style.display = 'block';
+            document.getElementById('practiceArea').style.display = 'none';
+            currentArticle = null;
+        }
+
+        function renderArticle() {
+            const container = document.getElementById('articleDisplay');
+            const text = currentArticle ? currentArticle.text : '';
+            let html = '';
+            let charIdx = 0;
+
+            for (const ch of text) {
+                if (ch === '\n') {
+                    html += '<br>';
+                    continue;
+                }
+                if (ch === ' ' || ch === '\r' || ch === '\t') {
+                    html += '<span class="art-space"> </span>';
+                    continue;
+                }
+
+                let cls = 'art-char';
+                if (charIdx < currentIndex) {
+                    cls += ' art-done';
+                } else if (charIdx === currentIndex) {
+                    cls += ' art-current';
+                } else {
+                    cls += ' art-pending';
+                }
+                html += `<span class="${cls}">${ch}</span>`;
+                charIdx++;
+            }
+
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+            const currentEl = container.querySelector('.art-current');
+            if (currentEl) {
+                currentEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+
+        function updateCurrentChar() {
+            const charEl = document.getElementById('currentChar');
+            const ctxEl = document.getElementById('currentContext');
+            const showCtx = document.getElementById('showContextToggle').checked;
+
+            if (currentIndex < targets.length) {
+                charEl.textContent = targets[currentIndex];
+            } else {
+                charEl.textContent = '✓';
+            }
+
+            if (showCtx && currentIndex < targets.length) {
+                const start = Math.max(0, currentIndex - 4);
+                const end = Math.min(targets.length, currentIndex + 5);
+                let ctx = '';
+                for (let i = start; i < end; i++) {
+                    if (i === currentIndex) {
+                        ctx += `<span class="ctx-current">${targets[i]}</span>`;
+                    } else {
+                        ctx += targets[i];
+                    }
+                }
+                ctxEl.innerHTML = ctx;
+            } else {
+                ctxEl.innerHTML = '';
+            }
+        }
+
+        function handleCharInput(e) {
+            if (!isPracticing || currentIndex >= targets.length) return;
+
+            const input = e.target;
+            const val = input.value.trim();
+
+            if (val.length === 0) return;
+
+            if (val === targets[currentIndex]) {
+                stats.correct++;
+                currentIndex++;
+                input.value = '';
+                input.style.borderColor = '#34c759';
+
+                const charEl = document.getElementById('currentChar');
+                charEl.classList.add('success-anim');
+                setTimeout(() => charEl.classList.remove('success-anim'), 400);
+
+                renderArticle();
+                updateCurrentChar();
+                updateStats();
+
+                if (document.getElementById('autoSpeakToggle').checked && currentIndex < targets.length) {
+                    speakCurrentChar();
+                }
+
+                if (currentIndex >= targets.length) {
+                    finishPractice();
+                }
+            } else {
+                stats.errors++;
+                input.value = '';
+                input.classList.add('input-error');
+                input.style.borderColor = '#ff3b30';
+                setTimeout(() => {
+                    input.classList.remove('input-error');
+                    input.style.borderColor = '#e1e1e6';
+                }, 400);
+                updateStats();
+            }
+        }
+
+        function finishPractice() {
+            isPracticing = false;
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = elapsed / 60;
+            const wpm = minutes > 0 ? Math.round(stats.total / minutes) : stats.total;
+
+            const charEl = document.getElementById('currentChar');
+            charEl.textContent = '🎉';
+            charEl.style.fontSize = '80px';
+
+            const input = document.getElementById('practiceInput');
+            input.style.display = 'none';
+
+            const ctx = document.getElementById('currentContext');
+            ctx.innerHTML = `<span style="font-size:24px;font-weight:700;color:#34c759">
+                练习完成! 共 ${stats.total} 字，正确率 ${calcAccuracy()}%，速度 ${wpm} 字/分钟
+            </span>`;
+
+            setTimeout(() => {
+                if (confirm('练习完成！要重新开始吗？')) {
+                    resetPractice();
+                } else {
+                    stopPractice();
+                }
+            }, 1500);
+        }
+
+        function resetPractice() {
+            const input = document.getElementById('practiceInput');
+            input.style.display = 'block';
+            input.value = '';
+
+            const charEl = document.getElementById('currentChar');
+            charEl.style.fontSize = '100px';
+
+            currentIndex = 0;
+            stats = { total: targets.length, correct: 0, errors: 0 };
+            startTime = Date.now();
+            isPracticing = true;
+
+            renderArticle();
+            updateCurrentChar();
+            updateStats();
+            startTimer();
+            input.focus();
+        }
+
+        // ===== Text-to-Speech =====
+        let audioPlayer = null;
+
+        function speak(text) {
+            if (!text) return;
+            if (audioPlayer) {
+                audioPlayer.pause();
+                audioPlayer = null;
+            }
+            const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(text)}&le=zh`;
+            audioPlayer = new Audio(url);
+            audioPlayer.play().catch(e => console.warn('自动发音失败:', e));
+        }
+
+        function speakCurrentChar() {
+            if (currentIndex < targets.length) {
+                speak(targets[currentIndex]);
+            }
+        }
+
+        // ===== Stats & Timer =====
+        function updateStats() {
+            const total = stats.total;
+            const done = currentIndex;
+            const acc = calcAccuracy();
+
+            document.getElementById('progressStat').textContent = `${done}/${total}`;
+            document.getElementById('accuracyStat').textContent = `${acc}%`;
+            document.getElementById('progressFill').style.width = `${(done / total) * 100}%`;
+
+            if (startTime && done > 0) {
+                const elapsed = (Date.now() - startTime) / 1000 / 60;
+                const wpm = elapsed > 0 ? Math.round(done / elapsed) : 0;
+                document.getElementById('speedStat').textContent = wpm;
+            }
+        }
+
+        function calcAccuracy() {
+            const total = stats.correct + stats.errors;
+            if (total === 0) return 100;
+            return Math.round((stats.correct / total) * 100);
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (startTime) {
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+                    const s = String(elapsed % 60).padStart(2, '0');
+                    document.getElementById('timeStat').textContent = `${m}:${s}`;
+
+                    if (currentIndex > 0) {
+                        const minutes = elapsed / 60;
+                        const wpm = minutes > 0 ? Math.round(currentIndex / minutes) : currentIndex;
+                        document.getElementById('speedStat').textContent = wpm;
+                    }
+                }
+            }, 1000);
+        }
+
+        // ===== Event Binding =====
+        document.getElementById('practiceInput').addEventListener('input', handleCharInput);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && isPracticing) {
+                e.preventDefault();
+                stopPractice();
+            }
+        });
+
+        // ===== Toast =====
+        function showToast(message) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'status-toast';
+                document.body.appendChild(toast);
+            }
+            toast.innerText = message;
+            toast.className = 'status-toast show';
+            setTimeout(() => { toast.className = 'status-toast'; }, 2000);
+        }
+
+        // ===== Init =====
+        loadArticles();
+    </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 {
+  "data_dir": null,
   "punctuation_file": "dicts/chinese/punctuation.json",
   "profiles": [
     {

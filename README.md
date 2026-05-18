@@ -6,16 +6,67 @@
 
 ### Linux
 
+#### 方式一: 使用预编译压缩包 (推荐)
+
+```bash
+# 解压
+tar xzf shian-ime-linux-x86_64.tar.gz
+cd shian-ime
+
+# 直接运行 (便携模式)
+./shian-ime
+
+# 或安装到系统 (自动配置权限)
+sudo ./install.sh
+# 重新登录后即可使用
+shian-ime
+```
+
+#### 方式二: 从源码编译
+
 ```bash
 # 编译
 cargo build --release
 
 # 安装
 sudo cp target/release/shian-ime /usr/local/bin/
-sudo cp rust-ime.desktop /usr/share/applications/
+sudo cp shian-ime.desktop /usr/share/applications/
 
 # 运行
 shian-ime
+```
+
+#### 权限配置 (evdev 模式必须)
+
+evdev 模式需要读取 `/dev/input/event*` 和写入 `/dev/uinput` 的权限:
+
+```bash
+# 1. 将当前用户加入 input 组
+sudo usermod -aG input $USER
+
+# 2. 创建 udev 规则，允许 input 组访问 uinput
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' \
+  | sudo tee /etc/udev/rules.d/99-shian-ime-uinput.rules
+
+# 3. 重载 udev 规则
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
+# 4. 如果 /dev/uinput 权限未即时生效:
+sudo chmod 660 /dev/uinput
+sudo chgrp input /dev/uinput
+```
+
+> **重要**: 加入 input 组后 **必须注销并重新登录** 才能生效。
+
+#### 后端选择
+
+程序自动检测可用后端，优先级: evdev → IBus → Wayland。也可手动指定:
+
+```bash
+shian-ime --backend=evdev     # 强制 evdev (硬件拦截，性能最佳)
+shian-ime --backend=ibus      # 强制 IBus
+shian-ime --backend=wayland   # 强制 Wayland 原生协议
 ```
 
 ### Windows

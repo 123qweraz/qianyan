@@ -1,5 +1,5 @@
 {
   "device_path": "/dev/input/event4",
-  "paste_method": "shift_insert",
+  "paste_method": "ctrl_shift_v",
   "enable_notification_candidates": true
 }
