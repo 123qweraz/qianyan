@@ -192,12 +192,12 @@ impl ChineseScheme {
         new_variants.into_iter().collect()
     }
 
-    fn segment_buffer(&self, input: &str, context: &SchemeContext) -> Vec<String> {
+    fn segment_buffer(&self, input: &str, delimiters: &str, context: &SchemeContext) -> Vec<String> {
         if !input
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         {
-            return Self::segment_buffer(self, &input.to_lowercase(), context);
+            return Self::segment_buffer(self, &input.to_lowercase(), delimiters, context);
         }
         let bytes = input.as_bytes();
         let mut segments = Vec::new();
@@ -222,6 +222,10 @@ impl ChineseScheme {
             }
 
             let c = remaining[0] as char;
+            if delimiters.contains(c) {
+                pos += 1;
+                continue;
+            }
             let is_initial = "bpmfdtnlgkhjqxzcsryw".contains(c);
             if is_initial {
                 let initial_len = if remaining.starts_with(b"zh")
@@ -260,9 +264,10 @@ impl InputScheme for ChineseScheme {
 
         // 策略 1: 全量/简拼/前缀匹配
         let mut smart_segments = Vec::new();
-        if !query.contains(' ') && !query.contains('\'') {
+        let delimiters = &context.config.input.segmentation_delimiters;
+        if !query.contains(' ') {
             let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
-            smart_segments = self.segment_buffer(&pinyin_only, context);
+            smart_segments = self.segment_buffer(&pinyin_only, delimiters, context);
         }
 
         // 原始切分检索
@@ -416,7 +421,8 @@ impl InputScheme for ChineseScheme {
     ) {
         let raw_parsed = self.parse_buffer(query);
         let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
-        let smart_segments = self.segment_buffer(&pinyin_only, context);
+        let delimiters = &context.config.input.segmentation_delimiters;
+        let smart_segments = self.segment_buffer(&pinyin_only, delimiters, context);
         let input_syllables = if smart_segments.is_empty() {
             raw_parsed.len()
         } else {

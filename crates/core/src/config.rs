@@ -164,6 +164,8 @@ pub struct Input {
     pub enable_traditional: bool,
     pub ranking: RankingConfig,
     pub firefox_space_interrupt: bool,
+    #[serde(default = "default_segmentation_delimiters")]
+    pub segmentation_delimiters: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -235,6 +237,10 @@ pub struct Hotkeys {
     pub next_candidate: Vec<String>,
     pub enable_tab_toggle: bool,
     pub enable_ctrl_space_toggle: bool,
+}
+
+fn default_segmentation_delimiters() -> String {
+    "'".to_string()
 }
 
 fn default_page_up() -> Vec<String> {
@@ -714,6 +720,7 @@ impl Config {
                     single_char_bonus: 1000000.0,
                 },
                 firefox_space_interrupt: false,
+                segmentation_delimiters: "'".to_string(),
             },
             hotkeys: Hotkeys {
                 switch_language: Hotkey {

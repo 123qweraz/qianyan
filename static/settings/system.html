@@ -41,6 +41,13 @@
             </div>
             <div class="setting-item">
                 <div class="info">
+                    <div class="title">显示候选窗口</div>
+                    <div class="desc">控制拼写时是否出现选词框</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
                     <div class="title">自动造词</div>
                     <div class="desc">记录连续输入的新词组（超过一个字）</div>
                 </div>
@@ -52,6 +59,13 @@
                     <div class="desc">根据输入频率调整候选词顺序</div>
                 </div>
                 <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">分词分隔符</div>
+                    <div class="desc">设置用于强制分割拼音音节的字符。输入时遇到分隔符将强制在此处分段，例如设置 ' 后，输入 "xi'an" 将分为 "xi" 和 "an"。</div>
+                </div>
+                <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
             </div>
             <div class="setting-item">
                 <div class="info">
@@ -154,8 +168,10 @@
 
             bindInput('enable_traditional', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
+            bindInput('show_candidates', 'appearance');
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_auto_reorder', 'input');
+            bindInput('segmentation_delimiters', 'input');
             bindInput('commit_mode', 'input');
             bindInput('autostart', 'input');
 

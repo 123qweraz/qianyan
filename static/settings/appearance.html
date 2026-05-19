@@ -24,10 +24,6 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
-                    <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
-                </div>
-                <div class="setting-item">
                     <div class="info"><div class="title">显示状态显示栏</div><div class="desc">控制输入状态（中/英）浮窗的显示</div></div>
                     <label class="switch"><input type="checkbox" id="show_status_bar"><span class="slider"></span></label>
                 </div>
@@ -162,7 +158,6 @@
             
             // 1. 基础外观设置
             bindInput('theme_mode', 'appearance');
-            bindInput('show_candidates', 'appearance');
             bindInput('show_status_bar', 'appearance');
             bindInput('show_english_translation', 'appearance');
             bindInput('show_stroke_aux', 'appearance');

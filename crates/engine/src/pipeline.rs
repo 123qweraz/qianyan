@@ -30,7 +30,7 @@ pub struct Candidate {
 /* 核心接口定义 */
 
 pub trait Segmentor: Send + Sync {
-    fn segment(&self, input: &str, syllables: &HashSet<String>) -> Vec<String>;
+    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String>;
 }
 
 pub trait Translator: Send + Sync + 'static {
@@ -59,7 +59,7 @@ pub trait Filter: Send + Sync {
 /// 默认切分器实现 (Max Match)
 pub struct DefaultSegmentor;
 impl Segmentor for DefaultSegmentor {
-    fn segment(&self, input: &str, syllables: &HashSet<String>) -> Vec<String> {
+    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String> {
         // 快速路径：如果输入已经是小写字母/数字，直接使用（避免 to_lowercase 分配）
         let needs_lowercase = !input
             .bytes()
@@ -67,16 +67,16 @@ impl Segmentor for DefaultSegmentor {
 
         if needs_lowercase {
             let input_lower = input.to_lowercase();
-            return Self::segment_lowercase(&input_lower, syllables);
+            return Self::segment_lowercase(&input_lower, syllables, delimiters);
         }
 
-        Self::segment_lowercase(input, syllables)
+        Self::segment_lowercase(input, syllables, delimiters)
     }
 }
 
 impl DefaultSegmentor {
     #[inline]
-    fn segment_lowercase(input: &str, syllables: &HashSet<String>) -> Vec<String> {
+    fn segment_lowercase(input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String> {
         let mut segments = Vec::new();
         let mut pos = 0;
 
@@ -99,6 +99,10 @@ impl DefaultSegmentor {
 
             if !matched {
                 if let Some(ch) = input[pos..].chars().next() {
+                    if delimiters.contains(ch) {
+                        pos += ch.len_utf8();
+                        continue;
+                    }
                     segments.push(ch.to_string());
                     pos += ch.len_utf8();
                 } else {
@@ -531,7 +535,7 @@ impl Pipeline {
                     cached.clone()
                 } else {
                     drop(guard);
-                    let segments = self.segmentor.segment(input, syllables);
+                    let segments = self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters);
                     if let Ok(mut guard) = self.segment_cache.write() {
                         if guard.len() < 100 {
                             guard.insert(input.to_string(), segments.clone());
@@ -540,7 +544,7 @@ impl Pipeline {
                     segments
                 }
             } else {
-                self.segmentor.segment(input, syllables)
+                self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters)
             }
         };
 
@@ -617,7 +621,7 @@ impl SearchEngine {
                 query.limit,
                 query.context,
             );
-            let segments = pipeline.segmentor.segment(query.buffer, query.syllables);
+            let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &query.config.input.segmentation_delimiters);
 
             let mut final_results = results;
             if query.filter_mode == crate::processor::FilterMode::Global
@@ -885,7 +889,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("nihao", &syllables);
+        let result = segmentor.segment("nihao", &syllables, "");
         assert_eq!(result, vec!["ni", "hao"]);
     }
 
@@ -897,7 +901,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("zhongguo", &syllables);
+        let result = segmentor.segment("zhongguo", &syllables, "");
         assert_eq!(result, vec!["zhongguo"]);
     }
 
@@ -906,7 +910,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["zhong", "guo"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("zhongguo", &syllables);
+        let result = segmentor.segment("zhongguo", &syllables, "");
         assert_eq!(result, vec!["zhong", "guo"]);
     }
 
@@ -915,7 +919,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("nixyz", &syllables);
+        let result = segmentor.segment("nixyz", &syllables, "");
         assert_eq!(result, vec!["ni", "x", "y", "z"]);
     }
 
@@ -924,8 +928,39 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("", &syllables);
+        let result = segmentor.segment("", &syllables, "");
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_default_segmentor_delimiter_apostrophe() {
+        let segmentor = DefaultSegmentor;
+        let syllables: HashSet<String> = ["xi", "an"].iter().map(|s| s.to_string()).collect();
+        let result = segmentor.segment("xi'an", &syllables, "'");
+        assert_eq!(result, vec!["xi", "an"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_delimiter_semicolon() {
+        let segmentor = DefaultSegmentor;
+        let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
+        let result = segmentor.segment("ni;hao", &syllables, ";");
+        assert_eq!(result, vec!["ni", "hao"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_delimiter_edge_cases() {
+        let segmentor = DefaultSegmentor;
+        let syllables: HashSet<String> = ["ti"].iter().map(|s| s.to_string()).collect();
+        // delimiter at end: skipped
+        let result = segmentor.segment("ti'", &syllables, "'");
+        assert_eq!(result, vec!["ti"]);
+        // delimiter at start: skipped
+        let result = segmentor.segment("'ti", &syllables, "'");
+        assert_eq!(result, vec!["ti"]);
+        // empty delimiters: no change, individual chars (no "xi" in syllables)
+        let result = segmentor.segment("xi'an", &syllables, "");
+        assert_eq!(result, vec!["x", "i", "'", "a", "n"]);
     }
 
     #[test]
