@@ -8,7 +8,6 @@ use std::thread;
 
 
 pub struct SoundManager {
-    _handle: Option<OutputStreamHandle>,
     _sound_cache: HashMap<char, Vec<u8>>,
     enabled: bool,
     tx: Option<Sender<char>>,
@@ -22,29 +21,25 @@ impl Default for SoundManager {
 
 impl SoundManager {
     pub fn new() -> Self {
-        let (stream, handle) = match OutputStream::try_default() {
-            Ok((s, h)) => (Some(s), Some(h)),
-            Err(e) => {
-                log::warn!("[Sound] 无法初始化音频输出: {}", e);
-                (None, None)
-            }
-        };
-
         let (tx, rx) = mpsc::channel::<char>();
 
-        let handle_clone = handle.clone();
         thread::spawn(move || {
-            if let Some(h) = handle_clone {
+            let (_stream, handle) = match OutputStream::try_default() {
+                Ok((s, h)) => (Some(s), Some(h)),
+                Err(e) => {
+                    log::warn!("[Sound] 无法初始化音频输出: {}", e);
+                    (None, None)
+                }
+            };
+
+            if let Some(h) = handle {
                 while let Ok(c) = rx.recv() {
                     play_letter_on_thread(&h, c);
                 }
             }
         });
 
-        drop(stream);
-
         Self {
-            _handle: handle,
             _sound_cache: HashMap::new(),
             enabled: false,
             tx: Some(tx),
@@ -87,7 +82,7 @@ fn play_letter_on_thread(handle: &OutputStreamHandle, c: char) {
             if let Ok(sink) = Sink::try_new(handle) {
                 if let Ok(source) = Decoder::new(BufReader::new(file)) {
                     sink.append(source);
-                    sink.play();
+                    sink.sleep_until_end();
                 }
             }
         }

@@ -88,9 +88,28 @@
             <div class="setting-item">
                 <div class="info">
                     <div class="title">桌面通知</div>
-                    <div class="desc">使用桌面通知显示候选词列表</div>
+                    <div class="desc">使用桌面通知显示候选词列表（开启此项将停用内置候选栏）</div>
                 </div>
                 <label class="switch"><input type="checkbox" id="linux_enable_notification_candidates"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">固定位置</div>
+                    <div class="desc">在 Wayland 下建议开启，将候选栏固定在屏幕某个角落</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="linux_fixed_position"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">显示角落</div>
+                    <div class="desc">选择固定位置时的显示方位</div>
+                </div>
+                <select id="linux_corner">
+                    <option value="top-left">左上角</option>
+                    <option value="top-right">右上角</option>
+                    <option value="bottom-left">左下角</option>
+                    <option value="bottom-right">右下角</option>
+                </select>
             </div>
             <div class="setting-item">
                 <div class="info">
@@ -145,6 +164,8 @@
             
             // Linux 专属
             bindInput('linux_enable_notification_candidates', 'linux', 'enable_notification_candidates');
+            bindInput('linux_fixed_position', 'linux', 'fixed_position');
+            bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');
             bindInput('linux_device_path', 'linux', 'device_path');
         }

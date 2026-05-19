@@ -173,6 +173,12 @@ impl Processor {
         let is_press = val == 1;
         let is_release = val == 0;
 
+        if is_press && is_letter(key) {
+            if let Some(c) = key_to_char(key, shift_pressed, false) {
+                self.ctx.sound_manager.play_letter(c);
+            }
+        }
+
         if is_press {
             if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, shift_pressed) {
                 return action;

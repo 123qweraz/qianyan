@@ -17,6 +17,8 @@ pub struct LinuxConfig {
     pub device_path: String,
     pub paste_method: String,
     pub enable_notification_candidates: bool,
+    pub fixed_position: bool,
+    pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -742,6 +744,8 @@ impl Config {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
                 enable_notification_candidates: true,
+                fixed_position: true,
+                corner: "bottom-right".to_string(),
             },
         }
     }

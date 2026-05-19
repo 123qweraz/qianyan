@@ -25,6 +25,8 @@ pub fn create_input_host(
             device_path: "/dev/input/event0".into(),
             paste_method: "shift_insert".into(),
             enable_notification_candidates: true,
+            fixed_position: true,
+            corner: "bottom-right".into(),
         });
 
     let dev_path = linux_config.device_path.clone();

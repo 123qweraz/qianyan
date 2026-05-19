@@ -76,6 +76,7 @@ impl EngineContext {
     pub fn apply_config(&mut self, conf: &Config) {
         self.config.apply_config(conf);
         self.engine.clear_cache();
+        self.sound_manager.set_enabled(conf.input.enable_keyboard_voice);
 
         if !conf.input.enabled_profiles.is_empty() {
             let enabled: Vec<String> = conf
