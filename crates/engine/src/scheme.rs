@@ -41,6 +41,8 @@ pub struct SchemeContext<'a> {
     pub config: &'a Config,
     pub tries: &'a HashMap<String, Trie>,
     pub syllables: &'a std::collections::HashSet<String>,
+    pub syllable_freq: &'a HashMap<String, u64>,
+    pub base_syllables: &'a std::collections::HashSet<String>,
     pub _user_dict: &'a Arc<ArcSwap<UserDictData>>,
     pub active_profiles: &'a [String],
     pub candidate_count: usize,

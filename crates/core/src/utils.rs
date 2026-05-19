@@ -81,3 +81,24 @@ pub fn load_syllables(root: &Path) -> HashSet<String> {
     }
     set
 }
+
+pub fn load_syllable_frequencies(root: &Path) -> HashMap<String, u64> {
+    let mut map = HashMap::new();
+    let path = root.join("dicts/chinese/syllable_freq.txt");
+    if let Ok(f) = File::open(&path) {
+        use std::io::BufRead;
+        let reader = std::io::BufReader::new(f);
+        for line in reader.lines().map_while(Result::ok) {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if let Some((pinyin, count_str)) = line.split_once(' ') {
+                if let Ok(count) = count_str.parse::<u64>() {
+                    map.insert(pinyin.to_lowercase(), count);
+                }
+            }
+        }
+    }
+    map
+}

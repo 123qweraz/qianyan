@@ -65,9 +65,10 @@ impl Processor {
     pub fn new(
         trie_paths: HashMap<String, (std::path::PathBuf, std::path::PathBuf)>,
         syllables: HashSet<String>,
+        syllable_freq: HashMap<String, u64>,
     ) -> Self {
         Self {
-            ctx: EngineContext::new(trie_paths, syllables),
+            ctx: EngineContext::new(trie_paths, syllables, syllable_freq),
             prefetch_running: Arc::new(AtomicBool::new(false)),
         }
     }

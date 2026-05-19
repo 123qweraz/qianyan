@@ -1,4 +1,5 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::collections::{HashMap, HashSet};
 
 pub struct ChineseScheme;
 
@@ -199,17 +200,25 @@ impl ChineseScheme {
         {
             return Self::segment_buffer(self, &input.to_lowercase(), delimiters, context);
         }
+        // 第一遍：用基本音节（不在频率表中的=单音节）作贪心最长匹配
+        let base_segments = Self::first_pass_segment(input, delimiters, context.base_syllables);
+        // 第二遍：按频率表合并相邻音节
+        Self::merge_segments(&base_segments, context.syllables, context.syllable_freq)
+    }
+
+    fn first_pass_segment(input: &str, delimiters: &str, base_syllables: &HashSet<String>) -> Vec<String> {
         let bytes = input.as_bytes();
         let mut segments = Vec::new();
         let mut pos = 0;
 
         while pos < bytes.len() {
             let remaining = &bytes[pos..];
+            let max_len = 6.min(remaining.len());
             let mut matched = false;
 
-            for len in (1..=6.min(remaining.len())).rev() {
+            for len in (1..=max_len).rev() {
                 let part = std::str::from_utf8(&remaining[..len]).unwrap_or("");
-                if context.syllables.contains(part) {
+                if base_syllables.contains(part) {
                     segments.push(part.to_string());
                     pos += len;
                     matched = true;
@@ -246,6 +255,63 @@ impl ChineseScheme {
             }
         }
         segments
+    }
+
+    fn merge_segments(segments: &[String], full_syllables: &HashSet<String>, syllable_freq: &HashMap<String, u64>) -> Vec<String> {
+        let n = segments.len();
+        if n <= 1 {
+            return segments.to_vec();
+        }
+
+        let mut dp = vec![(0u64, n); n + 1];
+        dp[n] = (0, n);
+
+        let mut combined = vec![vec![String::new(); n]; n];
+        for i in 0..n {
+            combined[i][i] = segments[i].clone();
+            for j in i + 1..n.min(i + 4) {
+                combined[i][j] = combined[i][j - 1].clone() + &segments[j];
+            }
+        }
+
+        for i in (0..n).rev() {
+            let mut best_freq = 0u64;
+            let mut best_end = i + 1;
+
+            for k in 1..=4.min(n - i) {
+                let end = i + k;
+                let freq = if k == 1 {
+                    syllable_freq.get(&segments[i]).copied().unwrap_or(0)
+                } else {
+                    let c = &combined[i][end - 1];
+                    if full_syllables.contains(c) {
+                        syllable_freq.get(c).copied().unwrap_or(0)
+                    } else {
+                        0
+                    }
+                };
+                let total = freq + dp[end].0;
+                if total > best_freq {
+                    best_freq = total;
+                    best_end = end;
+                }
+            }
+
+            dp[i] = (best_freq, best_end);
+        }
+
+        let mut result = Vec::new();
+        let mut i = 0;
+        while i < n {
+            let end = dp[i].1;
+            if end == i + 1 {
+                result.push(segments[i].clone());
+            } else {
+                result.push(combined[i][end - 1].clone());
+            }
+            i = end;
+        }
+        result
     }
 }
 

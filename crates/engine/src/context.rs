@@ -21,13 +21,16 @@ impl EngineContext {
     pub fn new(
         trie_paths: HashMap<String, (std::path::PathBuf, std::path::PathBuf)>,
         syllables: HashSet<String>,
+        syllable_freq: HashMap<String, u64>,
     ) -> Self {
         let config = crate::ConfigManager::new();
         let syllables_arc = Arc::new(syllables.clone());
+        let syllable_freq_arc = Arc::new(syllable_freq);
 
         let engine = crate::pipeline::SearchEngine::new(
             trie_paths,
             syllables_arc,
+            syllable_freq_arc,
             config.learned_words.clone(),
             config.usage_history.clone(),
             config.ngram_history.clone(),

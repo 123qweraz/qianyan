@@ -144,6 +144,8 @@ pub fn handle_composing(
             config: &ctx.config.master_config,
             tries: &std::collections::HashMap::new(),
             syllables: &ctx.syllables,
+            syllable_freq: &ctx.engine.syllable_freq,
+            base_syllables: &ctx.engine.base_syllables,
             _user_dict: &ctx.config.learned_words,
             active_profiles: &ctx.session_state.active_profiles,
             candidate_count: ctx.session.candidates.len(),

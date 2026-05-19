@@ -8,7 +8,7 @@ pub use crate::constants::{IME_ID, LANG_PROFILE_ID};
 
 // 使用 crates/ 库替代本地模块
 use shian_ime_core::config::Config;
-use shian_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllables};
+use shian_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllable_frequencies, load_syllables};
 use shian_ime_engine::processor::Processor;
 use shian_ime_engine::compiler;
 use shian_ime_ui::GuiEvent;
@@ -133,7 +133,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let syllables = load_syllables(&root);
-    let mut processor_obj = Processor::new(trie_paths, syllables);
+    let syllable_freq = load_syllable_frequencies(&root);
+    let mut processor_obj = Processor::new(trie_paths, syllables, syllable_freq);
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);
     }

@@ -89,8 +89,9 @@ fn run_bench_mode() {
     syllables.insert("zhuo".to_string());
     syllables.insert("mian".to_string());
     syllables.insert("zhuomian".to_string());
+    let syllable_freq = crate::load_syllable_frequencies(&root);
 
-    let mut processor = Processor::new(trie_paths, syllables);
+    let mut processor = Processor::new(trie_paths, syllables, syllable_freq);
     processor.apply_config(&Config::load());
     processor.ctx.session_state.active_profiles = vec!["chinese".to_string()];
 
@@ -189,8 +190,9 @@ fn run_test_mode() {
             }
         }
     }
+    let syllable_freq = crate::load_syllable_frequencies(&root);
     let config = Config::load();
-    let mut processor = Processor::new(trie_paths, syllables);
+    let mut processor = Processor::new(trie_paths, syllables, syllable_freq);
     processor.apply_config(&config);
 
     use std::io::{self, Write};

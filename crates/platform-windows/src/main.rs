@@ -104,7 +104,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let syllables = load_syllables(&root);
-    let mut processor_obj = Processor::new(trie_paths, syllables);
+    let syllable_freq = shian_ime_core::utils::load_syllable_frequencies(&root);
+    let mut processor_obj = Processor::new(trie_paths, syllables, syllable_freq);
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);
     }

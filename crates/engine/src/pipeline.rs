@@ -30,7 +30,7 @@ pub struct Candidate {
 /* 核心接口定义 */
 
 pub trait Segmentor: Send + Sync {
-    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String>;
+    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String>;
 }
 
 pub trait Translator: Send + Sync + 'static {
@@ -59,7 +59,7 @@ pub trait Filter: Send + Sync {
 /// 默认切分器实现 (Max Match)
 pub struct DefaultSegmentor;
 impl Segmentor for DefaultSegmentor {
-    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String> {
+    fn segment(&self, input: &str, syllables: &HashSet<String>, delimiters: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String> {
         // 快速路径：如果输入已经是小写字母/数字，直接使用（避免 to_lowercase 分配）
         let needs_lowercase = !input
             .bytes()
@@ -67,28 +67,26 @@ impl Segmentor for DefaultSegmentor {
 
         if needs_lowercase {
             let input_lower = input.to_lowercase();
-            return Self::segment_lowercase(&input_lower, syllables, delimiters);
+            return Self::segment_lowercase(&input_lower, syllables, delimiters, syllable_freq, base_syllables);
         }
 
-        Self::segment_lowercase(input, syllables, delimiters)
+        Self::segment_lowercase(input, syllables, delimiters, syllable_freq, base_syllables)
     }
 }
 
 impl DefaultSegmentor {
-    #[inline]
-    fn segment_lowercase(input: &str, syllables: &HashSet<String>, delimiters: &str) -> Vec<String> {
+    /// 第一遍：用基本音节（不在频率表中的=单音节）做贪心最长匹配
+    fn first_pass(input: &str, base_syllables: &HashSet<String>, delimiters: &str) -> Vec<String> {
         let mut segments = Vec::new();
         let mut pos = 0;
-
         while pos < input.len() {
             let max_len = 12.min(input.len() - pos);
             let mut matched = false;
-
             for len in (1..=max_len).rev() {
                 let end = pos + len;
                 if input.is_char_boundary(end) {
                     let part = &input[pos..end];
-                    if syllables.contains(part) {
+                    if base_syllables.contains(part) {
                         segments.push(part.to_string());
                         pos = end;
                         matched = true;
@@ -96,7 +94,6 @@ impl DefaultSegmentor {
                     }
                 }
             }
-
             if !matched {
                 if let Some(ch) = input[pos..].chars().next() {
                     if delimiters.contains(ch) {
@@ -111,6 +108,75 @@ impl DefaultSegmentor {
             }
         }
         segments
+    }
+
+    /// 第二遍：动态规划合并，最大化总频率
+    fn second_pass(segments: &[String], full_syllables: &HashSet<String>, syllable_freq: &HashMap<String, u64>) -> Vec<String> {
+        let n = segments.len();
+        if n <= 1 {
+            return segments.to_vec();
+        }
+
+        // DP[i] = max total freq for suffix starting at i
+        let mut dp = vec![(0u64, n); n + 1]; // (best_freq, next_pos)
+        dp[n] = (0, n);
+
+        // Compute combined frequencies for all sub-ranges
+        let mut combined = vec![vec![String::new(); n]; n];
+        for i in 0..n {
+            combined[i][i] = segments[i].clone();
+            for j in i + 1..n.min(i + 4) {
+                combined[i][j] = combined[i][j - 1].clone() + &segments[j];
+            }
+        }
+
+        for i in (0..n).rev() {
+            let mut best_freq = 0u64;
+            let mut best_end = i + 1;
+
+            for k in 1..=4.min(n - i) {
+                let end = i + k;
+                let freq = if k == 1 {
+                    syllable_freq.get(&segments[i]).copied().unwrap_or(0)
+                } else {
+                    let c = &combined[i][end - 1];
+                    if full_syllables.contains(c) {
+                        syllable_freq.get(c).copied().unwrap_or(0)
+                    } else {
+                        0
+                    }
+                };
+                let total = freq + dp[end].0;
+                if total > best_freq {
+                    best_freq = total;
+                    best_end = end;
+                }
+            }
+
+            dp[i] = (best_freq, best_end);
+        }
+
+        // Reconstruct
+        let mut result = Vec::new();
+        let mut i = 0;
+        while i < n {
+            let end = dp[i].1;
+            if end == i + 1 {
+                result.push(segments[i].clone());
+            } else {
+                result.push(combined[i][end - 1].clone());
+            }
+            i = end;
+        }
+        result
+    }
+
+    #[inline]
+    fn segment_lowercase(input: &str, syllables: &HashSet<String>, delimiters: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String> {
+        // 第一遍：基本音节贪心匹配
+        let segments = Self::first_pass(input, base_syllables, delimiters);
+        // 第二遍：按频率表合并
+        Self::second_pass(&segments, syllables, syllable_freq)
     }
 }
 
@@ -498,6 +564,8 @@ pub struct Pipeline {
     pub segmentor: Box<dyn Segmentor>,
     pub translators: Vec<Box<dyn Translator>>,
     pub filters: Vec<Box<dyn Filter>>,
+    pub syllable_freq: Arc<HashMap<String, u64>>,
+    pub base_syllables: Arc<HashSet<String>>,
     segment_cache: std::sync::RwLock<std::collections::HashMap<String, Vec<String>>>,
 }
 
@@ -507,6 +575,8 @@ impl Pipeline {
             segmentor,
             translators: Vec::new(),
             filters: Vec::new(),
+            syllable_freq: Arc::new(HashMap::new()),
+            base_syllables: Arc::new(HashSet::new()),
             segment_cache: std::sync::RwLock::new(std::collections::HashMap::new()),
         }
     }
@@ -535,7 +605,7 @@ impl Pipeline {
                     cached.clone()
                 } else {
                     drop(guard);
-                    let segments = self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters);
+                    let segments = self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters, &self.syllable_freq, &self.base_syllables);
                     if let Ok(mut guard) = self.segment_cache.write() {
                         if guard.len() < 100 {
                             guard.insert(input.to_string(), segments.clone());
@@ -544,7 +614,7 @@ impl Pipeline {
                     segments
                 }
             } else {
-                self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters)
+                self.segmentor.segment(input, syllables, &config.input.segmentation_delimiters, &self.syllable_freq, &self.base_syllables)
             }
         };
 
@@ -566,6 +636,8 @@ type PipelineCache = (HashMap<String, Arc<Pipeline>>, Vec<String>);
 pub struct SearchEngine {
     pub trie_paths: HashMap<String, (PathBuf, PathBuf)>,
     syllables: Arc<HashSet<String>>,
+    pub syllable_freq: Arc<HashMap<String, u64>>,
+    pub base_syllables: Arc<HashSet<String>>,
     learned_words: Arc<ArcSwap<UserDictData>>,
     usage_history: Arc<ArcSwap<UserDictData>>,
     ngram_history: Arc<ArcSwap<UserDictData>>,
@@ -590,14 +662,21 @@ impl SearchEngine {
     pub fn new(
         trie_paths: HashMap<String, (PathBuf, PathBuf)>,
         syllables: Arc<HashSet<String>>,
+        syllable_freq: Arc<HashMap<String, u64>>,
         learned_words: Arc<ArcSwap<UserDictData>>,
         usage_history: Arc<ArcSwap<UserDictData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     ) -> Self {
+        let base_syllables: HashSet<String> = syllables.iter()
+            .filter(|s| !syllable_freq.contains_key(*s))
+            .cloned()
+            .collect();
         Self {
             trie_paths,
             syllables,
+            syllable_freq,
+            base_syllables: Arc::new(base_syllables),
             learned_words,
             usage_history,
             ngram_history,
@@ -621,7 +700,7 @@ impl SearchEngine {
                 query.limit,
                 query.context,
             );
-            let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &query.config.input.segmentation_delimiters);
+            let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &query.config.input.segmentation_delimiters, &pipeline.syllable_freq, &pipeline.base_syllables);
 
             let mut final_results = results;
             if query.filter_mode == crate::processor::FilterMode::Global
@@ -638,6 +717,8 @@ impl SearchEngine {
                 config: query.config,
                 tries: &HashMap::new(),
                 syllables: query.syllables,
+                syllable_freq: &self.syllable_freq,
+                base_syllables: &self.base_syllables,
                 _user_dict: &Arc::new(arc_swap::ArcSwap::from_pointee(HashMap::new())),
                 active_profiles: &[query.profile.to_string()],
                 candidate_count: 0,
@@ -712,6 +793,8 @@ impl SearchEngine {
         let trie = Trie::load(&paths.0, &paths.1, true).ok()?;
 
         let mut pipeline = Pipeline::new(Box::new(DefaultSegmentor));
+        pipeline.syllable_freq = self.syllable_freq.clone();
+        pipeline.base_syllables = self.base_syllables.clone();
         pipeline.add_translator(Box::new(UserDictTranslator {
             user_dict: self.learned_words.clone(),
             profile: profile.to_string(),
@@ -889,7 +972,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("nihao", &syllables, "");
+        let result = segmentor.segment("nihao", &syllables, "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "hao"]);
     }
 
@@ -901,7 +984,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("zhongguo", &syllables, "");
+        let result = segmentor.segment("zhongguo", &syllables, "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["zhongguo"]);
     }
 
@@ -910,7 +993,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["zhong", "guo"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("zhongguo", &syllables, "");
+        let result = segmentor.segment("zhongguo", &syllables, "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["zhong", "guo"]);
     }
 
@@ -919,7 +1002,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("nixyz", &syllables, "");
+        let result = segmentor.segment("nixyz", &syllables, "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "x", "y", "z"]);
     }
 
@@ -928,7 +1011,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("", &syllables, "");
+        let result = segmentor.segment("", &syllables, "", &HashMap::new(), &syllables);
         assert!(result.is_empty());
     }
 
@@ -936,7 +1019,7 @@ mod tests {
     fn test_default_segmentor_delimiter_apostrophe() {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["xi", "an"].iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("xi'an", &syllables, "'");
+        let result = segmentor.segment("xi'an", &syllables, "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["xi", "an"]);
     }
 
@@ -944,7 +1027,7 @@ mod tests {
     fn test_default_segmentor_delimiter_semicolon() {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("ni;hao", &syllables, ";");
+        let result = segmentor.segment("ni;hao", &syllables, ";", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "hao"]);
     }
 
@@ -953,14 +1036,53 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ti"].iter().map(|s| s.to_string()).collect();
         // delimiter at end: skipped
-        let result = segmentor.segment("ti'", &syllables, "'");
+        let result = segmentor.segment("ti'", &syllables, "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ti"]);
         // delimiter at start: skipped
-        let result = segmentor.segment("'ti", &syllables, "'");
+        let result = segmentor.segment("'ti", &syllables, "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ti"]);
         // empty delimiters: no change, individual chars (no "xi" in syllables)
-        let result = segmentor.segment("xi'an", &syllables, "");
+        let result = segmentor.segment("xi'an", &syllables, "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["x", "i", "'", "a", "n"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_two_pass_merge() {
+        let segmentor = DefaultSegmentor;
+        // 模拟真实场景：基本音节（不在 freq 表中）+ 复合词（在 freq 表中）
+        let all: HashSet<String> = ["fan", "gan", "fang", "an", "fangan"]
+            .iter().map(|s| s.to_string()).collect();
+        let base: HashSet<String> = ["fan", "gan", "fang", "an"]
+            .iter().map(|s| s.to_string()).collect();
+        let mut freqs = HashMap::new();
+        freqs.insert("fangan".to_string(), 1);
+
+        // "fangan" → first pass: "fang"+"an", second pass: merge to "fangan"
+        let result = segmentor.segment("fangan", &all, "", &freqs, &base);
+        assert_eq!(result, vec!["fangan"]);
+
+        // 无 freq 时不合并
+        let result2 = segmentor.segment("fangan", &all, "", &HashMap::new(), &base);
+        assert_eq!(result2, vec!["fang", "an"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_wowangjile() {
+        let segmentor = DefaultSegmentor;
+        // 关键测试：wowangjile 不应出现 "wan g" 分割
+        let all: HashSet<String> = ["wo", "wang", "wan", "ji", "le", "wowang", "wowan", "wangji", "jile", "g"]
+            .iter().map(|s| s.to_string()).collect();
+        let base: HashSet<String> = ["wo", "wang", "wan", "ji", "le", "g"]
+            .iter().map(|s| s.to_string()).collect();
+        let mut freqs = HashMap::new();
+        freqs.insert("wowang".to_string(), 14628);
+        freqs.insert("wowan".to_string(), 22290);
+        freqs.insert("wangji".to_string(), 482559);
+        freqs.insert("jile".to_string(), 11073);
+
+        // DP should pick "wo"+"wangji"+"le" (highest total freq = 482559)
+        let result = segmentor.segment("wowangjile", &all, "", &freqs, &base);
+        assert_eq!(result, vec!["wo", "wangji", "le"]);
     }
 
     #[test]
@@ -1080,6 +1202,7 @@ mod tests {
         SearchEngine::new(
             HashMap::new(),
             Arc::new(HashSet::new()),
+            Arc::new(HashMap::new()),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
