@@ -188,13 +188,13 @@ impl EvdevHost {
                 if let Ok(mut p) = p_bg.lock() {
                     if let Some(commit_action) = p.lookup() {
                         if let Ok(vkbd) = v_bg.lock() {
-                            execute_action(&vkbd, commit_action, None);
+                            execute_action(&vkbd, &g_bg, commit_action, None);
                         }
                     }
 
                     let phantom_action = p.update_phantom_action();
                     if let Ok(vkbd) = v_bg.lock() {
-                        execute_action(&vkbd, phantom_action, None);
+                        execute_action(&vkbd, &g_bg, phantom_action, None);
                     }
 
                     update_gui_internal(&p, &g_bg);
@@ -371,7 +371,7 @@ impl InputMethodHost for EvdevHost {
                                     );
 
                                     if let Ok(vkbd) = self.vkbd.lock() {
-                                        execute_action(&vkbd, action, Some((key, val)));
+                                        execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
                                     }
                                     if val != 0 {
                                         drop(p_locked);
@@ -382,7 +382,7 @@ impl InputMethodHost for EvdevHost {
                                 let fast_action =
                                     p.handle_key_ext(vk, val, shift, ctrl, alt, false);
                                 if let Ok(vkbd) = self.vkbd.lock() {
-                                    execute_action(&vkbd, fast_action, Some((key, val)));
+                                    execute_action(&vkbd, &self.gui_tx, fast_action, Some((key, val)));
                                 }
 
                                 if val != 0 {
@@ -474,12 +474,23 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
     }
 }
 
-fn execute_action(vkbd: &Vkbd, action: Action, raw_key: Option<(Key, i32)>) {
+fn execute_action(
+    vkbd: &Vkbd,
+    gui_tx: &Option<Sender<GuiEvent>>,
+    action: Action,
+    raw_key: Option<(Key, i32)>,
+) {
     match action {
         Action::Emit(s) => {
             vkbd.send_text(&s, false);
         }
         Action::DeleteAndEmit { delete, insert } => {
+            // 注入前必须先隐藏候选窗口，避免 uinput 发出的 SPACE 被 Slint 候选窗口截获
+            if let Some(ref tx) = gui_tx {
+                let (ack_tx, ack_rx) = std::sync::mpsc::channel();
+                let _ = tx.send(GuiEvent::HideAndAck(ack_tx));
+                let _ = ack_rx.recv_timeout(std::time::Duration::from_millis(100));
+            }
             if delete > 0 {
                 vkbd.backspace(delete);
             }

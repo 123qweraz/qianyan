@@ -78,6 +78,10 @@ fn handle_single_event(
         GuiEvent::ForceStatusVisible(visible) => {
             display.update_status("", visible);
         }
+        GuiEvent::HideAndAck(ack_tx) => {
+            display.set_visible(false);
+            let _ = ack_tx.send(());
+        }
         GuiEvent::Exit => {
             display.close();
             slint::quit_event_loop().unwrap();

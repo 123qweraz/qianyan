@@ -743,7 +743,7 @@ impl Config {
             linux: LinuxConfig {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
-                enable_notification_candidates: true,
+                enable_notification_candidates: false,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
             },

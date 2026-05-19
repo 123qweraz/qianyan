@@ -114,14 +114,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
     let (tray_tx, tray_rx) = std::sync::mpsc::channel();
 
-    let gui_config = config
-        .read()
-        .map_or_else(|_| Config::default_config(), |c| c.clone());
-    let tray_tx_for_gui = tray_tx.clone();
-    std::thread::spawn(move || {
-        shian_ime_ui::gui::start_gui(gui_rx, gui_config, tray_tx_for_gui);
-    });
-
     let mut trie_paths = HashMap::new();
     if let Ok(entries) = std::fs::read_dir(root.join("data")) {
         for entry in entries.flatten() {
@@ -314,8 +306,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         host_run();
     });
 
-    // 主线程等待（简单实现，实际可能需要更好的退出处理）
-    std::thread::park();
+    // GUI 在主线程运行（Slint 事件循环需要主线程）
+    let gui_config = config
+        .read()
+        .map_or_else(|_| Config::default_config(), |c| c.clone());
+    shian_ime_ui::gui::start_gui(gui_rx, gui_config, tray_tx);
 
     Ok(())
 }
