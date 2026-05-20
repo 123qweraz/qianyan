@@ -7,7 +7,7 @@ mod text_service;
 
 use class_factory::ClassFactory;
 
-pub use shian_ime_core::constants::{IME_ID, LANG_PROFILE_ID};
+pub use qianyan_ime_core::constants::{IME_ID, LANG_PROFILE_ID};
 
 static DLL_INSTANCE: OnceLock<HINSTANCE> = OnceLock::new();
 
@@ -45,7 +45,7 @@ pub unsafe extern "system" fn DllGetClassObject(
 #[allow(non_snake_case)]
 pub unsafe extern "system" fn DllRegisterServer() -> HRESULT {
     if let Some(&instance) = DLL_INSTANCE.get() {
-        registry::register_server(instance, &IME_ID, "Rust IME", None)
+        registry::register_server(instance, &IME_ID, "Qianyan IME", None)
             .map_or_else(|e| e.code(), |_| S_OK)
     } else {
         CO_E_NOTINITIALIZED

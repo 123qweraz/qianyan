@@ -2,7 +2,7 @@ use crate::linux_notify::LinuxNotifyDisplay;
 use crate::slint_window::SlintDisplay;
 use crate::tray::TrayEvent;
 use crate::{CandidateDisplay, GuiEvent};
-use shian_ime_core::Config;
+use qianyan_ime_core::Config;
 use std::sync::mpsc::{Receiver, Sender};
 
 pub fn start_gui(rx: Receiver<GuiEvent>, mut config: Config, _tray_tx: Sender<TrayEvent>) {

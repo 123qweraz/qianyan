@@ -23,7 +23,7 @@ pub use processor::Processor;
 pub use session::InputSession;
 pub use trie::Trie;
 
-pub use shian_ime_core::config::{
+pub use qianyan_ime_core::config::{
     AntiTypoMode, Appearance, Config, DoublePinyinScheme, DoubleTap, Files, FuzzyPinyinConfig,
     Hotkey, Hotkeys, Input, LinuxConfig, LongPressMapping, PhantomType, Profile, ProfileKey,
     ProfileLayout, RankingConfig, TextStyle,

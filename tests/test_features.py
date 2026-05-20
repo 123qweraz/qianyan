@@ -10,7 +10,7 @@ def strip_ansi(text):
 def run_ime_command(commands):
     """运行 IME 并发送一系列指令，返回输出结果"""
     process = subprocess.Popen(
-        ['target/debug/rust-ime', '--test'],
+        ['target/debug/qianyan-ime', '--test'],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

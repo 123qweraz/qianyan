@@ -65,7 +65,7 @@ pub unsafe extern "system" fn DllGetClassObject(
 /// This function is called by Windows/regsvr32 to register the COM server.
 pub unsafe extern "system" fn DllRegisterServer() -> HRESULT {
     if let Some(&instance) = DLL_INSTANCE.get() {
-        registry::register_server(instance, &IME_ID, "Rust IME", None)
+        registry::register_server(instance, &IME_ID, "Qianyan IME", None)
             .map_or_else(|e| e.code(), |_| S_OK)
     } else {
         CO_E_NOTINITIALIZED

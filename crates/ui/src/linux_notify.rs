@@ -1,6 +1,6 @@
 use crate::{CandidateDisplay, DisplayCandidate};
 use notify_rust::{Hint, Notification, NotificationHandle};
-use shian_ime_core::Config;
+use qianyan_ime_core::Config;
 
 pub struct LinuxNotifyDisplay {
     active_notification: Option<NotificationHandle>,
@@ -64,12 +64,12 @@ impl CandidateDisplay for LinuxNotifyDisplay {
                 "x-canonical-private-synchronous".to_string(),
                 "true".to_string(),
             ));
-            h.update();
+            let _ = h.update();
         } else {
             self.active_notification = Notification::new()
                 .summary(pinyin)
                 .body(&notify_body)
-                .appname("rust-ime")
+                .appname("qianyan-ime")
                 .hint(Hint::Transient(true))
                 .hint(Hint::Custom(
                     "x-canonical-private-synchronous".to_string(),
@@ -86,9 +86,9 @@ impl CandidateDisplay for LinuxNotifyDisplay {
             return;
         }
         let _ = Notification::new()
-            .summary("Rust IME")
+            .summary("Qianyan IME")
             .body(text)
-            .appname("rust-ime")
+            .appname("qianyan-ime")
             .hint(Hint::Transient(true))
             .timeout(1500)
             .show();

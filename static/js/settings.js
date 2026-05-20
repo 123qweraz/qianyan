@@ -24,9 +24,15 @@ function showToast(message) {
     }
 }
 
-async function resetConfig() {
-    if (confirm("确定要重置所有设置到默认值吗？")) {
-        await fetch('/api/config/reset', { method: 'POST' });
+async function resetConfig(section) {
+    const msg = section
+        ? "确定要重置当前页面的设置到默认值吗？"
+        : "确定要重置所有设置到默认值吗？";
+    if (confirm(msg)) {
+        const url = section
+            ? `/api/config/reset/${section}`
+            : '/api/config/reset';
+        await fetch(url, { method: 'POST' });
         location.reload();
     }
 }

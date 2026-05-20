@@ -2,18 +2,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-NAME="shian-ime-linux-x86_64"
+NAME="qianyan-ime-linux-x86_64"
 VERSION=$(date +%Y%m%d_%H%M%S)
 OUT="release/${NAME}_${VERSION}"
 mkdir -p "$OUT"
 
 cargo build --release
 
-cp target/release/shian-ime "$OUT/"
+cp target/release/qianyan-ime "$OUT/"
 cp -r data dicts configs sounds picture "$OUT/"
-cp shian-ime.desktop "$OUT/"
+cp qianyan-ime.desktop "$OUT/"
 cp scripts/install/install.sh "$OUT/"
-strip "$OUT/shian-ime" 2>/dev/null || true
+strip "$OUT/qianyan-ime" 2>/dev/null || true
 
 cd release
 tar czf "${NAME}_${VERSION}.tar.gz" "$(basename "$OUT")"

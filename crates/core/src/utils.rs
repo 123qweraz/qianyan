@@ -18,7 +18,7 @@ pub fn find_project_root() -> PathBuf {
     // 2. 检查 Linux 系统标准路径 (适用于 .deb 安装版)
     #[cfg(target_os = "linux")]
     {
-        let share_path = PathBuf::from("/usr/share/shian-ime");
+        let share_path = PathBuf::from("/usr/share/qianyan-ime");
         if share_path.exists() {
             return share_path;
         }

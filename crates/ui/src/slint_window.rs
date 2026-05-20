@@ -1,5 +1,5 @@
 use crate::CandidateDisplay;
-use shian_ime_core::Config;
+use qianyan_ime_core::Config;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 
 slint::include_modules!();

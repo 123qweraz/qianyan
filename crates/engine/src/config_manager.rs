@@ -1,7 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::user_data::UserDataManager;
 use arc_swap::ArcSwap;
-use shian_ime_core::config::{AntiTypoMode, Config, PhantomType, PunctuationEntry};
+use qianyan_ime_core::config::{AntiTypoMode, Config, PhantomType, PunctuationEntry};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -46,12 +46,12 @@ impl ConfigManager {
     fn get_data_dir() -> PathBuf {
         if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
             PathBuf::from(config_home)
-                .join("rust-ime")
+                .join("qianyan-ime")
                 .join("user_data")
         } else if let Ok(home) = std::env::var("HOME") {
             PathBuf::from(home)
                 .join(".config")
-                .join("rust-ime")
+                .join("qianyan-ime")
                 .join("user_data")
         } else {
             PathBuf::from("data").join("user_data")
@@ -280,7 +280,7 @@ impl ConfigManager {
         &self.master_config.input.keyboard_layouts
     }
 
-    pub fn layouts(&self) -> &HashMap<String, shian_ime_core::config::ProfileLayout> {
+    pub fn layouts(&self) -> &HashMap<String, qianyan_ime_core::config::ProfileLayout> {
         &self.master_config.input.layouts
     }
 

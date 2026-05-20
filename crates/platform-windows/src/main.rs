@@ -1,8 +1,8 @@
 #![cfg(target_os = "windows")]
 
-use shian_ime_core::Config;
-use shian_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllables};
-use shian_ime_engine::Processor;
+use qianyan_ime_core::Config;
+use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllables};
+use qianyan_ime_engine::Processor;
 use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, RwLock};
@@ -40,9 +40,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .is_err_and(|e| e.code() == ERROR_ALREADY_EXISTS.to_hresult())
         {
             let _ = notify_rust::Notification::new()
-                .summary("Rust IME")
+                .summary("Qianyan IME")
                 .body("程序已经在运行中。")
-                .appname("Rust IME")
+                .appname("Qianyan IME")
                 .timeout(notify_rust::Timeout::Milliseconds(3000))
                 .show();
             return Ok(());
@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = find_project_root();
 
     if !root.join("data/chinese/trie.index").exists() {
-        let _ = shian_ime_engine::compiler::check_and_compile_all();
+        let _ = qianyan_ime_engine::compiler::check_and_compile_all();
     }
 
     let mut current_config = Config::load();
@@ -104,7 +104,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let syllables = load_syllables(&root);
-    let syllable_freq = shian_ime_core::utils::load_syllable_frequencies(&root);
+    let syllable_freq = qianyan_ime_core::utils::load_syllable_frequencies(&root);
     let mut processor_obj = Processor::new(trie_paths, syllables, syllable_freq);
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);

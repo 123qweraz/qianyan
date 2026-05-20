@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>rust-ime 终极使用指南</title>
+    <title>千言输入法终极使用指南</title>
     <style>
         :root {
             --apple-bg: #f5f5f7;
@@ -103,13 +103,13 @@
     </aside>
 
     <main>
-        <h1>rust-ime 终极指南</h1>
+        <h1>千言输入法 终极指南</h1>
         <div class="subtitle">一款专为程序员与效率极客设计的拼音输入法</div>
 
         <section id="intro">
             <h2>产品定位</h2>
             <div class="feature-card">
-                <p>rust-ime 是一款基于 Rust 编写的高性能拼音输入法。它的设计核心是<b>“零干扰”</b>与<b>“极致效率”</b>。</p>
+                <p>千言输入法 是一款基于 Rust 编写的高性能拼音输入法。它的设计核心是<b>“零干扰”</b>与<b>“极致效率”</b>。</p>
                 <p>对于普通用户，它表现得像任何主流输入法一样：支持全拼、简拼、模糊音。但为了效率，我们做了两个果断的选择：</p>
                 <ul>
                     <li><b>Tab 键即正义</b>：摒弃了复杂的切换键，默认使用 <code>Tab</code> 键（单按）瞬间切换中英文。</li>
@@ -121,7 +121,7 @@
         <section id="aux-code">
             <h2>核心：英文辅助码</h2>
             <div class="feature-card">
-                <p>这是 rust-ime 的灵魂功能。在拼音重码极多（如同音字、简拼）时，您无需翻页，只需输入一个<b>大写字母</b>即可精准定位。</p>
+                <p>这是 千言输入法 的灵魂功能。在拼音重码极多（如同音字、简拼）时，您无需翻页，只需输入一个<b>大写字母</b>即可精准定位。</p>
                 
                 <h3>它是如何工作的？</h3>
                 <p>输入法会自动扫描候选词对应的<b>英文翻译/释义</b>。当您输入一个大写字母时，它会匹配释义中第一个大写单词的首字母。</p>
@@ -372,7 +372,7 @@
         <section id="proper-nouns">
             <h2>4. 专有名词原生隔离</h2>
             <div class="feature-card">
-                <p>在普通输入法中，输入 <code>beijing</code> 可能会混杂“背景”和“北京”。在 rust-ime 中：</p>
+                <p>在普通输入法中，输入 <code>beijing</code> 可能会混杂“背景”和“北京”。在 千言输入法 中：</p>
                 <ul>
                     <li><b>全小写</b>：<code>beijing</code> 只会匹配普通词汇（如：背景）。</li>
                     <li><b>首字母大写</b>：<code>Beijing</code> 或 <code>Be</code> 将触发<b>专有名词索引</b>，精准匹配“北京”，完全隔离干扰。</li>
@@ -384,7 +384,7 @@
         <section id="mixed-input">
             <h2>5. 多方案混输</h2>
             <div class="feature-card">
-                <p>rust-ime 允许您在网页端自由组合活跃方案（如 <b>中文+英文</b>）。</p>
+                <p>千言输入法 允许您在网页端自由组合活跃方案（如 <b>中文+英文</b>）。</p>
                 <ul>
                     <li><b>程序员友好</b>：在写注释时，不需要切换模式，直接输入 <code>git</code>, <code>cargo</code>, <code>sudo</code>，它们会出现在候选词中。</li>
                     <li><b>英文自动补全</b>：支持英文前缀联想。输入 <code>com</code> 即可选择 <code>complete</code>, <code>command</code> 等词。</li>
@@ -395,7 +395,7 @@
         <section id="quick-rime">
             <h2>6. 长按与双击定制 <span class="tag">New</span></h2>
             <div class="feature-card">
-                <p>rust-ime 提供了极致的按键行为定制能力，您可以利用<b>双击</b>或<b>长按</b>来实现极速输入。</p>
+                <p>千言输入法 提供了极致的按键行为定制能力，您可以利用<b>双击</b>或<b>长按</b>来实现极速输入。</p>
                 
                 <h3>1. 双击快捷输入 (Double-Tap)</h3>
                 <p>快速点击同一个字母键两次，注入长韵母或常用短语。例如：</p>

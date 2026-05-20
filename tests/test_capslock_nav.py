@@ -6,7 +6,7 @@ import time
 def test_capslock_j_navigation():
     # 模拟输入 'ni' 产生候选词，然后按下 CapsLock + J
     # 由于我们不能直接在 CI 环境运行完整的 GUI/DBus 托盘，我们测试核心 Processor 逻辑
-    # 我们通过 cargo run --bin rust-ime -- --test-capslock 来运行一个专门的测试入口
+    # 我们通过 cargo run --bin qianyan-ime -- --test-capslock 来运行一个专门的测试入口
     # 或者我们检查代码逻辑是否一致。
     print("Testing CapsLock + J navigation logic...")
     

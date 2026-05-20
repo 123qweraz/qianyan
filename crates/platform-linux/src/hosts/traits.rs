@@ -1,4 +1,4 @@
-use shian_ime_core::Rect;
+use qianyan_ime_core::Rect;
 use std::error::Error;
 
 pub trait InputMethodHost: Send {

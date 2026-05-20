@@ -5,7 +5,7 @@ content = open(file_path, 'r', encoding='utf-8').read()
 
 # 1. Update English Aux section
 en_aux_new = """### 1. 英文辅助码：义向筛选
-这是 rust-ime 的核心特色。当拼音重码较多时，无需翻页，只需输入 **Shift + 大写字母** 即可根据“英文释义”精准定位。
+这是 qianyan-ime 的核心特色。当拼音重码较多时，无需翻页，只需输入 **Shift + 大写字母** 即可根据“英文释义”精准定位。
 
 *   **逻辑**：系统扫描候选词的英文注释，匹配首字母。
 *   **示例**：

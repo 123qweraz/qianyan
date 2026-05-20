@@ -6,7 +6,7 @@ pub mod slint_window;
 pub mod platform;
 pub use gui_slint as gui;
 
-use shian_ime_core::Config;
+use qianyan_ime_core::Config;
 
 /// 预格式化的候选词信息，UI 应当直接显示这些字符串而不再做逻辑拼接
 #[derive(Debug, Clone, PartialEq)]

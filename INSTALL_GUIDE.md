@@ -7,7 +7,7 @@ Welcome to rust-IME! If this is your first time installing software on Linux/Win
 ## Linux Installation
 
 ### Step 1: Extract Files
-1. Find the downloaded `rust-ime-linux-x64.tar.gz` file.
+1. Find the downloaded `qianyan-ime-linux-x64.tar.gz` file.
 2. Right-click the file and select **"Extract Here"**.
 3. Enter the extracted folder.
 
@@ -32,7 +32,7 @@ Once finished, the terminal will say "Installation Complete!".
 ## Windows Installation
 
 ### Step 1: Extract ZIP
-1. Extract the `rust-ime-windows-v0.1.0.zip` file.
+1. Extract the `qianyan-ime-windows-v0.1.0.zip` file.
 2. Open the extracted folder.
 
 ### Step 2: Run Installer
@@ -55,7 +55,7 @@ chmod +x install.sh
 ```
 
 ### 2. Configuration Page
-Enter `http://localhost:8765` in your browser to access settings. Ensure `rust-ime` is running.
+Enter `http://localhost:8765` in your browser to access settings. Ensure `qianyan-ime` is running.
 
 ### 3. Keyboard Unresponsive
 This usually means permissions haven't taken effect.
@@ -65,7 +65,7 @@ This usually means permissions haven't taken effect.
 To remove the application:
 ```bash
 # Linux
-sudo rm /usr/local/bin/rust-ime
+sudo rm /usr/local/bin/qianyan-ime
 # Windows
 Run uninstall.bat as Administrator
 ```

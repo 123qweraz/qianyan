@@ -1,16 +1,16 @@
 [package]
-name = "shian-ime-windows"
+name = "qianyan-ime-windows"
 version.workspace = true
 edition.workspace = true
 
 [lib]
-name = "shian_ime_tsf"
+name = "qianyan_ime_tsf"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-shian-ime-core = { path = "../core" }
-shian-ime-engine = { path = "../engine" }
-shian-ime-ui = { path = "../ui" }
+qianyan-ime-core = { path = "../core" }
+qianyan-ime-engine = { path = "../engine" }
+qianyan-ime-ui = { path = "../ui" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }

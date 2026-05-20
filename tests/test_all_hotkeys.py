@@ -8,7 +8,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
 def run_ime_cmd(inputs):
     process = subprocess.Popen(
-        ["./target/debug/rust-ime", "--test"],
+        ["./target/debug/qianyan-ime", "--test"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -92,7 +92,7 @@ if __name__ == "__main__":
         print("\n[测试 3] 验证 CapsLock 方案快速切换...")
         # 预设一个映射: 字母 'C' -> 'chinese' (假设系统默认有这个)
         # 我们这里通过拦截动作 Consume 来确认逻辑已触发
-        process = subprocess.Popen(["./target/debug/rust-ime", "--test"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        process = subprocess.Popen(["./target/debug/qianyan-ime", "--test"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
         out, _ = process.communicate(input="CAPSLOCK\nC\nexit\n")
         if "动作反馈: Consume" in out:
              print("✅ [成功] CapsLock -> 方案键 序列处理逻辑正确")

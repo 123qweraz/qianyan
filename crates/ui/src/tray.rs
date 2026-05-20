@@ -37,12 +37,12 @@ pub struct ImeTray {
 
 #[cfg(target_os = "linux")]
 fn load_icon() -> Vec<ksni::Icon> {
-    let root = shian_ime_core::utils::find_project_root();
+    let root = qianyan_ime_core::utils::find_project_root();
     let icon_paths = [
-        "picture/rust-ime_v2.ico",
-        "picture/rust-ime.ico",
-        "picture/rust-ime_v2.png",
-        "picture/rust-ime.png",
+        "picture/qianyan-ime_v2.ico",
+        "picture/qianyan-ime.ico",
+        "picture/qianyan-ime_v2.png",
+        "picture/qianyan-ime.png",
     ];
 
     for path in &icon_paths {
@@ -263,7 +263,7 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
             None,
         );
 
-        let icon_path = "picture/rust-ime_v2.ico\0"
+        let icon_path = "picture/qianyan-ime_v2.ico\0"
             .encode_utf16()
             .collect::<Vec<u16>>();
         let h_icon = match LoadImageW(

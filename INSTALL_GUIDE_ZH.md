@@ -5,7 +5,7 @@
 ---
 
 ## 第一步：解压文件
-1. 找到您下载的 `rust-ime-linux-x64.tar.gz` 文件。
+1. 找到您下载的 `qianyan-ime-linux-x64.tar.gz` 文件。
 2. 在文件上点击鼠标右键，选择 **“提取到此处”** (Extract Here)。
 3. 进入解压后生成的文件夹。
 
@@ -41,7 +41,7 @@ chmod +x install.sh
 ```
 
 ### 2. 安装后打不开网页配置页面
-安装完成后，在浏览器地址栏输入 `http://localhost:8765` 即可进入设置。如果打不开，请确保 `rust-ime` 程序正在运行。
+安装完成后，在浏览器地址栏输入 `http://localhost:8765` 即可进入设置。如果打不开，请确保 `qianyan-ime` 程序正在运行。
 
 ### 3. 键盘无法打字了怎么办？
 如果启动输入法后键盘没反应，通常是因为权限没生效。
@@ -50,7 +50,7 @@ chmod +x install.sh
 ### 4. 怎么卸载？
 目前您可以直接删除解压的文件夹，并运行以下命令清理系统链接：
 ```bash
-sudo rm /usr/local/bin/rust-ime
+sudo rm /usr/local/bin/qianyan-ime
 ```
 
 ---

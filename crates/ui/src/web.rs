@@ -9,8 +9,8 @@ use serde::Serialize;
 use std::sync::{Arc, RwLock};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::HashMap;
-use shian_ime_core::Config;
-use shian_ime_engine::trie::Trie;
+use qianyan_ime_core::Config;
+use qianyan_ime_engine::trie::Trie;
 use rust_embed::RustEmbed;
 use crate::tray::TrayEvent;
 
@@ -50,6 +50,7 @@ impl WebServer {
             .route("/", get(index_handler))
             .route("/api/config", get(get_config).post(update_config))
             .route("/api/config/reset", post(reset_config))
+            .route("/api/config/reset/{sections}", post(reset_config_section))
             .route("/api/fonts", get(list_fonts))
             .route("/api/dicts", get(list_dicts))
             .route("/api/dicts/compile", post(compile_dicts_handler))
@@ -235,6 +236,30 @@ async fn reset_config(
     StatusCode::OK
 }
 
+async fn reset_config_section(
+    State((config, _, tray_tx)): State<WebState>,
+    axum::extract::Path(sections): axum::extract::Path<String>,
+) -> StatusCode {
+    let default_conf = Config::default_config();
+    let mut w = match config.write() {
+        Ok(w) => w,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    for section in sections.split(',') {
+        match section.trim() {
+            "appearance" => w.appearance = default_conf.appearance.clone(),
+            "hotkeys" => w.hotkeys = default_conf.hotkeys.clone(),
+            "input" => w.input = default_conf.input.clone(),
+            "linux" => w.linux = default_conf.linux.clone(),
+            "files" => w.files = default_conf.files.clone(),
+            _ => return StatusCode::BAD_REQUEST,
+        }
+    }
+    if let Err(_e) = w.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
+    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    StatusCode::OK
+}
+
 #[derive(Serialize)]
 struct DictFile {
     name: String,
@@ -324,7 +349,7 @@ async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
 
 async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
-    match shian_ime_engine::compiler::check_and_compile_all() {
+    match qianyan_ime_engine::compiler::check_and_compile_all() {
         Ok(_) => {
             let _ = tray_tx.send(TrayEvent::ShowNotification("词库编译完成".into()));
             // 编译完成后自动重载

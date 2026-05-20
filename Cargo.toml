@@ -71,15 +71,15 @@ windows = { version = "0.52", features = [
 windows-core = "0.52"
 
 [package]
-name = "shian-ime"
+name = "qianyan-ime"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-shian-ime-core = { path = "crates/core" }
-shian-ime-engine = { path = "crates/engine" }
-shian-ime-ui = { path = "crates/ui" }
-shian-ime-linux = { path = "crates/platform-linux" }
+qianyan-ime-core = { path = "crates/core" }
+qianyan-ime-engine = { path = "crates/engine" }
+qianyan-ime-ui = { path = "crates/ui" }
+qianyan-ime-linux = { path = "crates/platform-linux" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 walkdir = { workspace = true }
@@ -101,7 +101,7 @@ slint = { workspace = true }
 rodio = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-shian-ime-linux = { path = "crates/platform-linux" }
+qianyan-ime-linux = { path = "crates/platform-linux" }
 evdev = { workspace = true }
 daemonize = { workspace = true }
 ksni = { workspace = true }
@@ -114,10 +114,10 @@ winres = { workspace = true }
 embed-resource = { workspace = true }
 
 [[bin]]
-name = "shian-ime"
+name = "qianyan-ime"
 path = "src/main.rs"
 
 [lib]
-name = "shian_ime_tsf"
+name = "qianyan_ime_tsf"
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"

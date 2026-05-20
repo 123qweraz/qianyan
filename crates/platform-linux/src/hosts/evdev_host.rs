@@ -1,10 +1,10 @@
 use super::vkbd::Vkbd;
 use evdev::{Device, InputEventKind, Key};
-use shian_ime_core::{InputMethodHost, Rect};
-use shian_ime_engine::keys::VirtualKey;
-use shian_ime_engine::processor::Action;
-use shian_ime_engine::Processor;
-use shian_ime_ui::GuiEvent;
+use qianyan_ime_core::{InputMethodHost, Rect};
+use qianyan_ime_engine::keys::VirtualKey;
+use qianyan_ime_engine::processor::Action;
+use qianyan_ime_engine::Processor;
+use qianyan_ime_ui::GuiEvent;
 use std::collections::HashSet;
 use std::sync::mpsc::Sender;
 use std::sync::{
@@ -88,7 +88,7 @@ pub struct EvdevHost {
     pub vkbd: Arc<Mutex<Vkbd>>,
     dev: Arc<Mutex<Device>>,
     gui_tx: Option<Sender<GuiEvent>>,
-    tray_tx: Sender<shian_ime_ui::tray::TrayEvent>,
+    tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     should_exit: Arc<AtomicBool>,
     tab_held_and_not_used: bool,
     lookup_tx: std::sync::mpsc::Sender<()>,
@@ -159,7 +159,7 @@ impl EvdevHost {
         processor: Arc<Mutex<Processor>>,
         device_path: &str,
         gui_tx: Option<Sender<GuiEvent>>,
-        tray_tx: Sender<shian_ime_ui::tray::TrayEvent>,
+        tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let dev = Device::open(device_path)?;
         let vkbd_raw = Vkbd::new(&dev)?;
@@ -364,7 +364,7 @@ impl InputMethodHost for EvdevHost {
                                     let enabled = p_locked.ctx.session_state.chinese_enabled;
                                     let profile = p_locked.get_current_profile_display();
                                     let _ = self.tray_tx.send(
-                                        shian_ime_ui::tray::TrayEvent::SyncStatus {
+                                        qianyan_ime_ui::tray::TrayEvent::SyncStatus {
                                             chinese_enabled: enabled,
                                             active_profile: profile,
                                         },
@@ -428,7 +428,7 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
             return;
         }
 
-        let pinyin = shian_ime_engine::compositor::Compositor::get_preedit(&p.ctx);
+        let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&p.ctx);
 
         if p.ctx.config.show_candidates() {
             let page_size = p.ctx.config.page_size();
@@ -443,7 +443,7 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
                 } else {
                     format!("{label}{}({})", c.text, c.hint)
                 };
-                display_candidates.push(shian_ime_ui::DisplayCandidate {
+                display_candidates.push(qianyan_ime_ui::DisplayCandidate {
                     text: c.text.to_string(),
                     label,
                     hint: c.hint.to_string(),

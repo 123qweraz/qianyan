@@ -1,8 +1,8 @@
 [Desktop Entry]
-Name=Rust-IME
+Name=Qianyan-IME
 Comment=High-performance Input Method Engine for Linux
-Exec=shian-ime
-Icon=shian-ime
+Exec=qianyan-ime
+Icon=qianyan-ime
 Terminal=false
 Type=Application
 Categories=Settings;Utility;

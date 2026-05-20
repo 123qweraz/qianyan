@@ -27,7 +27,7 @@ pub struct TextService {
 
 impl TextService {
     pub fn new() -> Self {
-        log("RustIME: TextService::new - BUILD 2045");
+        log("QianyanIME: TextService::new - BUILD 2045");
         Self {
             client_id: AtomicU32::new(0),
             thread_mgr: RwLock::new(None),
@@ -92,7 +92,7 @@ impl TextService {
             }
         }
 
-        let pipe_name = crate::registry::to_pcwstr("\\\\.\\pipe\\rust_ime_pipe");
+        let pipe_name = crate::registry::to_pcwstr("\\\\.\\pipe\\qianyan_ime_pipe");
         let pipe_pcwstr = PCWSTR(pipe_name.as_ptr());
         unsafe {
             // 增加重试逻辑，如果管道忙碌则等待
@@ -187,20 +187,20 @@ impl ITfTextInputProcessor_Impl for TextService {
                     keystroke_mgr.AdviseKeyEventSink(client_id, &sink, true)?;
                 }
             } else {
-                log("RustIME Error: thread_mgr lock poisoned in Activate");
+                log("QianyanIME Error: thread_mgr lock poisoned in Activate");
             }
         }
         Ok(())
     }
 
     fn Deactivate(&self) -> Result<()> {
-        log("RustIME: TextService::Deactivate");
+        log("QianyanIME: TextService::Deactivate");
 
         let mgr_opt = {
             if let Ok(mut lock) = self.thread_mgr.write() {
                 lock.take()
             } else {
-                log("RustIME Error: thread_mgr lock poisoned in Deactivate");
+                log("QianyanIME Error: thread_mgr lock poisoned in Deactivate");
                 None
             }
         };

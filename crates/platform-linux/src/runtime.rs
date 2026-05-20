@@ -1,10 +1,10 @@
 use crate::hosts::vkbd::Vkbd;
 use crate::hosts::evdev_host;
-use shian_ime_core::config::LinuxConfig;
-use shian_ime_core::Config;
-use shian_ime_core::InputMethodHost;
-use shian_ime_engine::Processor;
-use shian_ime_ui::GuiEvent;
+use qianyan_ime_core::config::LinuxConfig;
+use qianyan_ime_core::Config;
+use qianyan_ime_core::InputMethodHost;
+use qianyan_ime_engine::Processor;
+use qianyan_ime_ui::GuiEvent;
 use std::error::Error;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -15,8 +15,8 @@ pub fn create_input_host(
     processor: Arc<Mutex<Processor>>,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     config: Arc<RwLock<Config>>,
-    tray_tx: std::sync::mpsc::Sender<shian_ime_ui::tray::TrayEvent>,
-    _app_state: Arc<Mutex<shian_ime_ui::AppState>>,
+    tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>,
+    _app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
 ) -> InputHostResult {
     let linux_config = config
         .read()
@@ -24,7 +24,7 @@ pub fn create_input_host(
         .unwrap_or(LinuxConfig {
             device_path: "/dev/input/event0".into(),
             paste_method: "shift_insert".into(),
-            enable_notification_candidates: false,
+            enable_notification_candidates: true,
             fixed_position: true,
             corner: "bottom-right".into(),
         });

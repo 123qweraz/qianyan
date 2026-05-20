@@ -1,4 +1,4 @@
-# Shian IME Bug 列表
+# Qianyan IME Bug 列表
 
 > 生成日期: 2026-05-18
 > 状态: 已修复 #1 (UB 指针转换), #2 (trigger_prefetch 线程 panic)

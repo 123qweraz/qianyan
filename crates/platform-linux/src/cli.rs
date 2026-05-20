@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
 
-use shian_ime_core::Config;
-use shian_ime_engine::{self as engine, Processor};
+use qianyan_ime_core::Config;
+use qianyan_ime_engine::{self as engine, Processor};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupAction {
@@ -48,7 +48,7 @@ pub fn handle_startup(args: &[String]) -> Result<StartupAction, Box<dyn Error>> 
         }
         StartupCommand::CompileOnly => {
             println!("[Main] 正在强制编译词库...");
-            let _ = shian_ime_engine::compiler::check_and_compile_all();
+            let _ = qianyan_ime_engine::compiler::check_and_compile_all();
             Ok(StartupAction::Exit)
         }
         StartupCommand::Register => {
@@ -73,7 +73,7 @@ pub fn handle_startup(args: &[String]) -> Result<StartupAction, Box<dyn Error>> 
 }
 
 fn run_bench_mode() {
-    println!("--- Rust-IME 核心引擎性能基准测试 ---");
+    println!("--- Qianyan-IME 核心引擎性能基准测试 ---");
     let root = crate::find_project_root();
 
     let mut trie_paths = HashMap::new();
@@ -169,7 +169,7 @@ fn run_bench_mode() {
 
 fn run_test_mode() {
     println!("[Test] 进入测试模式 (无 UI)...");
-    let config_dir = shian_ime_core::Config::get_config_dir();
+    let config_dir = qianyan_ime_core::Config::get_config_dir();
     println!("[Test] 配置加载目录: {:?}", config_dir);
     let root = crate::find_project_root();
     let syllables = crate::load_syllables(&root);
@@ -351,7 +351,7 @@ mod tests {
         ];
 
         for (flag, expected) in cases {
-            let args = vec!["rust-ime".to_string(), flag.to_string()];
+            let args = vec!["qianyan-ime".to_string(), flag.to_string()];
             assert_eq!(parse_startup_command(&args), expected);
         }
     }
@@ -359,14 +359,14 @@ mod tests {
     #[test]
     fn parse_default_none() {
         assert_eq!(
-            parse_startup_command(&["rust-ime".to_string()]),
+            parse_startup_command(&["qianyan-ime".to_string()]),
             StartupCommand::None
         );
         assert_eq!(
-            parse_startup_command(&["rust-ime".to_string()]),
+            parse_startup_command(&["qianyan-ime".to_string()]),
             StartupCommand::None
         );
-        let args = vec!["rust-ime".to_string(), "--unknown".to_string()];
+        let args = vec!["qianyan-ime".to_string(), "--unknown".to_string()];
         assert_eq!(parse_startup_command(&args), StartupCommand::None);
     }
 }

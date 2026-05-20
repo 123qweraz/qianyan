@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::keys::VirtualKey;
 use crate::scheme::InputScheme;
-use shian_ime_core::Config;
+use qianyan_ime_core::Config;
 
 pub struct EngineContext {
     pub session: crate::InputSession,

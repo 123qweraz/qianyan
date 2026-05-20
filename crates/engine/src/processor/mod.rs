@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 
 use crate::keys::VirtualKey;
 use crate::{Command, EngineContext, InputEvent};
-use shian_ime_core::config::Config;
+use qianyan_ime_core::config::Config;
 
 pub use fsm::ImeState;
 pub use utils::*;
@@ -379,7 +379,7 @@ impl Processor {
     }
 
     pub fn update_phantom_action(&mut self) -> Action {
-        if self.ctx.config.phantom_type() == shian_ime_core::config::PhantomType::None {
+        if self.ctx.config.phantom_type() == qianyan_ime_core::config::PhantomType::None {
             return Action::Consume;
         }
         let target = crate::compositor::Compositor::get_phantom_text(&mut self.ctx);

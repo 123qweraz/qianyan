@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>系统设置 - rust-ime</title>
+    <title>系统设置 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -147,7 +147,7 @@
                     <div class="title">数据目录 (Data Directory)</div>
                     <div class="desc">词库、图标等资源的根目录。留空则使用程序自动探测的路径。</div>
                 </div>
-                <input type="text" id="files_data_dir" placeholder="例如: /usr/share/shian-ime">
+                <input type="text" id="files_data_dir" placeholder="例如: /usr/share/qianyan-ime">
             </div>
         </div>
 
@@ -202,7 +202,7 @@
 
     <div class="sticky-footer">
         <button class="btn" onclick="save()">保存更改</button>
-        <button class="btn btn-danger" onclick="resetConfig()">重置默认</button>
+        <button class="btn btn-danger" onclick="resetConfig('input,linux,files')">重置默认</button>
     </div>
 
     <div id="toast" class="status-toast">已保存并应用</div>

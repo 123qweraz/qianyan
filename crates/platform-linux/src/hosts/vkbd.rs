@@ -47,7 +47,7 @@ impl Vkbd {
         keys.insert(Key::KEY_KPENTER);
 
         let dev_raw = VirtualDeviceBuilder::new()?
-            .name("rust-ime-v2")
+            .name("qianyan-ime-v2")
             .with_keys(&keys)?
             .with_msc(&{
                 let mut misc = AttributeSet::<evdev::MiscType>::new();
@@ -334,7 +334,7 @@ impl Vkbd {
         Self::do_emit_raw(dev, key, if down { 1 } else { 0 });
     }
 
-    pub fn apply_config(&mut self, config: &shian_ime_core::Config) {
+    pub fn apply_config(&mut self, config: &qianyan_ime_core::Config) {
         if let Ok(mut delay) = self.clipboard_delay_ms.lock() {
             *delay = config.input.clipboard_delay_ms;
         }

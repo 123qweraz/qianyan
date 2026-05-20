@@ -1,7 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::processor::{Action, FilterMode};
 use crate::trie::Trie;
-use shian_ime_core::config::Config;
+use qianyan_ime_core::config::Config;
 use std::collections::HashMap;
 
 /// 代表一个候选项的完整信息

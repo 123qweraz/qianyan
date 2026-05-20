@@ -3,11 +3,11 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "=== Rust-IME Auto Installer ==="
+echo "=== Qianyan-IME Auto Installer ==="
 
 # Check if running with precompiled binary
 HAS_PRECOMPILED=false
-if [ -f "./shian-ime" ]; then
+if [ -f "./qianyan-ime" ]; then
     HAS_PRECOMPILED=true
 fi
 
@@ -60,8 +60,8 @@ fi
 
 # Udev rules for uinput
 echo "Configuring uinput device rules..."
-if [ ! -f /etc/udev/rules.d/99-shian-ime-uinput.rules ]; then
-    echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/99-shian-ime-uinput.rules > /dev/null
+if [ ! -f /etc/udev/rules.d/99-qianyan-ime-uinput.rules ]; then
+    echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/99-qianyan-ime-uinput.rules > /dev/null
     echo "✅ Rule file created"
     sudo udevadm control --reload-rules
     sudo udevadm trigger
@@ -72,19 +72,19 @@ fi
 # 3. Build Project (if needed)
 echo -e "\n[3/4] Preparing program files..."
 if [ "$HAS_PRECOMPILED" = true ]; then
-    chmod +x ./shian-ime
+    chmod +x ./qianyan-ime
     echo "✅ Using precompiled binary."
 else
     echo "🔨 Building from source (this may take a few minutes)..."
     cargo build --release
-    cp target/release/shian-ime .
+    cp target/release/qianyan-ime .
     echo "✅ Build complete."
 fi
 
 # Check for required data files
 if [ ! -d "./data" ] || [ -z "$(ls -A ./data 2>/dev/null)" ]; then
     echo "⚠️  Warning: Dictionaries not found. Please ensure 'data' directory exists."
-    echo "   You may need to run: ./shian-ime --compile-only"
+    echo "   You may need to run: ./qianyan-ime --compile-only"
 fi
 
 # 4. Install
@@ -93,7 +93,7 @@ echo -e "\n[4/4] Executing installation..."
 INSTALL_PATH=$(pwd)
 
 # 4.0 Install resources
-SHARE_DIR="/usr/share/shian-ime"
+SHARE_DIR="/usr/share/qianyan-ime"
 echo "Installing resources to $SHARE_DIR..."
 sudo mkdir -p "$SHARE_DIR"
 sudo cp -r "$INSTALL_PATH/data" "$SHARE_DIR/"
@@ -102,36 +102,36 @@ sudo cp -r "$INSTALL_PATH/picture" "$SHARE_DIR/"
 echo "✅ Installed resources to: $SHARE_DIR"
 
 # 4.1 Install binary
-sudo cp -f "$INSTALL_PATH/shian-ime" /usr/local/bin/shian-ime
-sudo chmod +x /usr/local/bin/shian-ime
-echo "✅ Installed binary to: /usr/local/bin/shian-ime"
+sudo cp -f "$INSTALL_PATH/qianyan-ime" /usr/local/bin/qianyan-ime
+sudo chmod +x /usr/local/bin/qianyan-ime
+echo "✅ Installed binary to: /usr/local/bin/qianyan-ime"
 
 # 4.2 Install icon (system-wide)
 ICON_DIR="/usr/share/icons/hicolor/256x256/apps"
 sudo mkdir -p "$ICON_DIR"
-if [ -f "$INSTALL_PATH/picture/rust-ime_v2.png" ]; then
-    sudo cp -f "$INSTALL_PATH/picture/rust-ime_v2.png" "$ICON_DIR/shian-ime.png"
-    echo "✅ Installed icon to: $ICON_DIR/shian-ime.png"
+if [ -f "$INSTALL_PATH/picture/qianyan-ime_v2.png" ]; then
+    sudo cp -f "$INSTALL_PATH/picture/qianyan-ime_v2.png" "$ICON_DIR/qianyan-ime.png"
+    echo "✅ Installed icon to: $ICON_DIR/qianyan-ime.png"
 fi
 
 # 4.3 Install desktop entry
 APP_DIR="/usr/share/applications"
-if [ -f "$INSTALL_PATH/shian-ime.desktop" ]; then
-    sudo cp -f "$INSTALL_PATH/shian-ime.desktop" "$APP_DIR/shian-ime.desktop"
+if [ -f "$INSTALL_PATH/qianyan-ime.desktop" ]; then
+    sudo cp -f "$INSTALL_PATH/qianyan-ime.desktop" "$APP_DIR/qianyan-ime.desktop"
     sudo update-desktop-database "$APP_DIR" || true
     echo "✅ Installed desktop shortcut."
 fi
 
 # 4.4 Trigger first-time installation tasks
 # Use the installed path
-/usr/local/bin/shian-ime --install || true
+/usr/local/bin/qianyan-ime --install || true
 
 echo -e "\n=========================================="
 echo "🎉 Installation Complete!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Start IME: shian-ime"
-echo "   2. Or find 'Rust-IME' in your application menu"
+echo "   1. Start IME: qianyan-ime"
+echo "   2. Or find 'Qianyan-IME' in your application menu"
 echo ""
 if ! groups | grep -q "\binput\b"; then
 echo "⚠️  IMPORTANT: You were added to the 'input' group."

@@ -6,15 +6,15 @@ import time
 def run_cmd(pinyin, select_idx=None):
     """运行测试命令并返回候选词列表"""
     # 如果 select_idx 不为 None，则模拟选择该候选词以触发记录
-    cmd = f"./target/debug/rust-ime --test"
+    cmd = f"./target/debug/qianyan-ime --test"
     input_str = f"{pinyin}\n"
     if select_idx is not None:
         input_str += " \n" * (select_idx) # 这里逻辑可能需要根据 --test 的具体交互调整
         # 由于 --test 模式目前不支持直接选择 index，我改用直接调用 record_usage 的方式或模拟空格
     
     # 简化：我们直接检查第一次搜索结果，然后模拟 'record_usage' 后的结果
-    # 这里的脚本需要 rust-ime 支持某种方式触发 record
-    process = subprocess.Popen(["./target/debug/rust-ime", "--test"], 
+    # 这里的脚本需要 qianyan-ime 支持某种方式触发 record
+    process = subprocess.Popen(["./target/debug/qianyan-ime", "--test"], 
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     
     out, _ = process.communicate(input=f"{pinyin}\nexit\n")

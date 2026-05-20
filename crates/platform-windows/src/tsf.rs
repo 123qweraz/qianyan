@@ -107,7 +107,7 @@ impl InputMethodHost for TsfHost {
             use windows::Win32::Foundation::*;
             use windows::core::PCWSTR;
             use windows::Win32::Security::*;
-            let pipe_name_w = crate::registry::to_pcwstr("\\\\.\\pipe\\rust_ime_pipe");
+            let pipe_name_w = crate::registry::to_pcwstr("\\\\.\\pipe\\qianyan_ime_pipe");
             let mut sd = SECURITY_DESCRIPTOR::default();
             unsafe { let _ = InitializeSecurityDescriptor(PSECURITY_DESCRIPTOR(&mut sd as *mut _ as *mut _), 1); let _ = SetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR(&mut sd as *mut _ as *mut _), true, None, false); }
             let sd_ptr = &sd as *const _ as usize; 

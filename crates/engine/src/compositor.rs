@@ -65,7 +65,7 @@ impl Compositor {
     }
 
     pub fn get_phantom_text(ctx: &mut EngineContext) -> String {
-        use shian_ime_core::config::PhantomType;
+        use qianyan_ime_core::config::PhantomType;
         if ctx.session.state == ImeState::Idle || ctx.config.phantom_type() == PhantomType::None {
             return String::new();
         }
@@ -108,7 +108,7 @@ impl Compositor {
     }
 
     pub fn update_phantom_action(ctx: &mut EngineContext) -> Action {
-        if ctx.config.phantom_type() == shian_ime_core::config::PhantomType::None {
+        if ctx.config.phantom_type() == qianyan_ime_core::config::PhantomType::None {
             return Action::Consume;
         }
         let target = Self::get_phantom_text(ctx);
@@ -201,7 +201,7 @@ pub fn start_global_filter(ctx: &mut EngineContext) {
 }
 
 pub fn should_block_invalid_input(ctx: &mut EngineContext, old_buffer: &str) -> bool {
-    use shian_ime_core::config::AntiTypoMode;
+    use qianyan_ime_core::config::AntiTypoMode;
 
     if ctx.session.has_dict_match {
         ctx.session.last_blocked_buffer.clear();

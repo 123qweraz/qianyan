@@ -1,11 +1,11 @@
 [package]
-name = "shian-ime-ui"
+name = "qianyan-ime-ui"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-shian-ime-core = { path = "../core" }
-shian-ime-engine = { path = "../engine" }
+qianyan-ime-core = { path = "../core" }
+qianyan-ime-engine = { path = "../engine" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }

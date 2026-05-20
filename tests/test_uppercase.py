@@ -7,7 +7,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
 def run_ime_cmd(inputs):
     process = subprocess.Popen(
-        ["./target/debug/rust-ime", "--test"],
+        ["./target/debug/qianyan-ime", "--test"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

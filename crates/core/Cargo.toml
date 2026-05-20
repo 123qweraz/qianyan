@@ -1,5 +1,5 @@
 [package]
-name = "shian-ime-core"
+name = "qianyan-ime-core"
 version.workspace = true
 edition.workspace = true
 

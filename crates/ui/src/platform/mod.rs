@@ -18,7 +18,7 @@ pub fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
         .arg("add")
         .arg("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run")
         .arg("/v")
-        .arg("RustIME")
+        .arg("QianyanIME")
         .arg("/t")
         .arg("REG_SZ")
         .arg("/d")
@@ -34,7 +34,7 @@ pub fn remove_autostart() -> Result<(), Box<dyn std::error::Error>> {
         .arg("delete")
         .arg("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run")
         .arg("/v")
-        .arg("RustIME")
+        .arg("QianyanIME")
         .arg("/f")
         .status();
     Ok(())

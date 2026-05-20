@@ -13,7 +13,7 @@ def run_test():
     # 模拟按键序列
     keys = ["d", "e", "semicolon", "r", "p"]
     
-    cmd = ["cargo", "run", "--bin", "rust-ime", "--", "--test-keys"]
+    cmd = ["cargo", "run", "--bin", "qianyan-ime", "--", "--test-keys"]
     cmd.extend(keys)
     
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -30,7 +30,7 @@ def run_test():
     # 模拟切换到笔画方案 (Grave `) 然后输入 rp
     keys = ["grave", "r", "p"]
     
-    cmd = ["cargo", "run", "--bin", "rust-ime", "--", "--test-keys"]
+    cmd = ["cargo", "run", "--bin", "qianyan-ime", "--", "--test-keys"]
     cmd.extend(keys)
     
     result = subprocess.run(cmd, capture_output=True, text=True)

@@ -1,8 +1,8 @@
-#define MyAppName "Rust IME"
+#define MyAppName "Qianyan IME"
 #define MyAppVersion "0.1.0"
-#define MyAppPublisher "Rust-IME Team"
-#define MyAppExeName "rust-ime.exe"
-#define MyAppDllName "rust_ime_tsf_v3.dll"
+#define MyAppPublisher "Qianyan-IME Team"
+#define MyAppExeName "qianyan-ime.exe"
+#define MyAppDllName "qianyan_ime_tsf_v3.dll"
 
 [Setup]
 AppId={{A7F23B4C-D5E6-4F7G-8H9I-J0K1L2M3N4O5}
@@ -12,12 +12,12 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-OutputBaseFilename=RustIME_Setup
+OutputBaseFilename=QianyanIME_Setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
-SetupIconFile=picture\rust-ime_v2.ico
+SetupIconFile=picture\qianyan-ime_v2.ico
 
 [Languages]
 Name: "chinesesimplified"; MessagesFile: "compiler:Default.isl"
@@ -48,7 +48,7 @@ Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "RustIME"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: startup
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "QianyanIME"; ValueData: """{app}\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: startup
 
 [Run]
 ; 注册 TSF DLL

@@ -1,5 +1,5 @@
 use crate::pipeline::{Candidate, SearchQuery};
-use shian_ime_core::config::Config;
+use qianyan_ime_core::config::Config;
 use std::sync::Arc;
 
 #[allow(dead_code)]
@@ -17,8 +17,8 @@ pub trait ConfigProvider: Send + Sync {
     fn get_page_size(&self) -> usize;
     fn is_auto_reorder_enabled(&self) -> bool;
     fn is_word_discovery_enabled(&self) -> bool;
-    fn get_anti_typo_mode(&self) -> shian_ime_core::config::AntiTypoMode;
-    fn get_phantom_type(&self) -> shian_ime_core::config::PhantomType;
+    fn get_anti_typo_mode(&self) -> qianyan_ime_core::config::AntiTypoMode;
+    fn get_phantom_type(&self) -> qianyan_ime_core::config::PhantomType;
     fn is_auto_commit_stroke(&self) -> bool;
     fn is_auto_commit_unique_full_match(&self) -> bool;
 }
@@ -62,11 +62,11 @@ impl ConfigProvider for crate::ConfigManager {
         self.master_config.input.enable_word_discovery
     }
 
-    fn get_anti_typo_mode(&self) -> shian_ime_core::config::AntiTypoMode {
+    fn get_anti_typo_mode(&self) -> qianyan_ime_core::config::AntiTypoMode {
         self.anti_typo_mode()
     }
 
-    fn get_phantom_type(&self) -> shian_ime_core::config::PhantomType {
+    fn get_phantom_type(&self) -> qianyan_ime_core::config::PhantomType {
         self.phantom_type()
     }
 

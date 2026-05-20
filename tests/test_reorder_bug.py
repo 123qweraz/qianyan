@@ -6,9 +6,9 @@ import time
 os.chdir(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
 def run_ime_cmd(inputs):
-    """运行 rust-ime 并模拟输入，返回最后的候选词列表"""
+    """运行 qianyan-ime 并模拟输入，返回最后的候选词列表"""
     process = subprocess.Popen(
-        ["./target/debug/rust-ime", "--test"],
+        ["./target/debug/qianyan-ime", "--test"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -34,7 +34,7 @@ def run_ime_cmd(inputs):
 
 if __name__ == "__main__":
     # 确保已编译
-    if not os.path.exists("./target/debug/rust-ime"):
+    if not os.path.exists("./target/debug/qianyan-ime"):
         print("请先运行 cargo build")
         exit(1)
 
