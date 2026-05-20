@@ -13,7 +13,7 @@
   "window_padding_y": 14,
   "item_spacing": 16.0,
   "row_spacing": 8.0,
-  "theme_mode": "light",
+  "theme_mode": "auto",
   "pinyin_text": {
     "font_family": "",
     "font_size": 18,

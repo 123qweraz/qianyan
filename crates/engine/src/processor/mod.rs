@@ -318,6 +318,27 @@ impl Processor {
     ) -> Action {
         use crate::ModifierState;
 
+        // 在 FSM 之前检查自定义导航热键，避免 FSM 拦截后无法执行
+        if is_press {
+            let has_candidates = !self.ctx.session.candidates.is_empty();
+            if matches!(self.ctx.session.state, ImeState::Composing | ImeState::Selecting)
+                && has_candidates
+            {
+                if self.ctx.config.page_up_keys().contains(&key) {
+                    return self.execute_command(Command::PrevPage);
+                }
+                if self.ctx.config.page_down_keys().contains(&key) {
+                    return self.execute_command(Command::NextPage);
+                }
+                if self.ctx.config.prev_candidate_keys().contains(&key) {
+                    return self.execute_command(Command::PrevCandidate);
+                }
+                if self.ctx.config.next_candidate_keys().contains(&key) {
+                    return self.execute_command(Command::NextCandidate);
+                }
+            }
+        }
+
         let input = fsm::FsmInput {
             key,
             mods: ModifierState {

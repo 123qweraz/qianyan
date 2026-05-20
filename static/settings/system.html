@@ -86,6 +86,60 @@
             </div>
         </div>
 
+        <h2>搜索与匹配逻辑</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
+                <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
+                <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配 (如 zshang -> 早上)</div></div>
+                <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">防呆模式 (Anti-Typo)</div>
+                    <div class="desc">容忍常见的拼写错误，智能模式自动纠错，严格模式要求精准输入</div>
+                </div>
+                <select id="anti_typo_mode" class="select-input">
+                    <option value="None">关闭</option>
+                    <option value="Strict">严格模式</option>
+                    <option value="Smart">智能模式</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">编辑器预览模式</div>
+                    <div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div>
+                </div>
+                <select id="phantom_type" class="select-input">
+                    <option value="None">无预览 (None)</option>
+                    <option value="Hanzi">汉字预览 (Hanzi)</option>
+                    <option value="Pinyin">拼音预览 (Pinyin)</option>
+                </select>
+            </div>
+        </div>
+
+        <h2>按键功能开关</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
+                <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">键盘发音 (字母报声)</div><div class="desc">打字时发出对应字母的声音</div></div>
+                <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
+                <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
+            </div>
+        </div>
+
         <h2>路径设置</h2>
         <div class="card">
             <div class="setting-item">
@@ -174,6 +228,18 @@
             bindInput('segmentation_delimiters', 'input');
             bindInput('commit_mode', 'input');
             bindInput('autostart', 'input');
+
+            // 搜索与匹配逻辑
+            bindInput('auto_commit_unique_full_match', 'input');
+            bindInput('enable_prefix_matching', 'input');
+            bindInput('enable_abbreviation_matching', 'input');
+            bindInput('anti_typo_mode', 'input');
+            bindInput('phantom_type', 'input');
+
+            // 按键功能开关
+            bindInput('enable_english_filter', 'input');
+            bindInput('enable_keyboard_voice', 'input');
+            bindInput('enable_number_selection', 'input');
 
             // 路径设置
             bindInput('files_data_dir', 'files', 'data_dir');
