@@ -157,7 +157,9 @@ impl CandidateDisplay for SlintDisplay {
     fn set_visible(&mut self, visible: bool) {
         if !visible {
             self.window.set_is_visible(false);
-            let _ = self.window.window().hide();
+            if self.window.window().is_visible() {
+                let _ = self.window.window().hide();
+            }
         }
     }
 
