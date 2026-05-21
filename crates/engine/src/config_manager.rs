@@ -31,7 +31,7 @@ impl ConfigManager {
         let user_data = UserDataManager::new(data_dir).ok();
 
         if user_data.is_some() {
-            println!("[ConfigManager] 初始化用户数据管理器 (JSON 存储)");
+            log::info!("[ConfigManager] 初始化用户数据管理器 (JSON 存储)");
         }
 
         Self {

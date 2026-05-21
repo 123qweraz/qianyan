@@ -36,7 +36,7 @@ impl Compositor {
                 current_pos += seg_len;
             }
             if current_pos < buffer_chars.len() {
-                result.push_str(&ctx.session.buffer[current_pos..]);
+                result.extend(buffer_chars[current_pos..].iter());
             }
             result
         };

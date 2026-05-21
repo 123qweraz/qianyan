@@ -182,24 +182,34 @@ impl EvdevHost {
 
         std::thread::spawn(move || {
             while lookup_rx.recv().is_ok() {
+                // 确保无论发生什么都重置 pending 标志
+                struct PendingGuard(Arc<AtomicBool>);
+                impl Drop for PendingGuard {
+                    fn drop(&mut self) {
+                        self.0.store(false, Ordering::SeqCst);
+                    }
+                }
+                let _guard = PendingGuard(pending_bg.clone());
+
                 // 消耗掉积压的所有检索请求，只做最后一次
                 while lookup_rx.try_recv().is_ok() {}
 
-                if let Ok(mut p) = p_bg.lock() {
-                    if let Some(commit_action) = p.lookup() {
-                        if let Ok(vkbd) = v_bg.lock() {
-                            execute_action(&vkbd, &g_bg, commit_action, None);
+                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if let Ok(mut p) = p_bg.lock() {
+                        if let Some(commit_action) = p.lookup() {
+                            if let Ok(vkbd) = v_bg.lock() {
+                                execute_action(&vkbd, &g_bg, commit_action, None);
+                            }
                         }
-                    }
 
-                    let phantom_action = p.update_phantom_action();
-                    if let Ok(vkbd) = v_bg.lock() {
-                        execute_action(&vkbd, &g_bg, phantom_action, None);
-                    }
+                        let phantom_action = p.update_phantom_action();
+                        if let Ok(vkbd) = v_bg.lock() {
+                            execute_action(&vkbd, &g_bg, phantom_action, None);
+                        }
 
-                    update_gui_internal(&p, &g_bg);
-                }
-                pending_bg.store(false, Ordering::SeqCst);
+                        update_gui_internal(&p, &g_bg);
+                    }
+                }));
             }
         });
 

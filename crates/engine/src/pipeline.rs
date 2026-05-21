@@ -220,15 +220,15 @@ impl Translator for TableTranslator {
 
         // 检查缓存是否可以复用（增量搜索优化）
         {
-            if let (Ok(cached), Ok(last_q_guard)) =
-                (self.cached_candidates.read(), self.last_query.read())
+            if let (Ok(last_q_guard), Ok(cached)) =
+                (self.last_query.read(), self.cached_candidates.read())
             {
                 let (last_q, last_time) = &*last_q_guard;
 
-                if last_q.starts_with(&query)
+                if query.starts_with(last_q)
                     && last_time.elapsed().as_millis() < CACHE_TTL_MS as u128
                 {
-                    // 新的查询是之前查询的前缀，复用缓存
+                    // 新的查询是之前查询的延伸，从缓存中进一步过滤
                     let filtered: Vec<Candidate> = cached
                         .iter()
                         .filter(|c| c.simplified.starts_with(&query))
