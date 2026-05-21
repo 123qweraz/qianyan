@@ -856,9 +856,15 @@ impl SearchEngine {
         }
 
         if let Some(scheme) = self.schemes.get(query.profile) {
+            let mut tries_map = HashMap::new();
+            if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
+                if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
+                    tries_map.insert(query.profile.to_string(), trie.clone());
+                }
+            }
             let context = crate::scheme::SchemeContext {
                 config: query.config,
-                tries: &HashMap::new(),
+                tries: &tries_map,
                 syllables: query.syllables,
                 syllable_freq: &self.syllable_freq,
                 base_syllables: &self.base_syllables,
@@ -907,7 +913,7 @@ impl SearchEngine {
         false
     }
 
-    fn get_trie_from_pipeline<'a>(&self, pipeline: &'a Pipeline) -> Option<&'a Trie> {
+    pub fn get_trie_from_pipeline<'a>(&self, pipeline: &'a Pipeline) -> Option<&'a Trie> {
         for t in &pipeline.translators {
             if let Some(table) = t.as_any().downcast_ref::<TableTranslator>() {
                 return Some(&table.trie);
@@ -916,7 +922,7 @@ impl SearchEngine {
         None
     }
 
-    fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
+    pub fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
         // 1. 尝试读取现有
         {
             let mut cache = self.pipelines.write().ok()?;
@@ -963,10 +969,13 @@ impl SearchEngine {
 
         let arc_p = Arc::new(pipeline);
 
-        // LRU eviction: 如果缓存超过限制，移除最久未使用的
+        // 在写锁内再次检查（防止另一个线程在我们构建 pipeline 时已插入）
         {
             let mut cache = self.pipelines.write().ok()?;
             let (p_map, access_order) = &mut *cache;
+            if let Some(p) = p_map.get(profile) {
+                return Some(p.clone());
+            }
             if access_order.len() >= MAX_CACHED_PIPELINES {
                 if let Some(oldest) = access_order.first().cloned() {
                     p_map.remove(&oldest);
@@ -975,9 +984,7 @@ impl SearchEngine {
                 }
             }
             p_map.insert(profile.to_string(), arc_p.clone());
-            if !access_order.contains(&profile.to_string()) {
-                access_order.push(profile.to_string());
-            }
+            access_order.push(profile.to_string());
         }
 
         Some(arc_p)

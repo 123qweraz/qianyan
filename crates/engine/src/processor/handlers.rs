@@ -140,9 +140,17 @@ pub fn handle_composing(
         .cloned()
         .unwrap_or_default();
     if let Some(scheme) = ctx.engine.schemes.get(&current_profile) {
+        let mut tries_map = std::collections::HashMap::new();
+        for profile in &ctx.session_state.active_profiles {
+            if let Some(pipeline) = ctx.engine.get_or_create_pipeline(profile) {
+                if let Some(trie) = ctx.engine.get_trie_from_pipeline(pipeline.as_ref()) {
+                    tries_map.insert(profile.clone(), trie.clone());
+                }
+            }
+        }
         let context = crate::scheme::SchemeContext {
             config: &ctx.config.master_config,
-            tries: &std::collections::HashMap::new(),
+            tries: &tries_map,
             syllables: &ctx.syllables,
             syllable_freq: &ctx.engine.syllable_freq,
             base_syllables: &ctx.engine.base_syllables,
