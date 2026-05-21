@@ -141,7 +141,13 @@ impl Processor {
             .collect();
 
         if enabled.is_empty() {
-            return String::new();
+            return self
+                .ctx
+                .session_state
+                .active_profiles
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "chinese".to_string());
         }
 
         let current = self
@@ -217,10 +223,21 @@ impl Processor {
             return Action::PassThrough;
         }
 
-        if ((ctrl_pressed || alt_pressed) || (key == VirtualKey::Control || key == VirtualKey::Alt))
+        if ctrl_pressed
+            && alt_pressed
             && get_punctuation_key(key, shift_pressed).is_none()
         {
             return Action::PassThrough;
+        }
+
+        if ctrl_pressed && !alt_pressed {
+            let system_keys = [
+                VirtualKey::A, VirtualKey::C, VirtualKey::V, VirtualKey::X,
+                VirtualKey::Z, VirtualKey::Y, VirtualKey::S, VirtualKey::F,
+            ];
+            if system_keys.contains(&key) {
+                return Action::PassThrough;
+            }
         }
 
         if is_press && ctrl_pressed && !alt_pressed {
@@ -605,7 +622,7 @@ impl Processor {
             && self.ctx.session.candidates[0].match_level == 3
         {
             let is_unique_exact = self.ctx.session.candidates.len() == 1
-                || self.ctx.session.candidates[1].match_level != 3;
+                || self.ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
             if is_unique_exact {
                 let word = self.ctx.session.candidates[0].text.clone();
                 return Some(commands::commit_candidate(&mut self.ctx, word, 0));
@@ -617,7 +634,7 @@ impl Processor {
             && self.ctx.session.candidates[0].match_level == 3
         {
             let is_unique_exact = self.ctx.session.candidates.len() == 1
-                || self.ctx.session.candidates[1].match_level != 3;
+                || self.ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
             if is_unique_exact {
                 let word = self.ctx.session.candidates[0].text.clone();
                 return Some(commands::commit_candidate(&mut self.ctx, word, 0));

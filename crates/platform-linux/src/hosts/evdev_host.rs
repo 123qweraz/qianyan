@@ -174,15 +174,18 @@ impl EvdevHost {
         let (lookup_tx, lookup_rx) = std::sync::mpsc::channel::<()>();
         let lookup_pending = Arc::new(AtomicBool::new(false));
 
-        // 启动后台检索线程
+        // 启动后台检索线程（克隆 SearchEngine 避免 engine.search() 占用 Processor 锁）
         let p_bg = processor.clone();
         let v_bg = vkbd.clone();
         let g_bg = gui_tx.clone();
         let pending_bg = lookup_pending.clone();
+        let engine_bg = {
+            let p = processor.lock().expect("processor lock poisoned");
+            p.ctx.engine.clone()
+        };
 
         std::thread::spawn(move || {
             while lookup_rx.recv().is_ok() {
-                // 确保无论发生什么都重置 pending 标志
                 struct PendingGuard(Arc<AtomicBool>);
                 impl Drop for PendingGuard {
                     fn drop(&mut self) {
@@ -191,23 +194,84 @@ impl EvdevHost {
                 }
                 let _guard = PendingGuard(pending_bg.clone());
 
-                // 消耗掉积压的所有检索请求，只做最后一次
                 while lookup_rx.try_recv().is_ok() {}
 
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    // Step 1: 快速读取 buffer 和配置（持有锁，但不做检索）
+                    let (buffer, profile, config) = {
+                        if let Ok(p) = p_bg.lock() {
+                            (p.ctx.session.buffer.clone(),
+                             p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
+                             p.ctx.config.master_config.clone())
+                        } else { return; }
+                    };
+
+                    if buffer.is_empty() {
+                        if let Ok(p) = p_bg.lock() {
+                            update_gui_internal(&p, &g_bg);
+                        }
+                        return;
+                    }
+
+                    // Step 2: 在不持有 Processor 锁的情况下执行检索
+                    let syllables = engine_bg.syllables.clone();
+                    let query = qianyan_ime_engine::pipeline::SearchQuery {
+                        buffer: &buffer,
+                        profile: &profile,
+                        syllables: &syllables,
+                        config: &config,
+                        limit: 20,
+                        filter_mode: qianyan_ime_engine::processor::FilterMode::Global,
+                        aux_filter: "",
+                        context: None,
+                    };
+                    let (results, segments) = engine_bg.search(query);
+
+                    // Step 3: 快速更新状态、检查自动上屏
                     if let Ok(mut p) = p_bg.lock() {
-                        if let Some(commit_action) = p.lookup() {
+                        p.ctx.session.candidates = results;
+                        p.ctx.session.best_segmentation = segments;
+                        p.ctx.session.has_dict_match = !p.ctx.session.candidates.is_empty();
+                        p.ctx.session.last_lookup_pinyin = p.ctx.session.buffer.clone();
+                        p.trigger_prefetch();
+
+                        if p.ctx.session.candidates.is_empty() {
+                            let buf_arc: std::sync::Arc<str> = std::sync::Arc::from(
+                                p.ctx.session.buffer.as_str(),
+                            );
+                            p.ctx.session.candidates.push(
+                                qianyan_ime_engine::pipeline::Candidate {
+                                    text: buf_arc.clone(),
+                                    simplified: buf_arc.clone(),
+                                    traditional: buf_arc.clone(),
+                                    hint: std::sync::Arc::from(""),
+                                    source: std::sync::Arc::from("Raw"),
+                                    weight: 0.0,
+                                    match_level: 0,
+                                },
+                            );
+                        }
+                        p.ctx.session.update_state();
+
+                        if let Some(commit_action) = p.check_auto_commit() {
                             if let Ok(vkbd) = v_bg.lock() {
                                 execute_action(&vkbd, &g_bg, commit_action, None);
                             }
+                            drop(p);
+                            if let Ok(p) = p_bg.lock() {
+                                update_gui_internal(&p, &g_bg);
+                            }
+                            return;
                         }
 
                         let phantom_action = p.update_phantom_action();
+                        drop(p);
                         if let Ok(vkbd) = v_bg.lock() {
                             execute_action(&vkbd, &g_bg, phantom_action, None);
                         }
-
-                        update_gui_internal(&p, &g_bg);
+                        if let Ok(p) = p_bg.lock() {
+                            update_gui_internal(&p, &g_bg);
+                        }
                     }
                 }));
             }

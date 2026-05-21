@@ -188,9 +188,8 @@ async fn dicts_handler(uri: Uri) -> impl IntoResponse {
     }
 }
 
-async fn get_config(State((_, _, _)): State<WebState>) -> impl IntoResponse {
-    // 实时读取最新的分段配置
-    Json(crate::Config::load()).into_response()
+async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
+    Json(config.read().expect("config lock poisoned").clone()).into_response()
 }
 
 async fn update_config(

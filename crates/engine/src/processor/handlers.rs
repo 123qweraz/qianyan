@@ -59,6 +59,8 @@ pub fn handle_idle(
                 return Action::Alert;
             }
             let _ = Compositor::update_phantom_action(ctx);
+        } else {
+            log::warn!("[handle_idle] key_to_char returned None for key={:?}", key);
         }
     }
 

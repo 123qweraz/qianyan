@@ -13,7 +13,7 @@ const USAGE_HISTORY_WEIGHT_MULTIPLIER: f64 = 1_000_000.0;
 const NGRAM_HISTORY_WEIGHT_MULTIPLIER: f64 = 5_000_000.0;
 const PREWARM_ENTRIES: usize = 1000;
 const MAX_LOOKUP_LIMIT: usize = 500;
-const CACHE_TTL_MS: u64 = 50;
+const CACHE_TTL_MS: u64 = 300;
 
 /// 候选项
 #[derive(Clone, Debug, PartialEq)]
@@ -778,7 +778,7 @@ type PipelineCache = (HashMap<String, Arc<Pipeline>>, Vec<String>);
 #[derive(Clone)]
 pub struct SearchEngine {
     pub trie_paths: HashMap<String, (PathBuf, PathBuf)>,
-    syllables: Arc<HashSet<String>>,
+    pub syllables: Arc<HashSet<String>>,
     pub syllable_freq: Arc<HashMap<String, u64>>,
     pub base_syllables: Arc<HashSet<String>>,
     learned_words: Arc<ArcSwap<UserDictData>>,

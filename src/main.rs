@@ -303,10 +303,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // GUI 在主线程运行（Slint 事件循环需要主线程）
-    let gui_config = config
-        .read()
-        .map_or_else(|_| Config::default_config(), |c| c.clone());
-    qianyan_ime_ui::gui::start_gui(gui_rx, gui_config, tray_tx);
+    qianyan_ime_ui::gui::start_gui(gui_rx, config, tray_tx);
 
     Ok(())
 }

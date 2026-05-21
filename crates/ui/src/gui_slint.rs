@@ -3,21 +3,39 @@ use crate::slint_window::SlintDisplay;
 use crate::tray::TrayEvent;
 use crate::{CandidateDisplay, GuiEvent};
 use qianyan_ime_core::Config;
+use std::cell::RefCell;
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, RwLock};
 
-pub fn start_gui(rx: Receiver<GuiEvent>, mut config: Config, _tray_tx: Sender<TrayEvent>) {
-    let mut display: Box<dyn CandidateDisplay> = create_display(&config);
+thread_local! {
+    static DISPLAY: RefCell<Option<Box<dyn CandidateDisplay>>> = const { RefCell::new(None) };
+}
 
-    let timer = slint::Timer::default();
-    timer.start(
-        slint::TimerMode::Repeated,
-        std::time::Duration::from_millis(5),
-        move || {
-            while let Ok(event) = rx.try_recv() {
-                handle_single_event(&mut display, event, &mut config);
-            }
-        },
-    );
+pub fn start_gui(
+    rx: Receiver<GuiEvent>,
+    config: Arc<RwLock<Config>>,
+    _tray_tx: Sender<TrayEvent>,
+) {
+    {
+        let cfg = config.read().expect("config lock poisoned");
+        let initial = create_display(&cfg);
+        DISPLAY.with(|d| {
+            *d.borrow_mut() = Some(initial);
+        });
+    }
+
+    std::thread::spawn(move || {
+        while let Ok(event) = rx.recv() {
+            let cfg = config.clone();
+            let _ = slint::invoke_from_event_loop(move || {
+                DISPLAY.with(|d| {
+                    let mut display = d.borrow_mut();
+                    let display = display.as_mut().expect("display not initialized");
+                    handle_single_event(display, event, &cfg);
+                });
+            });
+        }
+    });
 
     slint::run_event_loop().expect("slint event loop failed");
 }
@@ -37,7 +55,7 @@ fn create_display(config: &Config) -> Box<dyn CandidateDisplay> {
 fn handle_single_event(
     display: &mut Box<dyn CandidateDisplay>,
     event: GuiEvent,
-    config: &mut Config,
+    config: &Arc<RwLock<Config>>,
 ) {
     match event {
         GuiEvent::Update {
@@ -63,13 +81,14 @@ fn handle_single_event(
             display.set_visible(visible);
         }
         GuiEvent::ApplyConfig(new_config) => {
-            let old_notify = config.linux.enable_notification_candidates;
-            *config = *new_config.clone();
-            if config.linux.enable_notification_candidates != old_notify {
+            let old_notify = config.read().expect("config lock poisoned").linux.enable_notification_candidates;
+            *config.write().expect("config lock poisoned") = *new_config;
+            let cfg = config.read().expect("config lock poisoned");
+            if cfg.linux.enable_notification_candidates != old_notify {
                 display.close();
-                *display = create_display(config);
+                *display = create_display(&cfg);
             } else {
-                display.apply_config(config);
+                display.apply_config(&cfg);
             }
         }
         GuiEvent::UpdateStatusBarVisible(visible) => {
