@@ -230,14 +230,8 @@ impl Processor {
             return Action::PassThrough;
         }
 
-        if ctrl_pressed && !alt_pressed {
-            let system_keys = [
-                VirtualKey::A, VirtualKey::C, VirtualKey::V, VirtualKey::X,
-                VirtualKey::Z, VirtualKey::Y, VirtualKey::S, VirtualKey::F,
-            ];
-            if system_keys.contains(&key) {
-                return Action::PassThrough;
-            }
+        if ctrl_pressed && !alt_pressed && is_letter(key) {
+            return Action::PassThrough;
         }
 
         if is_press && ctrl_pressed && !alt_pressed {

@@ -226,6 +226,16 @@ fn run_test_mode() {
             val = 0;
             input = input.replace("UP_", "");
         }
+        if input.starts_with("CTRL_ALT_") {
+            ctrl = true;
+            alt = true;
+            input = input.replace("CTRL_ALT_", "");
+        }
+        if input.starts_with("SHIFT_CTRL_") {
+            shift = true;
+            ctrl = true;
+            input = input.replace("SHIFT_CTRL_", "");
+        }
         if input.starts_with("SHIFT_") {
             shift = true;
             input = input.replace("SHIFT_", "");
