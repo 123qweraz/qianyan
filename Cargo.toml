@@ -106,6 +106,9 @@ evdev = { workspace = true }
 daemonize = { workspace = true }
 ksni = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+qianyan-ime-windows = { path = "crates/platform-windows" }
+
 [build-dependencies]
 slint-build = { workspace = true }
 
@@ -116,8 +119,3 @@ embed-resource = { workspace = true }
 [[bin]]
 name = "qianyan-ime"
 path = "src/main.rs"
-
-[lib]
-name = "qianyan_ime_tsf"
-crate-type = ["cdylib", "rlib"]
-path = "src/lib.rs"

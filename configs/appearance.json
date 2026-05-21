@@ -8,6 +8,7 @@
   "corner_radius": 10.0,
   "window_bg_color": "#ffffff",
   "window_highlight_color": "#0969da",
+  "window_highlight_text_color": "#ffffff",
   "window_border_color": "rgba(0, 0, 0, 0.1)",
   "window_padding_x": 18,
   "window_padding_y": 14,

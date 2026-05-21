@@ -4489,6 +4489,7 @@ dependencies = [
  "qianyan-ime-engine",
  "qianyan-ime-linux",
  "qianyan-ime-ui",
+ "qianyan-ime-windows",
  "rodio",
  "rust-embed",
  "serde",

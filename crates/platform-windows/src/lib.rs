@@ -7,7 +7,8 @@ mod text_service;
 
 use class_factory::ClassFactory;
 
-pub use qianyan_ime_core::constants::{IME_ID, LANG_PROFILE_ID};
+mod constants;
+pub use constants::{IME_ID, LANG_PROFILE_ID};
 
 static DLL_INSTANCE: OnceLock<HINSTANCE> = OnceLock::new();
 

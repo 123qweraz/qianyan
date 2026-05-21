@@ -19,7 +19,7 @@ pub fn start_gui(rx: Receiver<GuiEvent>, mut config: Config, _tray_tx: Sender<Tr
         },
     );
 
-    slint::run_event_loop().unwrap();
+    slint::run_event_loop().expect("slint event loop failed");
 }
 
 fn create_display(config: &Config) -> Box<dyn CandidateDisplay> {
@@ -84,7 +84,7 @@ fn handle_single_event(
         }
         GuiEvent::Exit => {
             display.close();
-            slint::quit_event_loop().unwrap();
+            let _ = slint::quit_event_loop();
         }
         _ => {}
     }

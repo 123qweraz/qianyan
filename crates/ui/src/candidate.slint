@@ -1,18 +1,19 @@
 export struct CandidateData {
     text: string,
+    label: string,
     english_aux: string,
     stroke_aux: string,
 }
 
 component CandidateItem inherits Rectangle {
     in property <string> text;
+    in property <string> label;
     in property <string> english_aux;
     in property <string> stroke_aux;
     in property <bool> selected;
-    in property <int> index;
     in property <bool> show_english_aux;
     in property <bool> show_stroke_aux;
-    in property <bool> show_translation; // 新增：独立控制翻译显示
+    in property <bool> show_translation;
     in property <bool> is_horizontal;
     
     in property <color> accent_color;
@@ -35,7 +36,7 @@ component CandidateItem inherits Rectangle {
         alignment: start;
         
         Text { 
-            text: (index + 1) + "."; 
+            text: label; 
             color: selected ? highlight_text_color : aux_text_color; 
             vertical-alignment: center; 
             font-size: font_size * 0.8;
@@ -133,14 +134,14 @@ export component CandidateWindow inherits Window {
                 spacing: 4px;
                 for cand[i] in candidates : CandidateItem {
                     text: cand.text;
+                    label: cand.label;
                     english_aux: cand.english_aux;
                     stroke_aux: cand.stroke_aux;
                     selected: i == selected_index;
-                    index: i;
                     is_horizontal: true;
                     show_english_aux: show_english_aux;
                     show_stroke_aux: show_stroke_aux;
-                    show_translation: show_translation; // 传递
+                    show_translation: show_translation;
                     accent_color: accent_color;
                     text_color: text_color;
                     highlight_text_color: highlight_text_color;
@@ -155,16 +156,15 @@ export component CandidateWindow inherits Window {
             if !is_horizontal : VerticalLayout {
                 spacing: 2px;
                 for cand[i] in candidates : CandidateItem {
-                    width: 100%;
                     text: cand.text;
+                    label: cand.label;
                     english_aux: cand.english_aux;
                     stroke_aux: cand.stroke_aux;
                     selected: i == selected_index;
-                    index: i;
                     is_horizontal: false;
                     show_english_aux: show_english_aux;
                     show_stroke_aux: show_stroke_aux;
-                    show_translation: show_translation; // 传递
+                    show_translation: show_translation;
                     accent_color: accent_color;
                     text_color: text_color;
                     highlight_text_color: highlight_text_color;

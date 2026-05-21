@@ -28,11 +28,21 @@ impl SlintDisplay {
     fn apply_style(&mut self, config: &Config) {
         let parse_color = |s: &str| -> slint::Color {
             if s.starts_with('#') && s.len() == 7 {
-                let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
-                let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
-                let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
+                let r = u8::from_str_radix(&s[1..3], 16).unwrap_or_else(|_| {
+                    log::warn!("invalid red color component in '{}'", s);
+                    255
+                });
+                let g = u8::from_str_radix(&s[3..5], 16).unwrap_or_else(|_| {
+                    log::warn!("invalid green color component in '{}'", s);
+                    255
+                });
+                let b = u8::from_str_radix(&s[5..7], 16).unwrap_or_else(|_| {
+                    log::warn!("invalid blue color component in '{}'", s);
+                    255
+                });
                 slint::Color::from_rgb_u8(r, g, b)
             } else {
+                log::warn!("invalid color format '{}', expected #RRGGBB", s);
                 slint::Color::from_rgb_u8(9, 105, 218)
             }
         };
@@ -55,7 +65,7 @@ impl SlintDisplay {
         self.window
             .set_text_color(parse_color(&config.appearance.candidate_text.color));
         self.window
-            .set_highlight_text_color(parse_color(&config.appearance.window_bg_color));
+            .set_highlight_text_color(parse_color(&config.appearance.window_highlight_text_color));
 
         let font_stack = format!(
             "{}, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
@@ -97,6 +107,7 @@ impl CandidateDisplay for SlintDisplay {
         for c in candidates {
             cand_models.push(CandidateData {
                 text: SharedString::from(c.text),
+                label: SharedString::from(c.label),
                 english_aux: SharedString::from(c.hint),
                 stroke_aux: SharedString::from(""),
             });

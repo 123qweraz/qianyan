@@ -1,10 +1,5 @@
-#[cfg(target_os = "windows")]
-pub mod registry;
-
-mod constants;
-
 #[cfg(windows)]
-pub use crate::constants::{IME_ID, LANG_PROFILE_ID};
+pub use qianyan_ime_windows::{IME_ID, LANG_PROFILE_ID};
 
 // 使用 crates/ 库替代本地模块
 use qianyan_ime_core::config::Config;

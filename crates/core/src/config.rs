@@ -52,6 +52,7 @@ pub struct Appearance {
     pub corner_radius: f32,
     pub window_bg_color: String,
     pub window_highlight_color: String,
+    pub window_highlight_text_color: String,
     pub window_border_color: String,
     pub window_padding_x: i32,
     pub window_padding_y: i32,
@@ -359,6 +360,7 @@ impl Config {
         if dark {
             self.appearance.window_bg_color = "#1e1e1e".to_string();
             self.appearance.window_highlight_color = "#0078d4".to_string();
+            self.appearance.window_highlight_text_color = "#ffffff".to_string();
             self.appearance.window_border_color = "rgba(255, 255, 255, 0.15)".to_string();
             self.appearance.pinyin_text.color = "#bbbbbb".to_string();
             self.appearance.candidate_text.color = "#eeeeee".to_string();
@@ -366,6 +368,7 @@ impl Config {
         } else {
             self.appearance.window_bg_color = "#ffffff".to_string();
             self.appearance.window_highlight_color = "#0969da".to_string();
+            self.appearance.window_highlight_text_color = "#ffffff".to_string();
             self.appearance.window_border_color = "rgba(0, 0, 0, 0.1)".to_string();
             self.appearance.pinyin_text.color = "#586069".to_string();
             self.appearance.candidate_text.color = "#24292e".to_string();
@@ -526,6 +529,7 @@ impl Config {
                 corner_radius: 10.0,
                 window_bg_color: "#ffffff".to_string(),
                 window_highlight_color: "#0969da".to_string(),
+                window_highlight_text_color: "#ffffff".to_string(),
                 window_border_color: "rgba(0, 0, 0, 0.1)".to_string(),
                 window_padding_x: 18,
                 window_padding_y: 14,
