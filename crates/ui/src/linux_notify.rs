@@ -25,7 +25,7 @@ impl CandidateDisplay for LinuxNotifyDisplay {
         candidates: Vec<DisplayCandidate>,
         selected: usize,
     ) {
-        if !self.config.linux.enable_notification_candidates {
+        if self.config.linux.display_mode != "notification" {
             if let Some(h) = self.active_notification.take() {
                 h.close();
             }

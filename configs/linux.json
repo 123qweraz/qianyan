@@ -1,7 +1,7 @@
 {
   "device_path": "/dev/input/event4",
   "paste_method": "shift_insert",
-  "enable_notification_candidates": true,
+  "display_mode": "notification",
   "fixed_position": true,
   "corner": "bottom-right"
 }

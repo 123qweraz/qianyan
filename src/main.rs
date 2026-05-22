@@ -17,8 +17,14 @@ static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    // 强制使用 Skia 渲染后端以支持彩色 Emoji 和高质量文字渲染
-    std::env::set_var("SLINT_BACKEND", "skia");
+    // 在 Linux 下默认使用 software 渲染后端以提高兼容性，除非用户显式设置了 SLINT_BACKEND
+    if cfg!(target_os = "linux") {
+        if std::env::var("SLINT_BACKEND").is_err() {
+            std::env::set_var("SLINT_BACKEND", "software");
+        }
+    } else {
+        std::env::set_var("SLINT_BACKEND", "skia");
+    }
 
     let args: Vec<String> = env::args().collect();
     let should_daemonize = match qianyan_ime_linux::cli::handle_startup(&args)? {

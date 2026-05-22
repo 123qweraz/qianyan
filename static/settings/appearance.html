@@ -13,10 +13,10 @@
         </header>
 
         <div class="card">
-            <h2>候选框显示</h2>
+            <h2>候选框基础显示 (内置 Slint 核心)</h2>
             <div class="grid-2">
                 <div class="setting-item">
-                    <div class="info"><div class="title">主题模式</div><div class="desc">选择候选栏的配色方案</div></div>
+                    <div class="info"><div class="title">主题模式</div><div class="desc">内置候选栏的配色方案，深色模式更适合暗色环境</div></div>
                     <select id="theme_mode">
                         <option value="light">浅色 (Light)</option>
                         <option value="dark">深色 (Dark)</option>
@@ -64,21 +64,21 @@
                 </select>
             </div>
             <div class="setting-item">
-                <div class="info"><div class="title">背景颜色</div></div>
+                <div class="info"><div class="title">背景颜色</div><div class="desc">支持 #RRGGBB 或 rgba(r,g,b,a) 格式</div></div>
                 <div class="color-picker-group">
                     <input type="text" id="window_bg_color" style="width:100px;">
                     <div class="color-preview"><input type="color" id="window_bg_color_picker"></div>
                 </div>
             </div>
             <div class="setting-item">
-                <div class="info"><div class="title">边框颜色</div></div>
+                <div class="info"><div class="title">边框颜色</div><div class="desc">设置候选框外边框的颜色</div></div>
                 <div class="color-picker-group">
                     <input type="text" id="window_border_color" style="width:100px;">
                     <div class="color-preview"><input type="color" id="window_border_color_picker"></div>
                 </div>
             </div>
             <div class="setting-item">
-                <div class="info"><div class="title">选中项背景色</div></div>
+                <div class="info"><div class="title">选中项背景色</div><div class="desc">当前选中候选词的背景高亮色</div></div>
                 <div class="color-picker-group">
                     <input type="text" id="window_highlight_color" style="width:100px;">
                     <div class="color-preview"><input type="color" id="window_highlight_color_picker"></div>

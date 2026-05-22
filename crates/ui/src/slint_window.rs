@@ -27,22 +27,33 @@ impl SlintDisplay {
 
     fn apply_style(&mut self, config: &Config) {
         let parse_color = |s: &str| -> slint::Color {
-            if s.starts_with('#') && s.len() == 7 {
-                let r = u8::from_str_radix(&s[1..3], 16).unwrap_or_else(|_| {
-                    log::warn!("invalid red color component in '{}'", s);
-                    255
-                });
-                let g = u8::from_str_radix(&s[3..5], 16).unwrap_or_else(|_| {
-                    log::warn!("invalid green color component in '{}'", s);
-                    255
-                });
-                let b = u8::from_str_radix(&s[5..7], 16).unwrap_or_else(|_| {
-                    log::warn!("invalid blue color component in '{}'", s);
-                    255
-                });
-                slint::Color::from_rgb_u8(r, g, b)
+            if s.starts_with('#') {
+                if s.len() == 7 {
+                    let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
+                    let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
+                    let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
+                    slint::Color::from_rgb_u8(r, g, b)
+                } else if s.len() == 9 {
+                    let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
+                    let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
+                    let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
+                    let a = u8::from_str_radix(&s[7..9], 16).unwrap_or(255);
+                    slint::Color::from_argb_u8(a, r, g, b)
+                } else {
+                    slint::Color::from_rgb_u8(255, 255, 255)
+                }
+            } else if s.starts_with("rgba(") {
+                let parts: Vec<&str> = s[5..s.len() - 1].split(',').map(|p| p.trim()).collect();
+                if parts.len() == 4 {
+                    let r = parts[0].parse::<u8>().unwrap_or(255);
+                    let g = parts[1].parse::<u8>().unwrap_or(255);
+                    let b = parts[2].parse::<u8>().unwrap_or(255);
+                    let a = (parts[3].parse::<f32>().unwrap_or(1.0) * 255.0) as u8;
+                    slint::Color::from_argb_u8(a, r, g, b)
+                } else {
+                    slint::Color::from_rgb_u8(255, 255, 255)
+                }
             } else {
-                log::warn!("invalid color format '{}', expected #RRGGBB", s);
                 slint::Color::from_rgb_u8(9, 105, 218)
             }
         };

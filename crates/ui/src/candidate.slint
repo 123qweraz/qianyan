@@ -111,10 +111,14 @@ export component CandidateWindow inherits Window {
         border-radius: win_border_radius;
         border-width: 1px;
         border-color: border_color;
+        
+        drop-shadow-blur: 12px;
+        drop-shadow-color: rgba(0, 0, 0, 0.25);
+        drop-shadow-offset-y: 4px;
 
         VerticalLayout {
-            padding: 8px;
-            spacing: 4px;
+            padding: 10px;
+            spacing: 6px;
             alignment: start;
 
             if pinyin != "" : HorizontalLayout {

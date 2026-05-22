@@ -13,7 +13,11 @@ export component StatusBar inherits Window {
 
     container := Rectangle {
         background: chinese_enabled ? #0969da : #586069;
-        border-radius: 4px;
+        border-radius: 6px;
+        
+        drop-shadow-blur: 8px;
+        drop-shadow-color: rgba(0, 0, 0, 0.2);
+        drop-shadow-offset-y: 2px;
 
         HorizontalLayout {
             padding-left: 10px;

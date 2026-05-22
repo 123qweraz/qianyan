@@ -16,7 +16,7 @@ pub struct Config {
 pub struct LinuxConfig {
     pub device_path: String,
     pub paste_method: String,
-    pub enable_notification_candidates: bool,
+    pub display_mode: String, // "slint", "notification"
     pub fixed_position: bool,
     pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
 }
@@ -754,7 +754,7 @@ impl Config {
             linux: LinuxConfig {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
-                enable_notification_candidates: true,
+                display_mode: "slint".to_string(),
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
             },

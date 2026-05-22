@@ -151,26 +151,29 @@
             </div>
         </div>
 
-        <h2>Linux 设置</h2>
+        <h2>Linux 专属设置</h2>
         <div class="card">
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">桌面通知</div>
-                    <div class="desc">使用桌面通知显示候选词列表（开启此项将停用内置候选栏）</div>
+                    <div class="title">候选显示方式</div>
+                    <div class="desc">选择候选词列表的展示方式。内置候选栏外观美观，支持自定义样式；桌面通知在某些 Wayland 环境下兼容性更好。</div>
                 </div>
-                <label class="switch"><input type="checkbox" id="linux_enable_notification_candidates"><span class="slider"></span></label>
+                <select id="linux_display_mode">
+                    <option value="slint">内置候选栏 (推荐)</option>
+                    <option value="notification">桌面通知 (兼容模式)</option>
+                </select>
             </div>
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">固定位置</div>
-                    <div class="desc">在 Wayland 下建议开启，将候选栏固定在屏幕某个角落</div>
+                    <div class="title">内置候选栏固定位置</div>
+                    <div class="desc">开启后将候选栏固定在屏幕角落，解决某些桌面环境下无法跟随光标的问题</div>
                 </div>
                 <label class="switch"><input type="checkbox" id="linux_fixed_position"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">显示角落</div>
-                    <div class="desc">选择固定位置时的显示方位</div>
+                    <div class="title">固定显示角落</div>
+                    <div class="desc">选择内置候选栏固定显示时的方位</div>
                 </div>
                 <select id="linux_corner">
                     <option value="top-left">左上角</option>
@@ -181,19 +184,19 @@
             </div>
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">粘贴方式</div>
-                    <div class="desc">选择文字上屏的方式</div>
+                    <div class="title">粘贴上屏方式</div>
+                    <div class="desc">选择将选中的文字发送到目标窗口的方式</div>
                 </div>
                 <select id="linux_paste_method">
-                    <option value="shift_insert">Shift + Insert (推荐)</option>
-                    <option value="ctrl_v">Ctrl + V</option>
-                    <option value="ctrl_shift_v">Ctrl + Shift + V</option>
+                    <option value="shift_insert">Shift + Insert (传统兼容性好)</option>
+                    <option value="ctrl_v">Ctrl + V (通用)</option>
+                    <option value="ctrl_shift_v">Ctrl + Shift + V (终端常用)</option>
                 </select>
             </div>
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">键盘设备</div>
-                    <div class="desc">键盘输入设备路径</div>
+                    <div class="title">键盘输入设备</div>
+                    <div class="desc">底层拦截所需的键盘设备路径，如 /dev/input/event4</div>
                 </div>
                 <input type="text" id="linux_device_path" placeholder="/dev/input/eventX">
             </div>
@@ -245,7 +248,7 @@
             bindInput('files_data_dir', 'files', 'data_dir');
             
             // Linux 专属
-            bindInput('linux_enable_notification_candidates', 'linux', 'enable_notification_candidates');
+            bindInput('linux_display_mode', 'linux', 'display_mode');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');
             bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');

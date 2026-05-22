@@ -42,7 +42,7 @@ pub fn start_gui(
 
 fn create_display(config: &Config) -> Box<dyn CandidateDisplay> {
     if cfg!(target_os = "linux") {
-        if config.linux.enable_notification_candidates {
+        if config.linux.display_mode == "notification" {
             Box::new(LinuxNotifyDisplay::new(config.clone()))
         } else {
             Box::new(SlintDisplay::new(config.clone()))
@@ -81,10 +81,10 @@ fn handle_single_event(
             display.set_visible(visible);
         }
         GuiEvent::ApplyConfig(new_config) => {
-            let old_notify = config.read().expect("config lock poisoned").linux.enable_notification_candidates;
+            let old_mode = config.read().expect("config lock poisoned").linux.display_mode.clone();
             *config.write().expect("config lock poisoned") = *new_config;
             let cfg = config.read().expect("config lock poisoned");
-            if cfg.linux.enable_notification_candidates != old_notify {
+            if cfg.linux.display_mode != old_mode {
                 display.close();
                 *display = create_display(&cfg);
             } else {

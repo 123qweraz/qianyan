@@ -254,9 +254,23 @@ impl Processor {
             return action;
         }
 
-        if is_press && is_letter(key) && perform_lookup {
-            let elapsed = now.duration_since(self.ctx.last_key_time);
+        // FSM 状态机转换（处理 字母、Shift、Backspace 等核心逻辑）
+        let fsm_action = self.handle_fsm_transition(
+            key,
+            shift_pressed,
+            ctrl_pressed,
+            alt_pressed,
+            is_press,
+            perform_lookup,
+        );
 
+        if is_press && is_letter(key) && perform_lookup {
+            // 如果 FSM 已经消耗或处理了该键（例如 Shift 字母用于辅助码过滤），则不再走批量缓冲逻辑
+            if fsm_action != Action::PassThrough {
+                return fsm_action;
+            }
+
+            let elapsed = now.duration_since(self.ctx.last_key_time);
             if elapsed < Duration::from_millis(KEY_BATCH_DELAY_MS) {
                 if let Some(c) = key_to_char(key, shift_pressed, false) {
                     self.ctx.pending_key_buffer.push(c);
@@ -292,14 +306,7 @@ impl Processor {
             }
         }
 
-        self.handle_fsm_transition(
-            key,
-            shift_pressed,
-            ctrl_pressed,
-            alt_pressed,
-            is_press,
-            perform_lookup,
-        )
+        fsm_action
     }
 
     fn process_batched_keys(&mut self, keys: &str) -> Action {

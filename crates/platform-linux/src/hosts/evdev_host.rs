@@ -197,12 +197,14 @@ impl EvdevHost {
                 while lookup_rx.try_recv().is_ok() {}
 
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    // Step 1: 快速读取 buffer 和配置（持有锁，但不做检索）
-                    let (buffer, profile, config) = {
+                    // Step 1: 快速读取 buffer、配置和辅助码状态（持有锁，但不做检索）
+                    let (buffer, profile, config, aux_filter, filter_mode) = {
                         if let Ok(p) = p_bg.lock() {
                             (p.ctx.session.buffer.clone(),
                              p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
-                             p.ctx.config.master_config.clone())
+                             p.ctx.config.master_config.clone(),
+                             p.ctx.session.aux_filter.clone(),
+                             p.ctx.session.filter_mode.clone())
                         } else { return; }
                     };
 
@@ -221,8 +223,8 @@ impl EvdevHost {
                         syllables: &syllables,
                         config: &config,
                         limit: 20,
-                        filter_mode: qianyan_ime_engine::processor::FilterMode::Global,
-                        aux_filter: "",
+                        filter_mode,
+                        aux_filter: &aux_filter,
                         context: None,
                     };
                     let (results, segments) = engine_bg.search(query);
