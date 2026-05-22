@@ -6,6 +6,7 @@ use qianyan_ime_core::Config;
 use std::cell::RefCell;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
+use std::panic;
 
 thread_local! {
     static DISPLAY: RefCell<Option<Box<dyn CandidateDisplay>>> = const { RefCell::new(None) };
@@ -28,11 +29,17 @@ pub fn start_gui(
         while let Ok(event) = rx.recv() {
             let cfg = config.clone();
             let _ = slint::invoke_from_event_loop(move || {
-                DISPLAY.with(|d| {
-                    let mut display = d.borrow_mut();
-                    let display = display.as_mut().expect("display not initialized");
-                    handle_single_event(display, event, &cfg);
-                });
+                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    DISPLAY.with(|d| {
+                        let mut display = d.borrow_mut();
+                        if let Some(ref mut display) = *display {
+                            handle_single_event(display, event, &cfg);
+                        }
+                    });
+                }));
+                if let Err(e) = result {
+                    log::error!("GUI event handler panicked: {:?}", e);
+                }
             });
         }
     });

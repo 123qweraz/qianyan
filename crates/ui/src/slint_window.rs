@@ -8,6 +8,7 @@ pub struct SlintDisplay {
     window: CandidateWindow,
     status_bar: StatusBar,
     config: Config,
+    window_visible: bool,
 }
 
 impl SlintDisplay {
@@ -19,6 +20,7 @@ impl SlintDisplay {
             window,
             status_bar,
             config: config.clone(),
+            window_visible: false,
         };
 
         display.apply_style(&config);
@@ -106,8 +108,7 @@ impl CandidateDisplay for SlintDisplay {
         selected: usize,
     ) {
         if pinyin.is_empty() || !self.config.appearance.show_candidates {
-            self.window.set_is_visible(false);
-            let _ = self.window.window().hide();
+            self.set_visible(false);
             return;
         }
 
@@ -126,8 +127,7 @@ impl CandidateDisplay for SlintDisplay {
         self.window
             .set_candidates(ModelRc::from(std::rc::Rc::new(VecModel::from(cand_models))));
 
-        self.window.set_is_visible(true);
-        let _ = self.window.window().show();
+        self.set_visible(true);
     }
 
     fn update_status(&mut self, text: &str, chinese_enabled: bool) {
@@ -173,12 +173,16 @@ impl CandidateDisplay for SlintDisplay {
     }
 
     fn set_visible(&mut self, visible: bool) {
+        if visible == self.window_visible {
+            return;
+        }
         self.window.set_is_visible(visible);
         if visible {
             let _ = self.window.window().show();
         } else {
             let _ = self.window.window().hide();
         }
+        self.window_visible = visible;
     }
 
     fn apply_config(&mut self, config: &Config) {
@@ -189,5 +193,6 @@ impl CandidateDisplay for SlintDisplay {
     fn close(&mut self) {
         let _ = self.window.window().hide();
         let _ = self.status_bar.window().hide();
+        self.window_visible = false;
     }
 }
