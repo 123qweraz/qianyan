@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>千言输入法终极使用指南</title>
+    <title>千言输入法 完整帮助文档</title>
     <style>
         :root {
             --apple-bg: #f5f5f7;
@@ -12,7 +12,12 @@
             --apple-text: #1d1d1f;
             --apple-secondary: #86868b;
             --apple-border: #d2d2d7;
+            --apple-success: #30d158;
+            --apple-warning: #ffd60a;
+            --apple-danger: #ff453a;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
@@ -20,17 +25,20 @@
         }
 
         aside {
-            width: 260px; height: 100vh; position: sticky; top: 0; background: rgba(245, 245, 247, 0.85);
-            backdrop-filter: blur(25px); border-right: 1px solid var(--apple-border); padding: 40px 20px; box-sizing: border-box;
+            width: 280px; height: 100vh; position: sticky; top: 0; background: rgba(245, 245, 247, 0.95);
+            backdrop-filter: blur(25px); border-right: 1px solid var(--apple-border); padding: 30px 20px; box-sizing: border-box;
+            overflow-y: auto;
         }
 
-        aside h3 { font-size: 18px; margin-bottom: 20px; padding-left: 15px; }
+        aside h3 { font-size: 14px; margin-bottom: 12px; padding-left: 15px; color: var(--apple-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
         aside nav a {
-            display: block; color: var(--apple-text); text-decoration: none; padding: 12px 15px;
-            border-radius: 10px; font-size: 14px; margin-bottom: 5px; transition: all 0.2s;
+            display: block; color: var(--apple-text); text-decoration: none; padding: 10px 15px;
+            border-radius: 8px; font-size: 14px; margin-bottom: 2px; transition: all 0.2s;
         }
         aside nav a:hover { background: rgba(0,0,0,0.05); }
         aside nav a.active { color: var(--apple-accent); font-weight: 600; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+
+        .nav-section { margin-bottom: 24px; }
 
         .keyboard-grid {
             display: grid;
@@ -53,82 +61,399 @@
         .key-desc { font-size: 12px; color: var(--apple-secondary); margin-top: 4px; }
         .row-label { grid-column: 1 / -1; font-weight: 600; font-size: 13px; color: var(--apple-secondary); margin-top: 10px; border-top: 1px solid #e5e5e5; padding-top: 5px; }
 
-        main { flex: 1; padding: 60px 10%; max-width: 1000px; }
+        main { flex: 1; padding: 50px 8%; max-width: 1000px; overflow-y: auto; }
 
-        h1 { font-size: 44px; font-weight: 800; margin-bottom: 10px; letter-spacing: -1.5px; }
-        .subtitle { color: var(--apple-secondary); font-size: 20px; margin-bottom: 60px; }
+        h1 { font-size: 40px; font-weight: 800; margin-bottom: 8px; letter-spacing: -1.5px; }
+        .subtitle { color: var(--apple-secondary); font-size: 18px; margin-bottom: 50px; }
 
-        section { margin-bottom: 80px; scroll-margin-top: 60px; }
-        h2 { font-size: 32px; font-weight: 700; margin-bottom: 25px; border-bottom: 2px solid var(--apple-accent); display: inline-block; padding-bottom: 5px; }
+        section { margin-bottom: 70px; scroll-margin-top: 60px; }
+        h2 { font-size: 28px; font-weight: 700; margin-bottom: 20px; border-bottom: 2px solid var(--apple-accent); display: inline-block; padding-bottom: 5px; }
+        h3 { font-size: 20px; color: var(--apple-accent); margin-top: 25px; margin-bottom: 12px; }
+        h4 { font-size: 16px; margin-top: 20px; margin-bottom: 10px; }
         
         .feature-card {
-            background: var(--apple-card); border-radius: 24px; padding: 35px; margin-bottom: 30px;
+            background: var(--apple-card); border-radius: 20px; padding: 28px; margin-bottom: 24px;
             border: 1px solid var(--apple-border); box-shadow: 0 10px 40px rgba(0,0,0,0.03);
         }
 
-        .feature-card h3 { margin-top: 0; font-size: 22px; color: var(--apple-accent); margin-bottom: 15px; }
-        
+        .feature-card h3 { margin-top: 0; }
+
+        .callout {
+            padding: 16px 20px; border-radius: 12px; margin: 16px 0; font-size: 14px;
+        }
+        .callout-info { background: #e8f4ff; border-left: 4px solid var(--apple-accent); color: #004085; }
+        .callout-warning { background: #fff9e6; border-left: 4px solid var(--apple-warning); color: #856404; }
+        .callout-success { background: #f0fff4; border-left: 4px solid var(--apple-success); color: #155724; }
+        .callout-danger { background: #fff5f5; border-left: 4px solid var(--apple-danger); color: #721c24; }
+
         .example-box {
             background: #f8f9fa; border-left: 4px solid var(--apple-accent); padding: 15px 20px;
             margin: 20px 0; border-radius: 0 12px 12px 0;
         }
         .example-box code { color: #d70022; font-weight: 700; font-size: 1.1em; }
 
-        .pro-tip {
-            background: #fff9e6; border: 1px solid #ffe58f; padding: 15px; border-radius: 12px;
-            font-size: 14px; color: #856404; margin-top: 15px;
-        }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", Menlo, Monaco, monospace; font-size: 0.9em; }
+        pre { background: #1d1d1f; color: #f5f5f7; padding: 16px 20px; border-radius: 12px; overflow-x: auto; font-family: "SF Mono", Menlo, Monaco, monospace; font-size: 13px; line-height: 1.5; }
+        pre code { background: none; padding: 0; color: inherit; }
 
-        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: "SF Mono", monospace; }
-        .tag { font-size: 12px; background: #e1f0ff; color: #0071e3; padding: 3px 10px; border-radius: 12px; font-weight: 600; margin-left: 10px; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 12px; }
+        .tag { font-size: 11px; background: #e1f0ff; color: #0071e3; padding: 3px 10px; border-radius: 12px; font-weight: 600; margin-left: 8px; }
+        ul { padding-left: 22px; margin-top: 8px; }
+        li { margin-bottom: 8px; }
         b { color: var(--apple-accent); }
+
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+        table th, table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--apple-border); }
+        table th { background: #f8f9fa; font-weight: 600; color: var(--apple-text); }
+        table tr:hover { background: #fafafa; }
+
+        .kbd { display: inline-block; background: linear-gradient(180deg, #fafafa, #e8e8e8); border: 1px solid #d2d2d7; border-bottom-width: 2px; border-radius: 6px; padding: 2px 8px; font-family: "SF Mono", monospace; font-size: 12px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+        .breadcrumb { font-size: 13px; color: var(--apple-secondary); margin-bottom: 20px; }
+        .breadcrumb a { color: var(--apple-accent); text-decoration: none; }
+
+        .step-number { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--apple-accent); color: white; border-radius: 50%; font-weight: 700; font-size: 14px; margin-right: 12px; flex-shrink: 0; }
+        .step { display: flex; align-items: flex-start; margin-bottom: 16px; }
+        .step-content { flex: 1; }
+
+        .dir-tree { font-family: "SF Mono", Menlo, Monaco, monospace; font-size: 12px; line-height: 1.6; background: #fafafa; padding: 16px; border-radius: 12px; border: 1px solid var(--apple-border); }
+        .dir-tree .folder { color: var(--apple-accent); font-weight: 600; }
+        .dir-tree .file { color: var(--apple-text); }
+        .dir-tree .comment { color: var(--apple-secondary); font-style: italic; }
+
+        .shortcut-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; margin-top: 16px; }
+        .shortcut-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fafafa; border-radius: 10px; border: 1px solid var(--apple-border); }
+        .shortcut-key { font-family: "SF Mono", monospace; font-weight: 600; color: var(--apple-accent); }
+
+        .code-comment { color: #6e7681; }
+        .code-keyword { color: #ff7b72; }
+        .code-string { color: #a5d6ff; }
+        .code-number { color: #7ee787; }
     </style>
 </head>
 <body>
     <aside>
-        <h3>文档导航</h3>
-        <nav>
-            <a href="#intro">1. 产品定位</a>
-            <a href="#aux-code">2. 核心：英文辅助码</a>
-            <a href="#stroke-aux">3. 进阶：笔画辅助码</a>
-            <a href="#proper-nouns">4. 专有名词原生隔离</a>
-            <a href="#mixed-input">5. 多方案混输</a>
-            <a href="#quick-rime">6. 长按与双击定制</a>
-            <a href="#nav-mode">7. 智能导航与平卷互换</a>
-            <a href="#sentence-mode">8. 智能长句模式</a>
-            <a href="#ui-custom">9. 视觉与样式定制</a>
-        </nav>
+        <div class="nav-section">
+            <h3>快速开始</h3>
+            <nav>
+                <a href="#intro">产品简介</a>
+                <a href="#install">安装指南</a>
+                <a href="#quickstart">快速上手</a>
+                <a href="#faq">常见问题</a>
+            </nav>
+        </div>
+
+        <div class="nav-section">
+            <h3>核心功能</h3>
+            <nav>
+                <a href="#aux-code">英文辅助码</a>
+                <a href="#stroke-aux">笔画辅助码</a>
+                <a href="#proper-nouns">专有名词隔离</a>
+                <a href="#mixed-input">多方案混输</a>
+                <a href="#quick-rime">长按与双击</a>
+                <a href="#nav-mode">智能导航</a>
+            </nav>
+        </div>
+
+        <div class="nav-section">
+            <h3>配置说明</h3>
+            <nav>
+                <a href="#config-files">配置文件</a>
+                <a href="#web-config">Web 配置中心</a>
+                <a href="#double-pinyin">双拼配置</a>
+                <a href="#fuzzy">模糊音配置</a>
+                <a href="#appearance">外观配置</a>
+            </nav>
+        </div>
+
+        <div class="nav-section">
+            <h3>开发者指南</h3>
+            <nav>
+                <a href="#architecture">项目架构</a>
+                <a href="#build">编译构建</a>
+                <a href="#dictionary">词典工具</a>
+                <a href="#testing">测试说明</a>
+            </nav>
+        </div>
+
+        <div class="nav-section">
+            <h3>高级主题</h3>
+            <nav>
+                <a href="#sentence-mode">长句模式</a>
+                <a href="#ui-custom">样式定制</a>
+                <a href="#stroke-mistake">笔画纠错手册</a>
+            </nav>
+        </div>
     </aside>
 
     <main>
-        <h1>千言输入法 终极指南</h1>
-        <div class="subtitle">一款专为程序员与效率极客设计的拼音输入法</div>
+        <div class="breadcrumb">
+            <a href="/">控制中心</a> / 帮助文档
+        </div>
+
+        <h1>千言输入法 完整帮助文档</h1>
+        <div class="subtitle">一款专为程序员与效率极客设计的高性能拼音输入法</div>
+
+        <!-- ==================== 第一部分：快速开始 ==================== -->
 
         <section id="intro">
-            <h2>产品定位</h2>
+            <h2>产品简介</h2>
             <div class="feature-card">
-                <p>千言输入法 是一款基于 Rust 编写的高性能拼音输入法。它的设计核心是<b>“零干扰”</b>与<b>“极致效率”</b>。</p>
-                <p>对于普通用户，它表现得像任何主流输入法一样：支持全拼、简拼、模糊音。但为了效率，我们做了两个果断的选择：</p>
+                <table>
+                    <tr><th width="30%">属性</th><th>说明</th></tr>
+                    <tr><td><b>项目名称</b></td><td>千言输入法 (Qianyan IME)</td></tr>
+                    <tr><td><b>编程语言</b></td><td>Rust (Edition 2021)</td></tr>
+                    <tr><td><b>许可证</b></td><td>MIT</td></tr>
+                    <tr><td><b>版本</b></td><td>0.1.0</td></tr>
+                    <tr><td><b>支持平台</b></td><td>Linux (evdev/IBus/Wayland)、Windows (TSF)</td></tr>
+                </table>
+
+                <h3>设计理念</h3>
+                <p>千言输入法 的设计核心是<b>「零干扰」</b>与<b>「极致效率」</b>：</p>
                 <ul>
-                    <li><b>Tab 键即正义</b>：摒弃了复杂的切换键，默认使用 <code>Tab</code> 键（单按）瞬间切换中英文。</li>
-                    <li><b>位置固定</b>：候选框不跟随光标（减少视觉抖动），默认固定在屏幕底部（位置可完全自定义）。</li>
+                    <li><b>位置固定</b>：候选框默认固定在屏幕底部，不跟随光标，减少视觉抖动</li>
+                    <li><b>快捷切换</b>：使用 <span class="kbd">Tab</span> 键瞬间切换中英文</li>
+                    <li><b>辅助码定位</b>：拼音重码时，用大写字母或笔画码精准定位，无需翻页</li>
                 </ul>
             </div>
         </section>
+
+        <section id="install">
+            <h2>安装指南</h2>
+
+            <div class="feature-card">
+                <h3>Linux 安装</h3>
+
+                <h4>方式一：预编译包（推荐）</h4>
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <p><b>解压并进入目录</b></p>
+                        <pre><code>tar xzf qianyan-ime-linux-x86_64.tar.gz
+cd qianyan-ime</code></pre>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <p><b>选择运行方式</b></p>
+                        <div class="callout-info">
+                            <p><b>便携模式</b>：直接运行，无需安装</p>
+                            <pre><code>./qianyan-ime</code></pre>
+                        </div>
+                        <div class="callout-success">
+                            <p><b>系统安装</b>：自动配置权限，安装到系统</p>
+                            <pre><code>sudo ./install.sh</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <h4>方式二：从源码编译</h4>
+
+                <div class="callout-warning">
+                    <p><b>依赖要求</b>：Rust 1.70+、libevdev、libdbus、clang</p>
+                </div>
+
+                <p><b>安装编译依赖</b>：</p>
+                <pre><code><span class="code-comment"># Ubuntu/Debian</span>
+sudo apt install rustc cargo libevdev-dev libdbus-1-dev clang
+
+<span class="code-comment"># Fedora</span>
+sudo dnf install rust cargo libevdev-devel dbus-devel clang
+
+<span class="code-comment"># Arch Linux</span>
+sudo pacman -S rust cargo libevdev dbus clang</code></pre>
+
+                <p><b>编译安装</b>：</p>
+                <pre><code><span class="code-comment"># 克隆源码</span>
+git clone https://github.com/123qweraz/qianyan-ime.git
+cd qianyan-ime
+
+<span class="code-comment"># 编译</span>
+cargo build --release
+
+<span class="code-comment"># 安装</span>
+sudo cp target/release/qianyan-ime /usr/local/bin/
+sudo cp qianyan-ime.desktop /usr/share/applications/</code></pre>
+
+                <h4>权限配置（evdev 模式必需）</h4>
+                <div class="callout-danger">
+                    <p><b>重要</b>：evdev 模式需要读取输入设备和创建虚拟键盘的权限</p>
+                </div>
+
+                <pre><code><span class="code-comment"># 1. 将当前用户加入 input 组</span>
+sudo usermod -aG input $USER
+
+<span class="code-comment"># 2. 创建 udev 规则</span>
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' \
+  | sudo tee /etc/udev/rules.d/99-qianyan-ime-uinput.rules
+
+<span class="code-comment"># 3. 重载 udev 规则</span>
+sudo udevadm control --reload-rules
+sudo udevadm trigger</code></pre>
+
+                <div class="callout-warning">
+                    <p><b>注意</b>：加入 input 组后，<b>必须注销并重新登录</b>才能生效</p>
+                </div>
+
+                <h4>后端选择</h4>
+                <p>程序自动检测可用后端，优先级：<b>evdev → IBus → Wayland</b></p>
+                <table>
+                    <tr><th>命令</th><th>说明</th></tr>
+                    <tr><td><code>qianyan-ime</code></td><td>自动选择最佳后端</td></tr>
+                    <tr><td><code>qianyan-ime --backend=evdev</code></td><td>强制 evdev（硬件拦截，性能最佳）</td></tr>
+                    <tr><td><code>qianyan-ime --backend=ibus</code></td><td>强制 IBus 后端</td></tr>
+                    <tr><td><code>qianyan-ime --backend=wayland</code></td><td>强制 Wayland 原生协议</td></tr>
+                </table>
+
+                <h4>命令行参数</h4>
+                <table>
+                    <tr><th>参数</th><th>说明</th></tr>
+                    <tr><td><code>--backend=&lt;name&gt;</code></td><td>指定后端: evdev, ibus, wayland</td></tr>
+                    <tr><td><code>--daemon</code></td><td>后台守护进程运行</td></tr>
+                    <tr><td><code>--no-daemon</code></td><td>前台运行（查看日志）</td></tr>
+                    <tr><td><code>--list</code></td><td>列出可用后端</td></tr>
+                    <tr><td><code>--help</code></td><td>显示帮助</td></tr>
+                </table>
+            </div>
+
+            <div class="feature-card">
+                <h3>Windows 安装</h3>
+
+                <h4>方式一：安装包</h4>
+                <p>运行 <code>qianyan-ime-setup.exe</code>，按照向导完成安装。</p>
+
+                <h4>方式二：从源码编译</h4>
+                <div class="callout-warning">
+                    <p><b>需求</b>：Visual Studio 2022 (含 C++ 开发工具)、Rust 工具链</p>
+                </div>
+                <pre><code><span class="code-comment"># 编译</span>
+cargo build --release
+
+<span class="code-comment"># 注册 TSF 组件（需管理员权限）</span>
+cd target/release
+regsvr32 qianyan-ime.dll</code></pre>
+            </div>
+        </section>
+
+        <section id="quickstart">
+            <h2>快速上手</h2>
+
+            <div class="feature-card">
+                <h3>基础快捷键</h3>
+                <div class="shortcut-grid">
+                    <div class="shortcut-item">
+                        <span>中英文切换</span>
+                        <span class="shortcut-key">Tab / Shift</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>选择第一个候选</span>
+                        <span class="shortcut-key">Space</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>选择候选 1-9</span>
+                        <span class="shortcut-key">1 - 9</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>向前翻页</span>
+                        <span class="shortcut-key">- / ,</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>向后翻页</span>
+                        <span class="shortcut-key">= / .</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>直接上屏拼音</span>
+                        <span class="shortcut-key">Enter</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>清除输入</span>
+                        <span class="shortcut-key">Esc</span>
+                    </div>
+                    <div class="shortcut-item">
+                        <span>删除一个拼音</span>
+                        <span class="shortcut-key">Backspace</span>
+                    </div>
+                </div>
+
+                <h3>打开配置中心</h3>
+                <p>运行输入法后，点击系统托盘图标选择「打开设置」，或在浏览器访问：</p>
+                <div class="callout-info">
+                    <p><b>配置中心地址</b>：<code>http://localhost:18765</code></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq">
+            <h2>常见问题</h2>
+
+            <div class="feature-card">
+                <h4>Q1: 启动后键盘没反应？</h4>
+                <p><b>原因</b>：evdev 模式权限未正确配置。</p>
+                <p><b>解决</b>：</p>
+                <ol>
+                    <li>确保用户已加入 <code>input</code> 组：运行 <code>groups</code> 确认</li>
+                    <li>确保 udev 规则已创建：检查 <code>/etc/udev/rules.d/99-qianyan-ime-uinput.rules</code></li>
+                    <li><b>注销并重新登录</b>（这步很重要！）</li>
+                </ol>
+
+                <h4>Q2: 候选窗不显示？</h4>
+                <p><b>原因</b>：Slint 渲染后端问题，或桌面环境兼容性问题。</p>
+                <p><b>兼容性情况</b>：</p>
+                <table>
+                    <tr><th>桌面环境</th><th>兼容性</th></tr>
+                    <tr><td>KDE (Wayland)</td><td class="code-string">最佳</td></tr>
+                    <tr><td>COSMIC</td><td class="code-string">最佳</td></tr>
+                    <tr><td>Hyprland</td><td class="code-string">最佳</td></tr>
+                    <tr><td>GNOME</td><td class="code-warning">候选窗可能无法悬浮</td></tr>
+                    <tr><td>XFCE</td><td class="code-warning">候选窗可能无法悬浮</td></tr>
+                </table>
+                <p><b>尝试切换渲染后端</b>：</p>
+                <pre><code>export SLINT_BACKEND=skia
+qianyan-ime</code></pre>
+
+                <h4>Q3: Web 配置页面打不开？</h4>
+                <p><b>检查步骤</b>：</p>
+                <ol>
+                    <li>确认 <code>qianyan-ime</code> 进程在运行：<code>ps aux | grep qianyan</code></li>
+                    <li>检查端口 18765 是否被占用：<code>netstat -tlnp | grep 18765</code></li>
+                    <li>确认地址：<code>http://localhost:18765</code>（注意是 18765，不是 8765）</li>
+                </ol>
+
+                <h4>Q4: 如何卸载？</h4>
+                <p><b>Linux</b>：</p>
+                <pre><code><span class="code-comment"># 删除程序文件</span>
+sudo rm /usr/local/bin/qianyan-ime
+sudo rm /usr/share/applications/qianyan-ime.desktop
+sudo rm /etc/udev/rules.d/99-qianyan-ime-uinput.rules
+
+<span class="code-comment"># 删除用户数据</span>
+rm -rf ~/.local/share/qianyan-ime</code></pre>
+
+                <p><b>Windows</b>（管理员权限）：</p>
+                <pre><code>regsvr32 /u qianyan-ime.dll</code></pre>
+
+                <h4>Q5: 如何查看日志？</h4>
+                <pre><code><span class="code-comment"># 前台运行查看日志</span>
+RUST_LOG=debug qianyan-ime --no-daemon
+
+<span class="code-comment"># 或使用 cargo 运行</span>
+RUST_LOG=info cargo run</code></pre>
+            </div>
+        </section>
+
+        <!-- ==================== 第二部分：核心功能 ==================== -->
 
         <section id="aux-code">
             <h2>核心：英文辅助码</h2>
             <div class="feature-card">
                 <p>这是 千言输入法 的灵魂功能。在拼音重码极多（如同音字、简拼）时，您无需翻页，只需输入一个<b>大写字母</b>即可精准定位。</p>
                 
-                <h3>它是如何工作的？</h3>
+                <h3>工作原理</h3>
                 <p>输入法会自动扫描候选词对应的<b>英文翻译/释义</b>。当您输入一个大写字母时，它会匹配释义中第一个大写单词的首字母。</p>
 
                 <div class="example-box">
                     <p><b>场景 A：解决同音字重码</b></p>
-                    <p>输入 <code>li</code>，候选词可能有“里、离、礼、理...”。</p>
+                    <p>输入 <code>li</code>，候选词可能有"里、离、礼、理..."。</p>
                     <ul>
                         <li>输入 <code>liC</code> ⮕ <b>礼</b> (Ceremony) 瞬间排到第一。</li>
                         <li>输入 <code>liL</code> ⮕ <b>理</b> (Logic) 瞬间排到第一。</li>
@@ -137,7 +462,7 @@
 
                 <div class="example-box">
                     <p><b>场景 B：简拼精准定位</b></p>
-                    <p>输入 <code>sh</code>，候选词可能有“书、水、数、树...”。</p>
+                    <p>输入 <code>sh</code>，候选词可能有"书、水、数、树..."。</p>
                     <ul>
                         <li>输入 <code>shB</code> ⮕ <b>书</b> (Book) 瞬间出现。</li>
                         <li>输入 <code>shW</code> ⮕ <b>水</b> (Water) 瞬间出现。</li>
@@ -145,34 +470,25 @@
                     </ul>
                 </div>
 
-                <div class="example-box">
-                    <p><b>场景 C：长词组过滤</b></p>
-                    <p>输入 <code>ha</code>，想输入“号”。</p>
-                    <ul>
-                        <li>输入 <code>haN</code> ⮕ <b>号</b> (Number) 排除掉“好、哈”。</li>
-                    </ul>
-                </div>
-
-                <div class="pro-tip">
-                    <b>技巧：</b>该功能会自动跳过声调符号。例如翻译是 "ne Particle"，输入 <code>P</code> 即可精准匹配 "Particle"。
+                <div class="callout-info">
+                    <p><b>技巧</b>：该功能会自动跳过声调符号。例如翻译是 "ne Particle"，输入 <code>P</code> 即可精准匹配 "Particle"。</p>
                 </div>
             </div>
         </section>
 
         <section id="stroke-aux">
-            <h2>进阶：笔画输入法与辅助码 (SBSRF)</h2>
+            <h2>进阶：笔画辅助码 (SBSRF)</h2>
             <div class="feature-card">
                 <p>这是本引擎最核心的原创设计方案。它不仅可以作为拼音的辅助过滤码，更可以作为一套<b>独立、高效的笔画输入法</b>。其核心逻辑是：<b>一键代表两个连续笔画</b>。</p>
 
-                <h3>1. 设计思想：双笔一键</h3>
+                <h3>设计思想：双笔一键</h3>
                 <p>传统的笔画输入法（1-5数字键）效率低下，因为每输入一个笔画就需要点击一次按键。SBSRF 方案通过 5x5 的字母矩阵，让您每一次击键都能输入两个笔画，大幅提升了输入速度。</p>
 
-                <h3>2. 映射布局：5x5 视觉矩阵</h3>
-                <p>我们将键盘划分为 5 个逻辑区（横、竖、撇、捺、折）。每个按键代表两笔：<b>行代表第 1 笔，列代表第 2 笔</b>。</p>
+                <h3>映射布局：5x5 视觉矩阵</h3>
+                <p>每个按键代表两笔：<b>行代表第 1 笔，列代表第 2 笔</b>。</p>
 
-                <div class="keyboard-visual">
+                <div class="keyboard-visual" style="background: #2c2c2e; padding: 20px; border-radius: 20px; color: white; margin: 20px 0;">
                     <style>
-                        .keyboard-visual { background: #2c2c2e; padding: 20px; border_radius: 20px; color: white; margin: 20px 0; }
                         .zone-row { display: flex; align-items: center; margin-bottom: 8px; }
                         .zone-label { width: 100px; font-weight: bold; font-size: 14px; color: #ff9f0a; }
                         .key-node { 
@@ -182,14 +498,9 @@
                         }
                         .key-main { font-size: 18px; font-weight: 800; color: #0a84ff; }
                         .key-sub { font-size: 10px; color: #8e8e93; }
-                        .h-zone { border-left: 4px solid #30d158; } /* 横 - 绿 */
-                        .v-zone { border-left: 4px solid #ff375f; } /* 竖 - 红 */
-                        .p-zone { border-left: 4px solid #5e5ce6; } /* 撇 - 蓝 */
-                        .n-zone { border-left: 4px solid #ffd60a; } /* 捺 - 黄 */
-                        .z-zone { border-left: 4px solid #bf5af2; } /* 折 - 紫 */
                     </style>
 
-                    <div class="zone-row h-zone">
+                    <div class="zone-row" style="border-left: 4px solid #30d158; padding-left: 12px;">
                         <div class="zone-label">横区 (1)</div>
                         <div class="key-node"><span class="key-main">G</span><span class="key-sub">11</span></div>
                         <div class="key-node"><span class="key-main">F</span><span class="key-sub">12</span></div>
@@ -197,7 +508,7 @@
                         <div class="key-node"><span class="key-main">S</span><span class="key-sub">14</span></div>
                         <div class="key-node"><span class="key-main">A</span><span class="key-sub">15</span></div>
                     </div>
-                    <div class="zone-row v-zone">
+                    <div class="zone-row" style="border-left: 4px solid #ff375f; padding-left: 12px;">
                         <div class="zone-label">竖区 (2)</div>
                         <div class="key-node"><span class="key-main">H</span><span class="key-sub">21</span></div>
                         <div class="key-node"><span class="key-main">J</span><span class="key-sub">22</span></div>
@@ -205,7 +516,7 @@
                         <div class="key-node"><span class="key-main">L</span><span class="key-sub">24</span></div>
                         <div class="key-node"><span class="key-main">M</span><span class="key-sub">25</span></div>
                     </div>
-                    <div class="zone-row p-zone">
+                    <div class="zone-row" style="border-left: 4px solid #5e5ce6; padding-left: 12px;">
                         <div class="zone-label">撇区 (3)</div>
                         <div class="key-node"><span class="key-main">T</span><span class="key-sub">31</span></div>
                         <div class="key-node"><span class="key-main">R</span><span class="key-sub">32</span></div>
@@ -213,7 +524,7 @@
                         <div class="key-node"><span class="key-main">W</span><span class="key-sub">34</span></div>
                         <div class="key-node"><span class="key-main">Q</span><span class="key-sub">35</span></div>
                     </div>
-                    <div class="zone-row n-zone">
+                    <div class="zone-row" style="border-left: 4px solid #ffd60a; padding-left: 12px;">
                         <div class="zone-label">捺区 (4)</div>
                         <div class="key-node"><span class="key-main">Y</span><span class="key-sub">41</span></div>
                         <div class="key-node"><span class="key-main">U</span><span class="key-sub">42</span></div>
@@ -221,7 +532,7 @@
                         <div class="key-node"><span class="key-main">O</span><span class="key-sub">44</span></div>
                         <div class="key-node"><span class="key-main">P</span><span class="key-sub">45</span></div>
                     </div>
-                    <div class="zone-row z-zone">
+                    <div class="zone-row" style="border-left: 4px solid #bf5af2; padding-left: 12px;">
                         <div class="zone-label">折区 (5)</div>
                         <div class="key-node"><span class="key-main">N</span><span class="key-sub">51</span></div>
                         <div class="key-node"><span class="key-main">B</span><span class="key-sub">52</span></div>
@@ -231,243 +542,568 @@
                     </div>
                 </div>
 
-                <h3>3. 编码规则</h3>
-                <ul>
-                    <li><b>单字输入 (全码)</b>：依次输入笔画对对应的字母。例如“的”的前两画为“撇、竖”（32=R），继续输入后续笔画即可。</li>
-                    <li><b>单字输入 (定长 4 键简码)</b>：为了提高长字的录入速度，所有 8 笔以上（编码超过 4 键）的汉字支持简码输入：
-                        <br><b>规则</b>：取该字全码的 <b>前 3 键 + 最后一个键</b>。
-                        <br>示例：<code>康</code> 全码为 <code>dy...a</code>，简码仅需输入 4 键。
-                    </li>
-                    <li><b>万能通配符 (Z 键)</b>：当您不确定中间某处的笔画时，可以使用 <code>z</code> 键占位：
-                        <br><b>规则</b>：<code>z</code> 匹配任意一个编码字母（即 2 个笔画）。
-                        <br>示例：输入 <code>fzh</code> 可匹配所有以 <code>f</code> 开头、<code>h</code> 结尾的三键编码（共 6 笔）。
-                    </li>
-                    <li><b>词组输入 (定长 4 键制)</b>：借鉴五笔逻辑，无论词组多长，统一使用 4 个按键完成编码：
-                        <ul>
-                            <li><b>2 字词</b>：取第 1 字的前 2 键 + 第 2 字的前 2 键。
-                                <br>示例：<code>中国</code> ⮕ <code>m</code>(中1)+<code>n</code>(中2) + <code>a</code>(国1)+<code>h</code>(国2) = <b><code>mnah</code></b></li>
-                            <li><b>3 字词</b>：取第 1 字首键 + 第 2 字首键 + 第 3 字前 2 键。
-                                <br>示例：<code>计算机</code> ⮕ <code>y</code>(计1) + <code>t</code>(算1) + <code>f</code>(机1)+<code>s</code>(机2) = <b><code>ytfs</code></b></li>
-                            <li><b>4 字及以上</b>：取前 3 个字的首键 + 最后一个字的第一个键。
-                                <br>示例：<code>中华人民共和国</code> ⮕ <code>m</code>(中1) + <code>r</code>(华1) + <code>r</code>(人1) + <code>a</code>(国1) = <b><code>mrra</code></b></li>
-                        </ul>
-                    </li>
-                </ul>
+                <h3>编码规则</h3>
+                <table>
+                    <tr><th>输入类型</th><th>编码规则</th></tr>
+                    <tr><td><b>单字全码</b></td><td>依次输入笔画对对应的字母</td></tr>
+                    <tr><td><b>单字简码</b></td><td>8笔以上汉字：前3键 + 最后1键</td></tr>
+                    <tr><td><b>万能通配符</b></td><td><code>Z</code> 键匹配任意一个编码字母（2个笔画）</td></tr>
+                    <tr><td><b>2字词</b></td><td>第1字前2键 + 第2字前2键</td></tr>
+                    <tr><td><b>3字词</b></td><td>第1字首键 + 第2字首键 + 第3字前2键</td></tr>
+                    <tr><td><b>4字及以上</b></td><td>前3字首键 + 最后1字首键</td></tr>
+                </table>
 
-                <h3>4. 使用场景</h3>
-
-                <div class="example-box">
-                    <p><b>实战演练</b></p>
-                    <ul>
-                        <li><b>人</b> (ren)：笔画为“撇、捺”(3、4)，对应坐标 (3,4) 即按键 <code>W</code>。输入 <code>ren;w</code> 瞬间定位。</li>
-                        <li><b>的</b> (de)：前两画“撇、竖”(3,2=R)，末两画“点、折”(4,5=P)。输入 <code>de;rp</code> 精准定位。</li>
-                    </ul>
+                <h3>统计特性</h3>
+                <div class="callout-success">
+                    <p><b>重码率极低</b>：在全量 2 万字字典中，超过 <b>95%</b> 的编码是唯一的。即使在重码情况下，绝大多数编码也仅对应 2 个汉字。</p>
+                    <p><b>笔画数分布</b>：6 笔及以下的汉字仅占总量的约 <b>6%</b>。绝大多数汉字（7 笔及以上）通过 4 键编码即可实现精准区分。</p>
                 </div>
-
-                <div class="pro-tip">
-                    <b>说明：</b>如果某个字映射结果与直觉不符，可以在 Web 端“辅助码对照表”中查看每个字的精确 <code>stroke_aux</code>。
-                </div>
-
-                <div class="pro-tip">
-                    <b>💡 笔画特征分析 (统计数据)：</b><br>
-                    • <b>重码率极低</b>：在全量 2 万字字典中，超过 <b>95%</b> 的编码是唯一的。即使在重码情况下，绝大多数编码也仅对应 2 个汉字，基本实现“所见即所得”的盲打体验。<br>
-                    • <b>笔画数分布</b>：6 笔及以下的汉字仅占总量的约 <b>6%</b> (常用字中约占 10%)。这意味着绝大多数汉字（7 笔及以上）通过 SBSRF 的 4 键编码即可实现精准区分，几乎不需要选词。
-                </div>
-
-                <h3>5. 汉字笔画纠错与编码手册</h3>
-                <div class="mistake-manual">
-                    <style>
-                        .mistake-manual { font-size: 14px; }
-                        .mistake-group { margin-bottom: 25px; background: #f8f9fa; padding: 20px; border-radius: 16px; border: 1px solid #e5e5e5; }
-                        .mistake-group h4 { margin-top: 0; color: #ff3b30; border-bottom: 1px solid #ff3b30; display: inline-block; padding-bottom: 3px; }
-                        .mistake-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
-                        .mistake-item { background: white; padding: 10px; border-radius: 8px; border: 1px solid #d2d2d7; }
-                        .mistake-char { font-weight: bold; font-size: 18px; color: var(--apple-accent); margin-right: 5px; }
-                        .mistake-code { color: #86868b; font-family: monospace; font-weight: bold; }
-                        .mistake-desc { display: block; font-size: 12px; color: #8e8e93; margin-top: 4px; }
-                    </style>
-
-                    <div class="mistake-group">
-                        <h4>一、笔顺易错 (最常写错顺序)</h4>
-                        <div class="mistake-list">
-                            <div class="mistake-item"><span class="mistake-char">火</span>编码: <span class="mistake-code">iw</span><span class="mistake-desc">点→撇→撇→捺 (❌先两边)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">方</span>编码: <span class="mistake-code">yv</span><span class="mistake-desc">点→横→横折钩→撇 (❌最后点)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">为</span>编码: <span class="mistake-code">ic</span><span class="mistake-desc">点→撇→横折钩→点 (❌先横折钩)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">片</span>编码: <span class="mistake-code">ra</span><span class="mistake-desc">撇→竖→横→横折 (❌先横折)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">九</span>编码: <span class="mistake-code">q</span><span class="mistake-desc">撇→横折弯钩 (❌先弯钩)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">万</span>编码: <span class="mistake-code">at</span><span class="mistake-desc">横→横折钩→撇 (❌最后捺)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">比</span>编码: <span class="mistake-code">aq</span><span class="mistake-desc">横→竖提→撇→竖弯钩</span></div>
-                            <div class="mistake-item"><span class="mistake-char">再</span>编码: <span class="mistake-code">fbg</span><span class="mistake-desc">横→竖→横折钩→竖→横→横</span></div>
-                            <div class="mistake-item"><span class="mistake-char">凸</span>编码: <span class="mistake-code">hmg</span><span class="mistake-desc">竖→横→竖→横折折折→横</span></div>
-                            <div class="mistake-item"><span class="mistake-char">凹</span>编码: <span class="mistake-code">mmg</span><span class="mistake-desc">竖→横折折→竖→横折→横</span></div>
-                            <div class="mistake-item"><span class="mistake-char">母</span>编码: <span class="mistake-code">xyy</span><span class="mistake-desc">竖折→横折钩→点→横→点</span></div>
-                        </div>
-                    </div>
-
-                    <div class="mistake-group">
-                        <h4>二、笔画数量/长短易错</h4>
-                        <div class="mistake-list">
-                            <div class="mistake-item"><span class="mistake-char">具</span>编码: <span class="mistake-code">mggw</span><span class="mistake-desc">中间三横 (❌两横)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">冒</span>编码: <span class="mistake-code">mgmgg</span><span class="mistake-desc">上部是冃，两横不接框</span></div>
-                            <div class="mistake-item"><span class="mistake-char">肺</span>编码: <span class="mistake-code">qgfb</span><span class="mistake-desc">右边一竖到底 (❌多一横)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">黄</span>编码: <span class="mistake-code">fhmfdy</span><span class="mistake-desc">下部是“由” (❌写成田)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">考</span>编码: <span class="mistake-code">fda</span><span class="mistake-desc">下面是丂 (❌少笔)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">周</span>编码: <span class="mistake-code">qffn</span><span class="mistake-desc">上部是土 (上短下长)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">喜</span>编码: <span class="mistake-code">ffnifn</span><span class="mistake-desc">上部是士 (上长下短)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">身</span>编码: <span class="mistake-code">rngt</span><span class="mistake-desc">中间短提、末撇穿出</span></div>
-                            <div class="mistake-item"><span class="mistake-char">燕</span>编码: <span class="mistake-code">fhmfgqoo</span><span class="mistake-desc">上部是廿 (四横)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">录</span>编码: <span class="mistake-code">nfyw</span><span class="mistake-desc">下非“水”，左点+提</span></div>
-                            <div class="mistake-item"><span class="mistake-char">没</span>编码: <span class="mistake-code">odxy</span><span class="mistake-desc">右是殳，竖弯不出钩</span></div>
-                        </div>
-                    </div>
-
-                    <div class="mistake-group">
-                        <h4>三、出头/不出头易错</h4>
-                        <div class="mistake-list">
-                            <div class="mistake-item"><span class="mistake-char">寻</span>编码: <span class="mistake-code">ngl</span><span class="mistake-desc">中横不出头</span></div>
-                            <div class="mistake-item"><span class="mistake-char">雪</span>编码: <span class="mistake-code">sboong</span><span class="mistake-desc">下部中横不出头</span></div>
-                            <div class="mistake-item"><span class="mistake-char">建</span>编码: <span class="mistake-code">ngfc</span><span class="mistake-desc">中横出头</span></div>
-                            <div class="mistake-item"><span class="mistake-char">康</span>编码: <span class="mistake-code">yqgldy</span><span class="mistake-desc">中横出头</span></div>
-                            <div class="mistake-item"><span class="mistake-char">临</span>编码: <span class="mistake-code">jtubg</span><span class="mistake-desc">左边是两竖 (❌写成撇)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">巷</span>编码: <span class="mistake-code">fhwnn</span><span class="mistake-desc">下部是巳 (❌写成㔾)</span></div>
-                            <div class="mistake-item"><span class="mistake-char">窗</span>编码: <span class="mistake-code">ovimqy</span><span class="mistake-desc">内非“夕”，点出头</span></div>
-                        </div>
-                    </div>
-
-                    <div class="mistake-group">
-                        <h4>四、多撇/少撇易错</h4>
-                        <div class="mistake-list">
-                            <div class="mistake-item"><span class="mistake-char">免</span>编码: <span class="mistake-code">qmdn</span><span class="mistake-desc">第六笔撇通下来</span></div>
-                            <div class="mistake-item"><span class="mistake-char">象</span>编码: <span class="mistake-code">qmdvey</span><span class="mistake-desc">撇通下来</span></div>
-                            <div class="mistake-item"><span class="mistake-char">卑</span>编码: <span class="mistake-code">rndf</span><span class="mistake-desc">撇通下来</span></div>
-                            <div class="mistake-item"><span class="mistake-char">畏</span>编码: <span class="mistake-code">mfgvy</span><span class="mistake-desc">不要多一撇</span></div>
-                            <div class="mistake-item"><span class="mistake-char">展</span>编码: <span class="mistake-code">ntjaw</span><span class="mistake-desc">不要多一撇</span></div>
-                            <div class="mistake-item"><span class="mistake-char">武</span>编码: <span class="mistake-code">ghhc</span><span class="mistake-desc">不要多一撇</span></div>
-                        </div>
-                    </div>
-
-                    <div class="mistake-group">
-                        <h4>五、点画易错 (有点/无点/顺序)</h4>
-                        <div class="mistake-list">
-                            <div class="mistake-item"><span class="mistake-char">市</span>编码: <span class="mistake-code">ymh</span><span class="mistake-desc">顶部有点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">沛</span>编码: <span class="mistake-code">ogmh</span><span class="mistake-desc">右侧无点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">尧</span>编码: <span class="mistake-code">atq</span><span class="mistake-desc">无点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">步</span>编码: <span class="mistake-code">hhkt</span><span class="mistake-desc">下部无点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">纸</span>编码: <span class="mistake-code">xdnn</span><span class="mistake-desc">右侧无点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">义</span>编码: <span class="mistake-code">iy</span><span class="mistake-desc">先写点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">发</span>编码: <span class="mistake-code">vcy</span><span class="mistake-desc">后写点</span></div>
-                            <div class="mistake-item"><span class="mistake-char">成</span>编码: <span class="mistake-code">dxw</span><span class="mistake-desc">后写点</span></div>
-                        </div>
-                    </div>
-                </div>
-
-                <h3>6. 学习与练习模式</h3>
-                <p>本引擎支持强大的<b>学习模式</b>。您可以在 Web 配置中心开启“显示笔画提示 (show_stroke_aux)”。</p>
-                <ul>
-                    <li>开启后，无论您是在打拼音、英语还是日语，候选词后面都会实时展示该字的<b>完整笔画字母编码</b>。</li>
-                    <li>这能帮助您在日常输入中潜移默化地记住汉字的笔画结构，为极速盲打打下基础。</li>
-                </ul>
             </div>
         </section>
+
         <section id="proper-nouns">
-            <h2>4. 专有名词原生隔离</h2>
+            <h2>专有名词原生隔离</h2>
             <div class="feature-card">
-                <p>在普通输入法中，输入 <code>beijing</code> 可能会混杂“背景”和“北京”。在 千言输入法 中：</p>
-                <ul>
-                    <li><b>全小写</b>：<code>beijing</code> 只会匹配普通词汇（如：背景）。</li>
-                    <li><b>首字母大写</b>：<code>Beijing</code> 或 <code>Be</code> 将触发<b>专有名词索引</b>，精准匹配“北京”，完全隔离干扰。</li>
-                </ul>
-                <p>这对于输入人名、地名、软件名非常有效，实现了索引层面的清爽。</p>
+                <p>在普通输入法中，输入 <code>beijing</code> 可能会混杂"背景"和"北京"。在 千言输入法 中：</p>
+                <table>
+                    <tr><th>输入</th><th>匹配结果</th></tr>
+                    <tr><td><code>beijing</code>（全小写）</td><td>普通词汇（如：背景）</td></tr>
+                    <tr><td><code>Beijing</code> 或 <code>Be</code></td><td>专有名词（如：北京）</td></tr>
+                </table>
+                <p>这对于输入人名、地名、软件名非常有效，实现了索引层面的清爽隔离。</p>
             </div>
         </section>
 
         <section id="mixed-input">
-            <h2>5. 多方案混输</h2>
+            <h2>多方案混输</h2>
             <div class="feature-card">
-                <p>千言输入法 允许您在网页端自由组合活跃方案（如 <b>中文+英文</b>）。</p>
+                <p>千言输入法 允许您自由组合活跃方案（如 <b>中文+英文</b>）：</p>
                 <ul>
-                    <li><b>程序员友好</b>：在写注释时，不需要切换模式，直接输入 <code>git</code>, <code>cargo</code>, <code>sudo</code>，它们会出现在候选词中。</li>
-                    <li><b>英文自动补全</b>：支持英文前缀联想。输入 <code>com</code> 即可选择 <code>complete</code>, <code>command</code> 等词。</li>
+                    <li><b>程序员友好</b>：写注释时无需切换模式，直接输入 <code>git</code>, <code>cargo</code>, <code>sudo</code></li>
+                    <li><b>英文自动补全</b>：输入 <code>com</code> 即可选择 <code>complete</code>, <code>command</code> 等</li>
                 </ul>
+                <p>在「系统设置」中启用多个输入方案即可体验。</p>
             </div>
         </section>
 
         <section id="quick-rime">
-            <h2>6. 长按与双击定制 <span class="tag">New</span></h2>
+            <h2>长按与双击定制</h2>
             <div class="feature-card">
-                <p>千言输入法 提供了极致的按键行为定制能力，您可以利用<b>双击</b>或<b>长按</b>来实现极速输入。</p>
-                
-                <h3>1. 双击快捷输入 (Double-Tap)</h3>
-                <p>快速点击同一个字母键两次，注入长韵母或常用短语。例如：</p>
-                <ul>
-                    <li><code>i, i</code> ⮕ 注入 <code>ing</code></li>
-                    <li><code>u, u</code> ⮕ 注入 <code>sh</code></li>
-                </ul>
+                <h3>双击快捷输入</h3>
+                <p>快速点击同一个字母键两次，注入长韵母或常用短语：</p>
+                <table>
+                    <tr><th>双击</th><th>注入</th></tr>
+                    <tr><td><code>i, i</code></td><td><code>ing</code></td></tr>
+                    <tr><td><code>u, u</code></td><td><code>sh</code></td></tr>
+                </table>
 
-                <h3>2. 长按行为定制 (Long Press)</h3>
+                <h3>长按行为定制</h3>
                 <p>按住字母键不放（约 400ms），触发预设操作。默认映射为该字母的<b>大写形式</b>。</p>
 
-                <div class="pro-tip">
-                    <b>配置提示：</b>访问配置中心，点击可视化键盘上的字母，即可分别为“双击”和“长按”分配任何您想要的字符串、变音字符或音调符号。
+                <div class="callout-info">
+                    <p><b>配置提示</b>：访问「键盘布局」设置，点击可视化键盘上的字母，即可分别为"双击"和"长按"分配自定义字符串。</p>
                 </div>
             </div>
         </section>
 
         <section id="nav-mode">
-            <h2>7. 智能导航与平卷互换 <span class="tag">New</span></h2>
+            <h2>智能导航与平卷互换</h2>
             <div class="feature-card">
-                <h3>1. HJKL 导航模式</h3>
-                <p>在输入拼音的过程中，按下 <code>`</code> (反引号) 即可进入导航模式。此时您可以像使用 Vim 一样操作候选词：</p>
-                <ul>
-                    <li><code>H</code> / <code>L</code>：切换上一个/下一个候选词</li>
-                    <li><code>J</code> / <code>K</code>：向下/向上翻页</li>
-                </ul>
+                <h3>HJKL 导航模式</h3>
+                <p>在输入拼音的过程中，按下 <code>`</code> (反引号) 即可进入导航模式：</p>
+                <table>
+                    <tr><th>按键</th><th>功能</th></tr>
+                    <tr><td><code>H</code></td><td>切换上一个候选词</td></tr>
+                    <tr><td><code>L</code></td><td>切换下一个候选词</td></tr>
+                    <tr><td><code>J</code></td><td>向下翻页</td></tr>
+                    <tr><td><code>K</code></td><td>向上翻页</td></tr>
+                </table>
                 <p>按任意其他字母键将自动退出导航并继续拼写。</p>
 
-                <h3>2. 平卷舌一键互换 (/)</h3>
-                <p>拼错平/卷舌音时无需删除重打。在输入 <code>zan</code> 时发现应该是 <code>zhan</code>？只需按一下 <code>/</code> 键，系统会自动完成互换。</p>
+                <h3>平卷舌一键互换</h3>
+                <p>拼错平/卷舌音时无需删除重打。输入 <code>zan</code> 时发现应该是 <code>zhan</code>？只需按一下 <code>/</code> 键，系统会自动完成互换。</p>
 
-                <h3>3. 提示词上屏 (Shift + Space)</h3>
-                <p>如果您想直接输入候选词旁边的英文提示或注音，只需按下 <code>Shift + Space</code> 即可将其直接上屏。</p>
+                <h3>提示词上屏</h3>
+                <p>按下 <code>Shift + Space</code> 可将候选词旁边的英文提示或注音直接上屏。</p>
             </div>
         </section>
 
-        <section id="sentence-mode">
-            <h2>8. 智能长句模式</h2>
+        <!-- ==================== 第三部分：配置说明 ==================== -->
+
+        <section id="config-files">
+            <h2>配置文件说明</h2>
+
             <div class="feature-card">
-                <p>在“系统总览”中将上屏模式切换为<b>“双空格上屏”</b>即可进入长句模式。</p>
-                <p>在此模式下，输入法会尝试进行全句切分和联想。虽然目前仍处于完善阶段，但我们计划在未来引入基于语境的智能纠错，让长篇大论的输入更加流畅。</p>
+                <p>配置文件位于 <code>configs/</code> 目录，均为 JSON 格式：</p>
+
+                <table>
+                    <tr><th>文件</th><th>行数</th><th>说明</th></tr>
+                    <tr><td><code>input.json</code></td><td>597</td><td>核心输入配置（双拼、模糊音、排序权重等）</td></tr>
+                    <tr><td><code>appearance.json</code></td><td>54</td><td>外观配置（字体、颜色、主题）</td></tr>
+                    <tr><td><code>hotkeys.json</code></td><td>-</td><td>快捷键配置</td></tr>
+                    <tr><td><code>files.json</code></td><td>-</td><td>文件路径配置</td></tr>
+                    <tr><td><code>linux.json</code></td><td>-</td><td>Linux 平台特有配置</td></tr>
+                </table>
+
+                <h3>核心配置示例</h3>
+                <h4>双拼配置</h4>
+                <pre><code>{
+  <span class="code-string">"enable_double_pinyin"</span>: <span class="code-keyword">true</span>,
+  <span class="code-string">"double_pinyin_scheme"</span>: {
+    <span class="code-string">"name"</span>: <span class="code-string">"小鹤双拼"</span>,
+    <span class="code-string">"initials"</span>: {
+      <span class="code-string">"u"</span>: <span class="code-string">"sh"</span>,
+      <span class="code-string">"i"</span>: <span class="code-string">"ch"</span>,
+      <span class="code-string">"v"</span>: <span class="code-string">"zh"</span>
+    },
+    <span class="code-string">"rimes"</span>: {
+      <span class="code-string">"t"</span>: <span class="code-string">"ue"</span>,
+      <span class="code-string">"m"</span>: <span class="code-string">"ian"</span>,
+      <span class="code-string">"x"</span>: <span class="code-string">"ia"</span>
+    }
+  }
+}</code></pre>
+
+                <h4>模糊音配置</h4>
+                <pre><code>{
+  <span class="code-string">"enable_fuzzy_pinyin"</span>: <span class="code-keyword">true</span>,
+  <span class="code-string">"fuzzy_config"</span>: {
+    <span class="code-string">"z_zh"</span>: <span class="code-keyword">true</span>,
+    <span class="code-string">"c_ch"</span>: <span class="code-keyword">true</span>,
+    <span class="code-string">"s_sh"</span>: <span class="code-keyword">true</span>,
+    <span class="code-string">"n_l"</span>: <span class="code-keyword">false</span>,
+    <span class="code-string">"an_ang"</span>: <span class="code-keyword">false</span>,
+    <span class="code-string">"en_eng"</span>: <span class="code-keyword">false</span>
+  }
+}</code></pre>
+
+                <h4>排序权重</h4>
+                <pre><code>{
+  <span class="code-string">"ranking"</span>: {
+    <span class="code-string">"length_penalty"</span>: <span class="code-number">50000.0</span>,
+    <span class="code-string">"user_dict_bonus"</span>: <span class="code-number">10000000.0</span>,
+    <span class="code-string">"exact_match_bonus"</span>: <span class="code-number">10000000.0</span>,
+    <span class="code-string">"single_char_bonus"</span>: <span class="code-number">1000000.0</span>
+  }
+}</code></pre>
+            </div>
+        </section>
+
+        <section id="web-config">
+            <h2>Web 配置中心</h2>
+
+            <div class="feature-card">
+                <p>运行输入法后，访问 <code>http://localhost:18765</code> 进入可视化配置中心：</p>
+
+                <div class="shortcut-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">⚙️ 系统设置</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">输入方案、自启动、按键行为</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">🎨 候选栏设置</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">颜色、字体、字号、排列</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">☁️ 模糊音设置</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">声母、韵母模糊映射</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">🧬 双拼方案</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">方案切换、自定义映射</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">📚 词典编辑器</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">词库管理、在线编辑</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">⚡ 快捷键</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">全局快捷键管理</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">⌨️ 键盘布局</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">多语言按键映射</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <span style="font-weight: 600;">✍️ 练习与学习</span>
+                        <span style="font-size: 13px; color: var(--apple-secondary);">汉字练习、文章练习</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 第四部分：开发者指南 ==================== -->
+
+        <section id="architecture">
+            <h2>项目架构</h2>
+
+            <div class="feature-card">
+                <h3>整体架构</h3>
+                <p>项目采用 <b>Rust 工作区 (Workspace)</b> 架构，分为 5 个逻辑 crate：</p>
+
+                <div class="dir-tree">
+<span class="folder">qianyan-ime/</span>
+├── <span class="folder">src/</span>
+│   └── <span class="file">main.rs</span>                    <span class="comment"># 程序主入口</span>
+│
+├── <span class="folder">crates/</span>
+│   ├── <span class="folder">core/</span>                  <span class="comment"># 核心类型和配置定义</span>
+│   │   ├── <span class="file">lib.rs</span>
+│   │   ├── <span class="file">config.rs</span>           <span class="comment"># Config 主结构体 (783行)</span>
+│   │   └── <span class="file">utils.rs</span>
+│   │
+│   ├── <span class="folder">engine/</span>                <span class="comment"># 输入法核心引擎</span>
+│   │   ├── <span class="file">compiler.rs</span>         <span class="comment"># 词库编译器</span>
+│   │   ├── <span class="file">context.rs</span>          <span class="comment"># 引擎上下文</span>
+│   │   ├── <span class="file">dispatcher.rs</span>       <span class="comment"># 按键调度器</span>
+│   │   ├── <span class="file">pipeline.rs</span>         <span class="comment"># 搜索管道</span>
+│   │   ├── <span class="file">trie.rs</span>             <span class="comment"># FST 索引</span>
+│   │   ├── <span class="file">user_data.rs</span>        <span class="comment"># 用户数据管理</span>
+│   │   ├── <span class="folder">processor/</span>         <span class="comment"># 处理器模块</span>
+│   │   │   ├── <span class="file">commands.rs</span>
+│   │   │   ├── <span class="file">fsm.rs</span>            <span class="comment"># 有限状态机</span>
+│   │   │   ├── <span class="file">learning.rs</span>       <span class="comment"># 学习引擎</span>
+│   │   │   └── ...
+│   │   └── <span class="folder">schemes/</span>           <span class="comment"># 输入方案</span>
+│   │       ├── <span class="file">chinese.rs</span>
+│   │       ├── <span class="file">english.rs</span>
+│   │       ├── <span class="file">japanese.rs</span>
+│   │       └── <span class="file">stroke.rs</span>
+│   │
+│   ├── <span class="folder">ui/</span>                    <span class="comment"># 用户界面</span>
+│   │   ├── <span class="file">gui_slint.rs</span>        <span class="comment"># Slint GUI</span>
+│   │   ├── <span class="file">tray.rs</span>             <span class="comment"># 系统托盘</span>
+│   │   ├── <span class="file">web.rs</span>              <span class="comment"># Web 服务器 (Axum)</span>
+│   │   └── <span class="file">*.slint</span>           <span class="comment"># UI 定义文件</span>
+│   │
+│   ├── <span class="folder">platform-linux/</span>        <span class="comment"># Linux 平台</span>
+│   │   ├── <span class="file">cli.rs</span>             <span class="comment"># 命令行解析</span>
+│   │   ├── <span class="file">runtime.rs</span>         <span class="comment"># 运行时初始化</span>
+│   │   └── <span class="folder">hosts/</span>
+│   │       ├── <span class="file">evdev_host.rs</span>    <span class="comment"># evdev 后端</span>
+│   │       └── <span class="file">vkbd.rs</span>          <span class="comment"># 虚拟键盘</span>
+│   │
+│   └── <span class="folder">platform-windows/</span>      <span class="comment"># Windows 平台</span>
+│       ├── <span class="file">text_service.rs</span>     <span class="comment"># TSF 文本服务</span>
+│       ├── <span class="file">registry.rs</span>         <span class="comment"># 注册表操作</span>
+│       └── <span class="file">tsf.rs</span>              <span class="comment"># TSF 封装</span>
+│
+├── <span class="folder">configs/</span>                     <span class="comment"># 运行时配置</span>
+├── <span class="folder">dicts/</span>                       <span class="comment"># 原始词库</span>
+├── <span class="folder">data/</span>                        <span class="comment"># 编译后索引</span>
+├── <span class="folder">static/</span>                      <span class="comment"># Web 静态资源</span>
+├── <span class="folder">tests/</span>                       <span class="comment"># 测试脚本</span>
+├── <span class="folder">tools/</span>                       <span class="comment"># 词典工具 (59个)</span>
+└── <span class="folder">scripts/</span>                     <span class="comment"># 安装脚本</span>
+                </div>
+
+                <h3>Crate 依赖关系</h3>
+                <pre><code>                    ┌─────────────────┐
+                    │   main.rs       │
+                    │  (qianyan-ime)  │
+                    └────────┬────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+        ▼                    ▼                    ▼
+┌───────────────┐    ┌───────────────┐    ┌───────────────┐
+│      ui       │    │    engine     │    │  platform-*   │
+│  (Slint/Web)  │    │  (输入引擎)    │    │  (平台实现)    │
+└───────┬───────┘    └───────┬───────┘    └───────┬───────┘
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+                             ▼
+                    ┌───────────────┐
+                    │     core      │
+                    │  (基础类型)   │
+                    └───────────────┘</code></pre>
+            </div>
+        </section>
+
+        <section id="build">
+            <h2>编译构建</h2>
+
+            <div class="feature-card">
+                <h3>常用命令</h3>
+                <table>
+                    <tr><th>命令</th><th>说明</th></tr>
+                    <tr><td><code>cargo build</code></td><td>开发模式编译</td></tr>
+                    <tr><td><code>cargo build --release</code></td><td>发布模式编译</td></tr>
+                    <tr><td><code>cargo run</code></td><td>开发模式运行</td></tr>
+                    <tr><td><code>cargo test</code></td><td>运行 Rust 单元测试</td></tr>
+                    <tr><td><code>cargo fmt</code></td><td>格式化代码</td></tr>
+                    <tr><td><code>cargo clippy</code></td><td>代码质量检查</td></tr>
+                </table>
+
+                <h3>代码规范工具</h3>
+                <table>
+                    <tr><th>工具</th><th>配置文件</th><th>用途</th></tr>
+                    <tr><td><code>rustfmt</code></td><td>-</td><td>代码格式化</td></tr>
+                    <tr><td><code>clippy</code></td><td><code>clippy.toml</code></td><td>代码检查（禁止 unwrap 等）</td></tr>
+                    <tr><td><code>cargo-deny</code></td><td><code>deny.toml</code></td><td>依赖安全检查</td></tr>
+                </table>
+
+                <h3>发布打包</h3>
+                <pre><code><span class="code-comment"># Linux 发布打包</span>
+bash scripts/package-release.sh
+
+<span class="code-comment"># 查看发布产物</span>
+ls release/</code></pre>
+            </div>
+        </section>
+
+        <section id="dictionary">
+            <h2>词典工具</h2>
+
+            <div class="feature-card">
+                <p><code>tools/</code> 目录包含 59 个 Python 脚本，用于词典数据的生成、验证、转换和维护：</p>
+
+                <h3>工具分类</h3>
+                <table>
+                    <tr><th>类别</th><th>示例脚本</th><th>用途</th></tr>
+                    <tr><td><b>处理词典</b></td><td><code>add_stroke_aux.py</code><br><code>add_weights_to_words.py</code></td><td>添加笔画辅助码<br>添加词频权重</td></tr>
+                    <tr><td><b>分析检查</b></td><td><code>analyze_stroke_collisions.py</code><br><code>audit_dictionary.py</code></td><td>分析重码<br>审计词典完整性</td></tr>
+                    <tr><td><b>导出转换</b></td><td><code>export_multi_json.py</code><br><code>json_to_text.py</code></td><td>多格式导出<br>JSON 转文本</td></tr>
+                    <tr><td><b>修复更新</b></td><td><code>fix_docs.py</code><br><code>update_char_weights.py</code></td><td>修复文档<br>更新字频</td></tr>
+                </table>
+
+                <h3>词库编译流程</h3>
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <p><b>原始词库</b>：<code>dicts/</code> 目录下的 JSON 文件</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <p><b>编译</b>：<code>engine/src/compiler.rs</code> 将 JSON 编译为 FST 索引</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <p><b>输出</b>：<code>data/</code> 目录下的 <code>trie.index</code> 和 <code>trie.data</code></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="testing">
+            <h2>测试说明</h2>
+
+            <div class="feature-card">
+                <h3>测试脚本分类</h3>
+
+                <h4>Shell 集成测试</h4>
+                <table>
+                    <tr><th>脚本</th><th>测试内容</th></tr>
+                    <tr><td><code>tests/test_core_logic.sh</code></td><td>核心逻辑综合测试</td></tr>
+                    <tr><td><code>tests/test_jianpin.sh</code></td><td>简拼功能测试</td></tr>
+                    <tr><td><code>tests/test_fuzhuma.sh</code></td><td>辅助码功能测试</td></tr>
+                </table>
+
+                <h4>Python 测试脚本</h4>
+                <table>
+                    <tr><th>脚本</th><th>测试内容</th></tr>
+                    <tr><td><code>test_all_hotkeys.py</code></td><td>全部快捷键测试</td></tr>
+                    <tr><td><code>test_arrow_keys.py</code></td><td>方向键测试</td></tr>
+                    <tr><td><code>test_capslock_nav.py</code></td><td>CapsLock 导航测试</td></tr>
+                    <tr><td><code>test_custom_flipping.py</code></td><td>自定义翻页测试</td></tr>
+                    <tr><td><code>test_features.py</code></td><td>功能综合测试</td></tr>
+                    <tr><td><code>test_match.py</code></td><td>匹配逻辑测试</td></tr>
+                    <tr><td><code>test_ngram_learning.py</code></td><td>N-Gram 学习测试</td></tr>
+                    <tr><td><code>test_reorder.py</code></td><td>重排序测试</td></tr>
+                    <tr><td><code>test_stroke_auto_commit.py</code></td><td>笔画自动上屏测试</td></tr>
+                </table>
+
+                <h3>运行测试</h3>
+                <pre><code><span class="code-comment"># Rust 单元测试</span>
+cargo test
+
+<span class="code-comment"># 核心逻辑集成测试</span>
+bash tests/test_core_logic.sh
+
+<span class="code-comment"># 运行所有 Python 测试</span>
+python3 -m pytest tests/ -v</code></pre>
+            </div>
+        </section>
+
+        <!-- ==================== 第五部分：高级主题 ==================== -->
+
+        <section id="sentence-mode">
+            <h2>智能长句模式</h2>
+            <div class="feature-card">
+                <p>在「系统设置」中将上屏模式切换为<b>「双空格上屏」</b>即可进入长句模式：</p>
+                <ul>
+                    <li>输入法会尝试进行全句切分和联想</li>
+                    <li>支持按空格确认、退格修改</li>
+                    <li>目前仍处于完善阶段</li>
+                </ul>
+                <div class="callout-warning">
+                    <p><b>计划功能</b>：未来将引入基于语境的智能纠错，让长篇大论的输入更加流畅。</p>
+                </div>
             </div>
         </section>
 
         <section id="ui-custom">
-            <h2>9. 视觉与样式定制</h2>
+            <h2>视觉与样式定制</h2>
             <div class="feature-card">
-                <p>我们提供了一个极致自由的皮肤引擎，全部可通过网页控制中心调节：</p>
+                <p>在「候选栏设置」中可以进行以下定制：</p>
                 <ul>
-                    <li><b>双模选择</b>：传统横向窗 vs 现代侧边卡片窗。</li>
-                    <li><b>精准调色</b>：点击颜色球，为背景、高亮、文字选择任何您喜欢的颜色（支持透明度）。</li>
-                    <li><b>字号调节</b>：主词条与辅助码（Hint）的字号可以分开控制，满足不同的视力习惯。</li>
+                    <li><b>双模选择</b>：传统横向窗 vs 现代侧边卡片窗</li>
+                    <li><b>精准调色</b>：背景、高亮、文字颜色（支持透明度）</li>
+                    <li><b>字号调节</b>：主词条与辅助码字号可分开控制</li>
+                    <li><b>位置调整</b>：候选框固定位置或跟随光标</li>
                 </ul>
             </div>
         </section>
+
+        <section id="stroke-mistake">
+            <h2>汉字笔画纠错手册</h2>
+            <div class="feature-card">
+                <h3>一、笔顺易错（最常写错顺序）</h3>
+                <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>火</b> 编码: <code>iw</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">点→撇→撇→捺</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>方</b> 编码: <code>yv</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">点→横→横折钩→撇</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>为</b> 编码: <code>ic</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">点→撇→横折钩→点</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>片</b> 编码: <code>ra</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">撇→竖→横→横折</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>九</b> 编码: <code>q</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">撇→横折弯钩</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>万</b> 编码: <code>at</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">横→横折钩→撇</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>凸</b> 编码: <code>hmg</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">竖→横→竖→横折折折→横</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>凹</b> 编码: <code>mmg</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">竖→横折折→竖→横折→横</span>
+                    </div>
+                </div>
+
+                <h3>二、笔画数量/长短易错</h3>
+                <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>具</b> 编码: <code>mggw</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">中间三横（不是两横）</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>冒</b> 编码: <code>mgmgg</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">上部是冃，两横不接框</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>肺</b> 编码: <code>qgfb</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">右边一竖到底（不多一横）</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>黄</b> 编码: <code>fhmfdy</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">下部是"由"（不是田）</span>
+                    </div>
+                </div>
+
+                <h3>三、出头/不出头易错</h3>
+                <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>寻/雪</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">中横不出头</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>建/康</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">中横出头</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>临</b> 编码: <code>jtubg</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">左边是两竖（不是撇）</span>
+                    </div>
+                </div>
+
+                <h3>四、多撇/少撇易错</h3>
+                <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>免/象/卑</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">第六笔撇通下来</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>畏/展/武</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">不要多一撇</span>
+                    </div>
+                </div>
+
+                <h3>五、点画易错</h3>
+                <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>市</b> 编码: <code>ymh</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">顶部有点</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>沛/尧/步/纸</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">右侧无点</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>义</b> 编码: <code>iy</code></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">先写点</span>
+                    </div>
+                    <div class="shortcut-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span><b>发/成</b></span>
+                        <span style="font-size: 12px; color: var(--apple-secondary);">后写点</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <script>
         const links = document.querySelectorAll('aside nav a');
         const sections = document.querySelectorAll('section');
 
-        window.onscroll = () => {
+        function updateActiveNav() {
             let current = "";
             sections.forEach(s => {
-                const top = s.offsetTop;
-                if (pageYOffset >= top - 150) { current = s.getAttribute('id'); }
+                const rect = s.getBoundingClientRect();
+                if (rect.top <= 200) {
+                    current = s.getAttribute('id');
+                }
             });
             links.forEach(l => {
                 l.classList.remove('active');
-                if (l.getAttribute('href').includes(current)) { l.classList.add('active'); }
+                if (l.getAttribute('href') === '#' + current) {
+                    l.classList.add('active');
+                }
             });
-        };
+        }
+
+        window.addEventListener('scroll', updateActiveNav);
+        updateActiveNav();
+
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href').substring(1);
+                const target = document.getElementById(targetId);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
     </script>
 </body>
 </html>
