@@ -57,6 +57,14 @@
                 </div>
                 <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
             </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">繁简体切换</div>
+                    <div class="desc">繁简体切换快捷键，按住第一个键再按第二个键触发</div>
+                </div>
+                <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
+            </div>
         </div>
 
         <h2>方案快速切换映射</h2>
@@ -106,6 +114,8 @@
             document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
 
             renderKeyboard('kb-profilekeys', 'profile_keys');
+
+            document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
         }
 
         function renderKeyboard(containerId, configKey) {
@@ -159,6 +169,8 @@
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.next_candidate = document.getElementById('next_candidate_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+            config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'CapsLock+F';
 
             await saveConfig();
         }

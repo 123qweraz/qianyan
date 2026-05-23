@@ -186,6 +186,16 @@ impl Processor {
             }
         }
 
+        // CapsLock+F 组合键：繁简体切换
+        if is_press && key == VirtualKey::F && self.ctx.session_state.capslock_combo_active {
+            self.ctx.session_state.capslock_combo_active = false;
+            // 撤销 CapsLock 按下的语言切换
+            self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            self.ctx.session_state.traditional_enabled = !self.ctx.session_state.traditional_enabled;
+            let mode = if self.ctx.session_state.traditional_enabled { "繁體" } else { "简体" };
+            return Action::Notify(mode.into(), format!("切換至 {} 模式", mode));
+        }
+
         if is_press {
             if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, shift_pressed) {
                 return action;
@@ -213,6 +223,7 @@ impl Processor {
         if is_release && key == VirtualKey::CapsLock {
             self.ctx.session.nav_mode = false;
             self.ctx.session_state.capslock_down = false;
+            self.ctx.session_state.capslock_combo_active = false;
             if !self.ctx.session_state.chinese_enabled {
                 return Action::PassThrough;
             }
@@ -481,6 +492,10 @@ impl Processor {
             .last()
             .map(|(_, word)| word.as_str());
 
+        // Sync runtime toggle state to config before lookup so filters see it
+        self.ctx.config.master_config.input.enable_traditional =
+            self.ctx.session_state.traditional_enabled;
+
         let query = crate::pipeline::SearchQuery {
             buffer: &self.ctx.session.buffer,
             profile: &current_profile,
@@ -695,6 +710,8 @@ impl Processor {
                     !self.ctx.session_state.caps_lock_enabled;
                 return Some(Action::PassThrough);
             }
+
+            self.ctx.session_state.capslock_combo_active = true;
 
             // 单击 CapsLock -> 切换中英文模式
             if self.ctx.session.buffer.is_empty() {

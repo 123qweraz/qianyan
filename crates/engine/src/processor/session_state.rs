@@ -4,11 +4,13 @@ use std::time::Instant;
 pub struct SessionState {
     pub active_profiles: Vec<String>,
     pub chinese_enabled: bool,
+    pub traditional_enabled: bool,
     pub commit_history: Vec<(String, String)>,
     pub last_commit_time: Instant,
     pub capslock_pending: bool,
     pub caps_lock_enabled: bool,
     pub capslock_down: bool,
+    pub capslock_combo_active: bool,
 }
 
 impl SessionState {
@@ -16,11 +18,13 @@ impl SessionState {
         Self {
             active_profiles: Vec::new(),
             chinese_enabled: true,
+            traditional_enabled: false,
             commit_history: Vec::new(),
             last_commit_time: Instant::now(),
             capslock_pending: false,
             caps_lock_enabled: false,
             capslock_down: false,
+            capslock_combo_active: false,
         }
     }
 

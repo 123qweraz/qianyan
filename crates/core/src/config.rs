@@ -250,6 +250,15 @@ pub struct Hotkeys {
     pub next_candidate: Vec<String>,
     pub enable_tab_toggle: bool,
     pub enable_ctrl_space_toggle: bool,
+    #[serde(default = "default_toggle_traditional")]
+    pub toggle_traditional: Hotkey,
+}
+
+fn default_toggle_traditional() -> Hotkey {
+    Hotkey {
+        key: "CapsLock+F".to_string(),
+        description: "繁简体切换".to_string(),
+    }
 }
 
 fn default_segmentation_delimiters() -> String {
@@ -599,42 +608,7 @@ impl Config {
                 long_press_timeout_ms: 400,
                 long_press_mappings: vec![],
                 enable_punctuation_long_press: true,
-                punctuation_long_press_mappings: [
-                    (",", ","),
-                    (".", "."),
-                    ("?", "?"),
-                    ("!", "!"),
-                    (";", ";"),
-                    (":", ":"),
-                    ("\"", "\""),
-                    ("'", "'"),
-                    ("(", "("),
-                    (")", ")"),
-                    ("[", "["),
-                    ("]", "]"),
-                    ("{", "{"),
-                    ("}", "}"),
-                    ("<", "<"),
-                    (">", ">"),
-                    ("\\", "\\"),
-                    ("/", "/"),
-                    ("~", "~"),
-                    ("`", "`"),
-                    ("@", "@"),
-                    ("#", "#"),
-                    ("$", "$"),
-                    ("%", "%"),
-                    ("^", "^"),
-                    ("&", "&"),
-                    ("*", "*"),
-                    ("-", "-"),
-                    ("_", "_"),
-                    ("=", "="),
-                    ("+", "+"),
-                ]
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
+                punctuation_long_press_mappings: std::collections::HashMap::new(),
                 punctuations: std::collections::HashMap::new(),
                 keyboard_layouts: std::collections::HashMap::new(),
                 auto_commit_unique_en_fuzhuma: false,
@@ -761,6 +735,10 @@ impl Config {
                 next_candidate: vec!["Right".into()],
                 enable_tab_toggle: false,
                 enable_ctrl_space_toggle: false,
+                toggle_traditional: Hotkey {
+                    key: "CapsLock+F".to_string(),
+                    description: "繁简体切换".to_string(),
+                },
             },
             #[cfg(target_os = "linux")]
             linux: LinuxConfig {

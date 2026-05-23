@@ -82,7 +82,7 @@ impl Compositor {
                     .contains(&"stroke".to_string())
                     && ctx.session.buffer.chars().any(|c| c.is_ascii_digit())
                 {
-                    let converted = convert_stroke_digits_to_letters(&ctx.session.buffer);
+                    let converted = crate::schemes::stroke::encode_stroke_digits(&ctx.session.buffer);
                     if !converted.is_empty() {
                         return converted;
                     }
@@ -230,60 +230,4 @@ pub fn should_block_invalid_input(ctx: &mut EngineContext, old_buffer: &str) -> 
     }
 }
 
-fn convert_stroke_digits_to_letters(s: &str) -> String {
-    let mut res = String::new();
-    let chars: Vec<char> = s.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if i + 1 < chars.len() {
-            let pair = format!("{}{}", chars[i], chars[i + 1]);
-            let code = match pair.as_str() {
-                "11" => 'g',
-                "12" => 'f',
-                "13" => 'd',
-                "14" => 's',
-                "15" => 'a',
-                "21" => 'h',
-                "22" => 'j',
-                "23" => 'k',
-                "24" => 'l',
-                "25" => 'm',
-                "31" => 't',
-                "32" => 'r',
-                "33" => 'e',
-                "34" => 'w',
-                "35" => 'q',
-                "41" => 'y',
-                "42" => 'u',
-                "43" => 'i',
-                "44" => 'o',
-                "45" => 'p',
-                "51" => 'n',
-                "52" => 'b',
-                "53" => 'v',
-                "54" => 'c',
-                "55" => 'x',
-                _ => ' ',
-            };
-            if code != ' ' {
-                res.push(code);
-                i += 2;
-                continue;
-            }
-        }
-        let code = match chars[i] {
-            '1' => 'g',
-            '2' => 'h',
-            '3' => 't',
-            '4' => 'y',
-            '5' => 'n',
-            c if c.is_ascii_lowercase() => c,
-            _ => ' ',
-        };
-        if code != ' ' {
-            res.push(code);
-        }
-        i += 1;
-    }
-    res
-}
+

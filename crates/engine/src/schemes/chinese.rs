@@ -22,10 +22,14 @@ impl ChineseScheme {
     }
 
     fn parse_buffer(&self, buffer: &str) -> Vec<ParsedPart> {
+        if !buffer.is_ascii() {
+            // Non-ASCII input is not valid pinyin; return empty to avoid infinite recursion
+            return Vec::new();
+        }
         let buffer_normalized = if buffer.bytes().all(|b| b.is_ascii_lowercase() || b == b' ') {
             buffer
         } else {
-            return Self::parse_buffer(self, &buffer.to_lowercase());
+            return self.parse_buffer(&buffer.to_ascii_lowercase());
         };
         let parts: Vec<&str> = buffer_normalized
             .split(' ')
@@ -194,11 +198,14 @@ impl ChineseScheme {
     }
 
     fn segment_buffer(&self, input: &str, delimiters: &str, context: &SchemeContext) -> Vec<String> {
+        if !input.is_ascii() {
+            return Vec::new();
+        }
         if !input
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
         {
-            return Self::segment_buffer(self, &input.to_lowercase(), delimiters, context);
+            return self.segment_buffer(&input.to_ascii_lowercase(), delimiters, context);
         }
         // 第一遍：用基本音节（不在频率表中的=单音节）作贪心最长匹配
         let base_segments = Self::first_pass_segment(input, delimiters, context.base_syllables);

@@ -3,5 +3,7 @@
   "paste_method": "shift_insert",
   "display_mode": "notification",
   "fixed_position": true,
-  "corner": "bottom-right"
+  "corner": "bottom-right",
+  "fixed_x": 40,
+  "fixed_y": 40
 }

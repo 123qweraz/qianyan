@@ -24,5 +24,9 @@
     "Right"
   ],
   "enable_tab_toggle": false,
-  "enable_ctrl_space_toggle": false
+  "enable_ctrl_space_toggle": false,
+  "toggle_traditional": {
+    "key": "CapsLock+F",
+    "description": "繁简体切换"
+  }
 }

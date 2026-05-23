@@ -17,62 +17,67 @@ impl StrokeScheme {
 
     /// 将 1-5 数字序列转为字母编码 (双笔一键逻辑)
     fn encode_stroke(&self, s: &str) -> String {
-        let mut res = String::new();
-        let chars: Vec<char> = s.chars().collect();
-        let mut i = 0;
-        while i < chars.len() {
-            if i + 1 < chars.len() {
-                let pair = format!("{}{}", chars[i], chars[i + 1]);
-                let code = match pair.as_str() {
-                    "11" => 'g',
-                    "12" => 'f',
-                    "13" => 'd',
-                    "14" => 's',
-                    "15" => 'a',
-                    "21" => 'h',
-                    "22" => 'j',
-                    "23" => 'k',
-                    "24" => 'l',
-                    "25" => 'm',
-                    "31" => 't',
-                    "32" => 'r',
-                    "33" => 'e',
-                    "34" => 'w',
-                    "35" => 'q',
-                    "41" => 'y',
-                    "42" => 'u',
-                    "43" => 'i',
-                    "44" => 'o',
-                    "45" => 'p',
-                    "51" => 'n',
-                    "52" => 'b',
-                    "53" => 'v',
-                    "54" => 'c',
-                    "55" => 'x',
-                    _ => ' ',
-                };
-                if code != ' ' {
-                    res.push(code);
-                    i += 2;
-                    continue;
-                }
-            }
-            let code = match chars[i] {
-                '1' => 'g',
-                '2' => 'h',
-                '3' => 't',
-                '4' => 'y',
-                '5' => 'n',
-                c if c.is_ascii_lowercase() => c, // 允许直接输入映射后的字母
+        encode_stroke_digits(s)
+    }
+}
+
+/// 将 1-5 数字序列转为字母编码 (双笔一键逻辑)
+pub fn encode_stroke_digits(s: &str) -> String {
+    let mut res = String::new();
+    let chars: Vec<char> = s.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if i + 1 < chars.len() {
+            let pair = format!("{}{}", chars[i], chars[i + 1]);
+            let code = match pair.as_str() {
+                "11" => 'g',
+                "12" => 'f',
+                "13" => 'd',
+                "14" => 's',
+                "15" => 'a',
+                "21" => 'h',
+                "22" => 'j',
+                "23" => 'k',
+                "24" => 'l',
+                "25" => 'm',
+                "31" => 't',
+                "32" => 'r',
+                "33" => 'e',
+                "34" => 'w',
+                "35" => 'q',
+                "41" => 'y',
+                "42" => 'u',
+                "43" => 'i',
+                "44" => 'o',
+                "45" => 'p',
+                "51" => 'n',
+                "52" => 'b',
+                "53" => 'v',
+                "54" => 'c',
+                "55" => 'x',
                 _ => ' ',
             };
             if code != ' ' {
                 res.push(code);
+                i += 2;
+                continue;
             }
-            i += 1;
         }
-        res
+        let code = match chars[i] {
+            '1' => 'g',
+            '2' => 'h',
+            '3' => 't',
+            '4' => 'y',
+            '5' => 'n',
+            c if c.is_ascii_lowercase() => c,
+            _ => ' ',
+        };
+        if code != ' ' {
+            res.push(code);
+        }
+        i += 1;
     }
+    res
 }
 
 impl InputScheme for StrokeScheme {
