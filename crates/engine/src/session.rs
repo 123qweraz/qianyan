@@ -276,6 +276,8 @@ mod tests {
             simplified: Arc::from(text),
             traditional: Arc::from(text),
             hint: Arc::from(""),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
             source: Arc::from("test"),
             weight: 1.0,
             match_level: 3,

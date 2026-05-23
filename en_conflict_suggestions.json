@@ -1,0 +1,112 @@
+[
+  {
+    "file": "chars/chars.json",
+    "pinyin": "a",
+    "char": "阿",
+    "current": "Prefix",
+    "suggestions": [
+      "A"
+    ],
+    "new_letter": "A"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "bu",
+    "char": "布",
+    "current": "Cloth",
+    "suggestions": [
+      "Bu"
+    ],
+    "new_letter": "B"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "dou",
+    "char": "兜",
+    "current": "Carry",
+    "suggestions": [
+      "Dou"
+    ],
+    "new_letter": "D"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "duo",
+    "char": "度",
+    "current": "Measure",
+    "suggestions": [
+      "Du"
+    ],
+    "new_letter": "D"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "feng",
+    "char": "冯",
+    "current": "Surname",
+    "suggestions": [
+      "Feng"
+    ],
+    "new_letter": "F"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "ge",
+    "char": "盖",
+    "current": "Lid",
+    "suggestions": [
+      "Gai"
+    ],
+    "new_letter": "G"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "ka",
+    "char": "卡",
+    "current": "Card",
+    "suggestions": [
+      "Ka"
+    ],
+    "new_letter": "K"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "na",
+    "char": "那",
+    "current": "That",
+    "suggestions": [
+      "Na"
+    ],
+    "new_letter": "N"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "ran",
+    "char": "冉",
+    "current": "Slowly",
+    "suggestions": [
+      "Ran"
+    ],
+    "new_letter": "R"
+  },
+  {
+    "file": "chars/chars.json",
+    "pinyin": "xu",
+    "char": "徐",
+    "current": "Slow",
+    "suggestions": [
+      "Xu"
+    ],
+    "new_letter": "X"
+  },
+  {
+    "file": "chars/level2.json",
+    "pinyin": "bi",
+    "char": "秕",
+    "current": "Chaff",
+    "suggestions": [
+      "Empty"
+    ],
+    "new_letter": "E"
+  }
+]

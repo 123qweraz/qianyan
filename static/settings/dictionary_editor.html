@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>词典编辑器 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .editor-toolbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 16px 0;
+        }
+        .editor-toolbar select,
+        .editor-toolbar input {
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid var(--apple-border);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--apple-card-bg);
+            color: var(--apple-text);
+        }
+        .editor-toolbar select { min-width: 200px; }
+        .editor-toolbar input[type="text"] { min-width: 180px; flex: 1; }
+        .editor-toolbar .stats {
+            font-size: 13px;
+            color: var(--apple-secondary);
+            white-space: nowrap;
+        }
+
+        .dict-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--apple-border);
+            border-radius: 10px;
+        }
+        .dict-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 900px;
+        }
+        .dict-table th {
+            position: sticky;
+            top: 0;
+            background: var(--apple-bg);
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--apple-border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            z-index: 1;
+        }
+        .dict-table th:hover { color: var(--apple-accent); }
+        .dict-table th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+        .dict-table th.sorted .sort-arrow { opacity: 1; color: var(--apple-accent); }
+        .dict-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--apple-border);
+            vertical-align: middle;
+        }
+        .dict-table tr:hover td { background: var(--apple-hover); }
+        .dict-table td .weight-display {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .dict-table td .weight-display:hover { background: rgba(0,0,0,0.05); }
+
+        .row-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .row-actions button {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: opacity 0.15s;
+        }
+        .row-actions .btn-save { background: var(--apple-accent); color: #fff; }
+        .row-actions .btn-cancel { background: var(--apple-border); color: var(--apple-text); }
+        .row-actions .btn-delete { background: transparent; color: var(--apple-red); padding: 4px 6px; }
+        .row-actions button:hover { opacity: 0.8; }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            padding: 16px 0;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid var(--apple-border);
+            border-radius: 6px;
+            background: var(--apple-card-bg);
+            color: var(--apple-text);
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .pagination button:hover { background: var(--apple-hover); }
+        .pagination button.active {
+            background: var(--apple-accent);
+            color: #fff;
+            border-color: var(--apple-accent);
+        }
+        .pagination button:disabled { opacity: 0.4; cursor: default; }
+        .pagination .page-info { font-size: 13px; color: var(--apple-secondary); margin: 0 8px; }
+
+        .add-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            padding: 16px 0;
+        }
+        .add-panel label { display: block; font-size: 11px; color: var(--apple-secondary); margin-bottom: 4px; }
+        .add-panel input, .add-panel select {
+            width: 100%;
+            height: 36px;
+            padding: 0 8px;
+            border: 1px solid var(--apple-border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--apple-card-bg);
+            color: var(--apple-text);
+            box-sizing: border-box;
+        }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; color: #fff; }
+        .toast.error { background: var(--apple-red); color: #fff; }
+
+        .row-editing { background: #f0f7ff !important; }
+        .btn-edit-row { background: transparent; color: var(--apple-accent); padding: 4px 10px; border: 1px solid var(--apple-accent); border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+        .btn-edit-row:hover { background: var(--apple-accent); color: #fff; }
+        .view-mode { cursor: default; }
+        .edit-mode { width: 100%; border: 1px solid var(--apple-border); border-radius: 4px; padding: 2px 4px; font-size: 13px; font-family: inherit; background: #fff; color: var(--apple-text); box-sizing: border-box; }
+        .edit-mode:focus { outline: 2px solid var(--apple-accent); outline-offset: -1px; border-color: transparent; }
+
+        .cell-word { font-weight: 600; }
+        .cell-en { color: var(--apple-secondary); font-size: 12px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cell-weight { text-align: right; font-variant-numeric: tabular-nums; }
+        .cell-pinyin { font-family: monospace; font-size: 12px; }
+        .no-data { text-align: center; padding: 60px 20px; color: var(--apple-secondary); }
+
+        .batch-actions { display: flex; gap: 8px; align-items: center; }
+        .batch-actions .btn { font-size: 12px; padding: 4px 12px; }
+
+        .dict-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        .dict-item:last-child { border-bottom: none; }
+        .dict-item.disabled { opacity: 0.5; }
+        .dict-item .dict-name { font-weight: 600; }
+        .dict-item .dict-count { font-size: 12px; color: var(--apple-secondary); }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--apple-border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/index.html" class="back-link">← 返回主页</a>
+            <h1>词典编辑器</h1>
+        </header>
+
+        <div class="card">
+            <div class="section-title">词库管理</div>
+            <div id="dicts-list"></div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+                <button class="btn" onclick="compileDict()">编译词库</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">用户词典 (个人学习)</div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">开启用户词典</div>
+                    <div class="desc">记录您的输入习惯，自动调整词频并将常用词排在前面。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_user_dict"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item" style="border-bottom:none;">
+                <div class="info">
+                    <div class="title">清空用户词典</div>
+                    <div class="desc">删除所有已记录的用户词汇和词频数据。此操作不可恢复。</div>
+                </div>
+                <button class="btn btn-danger" onclick="clearUserDict()">立即清空</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <h3 style="margin:0;">添加新词条</h3>
+                <button class="btn" onclick="document.getElementById('add-form').style.display=document.getElementById('add-form').style.display==='none'?'grid':'none'">＋ 展开/收起</button>
+            </div>
+            <div class="add-panel" id="add-form" style="display:grid;">
+                <div><label>拼音</label><input type="text" id="add-pinyin" placeholder="ji"></div>
+                <div><label>词汇 (char)</label><input type="text" id="add-char" placeholder="机"></div>
+                <div><label>英文释义 (en)</label><input type="text" id="add-en" placeholder="Machine"></div>
+                <div><label>繁体 (trad)</label><input type="text" id="add-trad" placeholder="機"></div>
+                <div><label>权重 (weight)</label><input type="number" id="add-weight" placeholder="100000" value="50000"></div>
+                <div><label>笔画辅码</label><input type="text" id="add-stroke" placeholder="Mf"></div>
+                <div><label>保存至</label><select id="add-target-file" style="height:36px;"></select></div>
+                <button class="btn" onclick="addEntry()" style="height:36px; align-self:end;">添加</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="editor-toolbar">
+                <select id="file-select" onchange="changeFile()"></select>
+                <input type="text" id="search-input" placeholder="搜索拼音/汉字/英文释义..." oninput="scheduleSearch()">
+                <span class="stats" id="stats-bar">加载中...</span>
+                <button class="btn" onclick="refresh()" style="white-space:nowrap;">刷新</button>
+            </div>
+        </div>
+
+        <div class="card" style="padding-bottom:4px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <h3 style="margin:0;" id="table-title">词条列表</h3>
+            </div>
+        </div>
+
+        <div class="dict-table-wrap">
+            <table class="dict-table" id="dict-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortBy('pinyin')" id="th-pinyin">拼音 <span class="sort-arrow">▲</span></th>
+                        <th onclick="sortBy('word')" id="th-word">词汇 <span class="sort-arrow">▲</span></th>
+                        <th onclick="sortBy('en')" id="th-en">英文释义 <span class="sort-arrow">▲</span></th>
+                        <th onclick="sortBy('weight')" id="th-weight">权重 <span class="sort-arrow">▲</span></th>
+                        <th>笔画辅码</th>
+                        <th>繁体</th>
+                        <th>拼音标注</th>
+                        <th>分类</th>
+                        <th style="width:100px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        let currentFile = '';
+        let currentPage = 1;
+        let currentSearch = '';
+        let currentSortBy = 'pinyin';
+        let currentSortOrder = 'asc';
+        let totalEntries = 0;
+        let totalPages = 1;
+        let pageSize = 50;
+        let searchTimer = null;
+        let editState = {};
+        let dictsCache = [];
+
+        function getDictName(filePath) {
+            const name = filePath.split('/').pop().replace(/\.json(\.disabled)?$/, '');
+            return name || filePath;
+        }
+
+        async function init() {
+            await loadConfig();
+
+            bindInput('enable_user_dict', 'input');
+            const eud = document.getElementById('enable_user_dict');
+            if(eud) {
+                const oldOnchange = eud.onchange;
+                eud.onchange = async () => {
+                    if(oldOnchange) oldOnchange();
+                    await saveConfig();
+                };
+            }
+
+            const r = await fetch('/api/dicts');
+            const dicts = await r.json();
+            dictsCache = dicts;
+            renderDictsList(dicts);
+
+            const jsonDicts = dicts.filter(d => d.path.endsWith('.json'));
+            const sel = document.getElementById('file-select');
+            sel.innerHTML = jsonDicts.map(d => `<option value="${d.path}">${d.name} (${d.entry_count.toLocaleString()} 条)</option>`).join('');
+
+            const ats = document.getElementById('add-target-file');
+            if(ats) {
+                ats.innerHTML = jsonDicts.map(d => `<option value="${d.path}">${d.name}</option>`).join('');
+            }
+
+            const savedFile = localStorage.getItem('dict_editor_last_file');
+            if (savedFile && jsonDicts.some(d => d.path === savedFile)) {
+                sel.value = savedFile;
+            }
+            currentFile = sel.value;
+            if (currentFile) loadPage(1);
+        }
+
+        function renderDictsList(dicts) {
+            const groups = {};
+            dicts.forEach(d => { if(!groups[d.group]) groups[d.group] = []; groups[d.group].push(d); });
+            const container = document.getElementById('dicts-list');
+            container.innerHTML = Object.entries(groups).sort().map(([group, files]) => `
+                <h4 style="margin:12px 0 8px; color:var(--apple-accent); text-transform:capitalize;">${group}</h4>
+                ${files.map(f => `
+                    <div class="dict-item ${f.enabled?'':'disabled'}">
+                        <div>
+                            <div class="dict-name">${f.name.replace('.disabled','')}</div>
+                            <div class="dict-count">${f.entry_count.toLocaleString()} 条</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" ${f.enabled?'checked':''} onchange="toggleDict('${f.path}')">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `).join('')}
+            `).join('');
+        }
+
+        async function toggleDict(path) {
+            await fetch('/api/dicts/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) });
+            const r = await fetch('/api/dicts');
+            const dicts = await r.json();
+            dictsCache = dicts;
+            renderDictsList(dicts);
+            const jsonDicts = dicts.filter(d => d.path.endsWith('.json'));
+            const sel = document.getElementById('file-select');
+            const prevVal = sel.value;
+            sel.innerHTML = jsonDicts.map(d => `<option value="${d.path}">${d.name} (${d.entry_count.toLocaleString()} 条)</option>`).join('');
+            if (jsonDicts.some(d => d.path === prevVal)) {
+                sel.value = prevVal;
+            } else {
+                sel.value = jsonDicts.length > 0 ? jsonDicts[0].path : '';
+            }
+            const ats = document.getElementById('add-target-file');
+            ats.innerHTML = jsonDicts.map(d => `<option value="${d.path}">${d.name}</option>`).join('');
+            currentFile = sel.value;
+            if (currentFile) loadPage(1);
+            showToast('词典状态已更新', 'success');
+        }
+
+        async function clearUserDict() {
+            if (confirm("确定要清空所有用户词库数据吗？此操作无法撤销。")) {
+                const res = await fetch('/api/dict/clear_user', { method: 'POST' });
+                if (res.ok) {
+                    showToast("用户词典已清空", 'success');
+                } else {
+                    showToast("清空失败，请检查后端日志", 'error');
+                }
+            }
+        }
+
+        function changeFile() {
+            currentFile = document.getElementById('file-select').value;
+            localStorage.setItem('dict_editor_last_file', currentFile);
+            currentPage = 1;
+            currentSearch = '';
+            document.getElementById('search-input').value = '';
+            loadPage(1);
+        }
+
+        function scheduleSearch() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                currentSearch = document.getElementById('search-input').value;
+                currentPage = 1;
+                loadPage(1);
+            }, 300);
+        }
+
+        async function loadPage(page) {
+            currentPage = page;
+            const params = new URLSearchParams({
+                file: currentFile,
+                page: currentPage,
+                page_size: pageSize,
+                search: currentSearch,
+                sort_by: currentSortBy,
+                sort_order: currentSortOrder,
+            });
+            const r = await fetch(`/api/dict/browse?${params}`);
+            if (!r.ok) {
+                document.getElementById('table-body').innerHTML =
+                    '<tr><td colspan="9" class="no-data">无法加载词典文件</td></tr>';
+                return;
+            }
+            const data = await r.json();
+            totalEntries = data.total;
+            totalPages = data.total_pages;
+            editState = {};
+            renderTable(data.entries);
+            renderPagination();
+            updateStats();
+        }
+
+        function renderTable(entries) {
+            const tbody = document.getElementById('table-body');
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="no-data">没有找到匹配的词条</td></tr>';
+                return;
+            }
+            tbody.innerHTML = entries.map((e, idx) => {
+                const uid = `${e.pinyin}|${e.word}|${idx}`;
+                const en = esc(e.en || '-');
+                const weight = e.weight.toLocaleString();
+                const stroke_aux = esc(e.stroke_aux || '-');
+                const trad = esc(e.trad || '-');
+                const tone = esc(e.tone || '-');
+                const category = esc(e.category || '-');
+                return `<tr id="row-${idx}" data-uid="${uid}">
+                    <td class="cell-pinyin">${esc(e.pinyin)}</td>
+                    <td class="cell-word">${esc(e.word)}</td>
+                    <td class="cell-en">
+                        <span class="view-mode" id="en-${idx}">${en}</span>
+                        <input class="edit-mode" id="input-en-${idx}" value="${escAttr(e.en || '')}" style="display:none;">
+                    </td>
+                    <td class="cell-weight">
+                        <span class="view-mode" id="weight-${idx}">${weight}</span>
+                        <input type="number" class="edit-mode" id="input-weight-${idx}" value="${e.weight}" style="display:none;">
+                    </td>
+                    <td>
+                        <span class="view-mode" id="stroke_aux-${idx}">${stroke_aux}</span>
+                        <input class="edit-mode" id="input-stroke_aux-${idx}" value="${escAttr(e.stroke_aux || '')}" style="display:none;">
+                    </td>
+                    <td>
+                        <span class="view-mode" id="trad-${idx}">${trad}</span>
+                        <input class="edit-mode" id="input-trad-${idx}" value="${escAttr(e.trad || '')}" style="display:none;">
+                    </td>
+                    <td>
+                        <span class="view-mode" id="tone-${idx}">${tone}</span>
+                        <input class="edit-mode" id="input-tone-${idx}" value="${escAttr(e.tone || '')}" style="display:none;">
+                    </td>
+                    <td>
+                        <span class="view-mode" id="category-${idx}">${category}</span>
+                        <input class="edit-mode" id="input-category-${idx}" value="${escAttr(e.category || '')}" style="display:none;">
+                    </td>
+                    <td>
+                        <div class="row-actions">
+                            <button class="btn-edit-row view-mode" id="edit-${idx}" onclick="startEditRow(${idx})">编辑</button>
+                            <button class="btn-save edit-mode" id="save-${idx}" style="display:none;" onclick="saveEditRow(${idx})">保存</button>
+                            <button class="btn-cancel edit-mode" id="cancel-${idx}" style="display:none;" onclick="cancelEditRow(${idx})">取消</button>
+                            <button class="btn-delete" id="del-${idx}" onclick="deleteEntry(${idx})" title="删除">✕</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        let editingRow = null;
+
+        function startEditRow(idx) {
+            if (editingRow !== null && editingRow !== idx) {
+                cancelEditRow(editingRow);
+            }
+            editingRow = idx;
+            const row = document.getElementById(`row-${idx}`);
+            row.classList.add('row-editing');
+            row.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
+            row.querySelectorAll('.edit-mode').forEach(el => el.style.display = '');
+            document.getElementById(`edit-${idx}`).style.display = 'none';
+            document.getElementById(`save-${idx}`).style.display = '';
+            document.getElementById(`cancel-${idx}`).style.display = '';
+            const firstInput = row.querySelector('.edit-mode');
+            if (firstInput) firstInput.focus();
+        }
+
+        function cancelEditRow(idx) {
+            const row = document.getElementById(`row-${idx}`);
+            if (!row) return;
+            editingRow = null;
+            row.classList.remove('row-editing');
+            row.querySelectorAll('.view-mode').forEach(el => el.style.display = '');
+            row.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'none');
+            document.getElementById(`edit-${idx}`).style.display = '';
+            document.getElementById(`save-${idx}`).style.display = 'none';
+            document.getElementById(`cancel-${idx}`).style.display = 'none';
+        }
+
+        async function saveEditRow(idx) {
+            const row = document.getElementById(`row-${idx}`);
+            if (!row) return;
+            const uid = row.dataset.uid;
+            const parts = uid.split('|');
+            const pinyin = parts[0];
+            const word = parts[1];
+
+            const fields = ['en', 'weight', 'stroke_aux', 'trad', 'tone', 'category'];
+            const body = { pinyin, word, file: currentFile };
+            let changed = false;
+
+            for (const field of fields) {
+                const input = document.getElementById(`input-${field}-${idx}`);
+                if (!input) continue;
+                const newVal = input.value.trim();
+                const origVal = input.defaultValue;
+                if (field === 'weight') {
+                    const numVal = parseInt(newVal) || 0;
+                    if (numVal !== parseInt(origVal)) {
+                        body[field] = numVal;
+                        changed = true;
+                    }
+                } else if (newVal !== origVal) {
+                    body[field] = newVal || null;
+                    changed = true;
+                }
+            }
+
+            if (!changed) {
+                cancelEditRow(idx);
+                return;
+            }
+
+            const r = await fetch('/api/dict/entry/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (r.ok) {
+                const dictName = getDictName(currentFile);
+                showToast(`改动已保存至 ${dictName}`, 'success');
+                editingRow = null;
+                loadPage(currentPage);
+            } else {
+                showToast('更新失败', 'error');
+                cancelEditRow(idx);
+            }
+        }
+
+        let deletedEntry = null;
+
+        async function deleteEntry(idx) {
+            const row = document.getElementById(`row-${idx}`);
+            if (!row) return;
+            const uid = row.dataset.uid;
+            const parts = uid.split('|');
+            const pinyin = parts[0];
+            const word = parts[1];
+            if (!confirm(`确定要删除 "${word}" (${pinyin}) 吗？`)) return;
+            const r = await fetch('/api/dict/entry/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pinyin, word, file: currentFile })
+            });
+            if (r.ok) {
+                deletedEntry = { pinyin, word, file: currentFile };
+                const dictName = getDictName(currentFile);
+                const undoBtn = document.createElement('button');
+                undoBtn.textContent = '撤销';
+                undoBtn.className = 'btn';
+                undoBtn.style.cssText = 'margin-left:12px; padding:4px 12px; font-size:13px; background:#fff; color:var(--apple-accent); border:1px solid var(--apple-accent); border-radius:6px; cursor:pointer;';
+                undoBtn.onclick = () => undoDelete();
+                showToastWithAction(`已从 ${dictName} 删除 "${word}"`, undoBtn);
+                loadPage(currentPage);
+            } else {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        async function undoDelete() {
+            if (!deletedEntry) return;
+            const r = await fetch('/api/dict/entry/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pinyin: deletedEntry.pinyin, word: deletedEntry.word, file: deletedEntry.file })
+            });
+            if (r.ok) {
+                showToast('已恢复', 'success');
+                deletedEntry = null;
+                loadPage(currentPage);
+            } else {
+                showToast('恢复失败，请手动添加', 'error');
+            }
+        }
+
+        function showToastWithAction(msg, actionEl) {
+            const el = document.getElementById('toast');
+            el.innerHTML = '';
+            el.appendChild(document.createTextNode(msg));
+            el.appendChild(actionEl);
+            el.className = 'toast success show';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 5000);
+        }
+
+        async function addEntry() {
+            const pinyin = document.getElementById('add-pinyin').value.trim().toLowerCase();
+            const word = document.getElementById('add-char').value.trim();
+            const file = document.getElementById('add-target-file').value;
+            if (!pinyin || !word) { showToast('拼音和词汇不能为空', 'error'); return; }
+
+            const body = {
+                pinyin,
+                word,
+                file,
+                en: document.getElementById('add-en').value.trim() || null,
+                trad: document.getElementById('add-trad').value.trim() || null,
+                weight: parseInt(document.getElementById('add-weight').value) || null,
+                stroke_aux: document.getElementById('add-stroke').value.trim() || null,
+            };
+
+            const r = await fetch('/api/dict/entry/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (r.ok) {
+                const dictName = getDictName(file);
+                showToast(`词条已添加至 ${dictName}，请重新编译生效`, 'success');
+                document.getElementById('add-pinyin').value = '';
+                document.getElementById('add-char').value = '';
+                document.getElementById('add-en').value = '';
+                document.getElementById('add-trad').value = '';
+                document.getElementById('add-stroke').value = '';
+                // 刷新词典列表以更新条目计数
+                const dr = await fetch('/api/dicts');
+                const dicts = await dr.json();
+                dictsCache = dicts;
+                renderDictsList(dicts);
+                loadPage(currentPage);
+            } else if (r.status === 409) {
+                showToast('该词条已存在', 'error');
+            } else {
+                showToast('添加失败', 'error');
+            }
+        }
+
+        function sortBy(field) {
+            if (currentSortBy === field) {
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortBy = field;
+                currentSortOrder = 'asc';
+            }
+            document.querySelectorAll('.dict-table th').forEach(th => th.classList.remove('sorted'));
+            const th = document.getElementById(`th-${field}`);
+            if (th) {
+                th.classList.add('sorted');
+                const arrow = th.querySelector('.sort-arrow');
+                if (arrow) arrow.textContent = currentSortOrder === 'asc' ? '▲' : '▼';
+            }
+            loadPage(1);
+        }
+
+        function renderPagination() {
+            const el = document.getElementById('pagination');
+            if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+            let html = '';
+            html += `<button onclick="loadPage(1)" ${currentPage===1?'disabled':''}>«</button>`;
+            html += `<button onclick="loadPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+
+            const start = Math.max(1, currentPage - 2);
+            const end = Math.min(totalPages, currentPage + 2);
+            if (start > 1) html += `<button onclick="loadPage(1)">1</button>${start>2?'...':''}`;
+
+            for (let i = start; i <= end; i++) {
+                html += `<button class="${i===currentPage?'active':''}" onclick="loadPage(${i})">${i}</button>`;
+            }
+
+            if (end < totalPages) html += `${end<totalPages-1?'...':''}<button onclick="loadPage(${totalPages})">${totalPages}</button>`;
+            html += `<button onclick="loadPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+            html += `<button onclick="loadPage(${totalPages})" ${currentPage===totalPages?'disabled':''}>»</button>`;
+            html += `<span class="page-info">第 ${currentPage}/${totalPages} 页</span>`;
+
+            el.innerHTML = html;
+        }
+
+        function updateStats() {
+            document.getElementById('stats-bar').textContent =
+                `共 ${totalEntries.toLocaleString()} 条 | 每页 ${pageSize} 条`;
+            document.getElementById('table-title').textContent =
+                `词条列表 ${currentSearch ? '(搜索: "' + currentSearch + '")' : ''}`;
+        }
+
+        function refresh() { loadPage(currentPage); }
+
+        async function compileDict() {
+            showToast('编译开始...', 'success');
+            const r = await fetch('/api/dicts/compile', { method: 'POST' });
+            showToast(r.ok ? '编译完成' : '编译失败', r.ok ? 'success' : 'error');
+        }
+
+        function esc(s) { if (!s) return '-'; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function escAttr(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast ' + type + ' show';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+        }
+
+        init();
+    </script>
+</body>
+</html>

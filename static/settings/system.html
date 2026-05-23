@@ -34,6 +34,13 @@
             </div>
             <div class="setting-item">
                 <div class="info">
+                    <div class="title">智能辅码过滤</div>
+                    <div class="desc">输入完整拼音后直接追加字母可触发辅码过滤（如 ji+c 自动显示 ji 下辅码 C 开头的候选词）。需要词库包含英语辅码数据。</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_smart_aux"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
                     <div class="title">首词固定</div>
                     <div class="desc">首位候选词位置固定，不随使用频率变化</div>
                 </div>
@@ -224,6 +231,7 @@
             `).join('');
 
             bindInput('enable_traditional', 'input');
+            bindInput('enable_smart_aux', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
             bindInput('show_candidates', 'appearance');
             bindInput('enable_word_discovery', 'input');

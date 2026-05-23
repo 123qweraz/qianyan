@@ -127,6 +127,26 @@ pub struct ProfileLayout {
     pub mappings: std::collections::HashMap<String, KeyAction>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum SmartAuxMode {
+    Greedy,  // 最长拼音前缀
+    Minimal, // 最短有效音节
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum EnglishAuxMode {
+    Prefix,      // 前缀匹配
+    FirstLetter, // 仅首字母
+}
+
+fn default_smart_aux_mode() -> SmartAuxMode {
+    SmartAuxMode::Greedy
+}
+
+fn default_english_aux_mode() -> EnglishAuxMode {
+    EnglishAuxMode::Prefix
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Input {
     pub autostart: bool,
@@ -175,6 +195,11 @@ pub struct Input {
     pub enable_fuzzy_pinyin: bool,
     pub fuzzy_config: FuzzyPinyinConfig,
     pub enable_traditional: bool,
+    pub enable_smart_aux: bool,
+    #[serde(default = "default_smart_aux_mode")]
+    pub smart_aux_mode: SmartAuxMode,
+    #[serde(default = "default_english_aux_mode")]
+    pub english_aux_mode: EnglishAuxMode,
     pub ranking: RankingConfig,
     pub firefox_space_interrupt: bool,
     #[serde(default = "default_segmentation_delimiters")]
@@ -703,6 +728,9 @@ impl Config {
                     custom_mappings: vec![],
                 },
                 enable_traditional: false,
+                enable_smart_aux: false,
+                smart_aux_mode: SmartAuxMode::Greedy,
+                english_aux_mode: EnglishAuxMode::Prefix,
                 ranking: RankingConfig {
                     length_penalty: 50000.0,
                     user_dict_bonus: 10000000.0,

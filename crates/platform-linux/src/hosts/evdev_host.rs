@@ -249,6 +249,8 @@ impl EvdevHost {
                                     simplified: buf_arc.clone(),
                                     traditional: buf_arc.clone(),
                                     hint: std::sync::Arc::from(""),
+                                    english_aux: std::sync::Arc::from(""),
+                                    stroke_aux: std::sync::Arc::from(""),
                                     source: std::sync::Arc::from("Raw"),
                                     weight: 0.0,
                                     match_level: 0,

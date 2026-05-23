@@ -22,6 +22,8 @@ pub struct Candidate {
     pub simplified: Arc<str>,
     pub traditional: Arc<str>,
     pub hint: Arc<str>,
+    pub english_aux: Arc<str>,
+    pub stroke_aux: Arc<str>,
     pub source: Arc<str>, // 来源：如 "User", "Table", "Script"
     pub weight: f64,
     pub match_level: u8, // 0: unknown, 1: prefix, 2: abbreviation/wildcard, 3: exact
@@ -217,6 +219,7 @@ impl Translator for TableTranslator {
             return vec![];
         }
         let query = segments.join("");
+        let internal_limit = limit.max(MAX_LOOKUP_LIMIT);
 
         // 检查缓存是否可以复用（增量搜索优化）
         {
@@ -232,12 +235,14 @@ impl Translator for TableTranslator {
                     let filtered: Vec<Candidate> = cached
                         .iter()
                         .filter(|c| c.simplified.starts_with(&query))
-                        .take(limit)
                         .cloned()
                         .collect();
 
                     if !filtered.is_empty() {
-                        return filtered;
+                        // 如果结果太多，这里还是可以 truncate 到 internal_limit
+                        let mut result = filtered;
+                        result.truncate(internal_limit);
+                        return result;
                     }
                 }
             }
@@ -245,8 +250,6 @@ impl Translator for TableTranslator {
 
         let mut candidates = Vec::new();
         let mut seen = HashSet::new();
-
-        let internal_limit = limit.max(MAX_LOOKUP_LIMIT);
 
         let build_hint = |tr: &TrieResult| -> Arc<str> {
             let mut hint = String::new();
@@ -279,6 +282,8 @@ impl Translator for TableTranslator {
                         },
                         text: Arc::from(tr.word),
                         hint: build_hint(&tr),
+                        english_aux: Arc::from(tr.en),
+                        stroke_aux: Arc::from(tr.stroke_aux),
                         source: Arc::from("Table (Exact)"),
                         weight: tr.weight as f64 + config.input.ranking.exact_match_bonus,
                         match_level: 3,
@@ -313,6 +318,8 @@ impl Translator for TableTranslator {
                         },
                         text: Arc::from(ar.word),
                         hint: build_hint(&ar),
+                        english_aux: Arc::from(ar.en),
+                        stroke_aux: Arc::from(ar.stroke_aux),
                         source: Arc::from("Table (Abbr)"),
                         weight: adjusted_weight,
                         match_level: 2,
@@ -335,6 +342,8 @@ impl Translator for TableTranslator {
                         },
                         text: Arc::from(tr.word),
                         hint: build_hint(&tr),
+                        english_aux: Arc::from(tr.en),
+                        stroke_aux: Arc::from(tr.stroke_aux),
                         source: Arc::from("Table"),
                         weight: tr.weight as f64,
                         match_level: 1,
@@ -386,6 +395,8 @@ impl Translator for UserDictTranslator {
                         simplified: Arc::from(word.as_str()),
                         traditional: Arc::from(word.as_str()),
                         hint: Arc::from("User"),
+                        english_aux: Arc::from(""),
+                        stroke_aux: Arc::from(""),
                         source: Arc::from("User"),
                         weight: *weight as f64,
                         match_level: 3,
@@ -532,6 +543,8 @@ impl Translator for ComposeTranslator {
                 simplified: Arc::from(text.clone()),
                 traditional: Arc::from(text),
                 hint: Arc::from(""),
+                english_aux: Arc::from(""),
+                stroke_aux: Arc::from(""),
                 source: Arc::from("Compose"),
                 weight: freq as f64 * 0.001 + 0.1,
                 match_level: 0,
@@ -836,11 +849,18 @@ impl SearchEngine {
         log::info!("engine_search: profile={}, buffer={}", query.profile, query.buffer);
 
         if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
+            // 如果有辅助码过滤，我们需要从 Translator 获取更多候选项进行过滤
+            let search_limit = if !query.aux_filter.is_empty() {
+                MAX_LOOKUP_LIMIT
+            } else {
+                query.limit
+            };
+
             let results = pipeline.run(
                 query.buffer,
                 query.syllables,
                 query.config,
-                query.limit,
+                search_limit,
                 query.context,
             );
             let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &query.config.input.segmentation_delimiters, &pipeline.syllable_freq, &pipeline.base_syllables);
@@ -849,9 +869,10 @@ impl SearchEngine {
             if query.filter_mode == crate::processor::FilterMode::Global
                 && !query.aux_filter.is_empty()
             {
-                final_results.retain(|c| self.matches_filter(c, query.aux_filter));
+                final_results.retain(|c| self.matches_filter(c, query.aux_filter, query.config.input.english_aux_mode));
             }
-
+            
+            final_results.truncate(query.limit);
             return (final_results, segments);
         }
 
@@ -890,6 +911,8 @@ impl SearchEngine {
                     simplified: Arc::from(sc.simplified.as_str()),
                     traditional: Arc::from(sc.traditional.as_str()),
                     hint: Arc::from(sc.tone.as_str()),
+                    english_aux: Arc::from(sc.english.as_str()),
+                    stroke_aux: Arc::from(sc.stroke_aux.as_str()),
                     source: Arc::from("Engine"),
                     weight: sc.weight as f64,
                     match_level: sc.match_level,
@@ -1025,13 +1048,41 @@ impl SearchEngine {
     }
 
     #[inline]
-    pub fn matches_filter(&self, candidate: &Candidate, filter: &str) -> bool {
+    pub fn matches_filter(&self, candidate: &Candidate, filter: &str, mode: qianyan_ime_core::config::EnglishAuxMode) -> bool {
         if filter.is_empty() {
             return true;
         }
         let filter_lower = filter.to_lowercase();
+
+        // 1. 优先检查 English Aux (支持多含义分割)
+        if !candidate.english_aux.is_empty() {
+            let en_lower = candidate.english_aux.to_lowercase();
+            // 扩充符号集，支持更多类型的词典分隔符
+            let parts: Vec<&str> = en_lower.split([' ', '/', '(', ')', ',', ';', '|', '.', ':', '!', '?', '[', ']', '{', '}']).collect();
+            
+            if mode == qianyan_ime_core::config::EnglishAuxMode::FirstLetter {
+                // 仅首字母模式：匹配每个单词的首字母
+                if parts.iter().any(|p| p.starts_with(&filter_lower)) {
+                    return true;
+                }
+            } else {
+                // 前缀匹配模式
+                if parts.iter().any(|p| p.starts_with(&filter_lower)) || en_lower.starts_with(&filter_lower) {
+                    return true;
+                }
+            }
+        }
+
+        // 2. 检查 Stroke Aux (始终使用前缀匹配)
+        if !candidate.stroke_aux.is_empty() {
+            if candidate.stroke_aux.to_lowercase().starts_with(&filter_lower) {
+                return true;
+            }
+        }
+
+        // 3. 后备：检查 Hint (兼容性)
         let hint_lower = candidate.hint.to_lowercase();
-        let parts: Vec<&str> = hint_lower.split([' ', '/', '(', ')', ',']).collect();
+        let parts: Vec<&str> = hint_lower.split([' ', '/', '(', ')', ',', ';', '|', '.']).collect();
         parts.iter().any(|p| p.starts_with(&filter_lower)) || hint_lower.starts_with(&filter_lower)
     }
 }
@@ -1048,7 +1099,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
     if ctx.session.filter_mode == FilterMode::Page && !ctx.session.page_snapshot.is_empty() {
         let mut filtered = Vec::new();
         for c in &ctx.session.page_snapshot {
-            if ctx.engine.matches_filter(c, &ctx.session.aux_filter) {
+            if ctx.engine.matches_filter(c, &ctx.session.aux_filter, ctx.config.master_config.input.english_aux_mode) {
                 filtered.push(c.clone());
             }
         }
@@ -1093,6 +1144,36 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
     ctx.session.has_dict_match = !ctx.session.candidates.is_empty();
     ctx.session.last_lookup_pinyin = ctx.session.buffer.clone();
 
+    // 智能辅码：当输入为「完整拼音 + 辅码字母」时自动进入辅码过滤
+    if ctx.config.master_config.input.enable_smart_aux
+        && ctx.session.filter_mode == FilterMode::None
+    {
+        let buffer = &ctx.session.buffer;
+        if let Some((pinyin_base, aux_chars)) = detect_smart_aux(buffer, &ctx.syllables, ctx.config.master_config.input.smart_aux_mode) {
+            let aux_query = SearchQuery {
+                buffer: &pinyin_base,
+                profile: &current_profile,
+                syllables: &ctx.syllables,
+                config: &ctx.config.master_config,
+                limit: 20,
+                filter_mode: FilterMode::Global,
+                aux_filter: &aux_chars,
+                context: last_word,
+            };
+            let (aux_results, _) = ctx.engine.search(aux_query);
+            if !aux_results.is_empty() {
+                let mut merged = aux_results;
+                for c in &ctx.session.candidates {
+                    if !merged.iter().any(|r| r.text == c.text) {
+                        merged.push(c.clone());
+                    }
+                }
+                ctx.session.candidates = merged;
+                ctx.session.has_dict_match = true;
+            }
+        }
+    }
+
     if ctx.session.candidates.len() == 1 && ctx.session.filter_mode == FilterMode::Global {
         let word = ctx.session.candidates[0].text.clone();
         return Some(crate::processor::commands::commit_candidate(ctx, word, 0));
@@ -1105,6 +1186,8 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
             simplified: buf_arc.clone(),
             traditional: buf_arc.clone(),
             hint: Arc::from(""),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
             source: Arc::from("Raw"),
             weight: 0.0,
             match_level: 0,
@@ -1114,11 +1197,93 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
     crate::compositor::Compositor::check_auto_commit(ctx)
 }
 
+/// 检测「完整拼音 + 辅码字母」模式。
+/// 如果 buffer 的最长有效拼音前缀之后有额外字母，且整体不是有效拼音，则返回 (拼音前缀, 辅码后缀)。
+pub fn detect_smart_aux(buffer: &str, syllables: &HashSet<String>, mode: qianyan_ime_core::config::SmartAuxMode) -> Option<(String, String)> {
+    if buffer.len() < 3 {
+        return None;
+    }
+    let bytes = buffer.as_bytes();
+    if !bytes.iter().all(|b| b.is_ascii_lowercase()) {
+        return None;
+    }
+
+    // 如果整体就是一个有效音节或可以被完整切分为音节，不要触发智能辅码
+    if syllables.contains(buffer) || is_fully_syllabic(buffer, syllables) {
+        return None;
+    }
+
+    // 根据模式决定切分策略
+    let split_points: Vec<usize> = match mode {
+        qianyan_ime_core::config::SmartAuxMode::Greedy => (1..buffer.len()).rev().collect(),
+        qianyan_ime_core::config::SmartAuxMode::Minimal => (1..buffer.len()).collect(),
+    };
+
+    for split in split_points {
+        let prefix = &buffer[..split];
+        let suffix = &buffer[split..];
+
+        // 检查 prefix 是否可以被完整切分
+        if is_fully_syllabic(prefix, syllables) {
+            return Some((prefix.to_string(), suffix.to_string()));
+        }
+    }
+
+    None
+}
+
+/// 检查字符串是否由一个或多个有效音节组成（无剩余字符）
+fn is_fully_syllabic(s: &str, syllables: &HashSet<String>) -> bool {
+    if s.is_empty() {
+        return true;
+    }
+    // 使用简单的最长匹配（或回溯）检查
+    for len in (1..=s.len()).rev() {
+        if syllables.contains(&s[..len]) {
+            if is_fully_syllabic(&s[len..], syllables) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::HashSet;
     use std::sync::Arc;
+
+    #[test]
+    fn test_detect_smart_aux_logic() {
+        let syllables: HashSet<String> = ["ni", "hao", "wo", "hen"].iter().map(|s| s.to_string()).collect();
+        let mode = qianyan_ime_core::config::SmartAuxMode::Greedy;
+        
+        // 单个音节 + 辅码
+        assert_eq!(detect_smart_aux("nih", &syllables, mode), Some(("ni".to_string(), "h".to_string())));
+        
+        // 多个音节 + 辅码
+        assert_eq!(detect_smart_aux("nihaoh", &syllables, mode), Some(("nihao".to_string(), "h".to_string())));
+        
+        // 整体是音节，不应触发
+        assert_eq!(detect_smart_aux("nihao", &syllables, mode), None);
+        
+        // 无效音节序列
+        assert_eq!(detect_smart_aux("xyz", &syllables, mode), None);
+    }
+
+    #[test]
+    fn test_detect_smart_aux_modes() {
+        let syllables: HashSet<String> = ["na", "nan", "hai", "nanhai", "ha"].iter().map(|s| s.to_string()).collect();
+        
+        // Greedy 模式：取最长拼音
+        let greedy = qianyan_ime_core::config::SmartAuxMode::Greedy;
+        assert_eq!(detect_smart_aux("nanhaix", &syllables, greedy), Some(("nanhai".to_string(), "x".to_string())));
+        
+        // Minimal 模式：取最短拼音
+        let minimal = qianyan_ime_core::config::SmartAuxMode::Minimal;
+        assert_eq!(detect_smart_aux("nanhaix", &syllables, minimal), Some(("na".to_string(), "nhaix".to_string())));
+    }
 
     #[test]
     fn test_default_segmentor_basic() {
@@ -1248,6 +1413,8 @@ mod tests {
             simplified: Arc::from("test"),
             traditional: Arc::from("test"),
             hint: Arc::from("hint"),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
             source: Arc::from("test"),
             weight: 1.0,
             match_level: 3,
@@ -1267,6 +1434,8 @@ mod tests {
                 simplified: Arc::from("low"),
                 traditional: Arc::from("low"),
                 hint: Arc::from(""),
+                english_aux: Arc::from(""),
+                stroke_aux: Arc::from(""),
                 source: Arc::from(""),
                 weight: 1.0,
                 match_level: 1,
@@ -1276,6 +1445,8 @@ mod tests {
                 simplified: Arc::from("high"),
                 traditional: Arc::from("high"),
                 hint: Arc::from(""),
+                english_aux: Arc::from(""),
+                stroke_aux: Arc::from(""),
                 source: Arc::from(""),
                 weight: 100.0,
                 match_level: 1,
@@ -1285,6 +1456,8 @@ mod tests {
                 simplified: Arc::from("medium"),
                 traditional: Arc::from("medium"),
                 hint: Arc::from(""),
+                english_aux: Arc::from(""),
+                stroke_aux: Arc::from(""),
                 source: Arc::from(""),
                 weight: 50.0,
                 match_level: 1,
@@ -1306,6 +1479,8 @@ mod tests {
             simplified: Arc::from("简化"),
             traditional: Arc::from("簡化"),
             hint: Arc::from(""),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
             source: Arc::from(""),
             weight: 1.0,
             match_level: 1,
@@ -1327,6 +1502,8 @@ mod tests {
             simplified: Arc::from("简化"),
             traditional: Arc::from("簡化"),
             hint: Arc::from(""),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
             source: Arc::from(""),
             weight: 1.0,
             match_level: 1,
@@ -1337,21 +1514,57 @@ mod tests {
     }
 
     #[test]
-    fn test_matches_filter_empty() {
+    fn test_matches_filter_comprehensive() {
         let engine = create_test_engine();
         let candidate = Candidate {
-            text: Arc::from("测试"),
-            simplified: Arc::from("测试"),
-            traditional: Arc::from("测试"),
-            hint: Arc::from("ceshi"),
+            text: Arc::from("你好"),
+            simplified: Arc::from("你好"),
+            traditional: Arc::from("你好"),
+            hint: Arc::from("nihao"),
+            english_aux: Arc::from("Hello/Hi"),
+            stroke_aux: Arc::from("HSP"),
             source: Arc::from(""),
             weight: 1.0,
             match_level: 1,
         };
 
-        assert!(engine.matches_filter(&candidate, ""));
-        assert!(engine.matches_filter(&candidate, "ces"));
-        assert!(!engine.matches_filter(&candidate, "xyz"));
+        let mode = qianyan_ime_core::config::EnglishAuxMode::Prefix;
+
+        // 匹配 English Aux
+        assert!(engine.matches_filter(&candidate, "h", mode));
+        assert!(engine.matches_filter(&candidate, "he", mode));
+        assert!(engine.matches_filter(&candidate, "hello", mode));
+        assert!(engine.matches_filter(&candidate, "hi", mode));
+        
+        // 匹配 Stroke Aux
+        assert!(engine.matches_filter(&candidate, "hsp", mode));
+        
+        // 匹配 Hint (后备)
+        assert!(engine.matches_filter(&candidate, "nih", mode));
+        
+        // 不匹配
+        assert!(!engine.matches_filter(&candidate, "xyz", mode));
+    }
+
+    #[test]
+    fn test_matches_filter_empty() {
+        let engine = create_test_engine();
+        let mode = qianyan_ime_core::config::EnglishAuxMode::Prefix;
+        let candidate = Candidate {
+            text: Arc::from("测试"),
+            simplified: Arc::from("测试"),
+            traditional: Arc::from("测试"),
+            hint: Arc::from("ceshi"),
+            english_aux: Arc::from(""),
+            stroke_aux: Arc::from(""),
+            source: Arc::from(""),
+            weight: 1.0,
+            match_level: 1,
+        };
+
+        assert!(engine.matches_filter(&candidate, "", mode));
+        assert!(engine.matches_filter(&candidate, "ces", mode));
+        assert!(!engine.matches_filter(&candidate, "xyz", mode));
     }
 
     fn create_test_engine() -> SearchEngine {

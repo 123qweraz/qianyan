@@ -58,8 +58,12 @@ impl WebServer {
             .route("/api/dicts/toggle", post(toggle_dict))
             .route("/api/dictionary/chars", get(get_chars_dict))
             .route("/api/dict/search", get(search_dict))
+            .route("/api/dict/browse", get(browse_dict))
             .route("/api/dict/update", post(update_dict_entry))
+            .route("/api/dict/entry/update", post(update_dict_entry_full))
+            .route("/api/dict/entry/delete", post(delete_dict_entry))
             .route("/api/dict/add", post(add_dict_entry))
+            .route("/api/dict/entry/add", post(add_dict_entry_full))
             .route("/api/dict/clear_user", post(clear_user_dict))
             .route("/api/keyboard/send", post(send_key_handler))
             .route("/static/*file", get(static_handler))
@@ -411,13 +415,15 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
                 if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
                     if let Some(obj) = json.as_object() {
                         for (pinyin, val) in obj {
-                            if !pinyin.to_lowercase().starts_with(&q) && pinyin.to_lowercase() != q {
-                                continue;
-                            }
+                            let pinyin_match = pinyin.to_lowercase().starts_with(&q) || pinyin.to_lowercase() == q;
                             if let Some(arr) = val.as_array() {
                                 for v in arr {
                                     let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
                                     let hint = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
+                                    // 支持按拼音、汉字、英文释义搜索
+                                    if !pinyin_match && !word.contains(&query.q) && !hint.to_lowercase().contains(&q) {
+                                        continue;
+                                    }
                                     results.push(SearchResult {
                                         pinyin: pinyin.clone(),
                                         word: word.to_string(),
@@ -434,6 +440,270 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
         if results.len() > 100 { break; }
     }
     Json(results)
+}
+
+#[derive(Serialize)]
+struct BrowseResult {
+    entries: Vec<DictEntryView>,
+    total: usize,
+    page: usize,
+    page_size: usize,
+    total_pages: usize,
+}
+
+#[derive(Serialize)]
+struct DictEntryView {
+    pinyin: String,
+    word: String,
+    trad: String,
+    en: String,
+    tone: String,
+    weight: i64,
+    stroke_aux: String,
+    category: String,
+}
+
+#[derive(serde::Deserialize)]
+struct BrowseQuery {
+    file: String,
+    page: Option<usize>,
+    page_size: Option<usize>,
+    search: Option<String>,
+    sort_by: Option<String>,
+    sort_order: Option<String>,
+}
+
+async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQuery>) -> impl IntoResponse {
+    let page = query.page.unwrap_or(1).max(1);
+    let page_size = query.page_size.unwrap_or(50).clamp(10, 500);
+    let search = query.search.as_deref().unwrap_or("").to_lowercase();
+    let sort_by = query.sort_by.as_deref().unwrap_or("pinyin");
+    let sort_order = query.sort_order.as_deref().unwrap_or("asc");
+
+    let path = std::path::Path::new(&query.file);
+    if !path.exists() {
+        return (StatusCode::NOT_FOUND, "{}").into_response();
+    }
+
+    let mut all_entries: Vec<DictEntryView> = Vec::new();
+    if let Ok(f) = std::fs::File::open(path) {
+        if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
+            if let Some(obj) = json.as_object() {
+                for (pinyin, val) in obj {
+                    if let Some(arr) = val.as_array() {
+                        for v in arr {
+                            let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
+                            let en = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
+                            let trad = v.get("trad").and_then(|t| t.as_str()).unwrap_or("");
+                            let tone = v.get("tone").and_then(|t| t.as_str()).unwrap_or("");
+                            let weight = v.get("weight").and_then(|w| w.as_i64()).unwrap_or(0);
+                            let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("");
+                            let category = v.get("category").and_then(|c| c.as_str()).unwrap_or("");
+
+                            if !search.is_empty() {
+                                let match_py = pinyin.to_lowercase().contains(&search);
+                                let match_word = word.to_lowercase().contains(&search);
+                                let match_en = en.to_lowercase().contains(&search);
+                                if !match_py && !match_word && !match_en {
+                                    continue;
+                                }
+                            }
+
+                            all_entries.push(DictEntryView {
+                                pinyin: pinyin.clone(),
+                                word: word.to_string(),
+                                trad: trad.to_string(),
+                                en: en.to_string(),
+                                tone: tone.to_string(),
+                                weight,
+                                stroke_aux: stroke_aux.to_string(),
+                                category: category.to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let total = all_entries.len();
+    let total_pages = total.div_ceil(page_size).max(1);
+
+    // Sort
+    let cmp_ascii = |a: &str, b: &str, asc: bool| -> std::cmp::Ordering {
+        let ord = a.to_lowercase().cmp(&b.to_lowercase());
+        if asc { ord } else { ord.reverse() }
+    };
+    all_entries.sort_by(|a, b| {
+        let asc = sort_order == "asc";
+        match sort_by {
+            "word" => cmp_ascii(&a.word, &b.word, asc),
+            "en" => cmp_ascii(&a.en, &b.en, asc),
+            "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
+            "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
+            _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
+        }
+    });
+
+    let start = (page - 1) * page_size;
+    let entries: Vec<DictEntryView> = all_entries.into_iter().skip(start).take(page_size).collect();
+
+    Json(BrowseResult { entries, total, page, page_size, total_pages }).into_response()
+}
+
+#[derive(serde::Deserialize)]
+struct DeleteEntryRequest {
+    pinyin: String,
+    word: String,
+    file: String,
+}
+
+async fn delete_dict_entry(Json(req): Json<DeleteEntryRequest>) -> StatusCode {
+    let path = std::path::Path::new(&req.file);
+    if !path.exists() { return StatusCode::NOT_FOUND; }
+
+    let mut data: serde_json::Value = match std::fs::File::open(path) {
+        Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Null),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+
+    let mut found = false;
+    if let Some(obj) = data.as_object_mut() {
+        if let Some(entries) = obj.get_mut(&req.pinyin).and_then(|v| v.as_array_mut()) {
+            entries.retain(|entry| {
+                if entry.get("char").and_then(|c| c.as_str()) == Some(&req.word) {
+                    found = true;
+                    false
+                } else {
+                    true
+                }
+            });
+            if entries.is_empty() {
+                obj.remove(&req.pinyin);
+            }
+        }
+    }
+
+    if found {
+        if let Ok(f) = std::fs::File::create(path) {
+            if serde_json::to_writer_pretty(f, &data).is_ok() {
+                return StatusCode::OK;
+            }
+        }
+    }
+    StatusCode::INTERNAL_SERVER_ERROR
+}
+
+#[derive(serde::Deserialize)]
+struct UpdateEntryFullRequest {
+    pinyin: String,
+    word: String,
+    file: String,
+    en: Option<String>,
+    trad: Option<String>,
+    tone: Option<String>,
+    weight: Option<i64>,
+    stroke_aux: Option<String>,
+    category: Option<String>,
+}
+
+async fn update_dict_entry_full(Json(req): Json<UpdateEntryFullRequest>) -> StatusCode {
+    let path = std::path::Path::new(&req.file);
+    if !path.exists() { return StatusCode::NOT_FOUND; }
+
+    let mut data: serde_json::Value = match std::fs::File::open(path) {
+        Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Null),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+
+    let mut found = false;
+    if let Some(obj) = data.as_object_mut() {
+        if let Some(entries) = obj.get_mut(&req.pinyin).and_then(|v| v.as_array_mut()) {
+            for entry in entries {
+                if entry.get("char").and_then(|c| c.as_str()) == Some(&req.word) {
+                    if let Some(en) = &req.en {
+                        entry["en"] = serde_json::Value::String(en.clone());
+                    }
+                    if let Some(trad) = &req.trad {
+                        entry["trad"] = serde_json::Value::String(trad.clone());
+                    }
+                    if let Some(tone) = &req.tone {
+                        entry["tone"] = serde_json::Value::String(tone.clone());
+                    }
+                    if let Some(weight) = req.weight {
+                        entry["weight"] = serde_json::Value::Number(weight.into());
+                    }
+                    if let Some(stroke_aux) = &req.stroke_aux {
+                        entry["stroke_aux"] = serde_json::Value::String(stroke_aux.clone());
+                    }
+                    if let Some(category) = &req.category {
+                        entry["category"] = serde_json::Value::String(category.clone());
+                    }
+                    found = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if found {
+        if let Ok(f) = std::fs::File::create(path) {
+            if serde_json::to_writer_pretty(f, &data).is_ok() {
+                return StatusCode::OK;
+            }
+        }
+    }
+    StatusCode::INTERNAL_SERVER_ERROR
+}
+
+#[derive(serde::Deserialize)]
+struct AddEntryFullRequest {
+    pinyin: String,
+    word: String,
+    file: String,
+    en: Option<String>,
+    trad: Option<String>,
+    tone: Option<String>,
+    weight: Option<i64>,
+    stroke_aux: Option<String>,
+    category: Option<String>,
+}
+
+async fn add_dict_entry_full(Json(req): Json<AddEntryFullRequest>) -> StatusCode {
+    let path = std::path::Path::new(&req.file);
+    if !path.exists() { return StatusCode::NOT_FOUND; }
+
+    let mut data: serde_json::Value = match std::fs::File::open(path) {
+        Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+
+    if let Some(obj) = data.as_object_mut() {
+        let entries = obj.entry(req.pinyin.clone()).or_insert(serde_json::Value::Array(Vec::new()));
+        if let Some(arr) = entries.as_array_mut() {
+            for item in arr.iter() {
+                if item.get("char").and_then(|c| c.as_str()) == Some(&req.word) {
+                    return StatusCode::CONFLICT;
+                }
+            }
+            let mut new_entry = serde_json::Map::new();
+            new_entry.insert("char".to_string(), serde_json::Value::String(req.word));
+            if let Some(en) = &req.en { new_entry.insert("en".to_string(), serde_json::Value::String(en.clone())); }
+            if let Some(trad) = &req.trad { new_entry.insert("trad".to_string(), serde_json::Value::String(trad.clone())); }
+            if let Some(tone) = &req.tone { new_entry.insert("tone".to_string(), serde_json::Value::String(tone.clone())); }
+            if let Some(weight) = req.weight { new_entry.insert("weight".to_string(), serde_json::Value::Number(weight.into())); }
+            if let Some(stroke_aux) = &req.stroke_aux { new_entry.insert("stroke_aux".to_string(), serde_json::Value::String(stroke_aux.clone())); }
+            if let Some(category) = &req.category { new_entry.insert("category".to_string(), serde_json::Value::String(category.clone())); }
+            arr.push(serde_json::Value::Object(new_entry));
+        }
+    }
+
+    if let Ok(f) = std::fs::File::create(path) {
+        if serde_json::to_writer_pretty(f, &data).is_ok() {
+            return StatusCode::OK;
+        }
+    }
+    StatusCode::INTERNAL_SERVER_ERROR
 }
 
 #[derive(serde::Deserialize)]
