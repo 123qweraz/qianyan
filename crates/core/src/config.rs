@@ -19,6 +19,18 @@ pub struct LinuxConfig {
     pub display_mode: String, // "slint", "notification"
     pub fixed_position: bool,
     pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
+    #[serde(default = "default_fixed_x")]
+    pub fixed_x: i32,
+    #[serde(default = "default_fixed_y")]
+    pub fixed_y: i32,
+}
+
+fn default_fixed_x() -> i32 {
+    40
+}
+
+fn default_fixed_y() -> i32 {
+    40
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -757,6 +769,8 @@ impl Config {
                 display_mode: "slint".to_string(),
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
+                fixed_x: 40,
+                fixed_y: 40,
             },
         }
     }

@@ -99,28 +99,6 @@ impl Vkbd {
         })
     }
 
-    #[allow(dead_code)]
-    pub fn cycle_paste_mode(&mut self) -> String {
-        if let Ok(mut mode_lock) = self.paste_mode.lock() {
-            *mode_lock = match *mode_lock {
-                PasteMode::ShiftInsert => PasteMode::CtrlV,
-                PasteMode::CtrlV => PasteMode::CtrlShiftV,
-                PasteMode::CtrlShiftV => PasteMode::ShiftInsert,
-            };
-
-            let new_mode = *mode_lock;
-            println!("[Vkbd] Manually switched paste mode to: {new_mode:?}");
-
-            match new_mode {
-                PasteMode::ShiftInsert => "通用模式 (Shift+Insert)".to_string(),
-                PasteMode::CtrlV => "标准模式 (Ctrl+V)".to_string(),
-                PasteMode::CtrlShiftV => "终端模式 (Ctrl+Shift+V)".to_string(),
-            }
-        } else {
-            "切换失败".to_string()
-        }
-    }
-
     pub fn send_key(&self, key_name: &str) {
         if let Some(key) = key_name_to_key(key_name) {
             Self::do_tap(&self.dev, key);

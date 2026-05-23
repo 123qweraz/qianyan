@@ -111,12 +111,6 @@ impl Trie {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn has_prefix(&self, prefix: &str) -> bool {
-        let matcher = fst::automaton::Str::new(prefix).starts_with();
-        self.index.search(matcher).into_stream().next().is_some()
-    }
-
     pub fn has_longer_match(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
         let mut stream = self.index.search(matcher).into_stream();
@@ -354,77 +348,142 @@ impl Trie {
     fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
         let data = self.data.as_ref();
         if offset + 4 > data.len() {
+            log::warn!("[Trie] read_block: offset {} beyond data length {}", offset, data.len());
             return;
         }
 
-        let count = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap_or([0; 4]));
+        let count = u32::from_le_bytes(
+            data[offset..offset + 4]
+                .try_into()
+                .expect("read_block: failed to read count at offset"),
+        );
         let mut cursor = offset + 4;
 
         for _ in 0..count {
             if cursor + 2 > data.len() {
+                log::warn!("[Trie] read_block: truncated length field at cursor {}", cursor);
                 break;
             }
-            let w_len =
-                u16::from_le_bytes(data[cursor..cursor + 2].try_into().unwrap_or([0; 2])) as usize;
+            let w_len = u16::from_le_bytes(
+                data[cursor..cursor + 2]
+                    .try_into()
+                    .expect("read_block: failed to read word length"),
+            ) as usize;
             cursor += 2;
             if cursor + w_len > data.len() {
+                log::warn!("[Trie] read_block: truncated word data at cursor {}", cursor);
                 break;
             }
-            let word = std::str::from_utf8(&data[cursor..cursor + w_len]).unwrap_or("");
+            let word = match std::str::from_utf8(&data[cursor..cursor + w_len]) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("[Trie] read_block: invalid utf8 for word: {}", e);
+                    break;
+                }
+            };
             cursor += w_len;
 
             if cursor + 2 > data.len() {
+                log::warn!("[Trie] read_block: truncated trad length at cursor {}", cursor);
                 break;
             }
-            let tr_len =
-                u16::from_le_bytes(data[cursor..cursor + 2].try_into().unwrap_or([0; 2])) as usize;
+            let tr_len = u16::from_le_bytes(
+                data[cursor..cursor + 2]
+                    .try_into()
+                    .expect("read_block: failed to read trad length"),
+            ) as usize;
             cursor += 2;
             if cursor + tr_len > data.len() {
+                log::warn!("[Trie] read_block: truncated trad data at cursor {}", cursor);
                 break;
             }
-            let trad = std::str::from_utf8(&data[cursor..cursor + tr_len]).unwrap_or("");
+            let trad = match std::str::from_utf8(&data[cursor..cursor + tr_len]) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("[Trie] read_block: invalid utf8 for trad: {}", e);
+                    break;
+                }
+            };
             cursor += tr_len;
 
             if cursor + 2 > data.len() {
+                log::warn!("[Trie] read_block: truncated tone length at cursor {}", cursor);
                 break;
             }
-            let t_len =
-                u16::from_le_bytes(data[cursor..cursor + 2].try_into().unwrap_or([0; 2])) as usize;
+            let t_len = u16::from_le_bytes(
+                data[cursor..cursor + 2]
+                    .try_into()
+                    .expect("read_block: failed to read tone length"),
+            ) as usize;
             cursor += 2;
             if cursor + t_len > data.len() {
+                log::warn!("[Trie] read_block: truncated tone data at cursor {}", cursor);
                 break;
             }
-            let tone = std::str::from_utf8(&data[cursor..cursor + t_len]).unwrap_or("");
+            let tone = match std::str::from_utf8(&data[cursor..cursor + t_len]) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("[Trie] read_block: invalid utf8 for tone: {}", e);
+                    break;
+                }
+            };
             cursor += t_len;
 
             if cursor + 2 > data.len() {
+                log::warn!("[Trie] read_block: truncated en length at cursor {}", cursor);
                 break;
             }
-            let e_len =
-                u16::from_le_bytes(data[cursor..cursor + 2].try_into().unwrap_or([0; 2])) as usize;
+            let e_len = u16::from_le_bytes(
+                data[cursor..cursor + 2]
+                    .try_into()
+                    .expect("read_block: failed to read en length"),
+            ) as usize;
             cursor += 2;
             if cursor + e_len > data.len() {
+                log::warn!("[Trie] read_block: truncated en data at cursor {}", cursor);
                 break;
             }
-            let en = std::str::from_utf8(&data[cursor..cursor + e_len]).unwrap_or("");
+            let en = match std::str::from_utf8(&data[cursor..cursor + e_len]) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("[Trie] read_block: invalid utf8 for en: {}", e);
+                    break;
+                }
+            };
             cursor += e_len;
 
             if cursor + 2 > data.len() {
+                log::warn!("[Trie] read_block: truncated stroke_aux length at cursor {}", cursor);
                 break;
             }
-            let s_len =
-                u16::from_le_bytes(data[cursor..cursor + 2].try_into().unwrap_or([0; 2])) as usize;
+            let s_len = u16::from_le_bytes(
+                data[cursor..cursor + 2]
+                    .try_into()
+                    .expect("read_block: failed to read stroke_aux length"),
+            ) as usize;
             cursor += 2;
             if cursor + s_len > data.len() {
+                log::warn!("[Trie] read_block: truncated stroke_aux data at cursor {}", cursor);
                 break;
             }
-            let stroke_aux = std::str::from_utf8(&data[cursor..cursor + s_len]).unwrap_or("");
+            let stroke_aux = match std::str::from_utf8(&data[cursor..cursor + s_len]) {
+                Ok(s) => s,
+                Err(e) => {
+                    log::warn!("[Trie] read_block: invalid utf8 for stroke_aux: {}", e);
+                    break;
+                }
+            };
             cursor += s_len;
 
             if cursor + 4 > data.len() {
+                log::warn!("[Trie] read_block: truncated weight at cursor {}", cursor);
                 break;
             }
-            let weight = u32::from_le_bytes(data[cursor..cursor + 4].try_into().unwrap_or([0; 4]));
+            let weight = u32::from_le_bytes(
+                data[cursor..cursor + 4]
+                    .try_into()
+                    .expect("read_block: failed to read weight"),
+            );
             cursor += 4;
 
             f(TrieResult {

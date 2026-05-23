@@ -1,16 +1,17 @@
+use qianyan_ime_core::utils::find_project_root;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
-use std::thread;
+use std::thread::{self, JoinHandle};
 
 
 pub struct SoundManager {
     _sound_cache: HashMap<char, Vec<u8>>,
     enabled: bool,
     tx: Option<Sender<char>>,
+    _thread: Option<JoinHandle<()>>,
 }
 
 impl Default for SoundManager {
@@ -19,11 +20,17 @@ impl Default for SoundManager {
     }
 }
 
+impl Drop for SoundManager {
+    fn drop(&mut self) {
+        drop(self.tx.take());
+    }
+}
+
 impl SoundManager {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel::<char>();
 
-        thread::spawn(move || {
+        let handle = thread::spawn(move || {
             let (_stream, handle) = match OutputStream::try_default() {
                 Ok((s, h)) => (Some(s), Some(h)),
                 Err(e) => {
@@ -43,6 +50,7 @@ impl SoundManager {
             _sound_cache: HashMap::new(),
             enabled: false,
             tx: Some(tx),
+            _thread: Some(handle),
         }
     }
 
@@ -88,17 +96,4 @@ fn play_letter_on_thread(handle: &OutputStreamHandle, c: char) {
         }
         Err(e) => log::warn!("[Sound] 无法打开音频文件 {:?}: {}", sound_path, e),
     }
-}
-
-fn find_project_root() -> PathBuf {
-    let mut curr = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-    for _ in 0..5 {
-        if curr.join("sounds").exists() {
-            return curr;
-        }
-        if !curr.pop() {
-            break;
-        }
-    }
-    PathBuf::from(".")
 }

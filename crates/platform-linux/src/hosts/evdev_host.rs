@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::sync::mpsc::Sender;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
+    Arc, Condvar, Mutex,
 };
 
 fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
@@ -92,7 +92,7 @@ pub struct EvdevHost {
     should_exit: Arc<AtomicBool>,
     tab_held_and_not_used: bool,
     lookup_tx: std::sync::mpsc::Sender<()>,
-    lookup_pending: Arc<AtomicBool>,
+    lookup_completion: Arc<(Mutex<bool>, Condvar)>,
     is_grabbed: bool,
     meta_was_pressed: bool,
 }
@@ -172,13 +172,13 @@ impl EvdevHost {
             }
         }
         let (lookup_tx, lookup_rx) = std::sync::mpsc::channel::<()>();
-        let lookup_pending = Arc::new(AtomicBool::new(false));
+        let lookup_completion = Arc::new((Mutex::new(false), Condvar::new()));
 
         // 启动后台检索线程（克隆 SearchEngine 避免 engine.search() 占用 Processor 锁）
         let p_bg = processor.clone();
         let v_bg = vkbd.clone();
         let g_bg = gui_tx.clone();
-        let pending_bg = lookup_pending.clone();
+        let pending_bg = lookup_completion.clone();
         let engine_bg = {
             let p = processor.lock().expect("processor lock poisoned");
             p.ctx.engine.clone()
@@ -186,10 +186,12 @@ impl EvdevHost {
 
         std::thread::spawn(move || {
             while lookup_rx.recv().is_ok() {
-                struct PendingGuard(Arc<AtomicBool>);
+                struct PendingGuard(Arc<(Mutex<bool>, Condvar)>);
                 impl Drop for PendingGuard {
                     fn drop(&mut self) {
-                        self.0.store(false, Ordering::SeqCst);
+                        let (lock, cvar) = &*self.0;
+                        *lock.lock().expect("lookup_completion lock poisoned") = false;
+                        cvar.notify_all();
                     }
                 }
                 let _guard = PendingGuard(pending_bg.clone());
@@ -288,7 +290,7 @@ impl EvdevHost {
             should_exit: Arc::new(AtomicBool::new(false)),
             tab_held_and_not_used: false,
             lookup_tx,
-            lookup_pending,
+            lookup_completion,
             is_grabbed: true,
             meta_was_pressed: false,
         })
@@ -429,9 +431,12 @@ impl InputMethodHost for EvdevHost {
 
                             if is_sync_key {
                                 drop(p);
-                                while self.lookup_pending.load(Ordering::SeqCst) {
-                                    std::thread::yield_now();
+                                let (lock, cvar) = &*self.lookup_completion;
+                                let mut pending = lock.lock().expect("lookup_completion lock poisoned");
+                                while *pending {
+                                    pending = cvar.wait(pending).expect("lookup_completion cvar wait failed");
                                 }
+                                drop(pending);
                                 if let Ok(mut p_locked) = self.processor.lock() {
                                     let action =
                                         p_locked.handle_key_ext(vk, val, shift, ctrl, alt, true);
@@ -462,7 +467,10 @@ impl InputMethodHost for EvdevHost {
                                 }
 
                                 if val != 0 {
-                                    self.lookup_pending.store(true, Ordering::SeqCst);
+                                    {
+                                        let (lock, _) = &*self.lookup_completion;
+                                        *lock.lock().expect("lookup_completion lock poisoned") = true;
+                                    }
                                     let _ = self.lookup_tx.send(());
                                     drop(p);
                                     self.update_gui();

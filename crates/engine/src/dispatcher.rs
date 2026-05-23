@@ -10,7 +10,6 @@ pub struct ModifierState {
     pub meta: bool,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputEvent {
     Key {
@@ -65,7 +64,7 @@ impl KeyDispatcher {
         }
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn reset_states(&mut self) {
         self.last_tap_key = None;
         self.last_tap_time = None;

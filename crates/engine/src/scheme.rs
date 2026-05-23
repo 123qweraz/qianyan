@@ -52,10 +52,6 @@ pub struct SchemeContext<'a> {
 
 /// 输入方案接口定义
 pub trait InputScheme: Send + Sync {
-    /// 获取方案唯一标识名称
-    #[allow(dead_code)]
-    fn name(&self) -> &str;
-
     /// 预处理阶段：转换输入缓冲区
     /// 例如：双拼转全拼，或者笔画数字转映射字母
     fn pre_process(&self, buffer: &str, _context: &SchemeContext) -> String {

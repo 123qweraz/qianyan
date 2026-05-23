@@ -51,7 +51,6 @@ pub struct AppState {
     pub status_text: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum GuiEvent {
     SyncState(AppState), // 单一数据源同步
@@ -69,6 +68,7 @@ pub enum GuiEvent {
     ShowStatus(String, bool), // 状态文字, 是否为中文模式 (用于更新文字)
     UpdateStatusBarVisible(bool), // 手动更新状态栏显隐
     SetVisible(bool),         // 窗口显隐 (用于输入法激活/停用)
+    #[allow(dead_code)]
     OpenTrayMenu { x: i32, y: i32, chinese_enabled: bool, active_profile: String },
     /// 隐藏候选窗口并等待确认（用于避免 uinput 注入的 SPACE 被候选窗口拦截）
     HideAndAck(std::sync::mpsc::Sender<()>),

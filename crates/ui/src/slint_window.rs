@@ -148,14 +148,13 @@ impl CandidateDisplay for SlintDisplay {
     fn move_to(&mut self, x: i32, y: i32) {
         #[cfg(target_os = "linux")]
         if self.config.linux.fixed_position {
-            // 在 Wayland 下，固定显示在屏幕角落
-            // 注意：由于无法轻易获取屏幕分辨率，这里使用一些经验值
-            // 或者通过 Slint 窗口自身的大小来微调
+            let offset_x = self.config.linux.fixed_x;
+            let offset_y = self.config.linux.fixed_y;
             let (target_x, target_y) = match self.config.linux.corner.as_str() {
-                "top-left" => (40, 40),
-                "top-right" => (1400, 40),
-                "bottom-left" => (40, 800),
-                _ => (1400, 800), // 默认右下角
+                "top-left" => (offset_x, offset_y),
+                "top-right" => (offset_x, offset_y),
+                "bottom-left" => (offset_x, offset_y),
+                _ => (offset_x, offset_y),
             };
             self.window
                 .window()

@@ -76,10 +76,6 @@ impl StrokeScheme {
 }
 
 impl InputScheme for StrokeScheme {
-    fn name(&self) -> &str {
-        "stroke"
-    }
-
     fn pre_process(&self, buffer: &str, _context: &SchemeContext) -> String {
         // 如果输入包含数字，进行转码；否则保留原样（支持直接输入字母）
         if buffer.chars().any(|c| c.is_ascii_digit()) {

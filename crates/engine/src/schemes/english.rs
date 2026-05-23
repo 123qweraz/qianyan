@@ -17,10 +17,6 @@ impl EnglishScheme {
 }
 
 impl InputScheme for EnglishScheme {
-    fn name(&self) -> &str {
-        "english"
-    }
-
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate> {
         let mut results = Vec::new();
         if let Some(trie) = context.tries.get("english") {

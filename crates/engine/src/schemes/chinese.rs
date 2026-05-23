@@ -316,10 +316,6 @@ impl ChineseScheme {
 }
 
 impl InputScheme for ChineseScheme {
-    fn name(&self) -> &str {
-        "chinese"
-    }
-
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate> {
         let raw_parsed = self.parse_buffer(query);
         let mut final_results = Vec::new();

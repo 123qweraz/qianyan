@@ -22,11 +22,13 @@ pub fn create_input_host(
         .read()
         .map(|c| c.linux.clone())
         .unwrap_or(LinuxConfig {
-            device_path: "/dev/input/event0".into(),
+            device_path: "/dev/input/event4".into(),
             paste_method: "shift_insert".into(),
             display_mode: "slint".into(),
             fixed_position: true,
             corner: "bottom-right".into(),
+            fixed_x: 40,
+            fixed_y: 40,
         });
 
     let dev_path = linux_config.device_path.clone();
@@ -62,7 +64,7 @@ pub fn create_input_host(
                 }
                 Err(e) => {
                     println!("[Main] Evdev 启动失败 ({:?})，请检查设备路径。", e);
-                    Err(e.into())
+                    Err(e)
                 }
             }
         }

@@ -88,14 +88,17 @@ fn handle_single_event(
             display.set_visible(visible);
         }
         GuiEvent::ApplyConfig(new_config) => {
-            let old_mode = config.read().expect("config lock poisoned").linux.display_mode.clone();
+            let old_mode = config
+                .read()
+                .map(|g| g.linux.display_mode.clone())
+                .unwrap_or_default();
+            let new_mode = new_config.linux.display_mode.clone();
             *config.write().expect("config lock poisoned") = *new_config;
-            let cfg = config.read().expect("config lock poisoned");
-            if cfg.linux.display_mode != old_mode {
+            if new_mode != old_mode {
                 display.close();
-                *display = create_display(&cfg);
+                *display = create_display(&config.read().expect("config lock poisoned"));
             } else {
-                display.apply_config(&cfg);
+                display.apply_config(&config.read().expect("config lock poisoned"));
             }
         }
         GuiEvent::UpdateStatusBarVisible(visible) => {

@@ -131,7 +131,7 @@ impl InputMethodHost for TsfHost {
                     }
                 });
             }
-            loop { std::thread::sleep(std::time::Duration::from_secs(3600)); }
+            loop { std::thread::park(); }
         }
         #[cfg(not(target_os = "windows"))] { Err("TsfHost 仅支持 Windows。".into()) }
     }
