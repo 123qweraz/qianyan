@@ -120,21 +120,6 @@ pub fn handle_composing(
     let has_cand = !ctx.session.candidates.is_empty();
     let now = Instant::now();
 
-    if is_letter(key) && shift_pressed && !ctx.session.buffer.is_empty() {
-        if let Some(c) = key_to_char(key, false, ctx.session_state.caps_lock_enabled) {
-            ctx.session.shift_used_as_modifier = true;
-            if ctx.session.filter_mode != FilterMode::Global {
-                ctx.session.filter_mode = FilterMode::Global;
-            }
-            ctx.session.handle_filter_char(c);
-
-            if let Some(act) = lookup(ctx) {
-                return act;
-            }
-            return Compositor::update_phantom_action(ctx);
-        }
-    }
-
     let current_profile = ctx
         .session_state
         .active_profiles
@@ -179,7 +164,7 @@ pub fn handle_composing(
 
     if is_letter(key) {
         if ctx.session.filter_mode != FilterMode::None {
-            if let Some(c) = key_to_char(key, shift_pressed, ctx.session_state.caps_lock_enabled) {
+            if let Some(c) = key_to_char(key, false, ctx.session_state.caps_lock_enabled) {
                 ctx.session.handle_filter_char(c);
                 if perform_lookup {
                     if let Some(act) = lookup(ctx) {
