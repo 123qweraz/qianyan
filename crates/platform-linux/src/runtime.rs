@@ -24,7 +24,8 @@ pub fn create_input_host(
         .unwrap_or(LinuxConfig {
             device_path: "/dev/input/event4".into(),
             paste_method: "shift_insert".into(),
-            display_mode: "slint".into(),
+            show_slint_window: true,
+            show_notification: false,
             fixed_position: true,
             corner: "bottom-right".into(),
             fixed_x: 40,

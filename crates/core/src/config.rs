@@ -16,13 +16,20 @@ pub struct Config {
 pub struct LinuxConfig {
     pub device_path: String,
     pub paste_method: String,
-    pub display_mode: String, // "slint", "notification"
+    #[serde(default = "default_true")]
+    pub show_slint_window: bool,
+    #[serde(default)]
+    pub show_notification: bool,
     pub fixed_position: bool,
     pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
     #[serde(default = "default_fixed_x")]
     pub fixed_x: i32,
     #[serde(default = "default_fixed_y")]
     pub fixed_y: i32,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn default_fixed_x() -> i32 {
@@ -83,6 +90,12 @@ pub struct Appearance {
     pub show_learning_stroke_hint: bool,
     pub show_learning_english_hint: bool,
     pub auto_pronounce: bool,
+    #[serde(default = "default_show_tray")]
+    pub show_tray: bool,
+}
+
+fn default_show_tray() -> bool {
+    true
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -618,6 +631,7 @@ impl Config {
                 show_learning_stroke_hint: true,
                 show_learning_english_hint: true,
                 auto_pronounce: true,
+                show_tray: true,
             },
             input: Input {
                 autostart: true,
@@ -772,7 +786,8 @@ impl Config {
             linux: LinuxConfig {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
-                display_mode: "slint".to_string(),
+                show_slint_window: true,
+                show_notification: false,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
                 fixed_x: 40,

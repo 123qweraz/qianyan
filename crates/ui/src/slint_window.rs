@@ -4,11 +4,31 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 
 slint::include_modules!();
 
+fn screen_size() -> (i32, i32) {
+    if let Ok(out) = std::process::Command::new("xdotool")
+        .arg("getdisplaygeometry")
+        .output()
+    {
+        if let Ok(s) = String::from_utf8(out.stdout) {
+            let parts: Vec<&str> = s.trim().split_whitespace().collect();
+            if parts.len() == 2 {
+                if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
+                    return (w, h);
+                }
+            }
+        }
+    }
+    (1920, 1080)
+}
+
 pub struct SlintDisplay {
     window: CandidateWindow,
     status_bar: StatusBar,
     config: Config,
     window_visible: bool,
+    candidate_enabled: bool,
+    last_x: i32,
+    last_y: i32,
 }
 
 impl SlintDisplay {
@@ -16,11 +36,22 @@ impl SlintDisplay {
         let window = CandidateWindow::new().expect("Failed to create CandidateWindow");
         let status_bar = StatusBar::new().expect("Failed to create StatusBar");
 
+        // 状态栏作为永久锚点窗口（始终 show，移出屏幕），防止 hide() 候选窗口时
+        // Slint 1.9 winit software 后端因无窗口而自动退出 event loop
+        let _ = status_bar.window().show();
+        status_bar.window().set_position(slint::WindowPosition::Physical(
+            slint::PhysicalPosition::new(-9999, -9999),
+        ));
+
+        let candidate_enabled = cfg!(not(target_os = "linux")) || config.linux.show_slint_window;
         let mut display = Self {
             window,
             status_bar,
             config: config.clone(),
             window_visible: false,
+            candidate_enabled,
+            last_x: 0,
+            last_y: 0,
         };
 
         display.apply_style(&config);
@@ -98,6 +129,24 @@ impl SlintDisplay {
         self.window
             .set_candidate_font_weight(config.appearance.candidate_text.font_weight as i32);
     }
+
+    fn apply_corner_position(&mut self) {
+        let offset_x = self.config.linux.fixed_x;
+        let offset_y = self.config.linux.fixed_y;
+        let (sw, sh) = screen_size();
+        let s = self.window.window().size();
+        let w = s.width as i32;
+        let h = s.height as i32;
+        let (tx, ty) = match self.config.linux.corner.as_str() {
+            "top-right" => (sw - w - offset_x, offset_y),
+            "bottom-left" => (offset_x, sh - h - offset_y),
+            "bottom-right" => (sw - w - offset_x, sh - h - offset_y),
+            _ => (offset_x, offset_y), // top-left default
+        };
+        self.window.window().set_position(slint::WindowPosition::Physical(
+            slint::PhysicalPosition::new(tx, ty),
+        ));
+    }
 }
 
 impl CandidateDisplay for SlintDisplay {
@@ -107,7 +156,7 @@ impl CandidateDisplay for SlintDisplay {
         candidates: Vec<crate::DisplayCandidate>,
         selected: usize,
     ) {
-        if pinyin.is_empty() || !self.config.appearance.show_candidates {
+        if !self.candidate_enabled || pinyin.is_empty() || !self.config.appearance.show_candidates {
             self.set_visible(false);
             return;
         }
@@ -136,49 +185,54 @@ impl CandidateDisplay for SlintDisplay {
         }
         self.status_bar.set_chinese_enabled(chinese_enabled);
 
+        // 状态栏作为 event loop anchor 永远 show 不 hide。
+        // 需要显示时放到正确位置，不需要时移出屏幕。
         if self.config.appearance.show_status_bar {
-            if !self.status_bar.window().is_visible() {
-                let _ = self.status_bar.window().show();
-            }
-        } else if self.status_bar.window().is_visible() {
-            let _ = self.status_bar.window().hide();
+            let _ = self.status_bar.window().show();
+            self.status_bar.window().set_position(
+                slint::WindowPosition::Physical(slint::PhysicalPosition::new(self.last_x, self.last_y)),
+            );
+        } else {
+            self.status_bar.window().set_position(
+                slint::WindowPosition::Physical(slint::PhysicalPosition::new(-9999, -9999)),
+            );
         }
     }
 
     fn move_to(&mut self, x: i32, y: i32) {
-        #[cfg(target_os = "linux")]
-        if self.config.linux.fixed_position {
-            let offset_x = self.config.linux.fixed_x;
-            let offset_y = self.config.linux.fixed_y;
-            let (target_x, target_y) = match self.config.linux.corner.as_str() {
-                "top-left" => (offset_x, offset_y),
-                "top-right" => (offset_x, offset_y),
-                "bottom-left" => (offset_x, offset_y),
-                _ => (offset_x, offset_y),
-            };
-            self.window
-                .window()
-                .set_position(slint::WindowPosition::Physical(
-                    slint::PhysicalPosition::new(target_x, target_y),
-                ));
+        self.last_x = x;
+        self.last_y = y;
+        if !self.window_visible {
             return;
         }
-
-        self.window
-            .window()
-            .set_position(slint::WindowPosition::Physical(
-                slint::PhysicalPosition::new(x, y),
-            ));
+        #[cfg(target_os = "linux")]
+        if self.config.linux.fixed_position {
+            self.apply_corner_position();
+            return;
+        }
+        self.window.window().set_position(slint::WindowPosition::Physical(
+            slint::PhysicalPosition::new(x, y),
+        ));
     }
 
     fn set_visible(&mut self, visible: bool) {
-        if visible == self.window_visible {
+        let effective = visible && self.candidate_enabled;
+        if effective == self.window_visible {
             return;
         }
-        self.window.set_is_visible(visible);
-        if visible {
+        self.window.set_is_visible(effective);
+        if effective {
             let _ = self.window.window().show();
+            #[cfg(target_os = "linux")]
+            if self.config.linux.fixed_position {
+                self.apply_corner_position();
+            } else {
+                self.window.window().set_position(slint::WindowPosition::Physical(
+                    slint::PhysicalPosition::new(self.last_x, self.last_y),
+                ));
+            }
         } else {
+            // 安全 hide(): 状态栏作为锚点窗口保持 event loop 运行
             let _ = self.window.window().hide();
         }
         self.window_visible = visible;
@@ -186,6 +240,7 @@ impl CandidateDisplay for SlintDisplay {
 
     fn apply_config(&mut self, config: &Config) {
         self.config = config.clone();
+        self.candidate_enabled = cfg!(not(target_os = "linux")) || config.linux.show_slint_window;
         self.apply_style(config);
     }
 

@@ -440,8 +440,18 @@ impl InputMethodHost for EvdevHost {
                                 }
                                 drop(pending);
                                 if let Ok(mut p_locked) = self.processor.lock() {
+                                    eprintln!("[DEBUG] sync key handler: key={:?} val={}", vk, val);
                                     let action =
                                         p_locked.handle_key_ext(vk, val, shift, ctrl, alt, true);
+                                    eprintln!("[DEBUG] sync key action type: {}",
+                                        match &action {
+                                            qianyan_ime_engine::processor::Action::Emit(_) => "Emit",
+                                            qianyan_ime_engine::processor::Action::DeleteAndEmit{..} => "DeleteAndEmit",
+                                            qianyan_ime_engine::processor::Action::PassThrough => "PassThrough",
+                                            qianyan_ime_engine::processor::Action::Consume => "Consume",
+                                            qianyan_ime_engine::processor::Action::Alert => "Alert",
+                                            qianyan_ime_engine::processor::Action::Notify(..) => "Notify",
+                                        });
 
                                     // 如果状态发生了变化，同步到托盘
                                     let enabled = p_locked.ctx.session_state.chinese_enabled;
@@ -455,11 +465,17 @@ impl InputMethodHost for EvdevHost {
 
                                     if let Ok(vkbd) = self.vkbd.lock() {
                                         execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
+                                    } else {
+                                        eprintln!("[DEBUG] FAILED to lock vkbd");
                                     }
                                     if val != 0 {
                                         drop(p_locked);
+                                        eprintln!("[DEBUG] calling update_gui after sync key");
                                         self.update_gui();
+                                        eprintln!("[DEBUG] update_gui done");
                                     }
+                                } else {
+                                    eprintln!("[DEBUG] FAILED to lock processor for sync key");
                                 }
                             } else {
                                 let fast_action =
@@ -568,20 +584,31 @@ fn execute_action(
 ) {
     match action {
         Action::Emit(s) => {
+            eprintln!("[DEBUG] execute_action: Emit text='{}'", s);
             vkbd.send_text(&s, false);
+            eprintln!("[DEBUG] execute_action: Emit done");
         }
         Action::DeleteAndEmit { delete, insert } => {
+            eprintln!("[DEBUG] execute_action: DeleteAndEmit delete={} insert='{}'", delete, insert);
             // 注入前必须先隐藏候选窗口，避免 uinput 发出的 SPACE 被 Slint 候选窗口截获
             if let Some(ref tx) = gui_tx {
                 let (ack_tx, ack_rx) = std::sync::mpsc::channel();
-                let _ = tx.send(GuiEvent::HideAndAck(ack_tx));
-                let _ = ack_rx.recv_timeout(std::time::Duration::from_millis(100));
+                eprintln!("[DEBUG] sending HideAndAck...");
+                let send_result = tx.send(GuiEvent::HideAndAck(ack_tx));
+                eprintln!("[DEBUG] HideAndAck send result: {:?}", send_result);
+                let recv_result = ack_rx.recv_timeout(std::time::Duration::from_millis(100));
+                eprintln!("[DEBUG] HideAndAck recv result: {:?}", recv_result);
+            } else {
+                eprintln!("[DEBUG] gui_tx is None, skipping HideAndAck");
             }
             if delete > 0 {
+                eprintln!("[DEBUG] vkbd.backspace({})", delete);
                 vkbd.backspace(delete);
             }
             if !insert.is_empty() {
+                eprintln!("[DEBUG] vkbd.send_text('{}')", insert);
                 vkbd.send_text(&insert, false);
+                eprintln!("[DEBUG] vkbd.send_text done");
             }
         }
         Action::PassThrough => {

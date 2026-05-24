@@ -55,6 +55,13 @@
             </div>
             <div class="setting-item">
                 <div class="info">
+                    <div class="title">显示系统托盘</div>
+                    <div class="desc">在系统托盘中显示千言输入法图标</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="show_tray"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
                     <div class="title">自动造词</div>
                     <div class="desc">记录连续输入的新词组（超过一个字）</div>
                 </div>
@@ -162,13 +169,17 @@
         <div class="card">
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">候选显示方式</div>
-                    <div class="desc">选择候选词列表的展示方式。内置候选栏外观美观，支持自定义样式；桌面通知在某些 Wayland 环境下兼容性更好。</div>
+                    <div class="title">内置候选栏</div>
+                    <div class="desc">在光标附近显示候选词窗口</div>
                 </div>
-                <select id="linux_display_mode">
-                    <option value="slint">内置候选栏 (推荐)</option>
-                    <option value="notification">桌面通知 (兼容模式)</option>
-                </select>
+                <label class="switch"><input type="checkbox" id="linux_show_slint_window"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">桌面通知</div>
+                    <div class="desc">通过系统通知显示候选词（可与内置候选栏同时开启）</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="linux_show_notification"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info">
@@ -234,6 +245,7 @@
             bindInput('enable_smart_aux', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
             bindInput('show_candidates', 'appearance');
+            bindInput('show_tray', 'appearance');
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_auto_reorder', 'input');
             bindInput('segmentation_delimiters', 'input');
@@ -256,7 +268,8 @@
             bindInput('files_data_dir', 'files', 'data_dir');
             
             // Linux 专属
-            bindInput('linux_display_mode', 'linux', 'display_mode');
+            bindInput('linux_show_slint_window', 'linux', 'show_slint_window');
+            bindInput('linux_show_notification', 'linux', 'show_notification');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');
             bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');

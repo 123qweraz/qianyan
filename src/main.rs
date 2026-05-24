@@ -15,6 +15,21 @@ static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    std::env::set_var("RUST_BACKTRACE", "1");
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        eprintln!("\n======= PANIC =======");
+        default_hook(info);
+    }));
+    // 捕获进程退出
+    std::thread::spawn(|| {
+        // 这个线程会在主线程退出时被杀死
+        // 如果它还能打印"still alive"，说明主线程还在跑
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            eprintln!("[HEARTBEAT] main thread still running...");
+        }
+    });
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     // 在 Linux 下默认使用 software 渲染后端以提高兼容性，除非用户显式设置了 SLINT_BACKEND
@@ -142,17 +157,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let processor = Arc::new(Mutex::new(processor_obj));
 
     let tray_handle = if let Ok(conf) = config.read() {
-        qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
-            active_profile: conf.input.default_profile.clone(),
-            show_status_bar: conf.appearance.show_status_bar,
-            tx: tray_tx.clone(),
-        })
+        if conf.appearance.show_tray {
+            Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
+                active_profile: conf.input.default_profile.clone(),
+                show_status_bar: conf.appearance.show_status_bar,
+                tx: tray_tx.clone(),
+            }))
+        } else {
+            None
+        }
     } else {
-        qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
+        Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
             active_profile: "chinese".into(),
             show_status_bar: true,
             tx: tray_tx.clone(),
-        })
+        }))
     };
 
     // 全局状态维护
@@ -182,7 +201,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         p.toggle();
                         let enabled = p.ctx.session_state.chinese_enabled;
                         let short = p.get_short_display();
-                        tray_handle.update(move |t| t.chinese_enabled = enabled);
+                        if let Some(ref handle) = tray_handle {
+                            handle.update(move |t| t.chinese_enabled = enabled);
+                        }
 
                         if let Ok(mut state) = app_state_tray.lock() {
                             state.chinese_enabled = enabled;
@@ -196,7 +217,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let profile = p.next_profile();
                         let enabled = p.ctx.session_state.chinese_enabled;
                         let short = p.get_short_display();
-                        tray_handle.update(move |t| t.active_profile = profile);
+                        if let Some(ref handle) = tray_handle {
+                            handle.update(move |t| t.active_profile = profile);
+                        }
 
                         if let Ok(mut state) = app_state_tray.lock() {
                             state.status_text = if enabled { short } else { "英".into() };
@@ -212,7 +235,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         new_show = w.appearance.show_status_bar;
                         let _ = w.save();
                     }
-                    tray_handle.update(move |t| t.show_status_bar = new_show);
+                    if let Some(ref handle) = tray_handle {
+                        handle.update(move |t| t.show_status_bar = new_show);
+                    }
 
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.show_status_bar_pref = new_show;

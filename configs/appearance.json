@@ -50,5 +50,6 @@
   "show_tone_hint": true,
   "show_learning_stroke_hint": true,
   "show_learning_english_hint": true,
-  "auto_pronounce": true
+  "auto_pronounce": true,
+  "show_tray": true
 }
