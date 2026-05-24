@@ -117,6 +117,24 @@ pub fn handle_composing(
         }
     }
 
+    if is_letter(key) && shift_pressed && !ctx.session.buffer.is_empty()
+        && ctx.session.has_dict_match
+        && ctx.session.buffer.chars().any(|c| c.is_ascii_lowercase())
+    {
+        if let Some(c) = key_to_char(key, false, ctx.session_state.caps_lock_enabled) {
+            ctx.session.shift_used_as_modifier = true;
+            if ctx.session.filter_mode != FilterMode::Global {
+                ctx.session.filter_mode = FilterMode::Global;
+            }
+            ctx.session.handle_filter_char(c);
+
+            if let Some(act) = lookup(ctx) {
+                return act;
+            }
+            return Compositor::update_phantom_action(ctx);
+        }
+    }
+
     let has_cand = !ctx.session.candidates.is_empty();
     let now = Instant::now();
 
