@@ -190,6 +190,26 @@ impl ConfigManager {
             .collect()
     }
 
+    pub fn word_to_char_keys(&self) -> Vec<(VirtualKey, usize)> {
+        self.master_config
+            .hotkeys
+            .word_to_char
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.parse::<VirtualKey>().ok().map(|k| (k, i)))
+            .collect()
+    }
+
+    pub fn word_to_char_shift_keys(&self) -> Vec<(VirtualKey, usize)> {
+        self.master_config
+            .hotkeys
+            .word_to_char_shift
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.parse::<VirtualKey>().ok().map(|k| (k, i)))
+            .collect()
+    }
+
     pub fn double_taps(&self) -> HashMap<String, String> {
         let mut m = HashMap::new();
         for dt in &self.master_config.input.double_taps {

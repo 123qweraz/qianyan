@@ -272,6 +272,22 @@ pub fn handle_composing(
         ctx.dispatcher.last_tap_time = None;
     }
 
+    if has_cand && ctx.session.has_dict_match {
+        if shift_pressed {
+            for (vk, pos) in ctx.config.word_to_char_shift_keys() {
+                if vk == key {
+                    return commands::execute_command(ctx, Command::SelectChar(pos));
+                }
+            }
+        } else {
+            for (vk, pos) in ctx.config.word_to_char_keys() {
+                if vk == key {
+                    return commands::execute_command(ctx, Command::SelectChar(pos));
+                }
+            }
+        }
+    }
+
     if ctx.config.page_up_keys().contains(&key) && has_cand {
         return commands::execute_command(ctx, Command::PrevPage);
     }

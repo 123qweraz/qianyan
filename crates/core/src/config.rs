@@ -290,6 +290,18 @@ pub struct Hotkeys {
     pub enable_ctrl_space_toggle: bool,
     #[serde(default = "default_toggle_traditional")]
     pub toggle_traditional: Hotkey,
+    #[serde(default = "default_word_to_char")]
+    pub word_to_char: Vec<String>,
+    #[serde(default = "default_word_to_char_shift")]
+    pub word_to_char_shift: Vec<String>,
+}
+
+fn default_word_to_char() -> Vec<String> {
+    vec!["6".into(), "7".into(), "8".into(), "9".into()]
+}
+
+fn default_word_to_char_shift() -> Vec<String> {
+    vec!["1".into(), "2".into(), "3".into(), "4".into()]
 }
 
 fn default_toggle_traditional() -> Hotkey {
@@ -781,6 +793,18 @@ impl Config {
                     key: "CapsLock+F".to_string(),
                     description: "繁简体切换".to_string(),
                 },
+                word_to_char: vec![
+                    "6".into(),
+                    "7".into(),
+                    "8".into(),
+                    "9".into(),
+                ],
+                word_to_char_shift: vec![
+                    "1".into(),
+                    "2".into(),
+                    "3".into(),
+                    "4".into(),
+                ],
             },
             #[cfg(target_os = "linux")]
             linux: LinuxConfig {

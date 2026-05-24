@@ -7,7 +7,6 @@
     "Up",
     "PageUp",
     "-",
-    ",",
     "["
   ],
   "page_down": [
@@ -28,5 +27,11 @@
   "toggle_traditional": {
     "key": "CapsLock+F",
     "description": "繁简体切换"
-  }
+  },
+  "word_to_char": [
+    "6",
+    "7",
+    "8",
+    "9"
+  ]
 }

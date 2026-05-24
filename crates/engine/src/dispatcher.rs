@@ -30,6 +30,7 @@ pub enum Command {
     NextCandidate,
     PrevCandidate,
     Select(usize),
+    SelectChar(usize),
     Commit,
     CommitRaw,
     Clear,

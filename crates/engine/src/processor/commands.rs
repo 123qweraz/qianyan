@@ -37,6 +37,18 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
             }
             Action::Consume
         }
+        Command::SelectChar(char_idx) => {
+            if let Some(cand) = ctx.session.candidates.first() {
+                let word = cand.text.as_ref();
+                let chars: Vec<char> = word.chars().collect();
+                if char_idx < chars.len() {
+                    let ch: String = chars[char_idx].to_string();
+                    let out = Arc::from(ch.as_str());
+                    return commit_candidate(ctx, out, 99);
+                }
+            }
+            Action::Consume
+        }
         Command::Commit => {
             if ctx.session.buffer.is_empty() {
                 return Action::PassThrough;

@@ -42,6 +42,20 @@
                 </div>
                 <input type="text" id="next_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Right">
             </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">以词定字 (单键)</div>
+                    <div class="desc">直接按指定键快速输入首个候选词中的第 N 个字（顺序对应字的序号）。会覆盖该键的候选选择功能。使用逗号分隔</div>
+                </div>
+                <input type="text" id="word_to_char_input" style="width: 250px; text-align: right;" placeholder="例如: 6,7,8,9">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">以词定字 (Shift + 键)</div>
+                    <div class="desc">按 Shift + 指定键快速输入首个候选词中的第 N 个字。使用逗号分隔</div>
+                </div>
+                <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2,3,4">
+            </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
             <div class="setting-item">
                 <div class="info">
@@ -112,6 +126,8 @@
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
             document.getElementById('prev_candidate_input').value = (config.hotkeys.prev_candidate || []).join(', ');
             document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
+            document.getElementById('word_to_char_input').value = (config.hotkeys.word_to_char || []).join(', ');
+            document.getElementById('word_to_char_shift_input').value = (config.hotkeys.word_to_char_shift || []).join(', ');
 
             renderKeyboard('kb-profilekeys', 'profile_keys');
 
@@ -168,6 +184,10 @@
             config.hotkeys.prev_candidate = document.getElementById('prev_candidate_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.next_candidate = document.getElementById('next_candidate_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.word_to_char = document.getElementById('word_to_char_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.word_to_char_shift = document.getElementById('word_to_char_shift_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
 
             config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'CapsLock+F';
