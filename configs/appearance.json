@@ -1,6 +1,6 @@
 {
   "show_candidates": true,
-  "show_status_bar": false,
+  "show_status_bar": true,
   "page_size": 5,
   "aux_mode": "English",
   "candidate_anchor": "bottom",

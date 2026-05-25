@@ -333,10 +333,123 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         host_run();
     });
 
-    // GUI 在主线程运行（Slint 事件循环需要主线程）
-    qianyan_ime_ui::gui::start_gui(gui_rx, config, tray_tx);
+    #[cfg(target_os = "linux")]
+    {
+        use qianyan_ime_ui::ipc::transport::*;
+        use std::os::unix::net::UnixListener;
+        use std::time::Duration;
+
+        // GUI 作为独立进程运行，通过 Unix socket IPC 通信
+        let socket_path = format!("/tmp/qianyan-ime-{}.sock", std::process::id());
+        let _ = std::fs::remove_file(&socket_path);
+
+        let listener = UnixListener::bind(&socket_path)
+            .expect("Failed to bind IPC socket");
+
+        let exe_path = std::env::current_exe().unwrap();
+        let gui_exe = exe_path.parent().unwrap().join("qianyan-ime-gui");
+        let mut child = std::process::Command::new(&gui_exe)
+            .arg(&socket_path)
+            .spawn()
+            .expect("Failed to spawn GUI process");
+
+        // Wait for GUI to connect
+        let (mut stream, _) = listener.accept()
+            .expect("Failed to accept GUI connection");
+
+        // Send initial config
+        let cfg = config.read().expect("config lock poisoned").clone();
+        let _ = send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(
+            serde_json::to_string(&cfg).unwrap(),
+        ));
+
+        // Wait for GUI to signal ready
+        match recv_gui_to_main(&mut stream, Some(Duration::from_secs(5))) {
+            Ok(Some(GuiToMain::Ready)) => {},
+            _ => eprintln!("[Main] GUI did not signal ready"),
+        }
+
+        // Forward events from gui_rx to IPC
+        std::thread::spawn(move || {
+            while let Ok(event) = gui_rx.recv() {
+                match event {
+                    GuiEvent::HideAndAck(ack_tx) => {
+                        let _ = send_main_to_gui(&mut stream, &MainToGui::HideCandidate);
+                        match recv_gui_to_main(&mut stream, Some(Duration::from_millis(100))) {
+                            Ok(Some(GuiToMain::Ack)) => {},
+                            _ => {},
+                        }
+                        let _ = ack_tx.send(());
+                    }
+                    GuiEvent::Exit => {
+                        let _ = send_main_to_gui(&mut stream, &MainToGui::Exit);
+                        break;
+                    }
+                    other => {
+                        if let Some(ipc) = gui_event_to_ipc(other) {
+                            let _ = send_main_to_gui(&mut stream, &ipc);
+                        }
+                    }
+                }
+            }
+        });
+
+        // Wait for GUI process to exit
+        child.wait().ok();
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        // Fallback: GUI in same process (Windows)
+        qianyan_ime_ui::gui::start_gui(gui_rx, config, tray_tx);
+    }
 
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::MainToGui> {
+    use qianyan_ime_ui::ipc::transport::{self, MainToGui};
+    match event {
+        GuiEvent::Update { pinyin, candidates, selected, .. } => {
+            Some(MainToGui::Update {
+                pinyin,
+                candidates: candidates.into_iter().map(|c| transport::DisplayCandidateMsg {
+                    text: c.text,
+                    label: c.label,
+                    hint: c.hint,
+                }).collect(),
+                selected,
+            })
+        }
+        GuiEvent::SyncState(state) => {
+            Some(MainToGui::SyncState(transport::AppStateMsg {
+                chinese_enabled: state.chinese_enabled,
+                active_profile: state.active_profile,
+                show_status_bar_pref: state.show_status_bar_pref,
+                show_candidates_pref: state.show_candidates_pref,
+                is_ime_active: state.is_ime_active,
+                pinyin: state.pinyin,
+                candidates: state.candidates.into_iter().map(|c| transport::DisplayCandidateMsg {
+                    text: c.text,
+                    label: c.label,
+                    hint: c.hint,
+                }).collect(),
+                selected_index: state.selected_index,
+                status_text: state.status_text,
+            }))
+        }
+        GuiEvent::MoveTo { x, y } => Some(MainToGui::MoveTo { x, y }),
+        GuiEvent::SetVisible(v) => Some(MainToGui::SetVisible(v)),
+        GuiEvent::ForceStatusVisible(v) => Some(MainToGui::ForceStatusVisible(v)),
+        GuiEvent::ShowStatus(text, chinese) => Some(MainToGui::ShowStatus(text, chinese)),
+        GuiEvent::UpdateStatusBarVisible(v) => Some(MainToGui::UpdateStatusBarVisible(v)),
+        GuiEvent::ApplyConfig(config) => {
+            serde_json::to_string(&*config).ok().map(|json| MainToGui::ApplyConfig(json))
+        }
+        _ => None,
+    }
 }
 
 #[cfg(target_os = "windows")]

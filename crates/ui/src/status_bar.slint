@@ -2,6 +2,7 @@ export component StatusBar inherits Window {
     title: "RustImeStatusBar";
     in property <string> status_text: "中";
     in property <bool> chinese_enabled: true;
+    in property <bool> bar_visible: true;
 
     no-frame: true;
     background: transparent;
@@ -12,6 +13,7 @@ export component StatusBar inherits Window {
     height: 28px;
 
     container := Rectangle {
+        opacity: bar_visible ? 1.0 : 0.0;
         background: chinese_enabled ? #0969da : #586069;
         border-radius: 6px;
         

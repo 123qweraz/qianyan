@@ -1,0 +1,37 @@
+use qianyan_ime_core::Config;
+use qianyan_ime_ui::gui_slint;
+use qianyan_ime_ui::ipc::transport::*;
+use std::os::unix::net::UnixStream;
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: qianyan-ime-gui <socket_path>");
+        std::process::exit(1);
+    }
+    let socket_path = &args[1];
+
+    // Connect to the main process
+    let mut stream = match UnixStream::connect(socket_path) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("[GUI] Failed to connect to main process: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    // Read initial config (main process sends it first)
+    let initial_config: Config = match recv_main_to_gui(&mut stream) {
+        Ok(Some(MainToGui::ApplyConfig(json))) => serde_json::from_str(&json).unwrap_or_else(|e| {
+            eprintln!("[GUI] Failed to parse initial config: {e}");
+            Config::load()
+        }),
+        _ => {
+            eprintln!("[GUI] Failed to receive initial config");
+            Config::load()
+        }
+    };
+
+    eprintln!("[GUI] Connected, starting Slint event loop");
+    gui_slint::start_gui_ipc(stream, initial_config);
+}

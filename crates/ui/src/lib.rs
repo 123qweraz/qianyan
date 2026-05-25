@@ -4,6 +4,8 @@ pub mod gui_slint;
 pub mod linux_notify;
 pub mod slint_window;
 pub mod platform;
+#[cfg(target_os = "linux")]
+pub mod ipc;
 pub use gui_slint as gui;
 
 use qianyan_ime_core::Config;

@@ -119,3 +119,7 @@ embed-resource = { workspace = true }
 [[bin]]
 name = "qianyan-ime"
 path = "src/main.rs"
+
+[[bin]]
+name = "qianyan-ime-gui"
+path = "src/bin/gui.rs"

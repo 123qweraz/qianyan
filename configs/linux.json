@@ -2,9 +2,9 @@
   "device_path": "/dev/input/event4",
   "paste_method": "shift_insert",
   "show_slint_window": true,
-  "show_notification": false,
+  "show_notification": true,
   "fixed_position": true,
-  "corner": "bottom-right",
+  "corner": "bottom-left",
   "fixed_x": 40,
   "fixed_y": 40
 }

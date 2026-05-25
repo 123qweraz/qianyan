@@ -6,15 +6,13 @@ use x11rb::connection::Connection;
 #[cfg(target_os = "linux")]
 use x11rb::protocol::xproto::ConnectionExt;
 
-const OFFSCREEN_POS: i32 = 30_000;
-
 /// Send EWMH ClientMessage to add _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER.
-/// Uses x11rb for proper protocol compliance (xprop -set doesn't work for atom arrays).
+/// Returns true if at least one window was found and processed.
 #[cfg(target_os = "linux")]
-fn set_skip_taskbar_and_hide() {
+fn set_skip_taskbar_and_hide() -> bool {
     let (conn, screen_num) = match x11rb::connect(None) {
         Ok(v) => v,
-        Err(_) => return,
+        Err(_) => return false,
     };
     let screen = &conn.setup().roots[screen_num];
 
@@ -22,9 +20,9 @@ fn set_skip_taskbar_and_hide() {
         conn.intern_atom(false, name).ok()?.reply().ok().map(|r| r.atom)
     };
 
-    let Some(net_wm_state) = intern(b"_NET_WM_STATE") else { return };
-    let Some(skip_taskbar) = intern(b"_NET_WM_STATE_SKIP_TASKBAR") else { return };
-    let Some(skip_pager) = intern(b"_NET_WM_STATE_SKIP_PAGER") else { return };
+    let Some(net_wm_state) = intern(b"_NET_WM_STATE") else { return false };
+    let Some(skip_taskbar) = intern(b"_NET_WM_STATE_SKIP_TASKBAR") else { return false };
+    let Some(skip_pager) = intern(b"_NET_WM_STATE_SKIP_PAGER") else { return false };
 
     // Find the status bar window by name (xdotool is simpler than tree walking)
     let out = match std::process::Command::new("xdotool")
@@ -32,8 +30,9 @@ fn set_skip_taskbar_and_hide() {
         .output()
     {
         Ok(o) => o,
-        Err(_) => return,
+        Err(_) => return false,
     };
+    let mut found = false;
     let ids = String::from_utf8_lossy(&out.stdout);
     for id_str in ids.lines() {
         let id_str = id_str.trim();
@@ -42,6 +41,7 @@ fn set_skip_taskbar_and_hide() {
             Ok(id) => id,
             Err(_) => continue,
         };
+        found = true;
 
         // _NET_WM_STATE ClientMessage: data[0]=1(ADD), data[1]=atom1, data[2]=atom2, data[3]=1(source), data[4]=0
         let event = x11rb::protocol::xproto::ClientMessageEvent {
@@ -67,6 +67,7 @@ fn set_skip_taskbar_and_hide() {
         );
     }
     let _ = conn.flush();
+    found
 }
 
 slint::include_modules!();
@@ -104,16 +105,20 @@ impl SlintDisplay {
         let window = CandidateWindow::new().expect("Failed to create CandidateWindow");
         let status_bar = StatusBar::new().expect("Failed to create StatusBar");
 
-        // 状态栏作为永久锚点窗口（始终 show，移出屏幕），防止 hide() 候选窗口时
-        // Slint 1.9 winit software 后端因无窗口而自动退出 event loop
+        // 状态栏作为永久锚点窗口（始终 show），防止 hide() 候选窗口时
+        // Slint 1.9 winit software 后端因无窗口而自动退出 event loop。
+        // 用 opacity 来控制显隐，窗口本身永不 hide。
+        status_bar.set_bar_visible(false);
         let _ = status_bar.window().show();
-        status_bar.window().set_position(slint::WindowPosition::Physical(
-            slint::PhysicalPosition::new(OFFSCREEN_POS, OFFSCREEN_POS),
-        ));
         #[cfg(target_os = "linux")]
         std::thread::spawn(|| {
-            std::thread::sleep(std::time::Duration::from_millis(500));
-            set_skip_taskbar_and_hide();
+            // 触发式重试：窗口管理器映射窗口可能延迟，最多重试 5 次
+            for i in 0..5 {
+                std::thread::sleep(std::time::Duration::from_millis(500 * (i + 1)));
+                if set_skip_taskbar_and_hide() {
+                    break;
+                }
+            }
         });
 
         let candidate_enabled = cfg!(not(target_os = "linux")) || config.linux.show_slint_window;
@@ -204,22 +209,29 @@ impl SlintDisplay {
             .set_candidate_font_weight(config.appearance.candidate_text.font_weight as i32);
     }
 
+    #[cfg(target_os = "linux")]
     fn apply_corner_position(&mut self) {
-        let offset_x = self.config.linux.fixed_x;
-        let offset_y = self.config.linux.fixed_y;
-        let (sw, sh) = screen_size();
-        let s = self.window.window().size();
-        let w = s.width as i32;
-        let h = s.height as i32;
-        let (tx, ty) = match self.config.linux.corner.as_str() {
-            "top-right" => (sw - w - offset_x, offset_y),
-            "bottom-left" => (offset_x, sh - h - offset_y),
-            "bottom-right" => (sw - w - offset_x, sh - h - offset_y),
-            _ => (offset_x, offset_y), // top-left default
-        };
+        let (tx, ty) = self.corner_position(&self.window.window());
         self.window.window().set_position(slint::WindowPosition::Physical(
             slint::PhysicalPosition::new(tx, ty),
         ));
+    }
+
+    /// 计算窗口在配置角落的位置，使用 config.linux.fixed_x/fixed_y 偏移
+    #[cfg(target_os = "linux")]
+    fn corner_position(&self, win: &slint::Window) -> (i32, i32) {
+        let offset_x = self.config.linux.fixed_x;
+        let offset_y = self.config.linux.fixed_y;
+        let (sw, sh) = screen_size();
+        let s = win.size();
+        let w = s.width as i32;
+        let h = s.height as i32;
+        match self.config.linux.corner.as_str() {
+            "top-right" => (sw - w - offset_x, offset_y),
+            "bottom-left" => (offset_x, sh - h - offset_y),
+            "bottom-right" => (sw - w - offset_x, sh - h - offset_y),
+            _ => (offset_x, offset_y),
+        }
     }
 }
 
@@ -263,14 +275,22 @@ impl CandidateDisplay for SlintDisplay {
     fn set_status_bar_visible(&mut self, visible: bool) {
         self.status_bar_visible = visible;
         self.config.appearance.show_status_bar = visible;
+        self.status_bar.set_bar_visible(visible);
         if visible {
-            let _ = self.status_bar.window().show();
+            #[cfg(target_os = "linux")]
+            if self.config.linux.fixed_position {
+                let (tx, ty) = self.corner_position(&self.status_bar.window());
+                self.status_bar.window().set_position(slint::WindowPosition::Physical(
+                    slint::PhysicalPosition::new(tx, ty),
+                ));
+            } else {
+                self.status_bar.window().set_position(
+                    slint::WindowPosition::Physical(slint::PhysicalPosition::new(self.last_x, self.last_y)),
+                );
+            }
+            #[cfg(not(target_os = "linux"))]
             self.status_bar.window().set_position(
                 slint::WindowPosition::Physical(slint::PhysicalPosition::new(self.last_x, self.last_y)),
-            );
-        } else {
-            self.status_bar.window().set_position(
-                slint::WindowPosition::Physical(slint::PhysicalPosition::new(OFFSCREEN_POS, OFFSCREEN_POS)),
             );
         }
     }
@@ -279,8 +299,17 @@ impl CandidateDisplay for SlintDisplay {
         self.last_x = x;
         self.last_y = y;
 
-        // 如果状态栏可见，跟随光标移动
+        // 如果状态栏可见
         if self.status_bar_visible {
+            #[cfg(target_os = "linux")]
+            if self.config.linux.fixed_position {
+                // 固定位置模式：状态栏固定在角落，不跟随光标
+            } else {
+                self.status_bar.window().set_position(slint::WindowPosition::Physical(
+                    slint::PhysicalPosition::new(x, y),
+                ));
+            }
+            #[cfg(not(target_os = "linux"))]
             self.status_bar.window().set_position(slint::WindowPosition::Physical(
                 slint::PhysicalPosition::new(x, y),
             ));
@@ -306,7 +335,7 @@ impl CandidateDisplay for SlintDisplay {
         }
         self.window.set_is_visible(effective);
         if effective {
-            let _ = self.window.window().show();
+            // 先设位置再 show()，避免窗口先出现在左上角再跳到目标位置（闪现）
             #[cfg(target_os = "linux")]
             if self.config.linux.fixed_position {
                 self.apply_corner_position();
@@ -315,6 +344,7 @@ impl CandidateDisplay for SlintDisplay {
                     slint::PhysicalPosition::new(self.last_x, self.last_y),
                 ));
             }
+            let _ = self.window.window().show();
         } else {
             // 安全 hide(): 状态栏作为锚点窗口保持 event loop 运行
             let _ = self.window.window().hide();
