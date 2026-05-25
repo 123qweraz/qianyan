@@ -4,7 +4,7 @@
   "show_slint_window": true,
   "show_notification": true,
   "fixed_position": true,
-  "corner": "bottom-left",
+  "corner": "bottom-right",
   "fixed_x": 40,
   "fixed_y": 40
 }

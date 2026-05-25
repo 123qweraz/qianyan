@@ -5,9 +5,58 @@ use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use x11rb::connection::Connection;
 #[cfg(target_os = "linux")]
 use x11rb::protocol::xproto::ConnectionExt;
+#[cfg(target_os = "linux")]
+use x11rb::wrapper::ConnectionExt as _;
 
-/// Send EWMH ClientMessage to add _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER.
-/// Returns true if at least one window was found and processed.
+/// Find a child window whose `WM_NAME` or `_NET_WM_NAME` equals `target`.
+#[cfg(target_os = "linux")]
+fn find_windows_by_name(
+    conn: &impl x11rb::connection::Connection,
+    root: u32,
+    target: &str,
+    net_wm_name: u32,
+) -> Vec<u32> {
+    let mut results = Vec::new();
+
+    let check = |w: u32| {
+        let name = conn
+            .get_property(false, w, net_wm_name, x11rb::protocol::xproto::AtomEnum::ANY, 0, 1024)
+            .ok()
+            .and_then(|c| c.reply().ok())
+            .filter(|r| r.format == 8 && !r.value.is_empty())
+            .and_then(|r| {
+                let s = String::from_utf8_lossy(&r.value);
+                Some(s.trim_end_matches('\0').to_string())
+            })
+            .or_else(|| {
+                conn.get_property(false, w, x11rb::protocol::xproto::AtomEnum::WM_NAME, x11rb::protocol::xproto::AtomEnum::ANY, 0, 1024)
+                    .ok()
+                    .and_then(|c| c.reply().ok())
+                    .filter(|r| r.format == 8 && !r.value.is_empty())
+                    .and_then(|r| {
+                        let s = String::from_utf8_lossy(&r.value);
+                        Some(s.trim_end_matches('\0').to_string())
+                    })
+            });
+        name.filter(|n| n == target).is_some()
+    };
+
+    if check(root) {
+        results.push(root);
+    }
+    if let Ok(cookie) = conn.query_tree(root) {
+        if let Ok(reply) = cookie.reply() {
+            for child in reply.children {
+                results.append(&mut find_windows_by_name(conn, child, target, net_wm_name));
+            }
+        }
+    }
+    results
+}
+
+/// Set `_NET_WM_WINDOW_TYPE` to `UTILITY` and
+/// `_NET_WM_STATE` to `SKIP_TASKBAR | SKIP_PAGER`
+/// for every window whose name matches one of `window_names`.
 #[cfg(target_os = "linux")]
 fn set_skip_taskbar_and_hide() -> bool {
     let (conn, screen_num) = match x11rb::connect(None) {
@@ -23,48 +72,51 @@ fn set_skip_taskbar_and_hide() -> bool {
     let Some(net_wm_state) = intern(b"_NET_WM_STATE") else { return false };
     let Some(skip_taskbar) = intern(b"_NET_WM_STATE_SKIP_TASKBAR") else { return false };
     let Some(skip_pager) = intern(b"_NET_WM_STATE_SKIP_PAGER") else { return false };
+    let Some(net_wm_window_type) = intern(b"_NET_WM_WINDOW_TYPE") else { return false };
+    let Some(utility) = intern(b"_NET_WM_WINDOW_TYPE_UTILITY") else { return false };
+    let Some(net_wm_name) = intern(b"_NET_WM_NAME") else { return false };
 
-    // Find the status bar window by name (xdotool is simpler than tree walking)
-    let out = match std::process::Command::new("xdotool")
-        .args(["search", "--name", "RustImeStatusBar"])
-        .output()
-    {
-        Ok(o) => o,
-        Err(_) => return false,
-    };
+    let window_names = ["RustImeStatusBar", "RustImeCandidateWindow"];
     let mut found = false;
-    let ids = String::from_utf8_lossy(&out.stdout);
-    for id_str in ids.lines() {
-        let id_str = id_str.trim();
-        if id_str.is_empty() { continue; }
-        let window_id = match u32::from_str_radix(id_str, 10) {
-            Ok(id) => id,
-            Err(_) => continue,
-        };
-        found = true;
 
-        // _NET_WM_STATE ClientMessage: data[0]=1(ADD), data[1]=atom1, data[2]=atom2, data[3]=1(source), data[4]=0
-        let event = x11rb::protocol::xproto::ClientMessageEvent {
-            response_type: 33,  // ClientMessage
-            format: 32,
-            sequence: 0,
-            window: window_id,
-            type_: net_wm_state,
-            data: x11rb::protocol::xproto::ClientMessageData::from([
-                1u32,       // _NET_WM_STATE_ADD
-                skip_taskbar,
-                skip_pager,
-                1,          // source: normal application
-                0,
-            ]),
-        };
-        let _ = conn.send_event(
-            false,
-            screen.root,
-            x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_REDIRECT
-                | x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_NOTIFY,
-            event,
-        );
+    for name in &window_names {
+        let windows = find_windows_by_name(&conn, screen.root, name, net_wm_name);
+        for &window_id in &windows {
+            found = true;
+
+            // Set _NET_WM_WINDOW_TYPE to UTILITY (more reliably removes from taskbar)
+            use x11rb::protocol::xproto::PropMode;
+            let _ = conn.change_property32(
+                PropMode::REPLACE,
+                window_id,
+                net_wm_window_type,
+                x11rb::protocol::xproto::AtomEnum::ATOM,
+                &[utility],
+            );
+
+            // Send ClientMessage to add _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER
+            let event = x11rb::protocol::xproto::ClientMessageEvent {
+                response_type: 33,
+                format: 32,
+                sequence: 0,
+                window: window_id,
+                type_: net_wm_state,
+                data: x11rb::protocol::xproto::ClientMessageData::from([
+                    1u32,       // _NET_WM_STATE_ADD
+                    skip_taskbar,
+                    skip_pager,
+                    1,          // source: normal application
+                    0,
+                ]),
+            };
+            let _ = conn.send_event(
+                false,
+                screen.root,
+                x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_REDIRECT
+                    | x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_NOTIFY,
+                event,
+            );
+        }
     }
     let _ = conn.flush();
     found

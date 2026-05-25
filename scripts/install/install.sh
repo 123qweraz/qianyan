@@ -7,7 +7,7 @@ echo "=== Qianyan-IME Auto Installer ==="
 
 # Check if running with precompiled binary
 HAS_PRECOMPILED=false
-if [ -f "./qianyan-ime" ]; then
+if [ -f "./qianyan-ime" ] && [ -f "./qianyan-ime-gui" ]; then
     HAS_PRECOMPILED=true
 fi
 
@@ -72,12 +72,13 @@ fi
 # 3. Build Project (if needed)
 echo -e "\n[3/4] Preparing program files..."
 if [ "$HAS_PRECOMPILED" = true ]; then
-    chmod +x ./qianyan-ime
+    chmod +x ./qianyan-ime ./qianyan-ime-gui
     echo "✅ Using precompiled binary."
 else
     echo "🔨 Building from source (this may take a few minutes)..."
     cargo build --release
     cp target/release/qianyan-ime .
+    cp target/release/qianyan-ime-gui .
     echo "✅ Build complete."
 fi
 
@@ -101,10 +102,12 @@ sudo cp -r "$INSTALL_PATH/dicts" "$SHARE_DIR/"
 sudo cp -r "$INSTALL_PATH/picture" "$SHARE_DIR/"
 echo "✅ Installed resources to: $SHARE_DIR"
 
-# 4.1 Install binary
+# 4.1 Install binaries
 sudo cp -f "$INSTALL_PATH/qianyan-ime" /usr/local/bin/qianyan-ime
 sudo chmod +x /usr/local/bin/qianyan-ime
-echo "✅ Installed binary to: /usr/local/bin/qianyan-ime"
+sudo cp -f "$INSTALL_PATH/qianyan-ime-gui" /usr/local/bin/qianyan-ime-gui
+sudo chmod +x /usr/local/bin/qianyan-ime-gui
+echo "✅ Installed binaries to: /usr/local/bin/qianyan-ime, /usr/local/bin/qianyan-ime-gui"
 
 # 4.2 Install icon (system-wide)
 ICON_DIR="/usr/share/icons/hicolor/256x256/apps"
