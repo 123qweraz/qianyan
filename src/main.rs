@@ -308,7 +308,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                qianyan_ime_ui::tray::TrayEvent::Exit => std::process::exit(0),
+                qianyan_ime_ui::tray::TrayEvent::Exit => {
+                    let _ = gui_tx_tray.send(GuiEvent::Exit);
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    std::process::exit(0);
+                }
                 qianyan_ime_ui::tray::TrayEvent::SendKey(_) => {
                     // 暂不处理 SendKey 事件
                 }

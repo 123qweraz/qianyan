@@ -4,6 +4,13 @@ use qianyan_ime_ui::ipc::transport::*;
 use std::os::unix::net::UnixStream;
 
 fn main() {
+    // Ask kernel to kill us when the parent (qianyan-ime) dies.
+    // This handles all exit scenarios: tray Exit, Ctrl+C, SIGTERM, crash, etc.
+    #[cfg(target_os = "linux")]
+    unsafe {
+        libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+    }
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: qianyan-ime-gui <socket_path>");
