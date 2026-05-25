@@ -203,6 +203,10 @@ pub struct Input {
     #[serde(default)]
     pub layouts: std::collections::HashMap<String, ProfileLayout>,
     pub enable_smart_backspace: bool,
+    #[serde(default)]
+    pub enable_quick_finals: bool,
+    #[serde(default)]
+    pub quick_finals: Vec<QuickFinal>,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
     pub enable_fuzzy_pinyin: bool,
@@ -273,6 +277,12 @@ pub struct LongPressMapping {
 pub struct ProfileKey {
     pub key: String,
     pub profile: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuickFinal {
+    pub key: String,
+    pub final_text: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -707,6 +717,20 @@ impl Config {
                 enable_fixed_first_candidate: false,
                 layouts: default_profile_layouts(),
                 enable_smart_backspace: false,
+                enable_quick_finals: false,
+                quick_finals: vec![
+                    QuickFinal { key: "u".into(), final_text: "uang".into() },
+                    QuickFinal { key: "i".into(), final_text: "ing".into() },
+                    QuickFinal { key: "o".into(), final_text: "ong".into() },
+                    QuickFinal { key: "p".into(), final_text: "iong".into() },
+                    QuickFinal { key: "h".into(), final_text: "ang".into() },
+                    QuickFinal { key: "j".into(), final_text: "eng".into() },
+                    QuickFinal { key: "k".into(), final_text: "uai".into() },
+                    QuickFinal { key: "l".into(), final_text: "iang".into() },
+                    QuickFinal { key: "n".into(), final_text: "iao".into() },
+                    QuickFinal { key: "m".into(), final_text: "ian".into() },
+                    QuickFinal { key: "r".into(), final_text: "uan".into() },
+                ],
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {
                     name: "小鹤双拼".to_string(),

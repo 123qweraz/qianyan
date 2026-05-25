@@ -107,7 +107,7 @@ pub fn handle_composing(
         return commands::execute_command(ctx, final_cmd);
     }
 
-    if ctx.session.nav_mode || ctx.session_state.capslock_down {
+    if ctx.session.nav_mode {
         match key {
             VirtualKey::H => return commands::execute_command(ctx, Command::PrevCandidate),
             VirtualKey::L => return commands::execute_command(ctx, Command::NextCandidate),
@@ -313,6 +313,47 @@ pub fn handle_composing(
 
     match key {
         VirtualKey::Backspace => {
+            // CapsLock + Backspace: delete entire last syllable
+            if ctx.session_state.capslock_down && !ctx.session.buffer.is_empty() {
+                let delete_count = if let Some(last_seg) = ctx.session.best_segmentation.last() {
+                    last_seg.chars().count()
+                } else {
+                    let buffer = &ctx.session.buffer;
+                    let mut count = 1;
+                    for len in (2..=buffer.len().min(6)).rev() {
+                        let suffix = &buffer[buffer.len() - len..];
+                        if ctx.syllables.contains(suffix) {
+                            count = len;
+                            break;
+                        }
+                    }
+                    count
+                };
+
+                let old_phantom_len = ctx.session.phantom_text.chars().count();
+                for _ in 0..delete_count {
+                    ctx.session.pop_char();
+                }
+
+                if ctx.session.buffer.is_empty() {
+                    ctx.reset();
+                    if old_phantom_len > 0 {
+                        return Action::DeleteAndEmit {
+                            delete: old_phantom_len,
+                            insert: "".into(),
+                        };
+                    }
+                    return Action::Consume;
+                } else {
+                    if perform_lookup {
+                        if let Some(act) = lookup(ctx) {
+                            return act;
+                        }
+                    }
+                    return Compositor::update_phantom_action(ctx);
+                }
+            }
+
             if ctx.session.filter_mode != FilterMode::None {
                 ctx.session.pop_filter();
                 if perform_lookup {

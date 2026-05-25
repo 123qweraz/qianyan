@@ -81,20 +81,11 @@
             </div>
         </div>
 
-        <h2>方案快速切换映射</h2>
         <div class="card">
-            <div class="info" style="margin-bottom: 20px;">
-                <div class="desc">在输入缓冲区为空时，按 CapsLock 进入切换模式，随后按下以下映射的按键即可快速切换方案。</div>
-            </div>
-            <div class="keyboard" id="kb-profilekeys"></div>
-            <div id="edit-profilekeys" class="kb-edit-box">
-                <h3 id="pk-edit-title">编辑切换键</h3>
-                <div class="setting-item">
-                    <div class="info">
-                        <div class="title">目标方案</div>
-                        <div class="desc">按下此键后切换到的方案名称</div>
-                    </div>
-                    <input type="text" id="pk-edit-input" style="width: 200px;" placeholder="例如: chinese">
+            <div class="info" style="margin: 12px 0;">
+                <div class="desc" style="font-size: 14px;">
+                    💡 <kbd>Tab</kbd> + <kbd>H</kbd> <kbd>J</kbd> <kbd>K</kbd> <kbd>L</kbd> 可在输入时进行候选项上下左右导航（需有候选词时）。<br>
+                    💡 长韵母快速输入功能请前往「长韵母快速输入」页面设置。
                 </div>
             </div>
         </div>
@@ -109,12 +100,6 @@
 
     <script src="/static/js/settings.js"></script>
     <script>
-        const KB_LAYOUT = [
-            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-            ['z', 'x', 'c', 'v', 'b', 'n', 'm']
-        ];
-
         async function init() {
             await loadConfig();
             
@@ -129,50 +114,7 @@
             document.getElementById('word_to_char_input').value = (config.hotkeys.word_to_char || []).join(', ');
             document.getElementById('word_to_char_shift_input').value = (config.hotkeys.word_to_char_shift || []).join(', ');
 
-            renderKeyboard('kb-profilekeys', 'profile_keys');
-
             document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
-        }
-
-        function renderKeyboard(containerId, configKey) {
-            const container = document.getElementById(containerId);
-            const mappings = config.input[configKey] || [];
-            
-            container.innerHTML = KB_LAYOUT.map(row => `
-                <div class="keyboard-row">
-                    ${row.map(key => {
-                        const entry = mappings.find(m => m.key === key);
-                        const mapping = entry ? entry.profile : "";
-                        return `
-                            <div class="kb-key ${mapping ? 'active' : ''} type-profile" onclick="editKey('${containerId}', '${configKey}', '${key}')">
-                                <div class="kb-key-main">${key.toUpperCase()}</div>
-                                <div class="kb-key-sub">${mapping}</div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `).join('');
-        }
-
-        function editKey(containerId, configKey, key) {
-            const editBox = document.getElementById('edit-profilekeys');
-            const title = document.getElementById('pk-edit-title');
-            const input = document.getElementById('pk-edit-input');
-            
-            editBox.style.display = 'block';
-            title.innerText = `编辑切换键: ${key.toUpperCase()}`;
-            
-            const mappings = config.input[configKey];
-            const entry = mappings.find(m => m.key === key);
-            input.value = entry ? entry.profile : "";
-            
-            input.oninput = () => {
-                const val = input.value;
-                const idx = mappings.findIndex(m => m.key === key);
-                if (val === "") { if (idx !== -1) mappings.splice(idx, 1); }
-                else { if (idx !== -1) mappings[idx].profile = val; else mappings.push({ key: key, profile: val }); }
-                renderKeyboard(containerId, configKey);
-            };
         }
 
         async function save() {

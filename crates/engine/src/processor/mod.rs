@@ -201,13 +201,29 @@ impl Processor {
                 return action;
             }
 
+            // CapsLock + letter: quick final input (takes priority over nav_mode)
+            if is_press
+                && self.ctx.session_state.capslock_down
+                && is_letter(key)
+                && self.ctx.config.master_config.input.enable_quick_finals
+            {
+                if let Some(c) = key_to_char(key, false, false) {
+                    let finals = self.ctx.config.quick_finals();
+                    if let Some(final_text) = finals.get(&c.to_string()) {
+                        return inject_text(&mut self.ctx, final_text);
+                    }
+                }
+            }
+
             if self.ctx.session.nav_mode && !self.ctx.session.buffer.is_empty() {
                 match key {
                     VirtualKey::H => return self.execute_command(Command::PrevCandidate),
                     VirtualKey::L => return self.execute_command(Command::NextCandidate),
                     VirtualKey::J => return self.execute_command(Command::NextPage),
                     VirtualKey::K => return self.execute_command(Command::PrevPage),
-                    _ => {}
+                    _ => {
+                        self.ctx.session.nav_mode = false;
+                    }
                 }
             }
             if self.ctx.session_state.capslock_pending
@@ -221,7 +237,6 @@ impl Processor {
         }
 
         if is_release && key == VirtualKey::CapsLock {
-            self.ctx.session.nav_mode = false;
             self.ctx.session_state.capslock_down = false;
             self.ctx.session_state.capslock_combo_active = false;
             if !self.ctx.session_state.chinese_enabled {
@@ -749,16 +764,19 @@ impl Processor {
 
             self.ctx.session_state.capslock_combo_active = true;
 
-            // 单击 CapsLock -> 切换中英文模式
+            // 单击 CapsLock -> 切换中英文模式；有内容时只设置 capslock_down
             if self.ctx.session.buffer.is_empty() {
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
                 return Some(Action::Consume);
             } else {
-                // 有内容时，CapsLock 作为功能键（如导航或方案切换预选）
                 self.ctx.session_state.capslock_down = true;
-                self.ctx.session.nav_mode = true;
                 return Some(Action::Consume);
             }
+        }
+
+        if key == VirtualKey::Tab && !self.ctx.session.buffer.is_empty() {
+            self.ctx.session.nav_mode = !self.ctx.session.nav_mode;
+            return Some(Action::Consume);
         }
 
         None
