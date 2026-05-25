@@ -290,6 +290,12 @@ impl Processor {
             perform_lookup,
         );
 
+        // Track consumed press so that the release is also consumed
+        // (prevents stray release events after background auto-commit or SPACE commit)
+        if is_press && !matches!(key, VirtualKey::Control | VirtualKey::Alt | VirtualKey::Shift | VirtualKey::CapsLock) {
+            self.ctx.session.consumed_press_key = if fsm_action != Action::PassThrough { Some(key) } else { None };
+        }
+
         if is_press && is_letter(key) && perform_lookup {
             // 如果 FSM 已经消耗或处理了该键（例如 Shift 字母用于辅助码过滤），则不再走批量缓冲逻辑
             if fsm_action != Action::PassThrough {

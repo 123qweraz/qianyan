@@ -33,6 +33,14 @@ pub fn process_modifiers(
             return Some(Action::PassThrough);
         }
 
+        // If the corresponding press was consumed by the IME, consume the release too
+        if ctx.session.consumed_press_key == Some(key) {
+            ctx.session.consumed_press_key = None;
+            return Some(Action::Consume);
+        }
+        if is_letter(key) {
+            return Some(Action::Consume);
+        }
         if ctx.session.buffer.is_empty() {
             return Some(Action::PassThrough);
         }

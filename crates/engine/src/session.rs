@@ -1,3 +1,4 @@
+use crate::keys::VirtualKey;
 use crate::pipeline::Candidate;
 use crate::processor::{FilterMode, ImeState};
 
@@ -26,6 +27,12 @@ pub struct InputSession {
 
     pub quote_open: bool,
     pub single_quote_open: bool,
+
+    /// Non-modifier key whose press was consumed by the IME.
+    /// Used to ensure the corresponding release is also consumed,
+    /// preventing stray key events from being forwarded to the application
+    /// after auto-commit or SPACE commit clears the composing buffer.
+    pub consumed_press_key: Option<VirtualKey>,
 }
 
 impl Default for InputSession {
@@ -60,6 +67,8 @@ impl InputSession {
 
             quote_open: false,
             single_quote_open: false,
+
+            consumed_press_key: None,
         }
     }
 
@@ -86,6 +95,7 @@ impl InputSession {
         self.filter_mode = FilterMode::None;
         self.page_snapshot.clear();
         self.nav_mode = false;
+        self.consumed_press_key = None;
     }
 
     pub fn push_char(&mut self, c: char) {
