@@ -778,6 +778,12 @@ impl Pipeline {
         for t in &self.translators {
             candidates.extend(t.translate(input, &segments, config, limit));
         }
+        // Dedup by text: keep the first occurrence (dictionary entries from
+        // UserDict/Table translators come before Compose/auto-sentence entries)
+        {
+            let mut seen = std::collections::HashSet::new();
+            candidates.retain(|c| seen.insert(c.text.clone()));
+        }
         for f in &self.filters {
             candidates = f.filter(input, candidates, config, context);
         }
