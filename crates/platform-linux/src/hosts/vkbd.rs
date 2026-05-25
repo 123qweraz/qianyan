@@ -291,14 +291,14 @@ impl Vkbd {
         for _ in 0..count {
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 1);
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 0);
-            thread::sleep(Duration::from_micros(50));
+            thread::sleep(Duration::from_millis(10));
         }
         eprintln!("[Vkbd BG] do_backspace({}) done (sent 1 SPACE + 1 BS trick + {} BS)", count, count);
     }
 
     fn do_tap(dev: &Arc<Mutex<VirtualDevice>>, key: Key) {
         Self::do_emit(dev, key, true);
-        thread::sleep(Duration::from_micros(100));
+        thread::sleep(Duration::from_millis(10));
         Self::do_emit(dev, key, false);
     }
 
