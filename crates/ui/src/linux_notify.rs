@@ -100,6 +100,8 @@ impl CandidateDisplay for LinuxNotifyDisplay {
             .show();
     }
 
+    fn set_status_bar_visible(&mut self, _visible: bool) {}
+
     fn move_to(&mut self, _x: i32, _y: i32) {}
 
     fn set_visible(&mut self, visible: bool) {

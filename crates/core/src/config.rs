@@ -602,7 +602,7 @@ impl Config {
             },
             appearance: Appearance {
                 show_candidates: true,
-                show_status_bar: true,
+                show_status_bar: false,
                 page_size: 5,
                 aux_mode: AuxMode::English,
                 candidate_anchor: "bottom".to_string(),

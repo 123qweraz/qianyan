@@ -1,6 +1,73 @@
 use crate::CandidateDisplay;
 use qianyan_ime_core::Config;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+#[cfg(target_os = "linux")]
+use x11rb::connection::Connection;
+#[cfg(target_os = "linux")]
+use x11rb::protocol::xproto::ConnectionExt;
+
+const OFFSCREEN_POS: i32 = 30_000;
+
+/// Send EWMH ClientMessage to add _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER.
+/// Uses x11rb for proper protocol compliance (xprop -set doesn't work for atom arrays).
+#[cfg(target_os = "linux")]
+fn set_skip_taskbar_and_hide() {
+    let (conn, screen_num) = match x11rb::connect(None) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let screen = &conn.setup().roots[screen_num];
+
+    let intern = |name: &[u8]| -> Option<u32> {
+        conn.intern_atom(false, name).ok()?.reply().ok().map(|r| r.atom)
+    };
+
+    let Some(net_wm_state) = intern(b"_NET_WM_STATE") else { return };
+    let Some(skip_taskbar) = intern(b"_NET_WM_STATE_SKIP_TASKBAR") else { return };
+    let Some(skip_pager) = intern(b"_NET_WM_STATE_SKIP_PAGER") else { return };
+
+    // Find the status bar window by name (xdotool is simpler than tree walking)
+    let out = match std::process::Command::new("xdotool")
+        .args(["search", "--name", "RustImeStatusBar"])
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return,
+    };
+    let ids = String::from_utf8_lossy(&out.stdout);
+    for id_str in ids.lines() {
+        let id_str = id_str.trim();
+        if id_str.is_empty() { continue; }
+        let window_id = match u32::from_str_radix(id_str, 10) {
+            Ok(id) => id,
+            Err(_) => continue,
+        };
+
+        // _NET_WM_STATE ClientMessage: data[0]=1(ADD), data[1]=atom1, data[2]=atom2, data[3]=1(source), data[4]=0
+        let event = x11rb::protocol::xproto::ClientMessageEvent {
+            response_type: 33,  // ClientMessage
+            format: 32,
+            sequence: 0,
+            window: window_id,
+            type_: net_wm_state,
+            data: x11rb::protocol::xproto::ClientMessageData::from([
+                1u32,       // _NET_WM_STATE_ADD
+                skip_taskbar,
+                skip_pager,
+                1,          // source: normal application
+                0,
+            ]),
+        };
+        let _ = conn.send_event(
+            false,
+            screen.root,
+            x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_REDIRECT
+                | x11rb::protocol::xproto::EventMask::SUBSTRUCTURE_NOTIFY,
+            event,
+        );
+    }
+    let _ = conn.flush();
+}
 
 slint::include_modules!();
 
@@ -29,6 +96,7 @@ pub struct SlintDisplay {
     candidate_enabled: bool,
     last_x: i32,
     last_y: i32,
+    status_bar_visible: bool,
 }
 
 impl SlintDisplay {
@@ -40,8 +108,13 @@ impl SlintDisplay {
         // Slint 1.9 winit software 后端因无窗口而自动退出 event loop
         let _ = status_bar.window().show();
         status_bar.window().set_position(slint::WindowPosition::Physical(
-            slint::PhysicalPosition::new(-9999, -9999),
+            slint::PhysicalPosition::new(OFFSCREEN_POS, OFFSCREEN_POS),
         ));
+        #[cfg(target_os = "linux")]
+        std::thread::spawn(|| {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            set_skip_taskbar_and_hide();
+        });
 
         let candidate_enabled = cfg!(not(target_os = "linux")) || config.linux.show_slint_window;
         let mut display = Self {
@@ -52,6 +125,7 @@ impl SlintDisplay {
             candidate_enabled,
             last_x: 0,
             last_y: 0,
+            status_bar_visible: false,
         };
 
         display.apply_style(&config);
@@ -184,17 +258,19 @@ impl CandidateDisplay for SlintDisplay {
             self.status_bar.set_status_text(SharedString::from(text));
         }
         self.status_bar.set_chinese_enabled(chinese_enabled);
+    }
 
-        // 状态栏作为 event loop anchor 永远 show 不 hide。
-        // 需要显示时放到正确位置，不需要时移出屏幕。
-        if self.config.appearance.show_status_bar {
+    fn set_status_bar_visible(&mut self, visible: bool) {
+        self.status_bar_visible = visible;
+        self.config.appearance.show_status_bar = visible;
+        if visible {
             let _ = self.status_bar.window().show();
             self.status_bar.window().set_position(
                 slint::WindowPosition::Physical(slint::PhysicalPosition::new(self.last_x, self.last_y)),
             );
         } else {
             self.status_bar.window().set_position(
-                slint::WindowPosition::Physical(slint::PhysicalPosition::new(-9999, -9999)),
+                slint::WindowPosition::Physical(slint::PhysicalPosition::new(OFFSCREEN_POS, OFFSCREEN_POS)),
             );
         }
     }
@@ -202,6 +278,14 @@ impl CandidateDisplay for SlintDisplay {
     fn move_to(&mut self, x: i32, y: i32) {
         self.last_x = x;
         self.last_y = y;
+
+        // 如果状态栏可见，跟随光标移动
+        if self.status_bar_visible {
+            self.status_bar.window().set_position(slint::WindowPosition::Physical(
+                slint::PhysicalPosition::new(x, y),
+            ));
+        }
+
         if !self.window_visible {
             return;
         }

@@ -34,6 +34,9 @@ pub trait CandidateDisplay {
     /// 应用配置更新
     fn apply_config(&mut self, config: &Config);
 
+    /// 显示或隐藏状态栏（不影响中文/英文模式指示）
+    fn set_status_bar_visible(&mut self, visible: bool);
+
     /// 销毁或关闭显示
     fn close(&mut self);
 }

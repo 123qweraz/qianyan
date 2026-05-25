@@ -4565,6 +4565,7 @@ dependencies = [
  "tokio",
  "walkdir",
  "windows 0.52.0",
+ "x11rb",
 ]
 
 [[package]]

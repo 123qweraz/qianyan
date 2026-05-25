@@ -137,12 +137,12 @@ fn handle_event(
         }
         GuiEvent::UpdateStatusBarVisible(visible) => {
             for d in displays.iter_mut() {
-                d.update_status("", visible);
+                d.set_status_bar_visible(visible);
             }
         }
         GuiEvent::ForceStatusVisible(visible) => {
             for d in displays.iter_mut() {
-                d.update_status("", visible);
+                d.set_status_bar_visible(visible);
             }
         }
         GuiEvent::HideAndAck(ack_tx) => {
