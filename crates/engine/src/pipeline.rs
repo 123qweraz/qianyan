@@ -83,6 +83,24 @@ impl Segmentor for DefaultSegmentor {
 }
 
 impl DefaultSegmentor {
+    /// 尝试相邻字母换位纠错（处理 guna→guan、guagn→guang 等常见 finger slip）
+    fn try_transpose(part: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Option<(u64, String)> {
+        let bytes = part.as_bytes();
+        for i in 0..bytes.len().saturating_sub(1) {
+            let mut swapped = bytes.to_vec();
+            swapped.swap(i, i + 1);
+            if let Ok(candidate) = String::from_utf8(swapped) {
+                if let Some(&freq) = syllable_freq.get(&candidate) {
+                    return Some((freq / 2, candidate));
+                }
+                if base_syllables.contains(&candidate) {
+                    return Some((0, candidate));
+                }
+            }
+        }
+        None
+    }
+
     /// 单轮 Viterbi DP 切分：直接在原始字符串上做最优切分，避免两轮法中的贪心锁定问题
     fn viterbi_segment(input: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String> {
         let n = input.len();
@@ -93,6 +111,8 @@ impl DefaultSegmentor {
         // dp[i] = (best_total_freq, segment_count, prev_pos)
         let mut dp: Vec<Option<(u64, usize, usize)>> = vec![None; n + 1];
         dp[0] = Some((0, 0, 0));
+        // 换位修正后的文本（非空时优先于 input[prev..pos]）
+        let mut corrected: Vec<String> = vec![String::new(); n + 1];
 
         for i in 0..n {
             let Some((cur_freq, cur_seg, _)) = dp[i] else { continue };
@@ -102,12 +122,14 @@ impl DefaultSegmentor {
                 if !input.is_char_boundary(i + len) { continue; }
                 let part = &input[i..i + len];
 
-                let freq = if syllable_freq.contains_key(part) {
-                    *syllable_freq.get(part).unwrap()
+                let (freq, seg_text) = if syllable_freq.contains_key(part) {
+                    (*syllable_freq.get(part).unwrap(), None)
                 } else if base_syllables.contains(part) {
-                    0
+                    (0, None)
                 } else if len == 1 {
-                    0 // 单字符兜底
+                    (0, None) // 单字符兜底
+                } else if let Some((xfreq, xtext)) = Self::try_transpose(part, syllable_freq, base_syllables) {
+                    (xfreq, Some(xtext))
                 } else {
                     continue;
                 };
@@ -124,6 +146,9 @@ impl DefaultSegmentor {
 
                 if should_replace {
                     *entry = Some((total, seg_cnt, i));
+                    if let Some(text) = seg_text {
+                        corrected[i + len] = text;
+                    }
                 }
             }
         }
@@ -134,7 +159,11 @@ impl DefaultSegmentor {
         while pos > 0 {
             match dp[pos] {
                 Some((_, _, prev)) if prev < pos => {
-                    segments.push(input[prev..pos].to_string());
+                    if !corrected[pos].is_empty() {
+                        segments.push(corrected[pos].clone());
+                    } else {
+                        segments.push(input[prev..pos].to_string());
+                    }
                     pos = prev;
                 }
                 _ => {
@@ -1705,6 +1734,50 @@ mod tests {
         let segmentor = DefaultSegmentor;
         // "mana" 即可以是 "man a" 也可以是 "ma na"
         // Viterbi DP 应选择 "ma na"（优先较短音节路径）
+        let all: HashSet<String> = ["ma", "man", "na", "a"]
+            .iter().map(|s| s.to_string()).collect();
+        let result = segmentor.segment("mana", &all, "", &HashMap::new(), &all);
+        assert_eq!(result, vec!["ma", "na"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_transpose_guna() {
+        let segmentor = DefaultSegmentor;
+        // "guna" → 换位纠错 -> "guan" ; 比不纠错 (gu+na, 2段) 段数少
+        let all: HashSet<String> = ["gu", "na", "guan"]
+            .iter().map(|s| s.to_string()).collect();
+        let mut freqs = HashMap::new();
+        freqs.insert("guan".to_string(), 100);
+        let result = segmentor.segment("guna", &all, "", &freqs, &all);
+        assert_eq!(result, vec!["guan"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_transpose_guagn() {
+        let segmentor = DefaultSegmentor;
+        // "guagn" → 换位纠错 -> "guang"
+        let all: HashSet<String> = ["guang"]
+            .iter().map(|s| s.to_string()).collect();
+        let mut freqs = HashMap::new();
+        freqs.insert("guang".to_string(), 200);
+        let result = segmentor.segment("guagn", &all, "", &freqs, &all);
+        assert_eq!(result, vec!["guang"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_transpose_correct_input_untouched() {
+        let segmentor = DefaultSegmentor;
+        // 正确输入 "guan" 直接匹配，不触发换位
+        let all: HashSet<String> = ["guan", "gu", "an"]
+            .iter().map(|s| s.to_string()).collect();
+        let result = segmentor.segment("guan", &all, "", &HashMap::new(), &all);
+        assert_eq!(result, vec!["guan"]);
+    }
+
+    #[test]
+    fn test_default_segmentor_transpose_no_false_positive() {
+        let segmentor = DefaultSegmentor;
+        // "mana" 不应被换位影响（ma 和 man 都在，且不是换位场景）
         let all: HashSet<String> = ["ma", "man", "na", "a"]
             .iter().map(|s| s.to_string()).collect();
         let result = segmentor.segment("mana", &all, "", &HashMap::new(), &all);

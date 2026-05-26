@@ -105,7 +105,7 @@ impl StateMachine {
     }
 
     fn is_coding_key(key: VirtualKey) -> bool {
-        Self::is_letter(key) || matches!(key, VirtualKey::Apostrophe | VirtualKey::Semicolon)
+        Self::is_letter(key)
     }
 
     fn is_letter(key: VirtualKey) -> bool {

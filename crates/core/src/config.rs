@@ -378,15 +378,15 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
     let mut chinese = std::collections::HashMap::new();
     chinese.insert(
         ";".to_string(),
-        action("；", ":", Some(";"), Some("……"), "中文分号"),
+        action("；", "：", Some(";"), Some("……"), "中文分号"),
     );
     chinese.insert(
         ".".to_string(),
-        action("。", ">", Some("..."), Some("·"), "中文句号"),
+        action("。", "》", Some("..."), Some("·"), "中文句号"),
     );
     chinese.insert(
         ",".to_string(),
-        action("，", "<", None, Some("、"), "中文逗号"),
+        action("，", "《", None, Some("、"), "中文逗号"),
     );
     chinese.insert("?".to_string(), action("？", "?", None, None, "中文问号"));
     chinese.insert("!".to_string(), action("！", "!", None, None, "中文叹号"));

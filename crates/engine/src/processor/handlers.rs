@@ -415,17 +415,6 @@ pub fn handle_composing(
             Action::Consume
         }
 
-        VirtualKey::Apostrophe if !shift_pressed => {
-            ctx.session.buffer.push('\'');
-            ctx.session.preview_selected_candidate = false;
-            if perform_lookup {
-                if let Some(act) = lookup(ctx) {
-                    return act;
-                }
-            }
-            Compositor::update_phantom_action(ctx)
-        }
-
         VirtualKey::Slash if !ctx.session.buffer.is_empty() => {
             let mut new_buffer = ctx.session.buffer.clone();
             let last_part_start = new_buffer.rfind(' ').map(|i| i + 1).unwrap_or(0);
