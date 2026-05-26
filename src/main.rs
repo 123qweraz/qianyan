@@ -21,15 +21,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("\n======= PANIC =======");
         default_hook(info);
     }));
-    // 捕获进程退出
-    std::thread::spawn(|| {
-        // 这个线程会在主线程退出时被杀死
-        // 如果它还能打印"still alive"，说明主线程还在跑
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(3));
-            eprintln!("[HEARTBEAT] main thread still running...");
-        }
-    });
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     // 在 Linux 下默认使用 software 渲染后端以提高兼容性，除非用户显式设置了 SLINT_BACKEND
