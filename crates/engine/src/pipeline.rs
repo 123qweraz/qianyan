@@ -894,8 +894,8 @@ pub struct AdaptiveFilter {
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
     last_input: std::sync::RwLock<Option<(String, std::time::Instant)>>,
-    /// 缓存的 MRU 条目，保留原始顺序（位置 0 = 最近使用）
-    cached_usage_entries: std::sync::RwLock<Option<Vec<(String, u32)>>>,
+    /// 缓存的 MRU 条目: word → (position, count)，O(1) 查找
+    cached_usage_map: std::sync::RwLock<Option<std::collections::HashMap<String, (usize, u32)>>>,
     cached_ngram_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
 }
 
@@ -910,7 +910,7 @@ impl AdaptiveFilter {
             ngram_history,
             profile,
             last_input: std::sync::RwLock::new(None),
-            cached_usage_entries: std::sync::RwLock::new(None),
+            cached_usage_map: std::sync::RwLock::new(None),
             cached_ngram_map: std::sync::RwLock::new(None),
         }
     }
@@ -944,37 +944,32 @@ impl Filter for AdaptiveFilter {
                 };
 
                 if use_cached {
-                    if let Ok(guard) = self.cached_usage_entries.read() {
-                        if let Some(ref cache_entries) = *guard {
+                    if let Ok(guard) = self.cached_usage_map.read() {
+                        if let Some(ref cache_map) = *guard {
                             for c in &mut candidates {
-                                if let Some(pos) =
-                                    cache_entries.iter().position(|(w, _)| w == c.simplified.as_ref())
-                                {
-                                    let (_, count) = &cache_entries[pos];
-                                    c.weight += compute_decay_boost(pos, *count);
+                                if let Some(&(pos, count)) = cache_map.get(c.simplified.as_ref()) {
+                                    c.weight += compute_decay_boost(pos, count);
                                 }
                             }
                         }
                     }
                 } else {
-                    // 保留 MRU 原始顺序（entries 本身是 MRU 顺序，最近在前）
-                    let usage_entries: Vec<(String, u32)> = entries
+                    // 构建 HashMap: word → (position, count)，O(1) 查找
+                    let usage_map: std::collections::HashMap<String, (usize, u32)> = entries
                         .iter()
-                        .map(|(w, c)| (w.clone(), *c))
+                        .enumerate()
+                        .map(|(pos, (w, c))| (w.clone(), (pos, *c)))
                         .collect();
 
                     for c in &mut candidates {
-                        if let Some(pos) =
-                            usage_entries.iter().position(|(w, _)| w == c.simplified.as_ref())
-                        {
-                            let (_, count) = &usage_entries[pos];
-                            c.weight += compute_decay_boost(pos, *count);
+                        if let Some(&(pos, count)) = usage_map.get(c.simplified.as_ref()) {
+                            c.weight += compute_decay_boost(pos, count);
                         }
                     }
 
                     // 更新缓存
-                    if let Ok(mut guard) = self.cached_usage_entries.write() {
-                        *guard = Some(usage_entries);
+                    if let Ok(mut guard) = self.cached_usage_map.write() {
+                        *guard = Some(usage_map);
                     }
                     if let Ok(mut guard) = self.last_input.write() {
                         *guard = Some((input.to_string(), std::time::Instant::now()));
