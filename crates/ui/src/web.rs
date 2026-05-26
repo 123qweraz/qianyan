@@ -56,6 +56,7 @@ impl WebServer {
             .route("/api/dicts/compile", post(compile_dicts_handler))
             .route("/api/dicts/reload", post(reload_dicts))
             .route("/api/dicts/toggle", post(toggle_dict))
+            .route("/api/dicts/create", post(create_dict_handler))
             .route("/api/dictionary/chars", get(get_chars_dict))
             .route("/api/dict/search", get(search_dict))
             .route("/api/dict/browse", get(browse_dict))
@@ -394,6 +395,33 @@ async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
     }
 }
 
+#[derive(serde::Deserialize)]
+struct CreateDictRequest {
+    name: String,
+    group: Option<String>,
+}
+
+async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
+    let group = req.group.unwrap_or_else(|| "user".to_string());
+    let base = find_dicts_root();
+    let dir = base.join(&group);
+    if std::fs::create_dir_all(&dir).is_err() {
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    }
+    let filename = format!("{}.json", req.name);
+    let file_path = dir.join(&filename);
+    if file_path.exists() {
+        return StatusCode::CONFLICT;
+    }
+    let empty = serde_json::Value::Object(serde_json::Map::new());
+    match std::fs::File::create(&file_path)
+        .and_then(|f| serde_json::to_writer_pretty(f, &empty).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)))
+    {
+        Ok(_) => StatusCode::OK,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
 async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
     match qianyan_ime_engine::compiler::check_and_compile_all() {
@@ -516,12 +544,32 @@ struct BrowseQuery {
     search: Option<String>,
     sort_by: Option<String>,
     sort_order: Option<String>,
+    search_by: Option<String>,
+}
+
+fn strip_tone(s: &str) -> String {
+    s.chars().map(|c| match c {
+        'ā' | 'á' | 'ǎ' | 'à' => 'a',
+        'ē' | 'é' | 'ě' | 'è' => 'e',
+        'ī' | 'í' | 'ǐ' | 'ì' => 'i',
+        'ō' | 'ó' | 'ǒ' | 'ò' => 'o',
+        'ū' | 'ú' | 'ǔ' | 'ù' => 'u',
+        'ǖ' | 'ǘ' | 'ǚ' | 'ǜ' => 'ü',
+        'Ā' | 'Á' | 'Ǎ' | 'À' => 'A',
+        'Ē' | 'É' | 'Ě' | 'È' => 'E',
+        'Ī' | 'Í' | 'Ǐ' | 'Ì' => 'I',
+        'Ō' | 'Ó' | 'Ǒ' | 'Ò' => 'O',
+        'Ū' | 'Ú' | 'Ǔ' | 'Ù' => 'U',
+        'Ǖ' | 'Ǘ' | 'Ǚ' | 'Ǜ' => 'Ü',
+        _ => c,
+    }).collect()
 }
 
 async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQuery>) -> impl IntoResponse {
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).clamp(10, 500);
     let search = query.search.as_deref().unwrap_or("").to_lowercase();
+    let search_by = query.search_by.as_deref().unwrap_or("all");
     let sort_by = query.sort_by.as_deref().unwrap_or("pinyin");
     let sort_order = query.sort_order.as_deref().unwrap_or("asc");
 
@@ -535,6 +583,8 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
     }
 
     let mut all_entries: Vec<DictEntryView> = Vec::new();
+    // 记录搜索时的匹配类型，用于排序优先级：拼音 > 汉字 > 英文
+    let mut match_kind: Vec<u8> = Vec::new();
     if let Ok(f) = std::fs::File::open(&path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
             if let Some(obj) = json.as_object() {
@@ -549,15 +599,27 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
                             let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("");
                             let category = v.get("category").and_then(|c| c.as_str()).unwrap_or("");
 
+                            let mut kind: u8 = 0;
                             if !search.is_empty() {
-                                let match_py = pinyin.to_lowercase().contains(&search);
+                                let search_plain = strip_tone(&search);
+                                let match_py = strip_tone(&pinyin.to_lowercase()).contains(&search_plain);
                                 let match_word = word.to_lowercase().contains(&search);
                                 let match_en = en.to_lowercase().contains(&search);
-                                if !match_py && !match_word && !match_en {
+                                let matched = match search_by {
+                                    "pinyin" => match_py,
+                                    "word" => match_word,
+                                    "en" => match_en,
+                                    _ => {
+                                        if match_py { kind = 0; true }
+                                        else if match_word { kind = 1; true }
+                                        else { false }
+                                    },
+                                };
+                                if !matched {
                                     continue;
                                 }
                             }
-
+                            match_kind.push(kind);
                             all_entries.push(DictEntryView {
                                 pinyin: pinyin.clone(),
                                 word: word.to_string(),
@@ -578,21 +640,38 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
     let total = all_entries.len();
     let total_pages = total.div_ceil(page_size).max(1);
 
-    // Sort
+    // Sort：有搜索时按匹配优先级 拼音 > 汉字 > 英文，同优先级再按用户选择排序
     let cmp_ascii = |a: &str, b: &str, asc: bool| -> std::cmp::Ordering {
         let ord = a.to_lowercase().cmp(&b.to_lowercase());
         if asc { ord } else { ord.reverse() }
     };
-    all_entries.sort_by(|a, b| {
-        let asc = sort_order == "asc";
-        match sort_by {
-            "word" => cmp_ascii(&a.word, &b.word, asc),
-            "en" => cmp_ascii(&a.en, &b.en, asc),
-            "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
-            "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
-            _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
-        }
-    });
+    if !search.is_empty() && search_by == "all" {
+        // 先按匹配优先级排序：拼音(0) > 汉字(1) > 英文(2)
+        let mut paired: Vec<(DictEntryView, u8)> = all_entries.into_iter().zip(match_kind.into_iter()).collect();
+        paired.sort_by(|(a, ka), (b, kb)| {
+            if ka != kb { return ka.cmp(kb); }
+            let asc = sort_order == "asc";
+            match sort_by {
+                "word" => cmp_ascii(&a.word, &b.word, asc),
+                "en" => cmp_ascii(&a.en, &b.en, asc),
+                "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
+                "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
+                _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
+            }
+        });
+        all_entries = paired.into_iter().map(|(e, _)| e).collect();
+    } else {
+        all_entries.sort_by(|a, b| {
+            let asc = sort_order == "asc";
+            match sort_by {
+                "word" => cmp_ascii(&a.word, &b.word, asc),
+                "en" => cmp_ascii(&a.en, &b.en, asc),
+                "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
+                "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
+                _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
+            }
+        });
+    }
 
     let start = (page - 1) * page_size;
     let entries: Vec<DictEntryView> = all_entries.into_iter().skip(start).take(page_size).collect();
