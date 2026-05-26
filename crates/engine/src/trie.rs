@@ -111,6 +111,13 @@ impl Trie {
         }
     }
 
+    /// 快速前缀检查：FST 中是否有任何 key 以 prefix 开头（不读数据块）
+    pub fn has_prefix(&self, prefix: &str) -> bool {
+        let matcher = fst::automaton::Str::new(prefix).starts_with();
+        let mut stream = self.index.search(matcher).into_stream();
+        stream.next().is_some()
+    }
+
     pub fn has_longer_match(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
         let mut stream = self.index.search(matcher).into_stream();

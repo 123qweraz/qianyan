@@ -188,145 +188,245 @@ impl DefaultSegmentor {
     }
 }
 
-/// 系统词库翻译器
-/// Generate all pinyin combinations by applying fuzzy rules per segment,
-/// then combining via Cartesian product.
-/// Returns the original query plus any variants.
-fn generate_fuzzy_queries(segments: &[String], fuzzy: &FuzzyPinyinConfig) -> Vec<String> {
-    let per_seg: Vec<Vec<String>> = segments
-        .iter()
-        .map(|seg| {
-            let lower = seg.to_ascii_lowercase();
-            let mut set = std::collections::BTreeSet::new();
-            set.insert(lower.clone());
+/// 对每个音节段生成模糊音变体（迭代式：新变体也继续应用规则，与 chinese.rs 保持一致）
+pub(crate) fn fuzzy_variants_per_segment(seg: &str, fuzzy: &FuzzyPinyinConfig) -> Vec<String> {
+    let pinyin_lower = if seg.bytes().all(|b| b.is_ascii_lowercase()) {
+        seg.to_string()
+    } else {
+        seg.to_lowercase()
+    };
+    let mut new_variants = std::collections::HashSet::new();
+    new_variants.insert(pinyin_lower);
 
-            if fuzzy.z_zh {
-                if lower.starts_with("zh") {
-                    set.insert(lower.replacen("zh", "z", 1));
-                } else if lower.starts_with('z') && !lower.starts_with("zh") {
-                    set.insert(format!("zh{}", &lower[1..]));
+    let mut to_process: Vec<String> = new_variants.iter().cloned().collect();
+    while let Some(v) = to_process.pop() {
+        if fuzzy.z_zh {
+            if v.starts_with("zh") {
+                if new_variants.insert(v.replace("zh", "z")) {
+                    to_process.push(v.replace("zh", "z"));
+                }
+            } else if v.starts_with("z") {
+                if new_variants.insert(v.replace("z", "zh")) {
+                    to_process.push(v.replace("z", "zh"));
                 }
             }
-            if fuzzy.c_ch {
-                if lower.starts_with("ch") {
-                    set.insert(lower.replacen("ch", "c", 1));
-                } else if lower.starts_with('c') && !lower.starts_with("ch") {
-                    set.insert(format!("ch{}", &lower[1..]));
-                }
-            }
-            if fuzzy.s_sh {
-                if lower.starts_with("sh") {
-                    set.insert(lower.replacen("sh", "s", 1));
-                } else if lower.starts_with('s') && !lower.starts_with("sh") {
-                    set.insert(format!("sh{}", &lower[1..]));
-                }
-            }
-            if fuzzy.n_l {
-                if lower.starts_with('n') {
-                    set.insert(format!("l{}", &lower[1..]));
-                } else if lower.starts_with('l') {
-                    set.insert(format!("n{}", &lower[1..]));
-                }
-            }
-            if fuzzy.r_l {
-                if lower.starts_with('r') {
-                    set.insert(format!("l{}", &lower[1..]));
-                } else if lower.starts_with('l') {
-                    set.insert(format!("r{}", &lower[1..]));
-                }
-            }
-            if fuzzy.f_h {
-                if lower.starts_with('f') {
-                    set.insert(format!("h{}", &lower[1..]));
-                } else if lower.starts_with('h') {
-                    set.insert(format!("f{}", &lower[1..]));
-                }
-            }
-            if fuzzy.an_ang {
-                if lower.ends_with("ang") {
-                    let replaced = lower.strip_suffix("ang").map(|s| format!("{}an", s));
-                    set.extend(replaced);
-                } else if lower.ends_with("an") {
-                    let replaced = lower.strip_suffix("an").map(|s| format!("{}ang", s));
-                    set.extend(replaced);
-                }
-            }
-            if fuzzy.en_eng {
-                if lower.ends_with("eng") {
-                    let replaced = lower.strip_suffix("eng").map(|s| format!("{}en", s));
-                    set.extend(replaced);
-                } else if lower.ends_with("en") {
-                    let replaced = lower.strip_suffix("en").map(|s| format!("{}eng", s));
-                    set.extend(replaced);
-                }
-            }
-            if fuzzy.in_ing {
-                if lower.ends_with("ing") {
-                    let replaced = lower.strip_suffix("ing").map(|s| format!("{}in", s));
-                    set.extend(replaced);
-                } else if lower.ends_with("in") {
-                    let replaced = lower.strip_suffix("in").map(|s| format!("{}ing", s));
-                    set.extend(replaced);
-                }
-            }
-            if fuzzy.ian_iang {
-                if lower.ends_with("iang") {
-                    let replaced = lower.strip_suffix("iang").map(|s| format!("{}ian", s));
-                    set.extend(replaced);
-                } else if lower.ends_with("ian") {
-                    let replaced = lower.strip_suffix("ian").map(|s| format!("{}iang", s));
-                    set.extend(replaced);
-                }
-            }
-            if fuzzy.uan_uang {
-                if lower.ends_with("uang") {
-                    let replaced = lower.strip_suffix("uang").map(|s| format!("{}uan", s));
-                    set.extend(replaced);
-                } else if lower.ends_with("uan") {
-                    let replaced = lower.strip_suffix("uan").map(|s| format!("{}uang", s));
-                    set.extend(replaced);
-                }
-            }
-            if fuzzy.u_v {
-                if lower.contains('u') {
-                    set.insert(lower.replace('u', "v"));
-                }
-                if lower.contains('v') {
-                    set.insert(lower.replace('v', "u"));
-                }
-            }
-            for (from, to) in &fuzzy.custom_mappings {
-                if lower.contains(from) {
-                    set.insert(lower.replace(from, to));
-                }
-            }
-
-            set.into_iter().collect()
-        })
-        .collect();
-
-    // Cartesian product of segment variants
-    fn product(
-        lists: &[Vec<String>],
-        depth: usize,
-        buf: &mut String,
-        out: &mut Vec<String>,
-    ) {
-        if depth == lists.len() {
-            out.push(buf.clone());
-            return;
         }
-        for variant in &lists[depth] {
-            let start = buf.len();
-            buf.push_str(variant);
-            product(lists, depth + 1, buf, out);
-            buf.truncate(start);
+        if fuzzy.c_ch {
+            if v.starts_with("ch") {
+                if new_variants.insert(v.replace("ch", "c")) {
+                    to_process.push(v.replace("ch", "c"));
+                }
+            } else if v.starts_with("c") {
+                if new_variants.insert(v.replace("c", "ch")) {
+                    to_process.push(v.replace("c", "ch"));
+                }
+            }
+        }
+        if fuzzy.s_sh {
+            if v.starts_with("sh") {
+                if new_variants.insert(v.replace("sh", "s")) {
+                    to_process.push(v.replace("sh", "s"));
+                }
+            } else if v.starts_with("s") {
+                if new_variants.insert(v.replace("s", "sh")) {
+                    to_process.push(v.replace("s", "sh"));
+                }
+            }
+        }
+        if fuzzy.n_l {
+            if v.starts_with('n') {
+                if new_variants.insert(v.replacen('n', "l", 1)) {
+                    to_process.push(v.replacen('n', "l", 1));
+                }
+            } else if v.starts_with('l') {
+                if new_variants.insert(v.replacen('l', "n", 1)) {
+                    to_process.push(v.replacen('l', "n", 1));
+                }
+            }
+        }
+        if fuzzy.r_l {
+            if v.starts_with('r') {
+                if new_variants.insert(v.replacen('r', "l", 1)) {
+                    to_process.push(v.replacen('r', "l", 1));
+                }
+            } else if v.starts_with('l') {
+                if new_variants.insert(v.replacen('l', "r", 1)) {
+                    to_process.push(v.replacen('l', "r", 1));
+                }
+            }
+        }
+        if fuzzy.f_h {
+            if v.starts_with('f') {
+                if new_variants.insert(v.replacen('f', "h", 1)) {
+                    to_process.push(v.replacen('f', "h", 1));
+                }
+            } else if v.starts_with('h') {
+                if new_variants.insert(v.replacen('h', "f", 1)) {
+                    to_process.push(v.replacen('h', "f", 1));
+                }
+            }
+        }
+        if fuzzy.an_ang {
+            if v.ends_with("ang") {
+                let replaced = v.replace("ang", "an");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.ends_with("an") {
+                let replaced = v.replace("an", "ang");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        if fuzzy.en_eng {
+            if v.ends_with("eng") {
+                let replaced = v.replace("eng", "en");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.ends_with("en") {
+                let replaced = v.replace("en", "eng");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        if fuzzy.in_ing {
+            if v.ends_with("ing") {
+                let replaced = v.replace("ing", "in");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.ends_with("in") {
+                let replaced = v.replace("in", "ing");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        if fuzzy.ian_iang {
+            if v.ends_with("iang") {
+                let replaced = v.replace("iang", "ian");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.ends_with("ian") {
+                let replaced = v.replace("ian", "iang");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        if fuzzy.uan_uang {
+            if v.ends_with("uang") {
+                let replaced = v.replace("uang", "uan");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.ends_with("uan") {
+                let replaced = v.replace("uan", "uang");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        if fuzzy.u_v {
+            if v.contains('u') {
+                let replaced = v.replace('u', "v");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            } else if v.contains('v') {
+                let replaced = v.replace('v', "u");
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
+        }
+        for (from, to) in &fuzzy.custom_mappings {
+            if v.contains(from) {
+                let replaced = v.replace(from, to);
+                if new_variants.insert(replaced.clone()) {
+                    to_process.push(replaced);
+                }
+            }
         }
     }
 
-    let mut result = Vec::new();
-    product(&per_seg, 0, &mut String::new(), &mut result);
+    let mut result: Vec<String> = new_variants.into_iter().collect();
+    result.sort();
     result
+}
+
+/// 带前缀剪枝的 DFS 模糊音搜索：只遍历在词典中有前缀匹配的分支，
+/// 避免对不存在的拼音组合做无用的精确查询。
+struct FuzzyPinyinSearcher<'a, 'b> {
+    trie: &'a Trie,
+    per_seg: &'b [Vec<String>],
+    candidates: &'b mut Vec<Candidate>,
+    seen: &'b mut HashSet<&'a str>,
+    query: &'b str,
+    build_hint: &'b dyn Fn(&TrieResult<'a>) -> Arc<str>,
+    limit: usize,
+}
+
+impl<'a, 'b> FuzzyPinyinSearcher<'a, 'b> {
+    fn search(&mut self) {
+        let mut buf = String::new();
+        self.dfs(0, &mut buf);
+    }
+
+    fn dfs(&mut self, depth: usize, buf: &mut String) {
+        if self.candidates.len() >= self.limit {
+            return;
+        }
+        if depth == self.per_seg.len() {
+            if buf == self.query {
+                return;
+            }
+            if let Some(exact_results) = self.trie.get_all_exact(buf) {
+                for tr in exact_results {
+                    if self.seen.insert(tr.word) {
+                        self.candidates.push(Candidate {
+                            simplified: Arc::from(tr.word),
+                            traditional: if tr.trad.is_empty() {
+                                Arc::from(tr.word)
+                            } else {
+                                Arc::from(tr.trad)
+                            },
+                            text: Arc::from(tr.word),
+                            hint: (self.build_hint)(&tr),
+                            english_aux: Arc::from(tr.en),
+                            stroke_aux: Arc::from(tr.stroke_aux),
+                            source: Arc::from("Table (Fuzzy)"),
+                            weight: tr.weight as f64,
+                            match_level: 2,
+                        });
+                        if self.candidates.len() >= self.limit {
+                            return;
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
+        for variant in &self.per_seg[depth] {
+            let start = buf.len();
+            buf.push_str(variant);
+
+            if depth + 1 == self.per_seg.len() || self.trie.has_prefix(buf) {
+                self.dfs(depth + 1, buf);
+                if self.candidates.len() >= self.limit {
+                    buf.truncate(start);
+                    return;
+                }
+            }
+
+            buf.truncate(start);
+        }
+    }
 }
 
 pub struct TableTranslator {
@@ -438,36 +538,24 @@ impl Translator for TableTranslator {
             }
         }
 
-        // 2. Fuzzy exact match: enable_fuzzy_pinyin 开启时，对每段生成模糊变体再精确匹配
+        // 2. Fuzzy exact match: DFS + 前缀剪枝，避免笛卡尔积爆炸
         if config.input.enable_fuzzy_pinyin {
             let fuzzy_cfg = &config.input.fuzzy_config;
-            let fuzzy_queries = generate_fuzzy_queries(segments, fuzzy_cfg);
-            for fq in &fuzzy_queries {
-                if fq == &query {
-                    continue;
-                }
-                if let Some(exact_results) = self.trie.get_all_exact(fq) {
-                    for tr in exact_results {
-                        if seen.insert(tr.word) {
-                            candidates.push(Candidate {
-                                simplified: Arc::from(tr.word),
-                                traditional: if tr.trad.is_empty() {
-                                    Arc::from(tr.word)
-                                } else {
-                                    Arc::from(tr.trad)
-                                },
-                                text: Arc::from(tr.word),
-                                hint: build_hint(&tr),
-                                english_aux: Arc::from(tr.en),
-                                stroke_aux: Arc::from(tr.stroke_aux),
-                                source: Arc::from("Table (Fuzzy)"),
-                                weight: tr.weight as f64,
-                                match_level: 2,
-                            });
-                        }
-                    }
-                }
-            }
+            let per_seg: Vec<Vec<String>> = segments
+                .iter()
+                .map(|seg| fuzzy_variants_per_segment(seg, fuzzy_cfg))
+                .collect();
+
+            let mut searcher = FuzzyPinyinSearcher {
+                trie: &self.trie,
+                per_seg: &per_seg,
+                candidates: &mut candidates,
+                seen: &mut seen,
+                query: &query,
+                build_hint: &build_hint,
+                limit: internal_limit,
+            };
+            searcher.search();
         }
 
         let is_abbreviation =
@@ -933,6 +1021,68 @@ fn compute_decay_boost(pos: usize, count: u32) -> f64 {
     (recency + freq).min(MAX_USAGE_BOOST)
 }
 
+/// MMR 多样性过滤器：对相似度过高的候选做降权，防止同音词霸榜
+pub struct DiversityFilter;
+impl Filter for DiversityFilter {
+    fn filter(
+        &self,
+        _input: &str,
+        candidates: Vec<Candidate>,
+        _config: &Config,
+        _context: Option<&str>,
+    ) -> Vec<Candidate> {
+        if candidates.len() <= 3 {
+            return candidates;
+        }
+
+        let lambda = 0.12;
+        let mut selected: Vec<Candidate> = Vec::with_capacity(candidates.len());
+
+        // 将第一个候选直接选入（最高分）
+        if let Some(first) = candidates.first().cloned() {
+            selected.push(first);
+        }
+
+        // 为已选候选预计算字符集
+        let mut sel_sets: Vec<HashSet<char>> = selected
+            .iter()
+            .map(|c| c.simplified.chars().collect())
+            .collect();
+
+        let mut remaining: Vec<Candidate> = candidates.into_iter().skip(1).collect();
+        while !remaining.is_empty() {
+            let mut best_idx = 0;
+            let mut best_mmr = f64::NEG_INFINITY;
+
+            for (i, cand) in remaining.iter().enumerate() {
+                let cand_set: HashSet<char> = cand.simplified.chars().collect();
+                // 与所有已选候选的最大相似度
+                let max_sim = sel_sets
+                    .iter()
+                    .map(|sel| {
+                        let intersection = cand_set.intersection(sel).count();
+                        let union = cand_set.union(sel).count();
+                        if union == 0 { 0.0 } else { intersection as f64 / union as f64 }
+                    })
+                    .fold(0.0, f64::max);
+
+                // MMR = (1-λ) * 权重 - λ * 最大相似度 * 权重缩放
+                let mmr = (1.0 - lambda) * cand.weight - lambda * max_sim * cand.weight.max(0.0);
+                if mmr > best_mmr {
+                    best_mmr = mmr;
+                    best_idx = i;
+                }
+            }
+
+            let best = remaining.remove(best_idx);
+            sel_sets.push(best.simplified.chars().collect());
+            selected.push(best);
+        }
+
+        selected
+    }
+}
+
 /// 核心管道定义
 pub struct Pipeline {
     pub segmentor: Box<dyn Segmentor>,
@@ -1217,6 +1367,7 @@ impl SearchEngine {
             self.ngram_history.clone(),
             profile.to_string(),
         )));
+        pipeline.add_filter(Box::new(DiversityFilter));
         pipeline.add_filter(Box::new(TraditionalFilter));
 
         let arc_p = Arc::new(pipeline);
