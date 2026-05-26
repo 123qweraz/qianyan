@@ -2,6 +2,8 @@ use crate::keys::VirtualKey;
 use crate::pipeline::Candidate;
 use crate::processor::{FilterMode, ImeState};
 
+const MAX_BUFFER_LEN: usize = 64;
+
 #[derive(Debug, Clone)]
 pub struct InputSession {
     pub buffer: String,
@@ -99,11 +101,28 @@ impl InputSession {
     }
 
     pub fn push_char(&mut self, c: char) {
+        if self.buffer.len() >= MAX_BUFFER_LEN {
+            return;
+        }
         self.buffer.push(c);
         if self.state == ImeState::Idle {
             self.state = ImeState::Composing;
         }
         self.preview_selected_candidate = false;
+    }
+
+    pub fn push_str(&mut self, s: &str) -> bool {
+        let available = MAX_BUFFER_LEN.saturating_sub(self.buffer.len());
+        let to_push = &s[..s.len().min(available)];
+        if to_push.is_empty() {
+            return false;
+        }
+        self.buffer.push_str(to_push);
+        if self.state == ImeState::Idle {
+            self.state = ImeState::Composing;
+        }
+        self.preview_selected_candidate = false;
+        true
     }
 
     pub fn pop_char(&mut self) -> bool {

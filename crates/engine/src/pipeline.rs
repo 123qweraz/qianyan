@@ -1095,6 +1095,7 @@ impl Pipeline {
             let mut seen = std::collections::HashSet::new();
             candidates.retain(|c| seen.insert(c.text.clone()));
         }
+        candidates.truncate(200);
         for f in &self.filters {
             candidates = f.filter(input, candidates, config, context);
         }
@@ -1559,10 +1560,19 @@ fn is_fully_syllabic(s: &str, syllables: &HashSet<String>) -> bool {
     if s.is_empty() {
         return true;
     }
-    // 使用简单的最长匹配（或回溯）检查
+    is_fully_syllabic_depth(s, syllables, 0)
+}
+
+fn is_fully_syllabic_depth(s: &str, syllables: &HashSet<String>, depth: usize) -> bool {
+    if depth > 30 {
+        return false;
+    }
+    if s.is_empty() {
+        return true;
+    }
     for len in (1..=s.len()).rev() {
         if syllables.contains(&s[..len]) {
-            if is_fully_syllabic(&s[len..], syllables) {
+            if is_fully_syllabic_depth(&s[len..], syllables, depth + 1) {
                 return true;
             }
         }

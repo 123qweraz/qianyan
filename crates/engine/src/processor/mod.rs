@@ -25,8 +25,8 @@ pub fn inject_text(ctx: &mut EngineContext, text: &str) -> Action {
     use crate::compositor::Compositor;
     use crate::pipeline::lookup;
 
-    ctx.session.buffer.push_str(text);
-    if ctx.session.state == ImeState::Idle {
+    ctx.session.push_str(text);
+    if ctx.session.state == ImeState::Idle && !ctx.session.buffer.is_empty() {
         ctx.session.state = ImeState::Composing;
     }
     ctx.session.preview_selected_candidate = false;
