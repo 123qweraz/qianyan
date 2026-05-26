@@ -10,8 +10,13 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-const USAGE_HISTORY_WEIGHT_MULTIPLIER: f64 = 1_000_000.0;
-const NGRAM_HISTORY_WEIGHT_MULTIPLIER: f64 = 5_000_000.0;
+// 调频衰减算法参数
+const RECENCY_BOOST_BASE: f64 = 6000.0;   // 位置 0（最近使用）的最大衰减加成
+const FREQ_BOOST_SCALE: f64 = 2000.0;     // 对数频率缩放系数
+const MAX_USAGE_BOOST: f64 = 15000.0;     // 单词最大总加成（避免旧使用永久霸榜）
+const NGRAM_BOOST_SCALE: f64 = 3000.0;    // N-Gram 对数缩放系数
+const MAX_NGRAM_BOOST: f64 = 10000.0;     // N-Gram 最大加成
+
 const PREWARM_ENTRIES: usize = 1000;
 const MAX_LOOKUP_LIMIT: usize = 500;
 const CACHE_TTL_MS: u64 = 300;
@@ -778,7 +783,8 @@ pub struct AdaptiveFilter {
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
     last_input: std::sync::RwLock<Option<(String, std::time::Instant)>>,
-    cached_usage_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
+    /// 缓存的 MRU 条目，保留原始顺序（位置 0 = 最近使用）
+    cached_usage_entries: std::sync::RwLock<Option<Vec<(String, u32)>>>,
     cached_ngram_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
 }
 
@@ -793,7 +799,7 @@ impl AdaptiveFilter {
             ngram_history,
             profile,
             last_input: std::sync::RwLock::new(None),
-            cached_usage_map: std::sync::RwLock::new(None),
+            cached_usage_entries: std::sync::RwLock::new(None),
             cached_ngram_map: std::sync::RwLock::new(None),
         }
     }
@@ -810,7 +816,7 @@ impl Filter for AdaptiveFilter {
         let usage_guard = self.usage_history.load();
         let ngram_guard = self.ngram_history.load();
 
-        // 使用缓存的 HashMap（避免重复构建）
+        // === 用法历史加权（带 MRU 位置衰减 + 对数容量上限） ===
         if let Some(profile_usage) = usage_guard.get(&self.profile) {
             if let Some(entries) = profile_usage.get(input) {
                 // 检查缓存是否有效
@@ -827,29 +833,37 @@ impl Filter for AdaptiveFilter {
                 };
 
                 if use_cached {
-                    if let Ok(guard) = self.cached_usage_map.read() {
-                        if let Some(ref usage_map) = *guard {
+                    if let Ok(guard) = self.cached_usage_entries.read() {
+                        if let Some(ref cache_entries) = *guard {
                             for c in &mut candidates {
-                                if let Some(&count) = usage_map.get(c.simplified.as_ref()) {
-                                    c.weight += (count as f64) * USAGE_HISTORY_WEIGHT_MULTIPLIER;
+                                if let Some(pos) =
+                                    cache_entries.iter().position(|(w, _)| w == c.simplified.as_ref())
+                                {
+                                    let (_, count) = &cache_entries[pos];
+                                    c.weight += compute_decay_boost(pos, *count);
                                 }
                             }
                         }
                     }
                 } else {
-                    // 构建并缓存 HashMap
-                    let usage_map: std::collections::HashMap<String, u32> =
-                        entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
+                    // 保留 MRU 原始顺序（entries 本身是 MRU 顺序，最近在前）
+                    let usage_entries: Vec<(String, u32)> = entries
+                        .iter()
+                        .map(|(w, c)| (w.clone(), *c))
+                        .collect();
 
                     for c in &mut candidates {
-                        if let Some(&count) = usage_map.get(c.simplified.as_ref()) {
-                            c.weight += (count as f64) * USAGE_HISTORY_WEIGHT_MULTIPLIER;
+                        if let Some(pos) =
+                            usage_entries.iter().position(|(w, _)| w == c.simplified.as_ref())
+                        {
+                            let (_, count) = &usage_entries[pos];
+                            c.weight += compute_decay_boost(pos, *count);
                         }
                     }
 
                     // 更新缓存
-                    if let Ok(mut guard) = self.cached_usage_map.write() {
-                        *guard = Some(usage_map);
+                    if let Ok(mut guard) = self.cached_usage_entries.write() {
+                        *guard = Some(usage_entries);
                     }
                     if let Ok(mut guard) = self.last_input.write() {
                         *guard = Some((input.to_string(), std::time::Instant::now()));
@@ -858,7 +872,7 @@ impl Filter for AdaptiveFilter {
             }
         }
 
-        // 上下文联想 (N-Gram) 加权
+        // === 上下文联想 (N-Gram) 加权（对数缩放） ===
         if let Some(ctx) = context {
             if let Some(profile_ngram) = ngram_guard.get(&self.profile) {
                 if let Some(entries) = profile_ngram.get(ctx) {
@@ -866,11 +880,13 @@ impl Filter for AdaptiveFilter {
                         entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
                     for c in &mut candidates {
                         if let Some(&count) = ngram_map.get(c.simplified.as_ref()) {
-                            c.weight += (count as f64) * NGRAM_HISTORY_WEIGHT_MULTIPLIER;
+                            let effective = count.min(10);
+                            let boost =
+                                (1.0 + (effective as f64).ln()).max(0.0) * NGRAM_BOOST_SCALE;
+                            c.weight += boost.min(MAX_NGRAM_BOOST);
                         }
                     }
 
-                    // 缓存 ngram map
                     if let Ok(mut guard) = self.cached_ngram_map.write() {
                         *guard = Some(ngram_map);
                     }
@@ -886,6 +902,17 @@ impl Filter for AdaptiveFilter {
         });
         candidates
     }
+}
+
+/// 衰减算法：位置越靠后（越久没用），加成越小；次数用对数缩放，避免旧使用无限叠加
+fn compute_decay_boost(pos: usize, count: u32) -> f64 {
+    // 位置衰减：最近（pos=0）拿满，越远衰减越慢（sqrt）
+    let recency = RECENCY_BOOST_BASE / (1.0 + (pos as f64).sqrt());
+    // 频率衰减：对数缩放，次数越多收益越小，上限 20 次
+    let effective = count.min(20);
+    let freq = (1.0 + (effective as f64).ln()).max(0.0) * FREQ_BOOST_SCALE;
+    // 总加成上限，防止单个词永久霸榜
+    (recency + freq).min(MAX_USAGE_BOOST)
 }
 
 /// 核心管道定义

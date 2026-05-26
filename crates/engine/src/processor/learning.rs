@@ -46,6 +46,43 @@ pub fn update_mru(
     result
 }
 
+/// 衰减某个词的使用计数（用于打错纠正）。
+/// 如果词存在，计数减 1（最低 0），并返回更新后的条目。
+pub fn decay_mru(
+    history: &Arc<ArcSwap<UserDictData>>,
+    profile: &str,
+    key: &str,
+    word: &str,
+) -> Vec<(String, u32)> {
+    let mut result = Vec::new();
+    history.rcu(|hist| {
+        let mut clone = (**hist).clone();
+        if let Some(entries) = clone
+            .entry(profile.to_string())
+            .or_default()
+            .get_mut(key)
+        {
+            if let Some(pos) = entries.iter().position(|(w, _)| w == word) {
+                let (w, count) = &entries[pos];
+                if *count > 1 {
+                    entries[pos] = (w.clone(), count - 1);
+                } else {
+                    entries.remove(pos);
+                }
+            } else {
+                // 词不在列表，添加一个负分标记（优先级降低）
+                entries.push((word.to_string(), 0));
+            }
+            result = entries.clone();
+            Arc::new(clone)
+        } else {
+            result = Vec::new();
+            Arc::new(clone)
+        }
+    });
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

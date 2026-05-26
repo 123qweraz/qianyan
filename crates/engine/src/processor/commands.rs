@@ -118,6 +118,9 @@ pub(crate) fn commit_candidate(
         ctx.session_state
             .add_to_history(py.clone(), cand.to_string());
 
+        // 记录最近一次上屏，供打错检测使用
+        ctx.session_state.set_last_committed(py.clone(), cand.to_string());
+
         for (py_c, word_c) in ctx.session_state.get_combination_candidates(8) {
             record_usage(ctx, &py_c, &word_c, None);
         }
@@ -152,6 +155,19 @@ fn record_usage(ctx: &mut EngineContext, pinyin: &str, word: &str, context: Opti
     let word_len = word.chars().count();
 
     if ctx.config.enable_auto_reorder() {
+        // 打错检测：如果上次上屏同拼音但不同词，给旧词做衰减
+        if let Some((last_py, last_word)) = ctx.session_state.last_commit(10) {
+            if last_py == pinyin && last_word != word {
+                let decayed = learning::decay_mru(
+                    &ctx.config.usage_history,
+                    &profile,
+                    pinyin,
+                    last_word,
+                );
+                ctx.config.insert_usage(&profile, pinyin, &decayed);
+            }
+        }
+
         let updated =
             learning::update_mru(&ctx.config.usage_history, &profile, pinyin, word, false);
         ctx.config.insert_usage(&profile, pinyin, &updated);

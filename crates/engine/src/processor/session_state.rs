@@ -11,6 +11,9 @@ pub struct SessionState {
     pub caps_lock_enabled: bool,
     pub capslock_down: bool,
     pub capslock_combo_active: bool,
+    /// 最后一次上屏的 (拼音, 词)，用于打错检测（同拼音换词则衰减旧词）
+    last_committed: Option<(String, String)>,
+    last_committed_time: Instant,
 }
 
 impl SessionState {
@@ -25,6 +28,24 @@ impl SessionState {
             caps_lock_enabled: false,
             capslock_down: false,
             capslock_combo_active: false,
+            last_committed: None,
+            last_committed_time: Instant::now(),
+        }
+    }
+
+    pub fn set_last_committed(&mut self, pinyin: String, word: String) {
+        self.last_committed = Some((pinyin, word));
+        self.last_committed_time = Instant::now();
+    }
+
+    /// 获取最后一次上屏的拼音和词（如果在超时窗口内，用于打错检测）
+    pub fn last_commit(&self, timeout_secs: u64) -> Option<(&str, &str)> {
+        if self.last_committed_time.elapsed().as_secs() < timeout_secs {
+            self.last_committed
+                .as_ref()
+                .map(|(py, w)| (py.as_str(), w.as_str()))
+        } else {
+            None
         }
     }
 
