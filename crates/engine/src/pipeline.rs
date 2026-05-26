@@ -415,7 +415,7 @@ impl Translator for TableTranslator {
             }
         };
 
-        // 1. 尝试全拼精确匹配
+        // 1. 尝试全拼精确匹配（权重由 MatchLevelScoringFilter 统一评分）
         if let Some(exact_results) = self.trie.get_all_exact(&query) {
             for tr in exact_results {
                 if seen.insert(tr.word) {
@@ -431,7 +431,7 @@ impl Translator for TableTranslator {
                         english_aux: Arc::from(tr.en),
                         stroke_aux: Arc::from(tr.stroke_aux),
                         source: Arc::from("Table (Exact)"),
-                        weight: tr.weight as f64 + config.input.ranking.exact_match_bonus,
+                        weight: tr.weight as f64,
                         match_level: 3,
                     });
                 }
@@ -479,14 +479,6 @@ impl Translator for TableTranslator {
                     .search_abbreviation(segments, &self.syllables, internal_limit);
             for ar in abbr_results {
                 if seen.insert(ar.word) {
-                    let adjusted_weight = if ar.weight > 8000 {
-                        (ar.weight as f64) - 10.0
-                    } else if ar.weight > 5000 {
-                        (ar.weight as f64) - 100.0
-                    } else {
-                        (ar.weight as f64) - 1000.0
-                    };
-
                     candidates.push(Candidate {
                         simplified: Arc::from(ar.word),
                         traditional: if ar.trad.is_empty() {
@@ -499,7 +491,7 @@ impl Translator for TableTranslator {
                         english_aux: Arc::from(ar.en),
                         stroke_aux: Arc::from(ar.stroke_aux),
                         source: Arc::from("Table (Abbr)"),
-                        weight: adjusted_weight,
+                        weight: ar.weight as f64,
                         match_level: 2,
                     });
                 }
@@ -735,16 +727,35 @@ impl Translator for ComposeTranslator {
     }
 }
 
-/// 简单排序过滤器
-pub struct SortFilter;
-impl Filter for SortFilter {
+/// 匹配层级评分过滤器：统一 match_level 评分，替代 ChineseScheme::post_process 的独立评分
+pub struct MatchLevelScoringFilter;
+impl Filter for MatchLevelScoringFilter {
     fn filter(
         &self,
-        _input: &str,
+        input: &str,
         mut candidates: Vec<Candidate>,
-        _config: &Config,
+        config: &Config,
         _context: Option<&str>,
     ) -> Vec<Candidate> {
+        let input_syllables = estimate_syllables(input);
+
+        for c in &mut candidates {
+            let base = match c.match_level {
+                3 => 30_000_000.0 + config.input.ranking.exact_match_bonus,
+                2 => 20_000_000.0,
+                1 => 10_000_000.0,
+                _ => 0.0,
+            };
+            let char_count = c.simplified.chars().count() as f64;
+            let len_diff = (char_count - input_syllables as f64).max(0.0);
+            let penalty = if c.match_level == 2 {
+                len_diff * 10000.0
+            } else {
+                len_diff * 1000.0
+            };
+            c.weight = base + c.weight - penalty;
+        }
+
         candidates.sort_by(|a, b| {
             b.weight
                 .partial_cmp(&a.weight)
@@ -752,6 +763,13 @@ impl Filter for SortFilter {
         });
         candidates
     }
+}
+
+fn estimate_syllables(input: &str) -> usize {
+    if input.is_empty() {
+        return 0;
+    }
+    input.chars().filter(|&c| c == ' ' || c == '\'' || c == ';').count() + 1
 }
 
 /// 繁简转换过滤器
@@ -1152,16 +1170,21 @@ impl SearchEngine {
     }
 
     pub fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
-        // 1. 尝试读取现有
-        {
-            let mut cache = self.pipelines.write().ok()?;
-            let (p_map, access_order) = &mut *cache;
+        // 1. 快速路径：读锁查询
+        if let Ok(cache) = self.pipelines.read() {
+            let (p_map, _access_order) = &*cache;
             if let Some(p) = p_map.get(profile) {
-                if let Some(pos) = access_order.iter().position(|p| p == profile) {
-                    access_order.remove(pos);
+                let result = Some(p.clone());
+                drop(cache);
+                // 写锁仅在更新访问顺序时短暂持有
+                if let Ok(mut cache) = self.pipelines.write() {
+                    let (_, access_order) = &mut *cache;
+                    if let Some(pos) = access_order.iter().position(|p| p == profile) {
+                        access_order.remove(pos);
+                    }
+                    access_order.push(profile.to_string());
                 }
-                access_order.push(profile.to_string());
-                return Some(p.clone());
+                return result;
             }
         }
 
@@ -1188,7 +1211,7 @@ impl SearchEngine {
             self.base_syllables.clone(),
             self.syllable_freq.clone(),
         )));
-        pipeline.add_filter(Box::new(SortFilter));
+        pipeline.add_filter(Box::new(MatchLevelScoringFilter));
         pipeline.add_filter(Box::new(AdaptiveFilter::new(
             self.usage_history.clone(),
             self.ngram_history.clone(),
@@ -1632,49 +1655,52 @@ mod tests {
     }
 
     #[test]
-    fn test_sort_filter() {
-        let filter = SortFilter;
+    fn test_match_level_scoring_filter() {
+        let filter = MatchLevelScoringFilter;
         let candidates = vec![
             Candidate {
-                text: Arc::from("low"),
-                simplified: Arc::from("low"),
-                traditional: Arc::from("low"),
+                text: Arc::from("prefix"),
+                simplified: Arc::from("prefix"),
+                traditional: Arc::from("prefix"),
                 hint: Arc::from(""),
                 english_aux: Arc::from(""),
                 stroke_aux: Arc::from(""),
                 source: Arc::from(""),
-                weight: 1.0,
+                weight: 5000.0,
                 match_level: 1,
             },
             Candidate {
-                text: Arc::from("high"),
-                simplified: Arc::from("high"),
-                traditional: Arc::from("high"),
+                text: Arc::from("exact"),
+                simplified: Arc::from("exact"),
+                traditional: Arc::from("exact"),
                 hint: Arc::from(""),
                 english_aux: Arc::from(""),
                 stroke_aux: Arc::from(""),
                 source: Arc::from(""),
                 weight: 100.0,
-                match_level: 1,
+                match_level: 3,
             },
             Candidate {
-                text: Arc::from("medium"),
-                simplified: Arc::from("medium"),
-                traditional: Arc::from("medium"),
+                text: Arc::from("fuzzy"),
+                simplified: Arc::from("fuzzy"),
+                traditional: Arc::from("fuzzy"),
                 hint: Arc::from(""),
                 english_aux: Arc::from(""),
                 stroke_aux: Arc::from(""),
                 source: Arc::from(""),
-                weight: 50.0,
-                match_level: 1,
+                weight: 3000.0,
+                match_level: 2,
             },
         ];
 
-        let config = Config::default_config();
+        let mut config = Config::default_config();
+        config.input.ranking.exact_match_bonus = 10_000_000.0;
+        // "test" → 1 syllable estimate
         let result = filter.filter("test", candidates, &config, None);
-        assert_eq!(result[0].text.as_ref(), "high");
-        assert_eq!(result[1].text.as_ref(), "medium");
-        assert_eq!(result[2].text.as_ref(), "low");
+        // exact (30M+10M+100 ≈ 40,000,100) > fuzzy (20M+3000 ≈ 20,003,000) > prefix (10M+5000 ≈ 10,005,000)
+        assert_eq!(result[0].text.as_ref(), "exact");
+        assert_eq!(result[1].text.as_ref(), "fuzzy");
+        assert_eq!(result[2].text.as_ref(), "prefix");
     }
 
     #[test]
