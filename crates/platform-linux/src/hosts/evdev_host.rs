@@ -6,6 +6,7 @@ use qianyan_ime_engine::processor::Action;
 use qianyan_ime_engine::Processor;
 use qianyan_ime_ui::GuiEvent;
 use std::collections::HashSet;
+use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::Sender;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -95,6 +96,7 @@ pub struct EvdevHost {
     lookup_completion: Arc<(Mutex<bool>, Condvar)>,
     is_grabbed: bool,
     meta_was_pressed: bool,
+    epoll_fd: std::os::unix::io::RawFd,
 }
 
 struct GrabGuard {
@@ -154,6 +156,14 @@ impl Drop for GrabGuard {
     }
 }
 
+impl Drop for EvdevHost {
+    fn drop(&mut self) {
+        if self.epoll_fd >= 0 {
+            unsafe { libc::close(self.epoll_fd); }
+        }
+    }
+}
+
 impl EvdevHost {
     pub fn new(
         processor: Arc<Mutex<Processor>>,
@@ -162,6 +172,23 @@ impl EvdevHost {
         tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let dev = Device::open(device_path)?;
+        // 使用 epoll 阻塞等待键盘事件，避免 1ms 轮询空转 CPU
+        let epoll_fd = unsafe {
+            let fd = libc::epoll_create1(0);
+            if fd < 0 {
+                return Err("epoll_create1 failed".into());
+            }
+            let mut event = libc::epoll_event {
+                events: (libc::EPOLLIN | libc::EPOLLET) as u32,
+                u64: 0,
+            };
+            let ret = libc::epoll_ctl(fd, libc::EPOLL_CTL_ADD, dev.as_raw_fd(), &mut event);
+            if ret < 0 {
+                let _ = libc::close(fd);
+                return Err("epoll_ctl add failed".into());
+            }
+            fd
+        };
         let vkbd_raw = Vkbd::new(&dev)?;
         let vkbd = Arc::new(Mutex::new(vkbd_raw));
         {
@@ -295,6 +322,7 @@ impl EvdevHost {
             lookup_completion,
             is_grabbed: true,
             meta_was_pressed: false,
+            epoll_fd,
         })
     }
 }
@@ -322,7 +350,19 @@ impl InputMethodHost for EvdevHost {
                 match dev.fetch_events() {
                     Ok(evs) => evs.collect(),
                     Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
+                        // 用 epoll 阻塞等待键盘事件，不空转 CPU
+                        // 200ms 超时确保 exit 信号能及时响应
+                        let mut event =
+                            std::mem::MaybeUninit::<libc::epoll_event>::uninit();
+                        let ret = unsafe {
+                            libc::epoll_wait(self.epoll_fd, event.as_mut_ptr(), 1, 200)
+                        };
+                        if ret < 0 {
+                            let err = std::io::Error::last_os_error();
+                            if err.kind() != std::io::ErrorKind::Interrupted {
+                                return Err(err.into());
+                            }
+                        }
                         continue;
                     }
                     Err(e) => return Err(e.into()),

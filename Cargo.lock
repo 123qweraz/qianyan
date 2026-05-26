@@ -4536,6 +4536,7 @@ dependencies = [
  "arboard",
  "daemonize",
  "evdev",
+ "libc",
  "log",
  "qianyan-ime-core",
  "qianyan-ime-engine",
