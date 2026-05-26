@@ -112,11 +112,10 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 
     // 开发模式：优先从磁盘读取，修改后无需重新编译
     let dev_root = find_static_root();
-    if let Some(dev_root) = dev_root {
-        let disk_path = dev_root.join(path);
-        if disk_path.exists() {
-            if let Ok(content) = std::fs::read(&disk_path) {
-                let mime = mime_guess::from_path(path).first_or_octet_stream();
+    if let Some(ref dev_root) = dev_root {
+        if let Some(safe_path) = safe_join(dev_root, path) {
+            if let Ok(content) = std::fs::read(&safe_path) {
+                let mime = mime_guess::from_path(&safe_path).first_or_octet_stream();
                 let headers = [
                     (header::CONTENT_TYPE, mime.as_ref()),
                     (HeaderName::from_static("cache-control"), "no-cache"),
@@ -163,33 +162,72 @@ fn find_static_root() -> Option<std::path::PathBuf> {
     None
 }
 
+fn find_dicts_root() -> std::path::PathBuf {
+    let base_path = std::path::PathBuf::from("dicts");
+    if base_path.exists() {
+        return base_path;
+    }
+    if let Ok(mut exe_path) = std::env::current_exe() {
+        exe_path.pop();
+        for _ in 0..3 {
+            let p = exe_path.join("dicts");
+            if p.exists() {
+                return p;
+            }
+            exe_path.pop();
+        }
+    }
+    std::path::PathBuf::from("dicts")
+}
+
+/// 安全地将用户提供的路径解析到基准目录下。
+/// 拒绝绝对路径、`..` 穿越，并通过 canonicalize 验证最终路径在 base 内。
+fn safe_join(base: &std::path::Path, user_path: &str) -> Option<std::path::PathBuf> {
+    use std::path::Component;
+    let p = std::path::Path::new(user_path);
+    let base = base.canonicalize().ok()?;
+
+    // 绝对路径：规范化后检查是否在 base 目录下
+    if p.is_absolute() {
+        let canonical = p.canonicalize().ok()?;
+        return if canonical.starts_with(&base) { Some(canonical) } else { None };
+    }
+    // 相对路径：拒绝 .. 穿越
+    for c in p.components() {
+        if matches!(c, Component::ParentDir) {
+            return None;
+        }
+    }
+    let joined = base.join(p);
+    if joined.exists() {
+        let canonical = joined.canonicalize().ok()?;
+        if canonical.starts_with(&base) {
+            return Some(canonical);
+        }
+        return None;
+    }
+    // 文件不存在时，验证父目录在 base 内（允许新建/写入）
+    let parent = joined.parent()?;
+    let parent_canonical = parent.canonicalize().ok()?;
+    if parent_canonical.starts_with(&base) {
+        Some(joined)
+    } else {
+        None
+    }
+}
+
 async fn dicts_handler(uri: Uri) -> impl IntoResponse {
     let path = uri.path().trim_start_matches("/dicts/").trim_start_matches("/");
     
-    // 寻找词典目录的逻辑：优先当前目录，否则相对于可执行文件查找
-    let mut base_path = std::path::PathBuf::from("dicts");
-    if !base_path.exists() {
-        if let Ok(mut exe_path) = std::env::current_exe() {
-            exe_path.pop();
-            let mut p = exe_path.clone();
-            // 向上查找最多三层，匹配 IDE 开发环境
-            for _ in 0..3 {
-                let check_p = p.join("dicts");
-                if check_p.exists() { base_path = check_p; break; }
-                p.pop();
-            }
+    let base_path = find_dicts_root();
+    if let Some(safe_path) = safe_join(&base_path, path) {
+        if let Ok(content) = std::fs::read(&safe_path) {
+            let mime = mime_guess::from_path(&safe_path).first_or_octet_stream();
+            return ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content).into_response();
         }
     }
-
-    let full_path = base_path.join(path);
-    
-    if let Ok(content) = std::fs::read(&full_path) {
-        let mime = mime_guess::from_path(&full_path).first_or_octet_stream();
-        ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content).into_response()
-    } else {
-        eprintln!("[Web] Dictionary file not found: {:?}", full_path);
-        (StatusCode::NOT_FOUND, "Dictionary Not Found").into_response()
-    }
+    eprintln!("[Web] Dictionary file not found: {} in {:?}", path, base_path);
+    (StatusCode::NOT_FOUND, "Dictionary Not Found").into_response()
 }
 
 async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
@@ -291,6 +329,7 @@ async fn list_dicts() -> Json<Vec<DictFile>> {
                 
                 let mut dict = process_dict_entry(path.to_path_buf());
                 dict.group = group;
+                dict.path = relative.to_string_lossy().to_string();
                 list.push(dict);
             }
         }
@@ -331,7 +370,12 @@ struct ToggleRequest {
 }
 
 async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.path);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.path) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
+
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
     let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
@@ -343,7 +387,7 @@ async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
         return StatusCode::BAD_REQUEST;
     };
 
-    if std::fs::rename(path, new_path).is_ok() {
+    if std::fs::rename(&path, &new_path).is_ok() {
         StatusCode::OK
     } else {
         StatusCode::INTERNAL_SERVER_ERROR
@@ -395,12 +439,13 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
         return Json(results);
     }
     
-    // 确定搜索路径
+    // 确定搜索路径（只允许已知语言）
     let search_root = match ime {
         "japanese" => "dicts/japanese",
         "stroke" => "dicts/stroke",
         "english" => "dicts/english",
-        _ => "dicts/chinese",
+        "chinese" => "dicts/chinese",
+        _ => return Json(results),
     };
     
     // 遍历指定目录下的 json
@@ -480,13 +525,17 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
     let sort_by = query.sort_by.as_deref().unwrap_or("pinyin");
     let sort_order = query.sort_order.as_deref().unwrap_or("asc");
 
-    let path = std::path::Path::new(&query.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &query.file) {
+        Some(p) => p,
+        None => return (StatusCode::FORBIDDEN, "{}").into_response(),
+    };
     if !path.exists() {
         return (StatusCode::NOT_FOUND, "{}").into_response();
     }
 
     let mut all_entries: Vec<DictEntryView> = Vec::new();
-    if let Ok(f) = std::fs::File::open(path) {
+    if let Ok(f) = std::fs::File::open(&path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
             if let Some(obj) = json.as_object() {
                 for (pinyin, val) in obj {
@@ -559,10 +608,14 @@ struct DeleteEntryRequest {
 }
 
 async fn delete_dict_entry(Json(req): Json<DeleteEntryRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.file) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
-    let mut data: serde_json::Value = match std::fs::File::open(path) {
+    let mut data: serde_json::Value = match std::fs::File::open(&path) {
         Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Null),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -608,10 +661,14 @@ struct UpdateEntryFullRequest {
 }
 
 async fn update_dict_entry_full(Json(req): Json<UpdateEntryFullRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.file) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
-    let mut data: serde_json::Value = match std::fs::File::open(path) {
+    let mut data: serde_json::Value = match std::fs::File::open(&path) {
         Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Null),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -670,10 +727,14 @@ struct AddEntryFullRequest {
 }
 
 async fn add_dict_entry_full(Json(req): Json<AddEntryFullRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.file) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
-    let mut data: serde_json::Value = match std::fs::File::open(path) {
+    let mut data: serde_json::Value = match std::fs::File::open(&path) {
         Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -715,10 +776,14 @@ struct UpdateEntryRequest {
 }
 
 async fn update_dict_entry(Json(req): Json<UpdateEntryRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.file) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
-    let mut data: serde_json::Value = match std::fs::File::open(path) {
+    let mut data: serde_json::Value = match std::fs::File::open(&path) {
         Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Null),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -756,10 +821,14 @@ struct AddEntryRequest {
 }
 
 async fn add_dict_entry(Json(req): Json<AddEntryRequest>) -> StatusCode {
-    let path = std::path::Path::new(&req.file);
+    let base_path = find_dicts_root();
+    let path = match safe_join(&base_path, &req.file) {
+        Some(p) => p,
+        None => return StatusCode::FORBIDDEN,
+    };
     if !path.exists() { return StatusCode::NOT_FOUND; }
 
-    let mut data: serde_json::Value = match std::fs::File::open(path) {
+    let mut data: serde_json::Value = match std::fs::File::open(&path) {
         Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or(serde_json::Value::Object(serde_json::Map::new())),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
     };
@@ -823,11 +892,17 @@ struct DictViewQuery {
 }
 
 async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictViewQuery>) -> impl IntoResponse {
-    let filename = query.file.unwrap_or_else(|| "dicts/chinese/chars/chars.json".to_string());
-    let path = std::path::Path::new(&filename);
+    let base_path = find_dicts_root();
+    let path = match &query.file {
+        Some(f) => match safe_join(&base_path, f) {
+            Some(p) => p,
+            None => return (StatusCode::FORBIDDEN, "{}").into_response(),
+        },
+        None => base_path.join("chinese/chars/chars.json"),
+    };
     let mut results = Vec::new();
     
-    if let Ok(f) = std::fs::File::open(path) {
+    if let Ok(f) = std::fs::File::open(&path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
             if let Some(obj) = json.as_object() {
                 let mut pinyin_sorted: Vec<_> = obj.keys().collect();

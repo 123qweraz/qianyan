@@ -287,10 +287,10 @@ impl EvdevHost {
                         p.ctx.session.update_state();
 
                         if let Some(commit_action) = p.check_auto_commit() {
+                            drop(p);
                             if let Ok(vkbd) = v_bg.lock() {
                                 execute_action(&vkbd, &g_bg, commit_action, None);
                             }
-                            drop(p);
                             if let Ok(p) = p_bg.lock() {
                                 update_gui_internal(&p, &g_bg);
                             }
