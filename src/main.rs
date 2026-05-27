@@ -431,6 +431,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
                     text: c.text,
                     label: c.label,
                     hint: c.hint,
+                    is_fuzzy: c.is_fuzzy,
                 }).collect(),
                 selected,
             })
@@ -447,6 +448,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
                     text: c.text,
                     label: c.label,
                     hint: c.hint,
+                    is_fuzzy: c.is_fuzzy,
                 }).collect(),
                 selected_index: state.selected_index,
                 status_text: state.status_text,

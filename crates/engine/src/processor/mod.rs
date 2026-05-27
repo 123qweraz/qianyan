@@ -378,7 +378,21 @@ impl Processor {
                     return self.execute_command(Command::PrevPage);
                 }
                 if self.ctx.config.page_down_keys().contains(&key) {
-                    return self.execute_command(Command::NextPage);
+                    let action = self.execute_command(Command::NextPage);
+                    let threshold = self.ctx.config.master_config.input.fuzzy_config.fuzzy_page_threshold;
+                    if threshold > 0
+                        && self.ctx.session.fuzzy_page_turns >= threshold
+                        && !self.ctx.session.fuzzy_activated
+                        && self.ctx.session.has_dict_match
+                    {
+                        self.ctx.session.fuzzy_activated = true;
+                        self.ctx.session.page = 0;
+                        self.ctx.session.selected = 0;
+                        if let Some(relook) = self.lookup_with_limit(20) {
+                            return relook;
+                        }
+                    }
+                    return action;
                 }
                 if self.ctx.config.prev_candidate_keys().contains(&key) {
                     return self.execute_command(Command::PrevCandidate);
@@ -517,6 +531,8 @@ impl Processor {
         self.ctx.config.master_config.input.enable_traditional =
             self.ctx.session_state.traditional_enabled;
 
+        // 首次查询：可能启用或禁用模糊音
+        let fuzzy_enabled = self.ctx.session.fuzzy_activated;
         let query = crate::pipeline::SearchQuery {
             buffer: &self.ctx.session.buffer,
             profile: &current_profile,
@@ -526,12 +542,35 @@ impl Processor {
             filter_mode: self.ctx.session.filter_mode.clone(),
             aux_filter: &self.ctx.session.aux_filter,
             context: last_word,
+            fuzzy_enabled,
         };
         let (results, segments) = self.ctx.engine.search(query);
         self.ctx.session.candidates = results;
         self.ctx.session.best_segmentation = segments;
         self.ctx.session.has_dict_match = !self.ctx.session.candidates.is_empty();
         self.ctx.session.last_lookup_pinyin = self.ctx.session.buffer.clone();
+
+        // 如果没有精确匹配结果且模糊音尚未激活，自动激活模糊音重查
+        if !self.ctx.session.has_dict_match && !self.ctx.session.fuzzy_activated {
+            self.ctx.session.fuzzy_activated = true;
+            let fuzzy_query = crate::pipeline::SearchQuery {
+                buffer: &self.ctx.session.buffer,
+                profile: &current_profile,
+                syllables: &self.ctx.syllables,
+                config: &self.ctx.config.master_config,
+                limit,
+                filter_mode: self.ctx.session.filter_mode.clone(),
+                aux_filter: &self.ctx.session.aux_filter,
+                context: last_word,
+                fuzzy_enabled: true,
+            };
+            let (fuzzy_results, fuzzy_segments) = self.ctx.engine.search(fuzzy_query);
+            if !fuzzy_results.is_empty() {
+                self.ctx.session.candidates = fuzzy_results;
+                self.ctx.session.best_segmentation = fuzzy_segments;
+                self.ctx.session.has_dict_match = true;
+            }
+        }
 
         // Global 模式：用辅助码过滤候选词
         if self.ctx.session.filter_mode == FilterMode::Global && !self.ctx.session.aux_filter.is_empty() {
@@ -564,6 +603,7 @@ impl Processor {
                     filter_mode: FilterMode::Global,
                     aux_filter: &aux_chars,
                     context: last_word,
+                    fuzzy_enabled: self.ctx.session.fuzzy_activated,
                 };
                 let (aux_results, _) = self.ctx.engine.search(aux_query);
                 if !aux_results.is_empty() {
@@ -652,6 +692,7 @@ impl Processor {
                         filter_mode: FilterMode::None,
                         aux_filter: "",
                         context: None,
+                        fuzzy_enabled: false,
                     };
                     let _ = engine.search(query);
                 }

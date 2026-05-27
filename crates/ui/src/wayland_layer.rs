@@ -747,6 +747,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
                 label: slint::SharedString::from(c.label),
                 english_aux: slint::SharedString::from(c.hint),
                 stroke_aux: slint::SharedString::from(""),
+                is_fuzzy: c.is_fuzzy,
             });
         }
         self.candidate_window.set_candidates(slint::ModelRc::from(

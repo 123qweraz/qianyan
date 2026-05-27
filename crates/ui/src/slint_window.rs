@@ -309,6 +309,7 @@ impl CandidateDisplay for SlintDisplay {
                 label: SharedString::from(c.label),
                 english_aux: SharedString::from(c.hint),
                 stroke_aux: SharedString::from(""),
+                is_fuzzy: c.is_fuzzy,
             });
         }
         self.window

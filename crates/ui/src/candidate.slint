@@ -3,6 +3,7 @@ export struct CandidateData {
     label: string,
     english_aux: string,
     stroke_aux: string,
+    is_fuzzy: bool,
 }
 
 component CandidateItem inherits Rectangle {
@@ -21,6 +22,8 @@ component CandidateItem inherits Rectangle {
     in property <color> highlight_text_color;
     in property <color> aux_text_color;
     in property <color> aux_highlight_color;
+    in property <bool> is_fuzzy;
+    in property <color> fuzzy_text_color: #a0a0a0;
     
     in property <length> font_size: 18px;
     in property <string> font_family: "";
@@ -43,13 +46,13 @@ component CandidateItem inherits Rectangle {
             font-family: font_family;
             font-weight: font_weight;
         }
-        Text { 
-            text: text; 
-            color: selected ? highlight_text_color : text_color; 
-            vertical-alignment: center; 
+        Text {
+            text: text;
+            color: selected ? highlight_text_color : (is_fuzzy ? fuzzy_text_color : text_color);
+            vertical-alignment: center;
             font-size: font_size;
             font-family: font_family != "" ? font_family : "Segoe UI Emoji, Microsoft YaHei, Segoe UI, system-ui";
-            font-weight: font_weight; 
+            font-weight: is_fuzzy ? 400 : font_weight;
         }
         
         if show_stroke_aux && stroke_aux != "" : Text {
@@ -148,6 +151,7 @@ export component CandidateWindow inherits Window {
                     show_english_aux: show_english_aux;
                     show_stroke_aux: show_stroke_aux;
                     show_translation: show_translation;
+                    is_fuzzy: cand.is_fuzzy;
                     accent_color: accent_color;
                     text_color: text_color;
                     highlight_text_color: highlight_text_color;
@@ -171,6 +175,7 @@ export component CandidateWindow inherits Window {
                     show_english_aux: show_english_aux;
                     show_stroke_aux: show_stroke_aux;
                     show_translation: show_translation;
+                    is_fuzzy: cand.is_fuzzy;
                     accent_color: accent_color;
                     text_color: text_color;
                     highlight_text_color: highlight_text_color;

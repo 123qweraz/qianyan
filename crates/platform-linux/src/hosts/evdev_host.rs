@@ -227,13 +227,14 @@ impl EvdevHost {
 
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     // Step 1: 快速读取 buffer、配置和辅助码状态（持有锁，但不做检索）
-                    let (buffer, profile, config, aux_filter, filter_mode) = {
+                    let (buffer, profile, config, aux_filter, filter_mode, fuzzy_activated) = {
                         if let Ok(p) = p_bg.lock() {
                             (p.ctx.session.buffer.clone(),
                              p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
                              p.ctx.config.master_config.clone(),
                              p.ctx.session.aux_filter.clone(),
-                             p.ctx.session.filter_mode.clone())
+                             p.ctx.session.filter_mode.clone(),
+                             p.ctx.session.fuzzy_activated)
                         } else { return; }
                     };
 
@@ -255,6 +256,7 @@ impl EvdevHost {
                         filter_mode,
                         aux_filter: &aux_filter,
                         context: None,
+                        fuzzy_enabled: fuzzy_activated,
                     };
                     let (results, segments) = engine_bg.search(query);
 
@@ -579,8 +581,11 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
 
             let mut display_candidates = Vec::new();
             for (i, c) in p.ctx.session.candidates[start..end].iter().enumerate() {
+                let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
                 let label = format!("{}.", i + 1);
-                let full_display = if c.hint.is_empty() {
+                let full_display = if is_fuzzy {
+                    format!("{label}{}(模糊)", c.text)
+                } else if c.hint.is_empty() {
                     format!("{label}{}", c.text)
                 } else {
                     format!("{label}{}({})", c.text, c.hint)
@@ -590,6 +595,7 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
                     label,
                     hint: c.hint.to_string(),
                     full_display,
+                    is_fuzzy,
                 });
             }
 

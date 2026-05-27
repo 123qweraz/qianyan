@@ -846,6 +846,7 @@ impl Translator for ComposeTranslator {
 }
 
 /// 匹配层级评分过滤器：统一 match_level 评分，替代 ChineseScheme::post_process 的独立评分
+/// 排序规则：精确匹配 (level 3) > 模糊/简拼 (level 2) > 前缀 (level 1)，同层内按 weight 降序
 pub struct MatchLevelScoringFilter;
 impl Filter for MatchLevelScoringFilter {
     fn filter(
@@ -874,10 +875,11 @@ impl Filter for MatchLevelScoringFilter {
             c.weight = base + c.weight - penalty;
         }
 
+        // 硬性分层排序：匹配层级优先，同层内按 weight 降序
         candidates.sort_by(|a, b| {
-            b.weight
-                .partial_cmp(&a.weight)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            b.match_level
+                .cmp(&a.match_level)
+                .then(b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal))
         });
         candidates
     }
@@ -1151,6 +1153,7 @@ pub struct SearchQuery<'a> {
     pub filter_mode: crate::processor::FilterMode,
     pub aux_filter: &'a str,
     pub context: Option<&'a str>,
+    pub fuzzy_enabled: bool,
 }
 
 impl SearchEngine {
@@ -1185,7 +1188,20 @@ impl SearchEngine {
     }
 
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
-        log::info!("engine_search: profile={}, buffer={}", query.profile, query.buffer);
+        log::info!("engine_search: profile={}, buffer={}, fuzzy_enabled={}", query.profile, query.buffer, query.fuzzy_enabled);
+
+        // 根据 fuzzy_enabled 决定是否启用模糊音
+        let config_ref;
+        let mut cloned_config;
+        if query.fuzzy_enabled {
+            config_ref = query.config;
+        } else if query.config.input.enable_fuzzy_pinyin {
+            cloned_config = query.config.clone();
+            cloned_config.input.enable_fuzzy_pinyin = false;
+            config_ref = &cloned_config;
+        } else {
+            config_ref = query.config;
+        }
 
         // 优先走方案路径（ChineseScheme 等语言特定逻辑）
         if let Some(scheme) = self.schemes.get(query.profile) {
@@ -1196,7 +1212,7 @@ impl SearchEngine {
                 }
             }
             let context = crate::scheme::SchemeContext {
-                config: query.config,
+                config: config_ref,
                 tries: &tries_map,
                 syllables: query.syllables,
                 syllable_freq: &self.syllable_freq,
@@ -1219,17 +1235,17 @@ impl SearchEngine {
             for sc in scheme_candidates {
                 let hint = {
                     let mut h = String::new();
-                    if query.config.appearance.show_english_aux && !sc.english.is_empty() {
+                    if config_ref.appearance.show_english_aux && !sc.english.is_empty() {
                         h.push_str(&sc.english);
                     }
-                    if query.config.appearance.show_stroke_aux && !sc.stroke_aux.is_empty() {
+                    if config_ref.appearance.show_stroke_aux && !sc.stroke_aux.is_empty() {
                         if !h.is_empty() { h.push(' '); }
                         h.push_str(&sc.stroke_aux);
                     }
                     if h.is_empty() { Arc::from(sc.tone.as_str()) } else { Arc::from(h) }
                 };
                 results.push(Candidate {
-                    text: if query.config.input.enable_traditional {
+                    text: if config_ref.input.enable_traditional {
                         Arc::from(sc.traditional.as_str())
                     } else {
                         Arc::from(sc.simplified.as_str())
@@ -1249,7 +1265,7 @@ impl SearchEngine {
             if query.filter_mode == crate::processor::FilterMode::Global
                 && !query.aux_filter.is_empty()
             {
-                results.retain(|c| self.matches_filter(c, query.aux_filter, query.config.input.english_aux_mode));
+                results.retain(|c| self.matches_filter(c, query.aux_filter, config_ref.input.english_aux_mode));
             }
 
             results.truncate(query.limit);
@@ -1267,17 +1283,17 @@ impl SearchEngine {
             let results = pipeline.run(
                 query.buffer,
                 query.syllables,
-                query.config,
+                config_ref,
                 search_limit,
                 query.context,
             );
-            let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &query.config.input.segmentation_delimiters, &pipeline.syllable_freq, &pipeline.base_syllables);
+            let segments = pipeline.segmentor.segment(query.buffer, query.syllables, &config_ref.input.segmentation_delimiters, &pipeline.syllable_freq, &pipeline.base_syllables);
 
             let mut final_results = results;
             if query.filter_mode == crate::processor::FilterMode::Global
                 && !query.aux_filter.is_empty()
             {
-                final_results.retain(|c| self.matches_filter(c, query.aux_filter, query.config.input.english_aux_mode));
+                final_results.retain(|c| self.matches_filter(c, query.aux_filter, config_ref.input.english_aux_mode));
             }
             
             final_results.truncate(query.limit);
@@ -1496,6 +1512,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         .last()
         .map(|(_, word)| word.as_str());
 
+    let fuzzy_enabled = ctx.session.fuzzy_activated;
     let query = SearchQuery {
         buffer: &ctx.session.buffer,
         profile: &current_profile,
@@ -1505,6 +1522,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         filter_mode: ctx.session.filter_mode.clone(),
         aux_filter: &ctx.session.aux_filter,
         context: last_word,
+        fuzzy_enabled,
     };
     let (results, segments) = ctx.engine.search(query);
     ctx.session.candidates = results;
@@ -1527,6 +1545,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
                 filter_mode: FilterMode::Global,
                 aux_filter: &aux_chars,
                 context: last_word,
+                fuzzy_enabled,
             };
             let (aux_results, _) = ctx.engine.search(aux_query);
             if !aux_results.is_empty() {

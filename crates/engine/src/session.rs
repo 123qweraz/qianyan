@@ -35,6 +35,11 @@ pub struct InputSession {
     /// preventing stray key events from being forwarded to the application
     /// after auto-commit or SPACE commit clears the composing buffer.
     pub consumed_press_key: Option<VirtualKey>,
+
+    /// 模糊音是否已激活
+    pub fuzzy_activated: bool,
+    /// 当前输入会话的翻页次数
+    pub fuzzy_page_turns: usize,
 }
 
 impl Default for InputSession {
@@ -71,6 +76,9 @@ impl InputSession {
             single_quote_open: false,
 
             consumed_press_key: None,
+
+            fuzzy_activated: false,
+            fuzzy_page_turns: 0,
         }
     }
 
@@ -79,6 +87,8 @@ impl InputSession {
         self.switch_mode = false;
         self.quote_open = false;
         self.single_quote_open = false;
+        self.fuzzy_activated = false;
+        self.fuzzy_page_turns = 0;
     }
 
     pub fn clear_composing(&mut self) {
@@ -98,6 +108,8 @@ impl InputSession {
         self.page_snapshot.clear();
         self.nav_mode = false;
         self.consumed_press_key = None;
+        self.fuzzy_activated = false;
+        self.fuzzy_page_turns = 0;
     }
 
     pub fn push_char(&mut self, c: char) {
@@ -109,6 +121,8 @@ impl InputSession {
             self.state = ImeState::Composing;
         }
         self.preview_selected_candidate = false;
+        self.fuzzy_activated = false;
+        self.fuzzy_page_turns = 0;
     }
 
     pub fn push_str(&mut self, s: &str) -> bool {
@@ -122,6 +136,8 @@ impl InputSession {
             self.state = ImeState::Composing;
         }
         self.preview_selected_candidate = false;
+        self.fuzzy_activated = false;
+        self.fuzzy_page_turns = 0;
         true
     }
 
@@ -161,6 +177,7 @@ impl InputSession {
             self.page += page_size;
             self.selected = self.page;
         }
+        self.fuzzy_page_turns += 1;
     }
 
     pub fn prev_page(&mut self, page_size: usize) {

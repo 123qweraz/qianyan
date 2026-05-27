@@ -145,11 +145,6 @@ impl Trie {
         let mut results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        // 支持通配符 z：将其转换为正则搜索
-        if prefix.contains('z') {
-            return self.search_wildcard_with_level_filter(prefix, limit, level_filter);
-        }
-
         let matcher = fst::automaton::Str::new(prefix).starts_with();
         let mut stream = self.index.search(matcher).into_stream();
 

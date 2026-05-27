@@ -103,6 +103,7 @@ pub struct DisplayCandidateMsg {
     pub text: String,
     pub label: String,
     pub hint: String,
+    pub is_fuzzy: bool,
 }
 
 /// Send a MainToGui message over the stream.

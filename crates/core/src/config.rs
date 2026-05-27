@@ -252,6 +252,8 @@ pub struct FuzzyPinyinConfig {
     pub uan_uang: bool,
     pub u_v: bool,
     pub custom_mappings: Vec<(String, String)>,
+    /// 翻页多少次后激活模糊音（0=始终激活，N=翻页N次后激活）
+    pub fuzzy_page_threshold: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -776,6 +778,7 @@ impl Config {
                     uan_uang: false,
                     u_v: false,
                     custom_mappings: vec![],
+                    fuzzy_page_threshold: 5,
                 },
                 enable_traditional: false,
                 enable_smart_aux: false,

@@ -19,6 +19,7 @@ pub struct DisplayCandidate {
     pub label: String,        // 序号标签 (如: "1.")
     pub hint: String,         // 辅助提示 (如: "nh")
     pub full_display: String, // 完整显示文本 (如: "1.你好(nh)")
+    pub is_fuzzy: bool,       // 是否为模糊音匹配
 }
 
 /// 核心显示接口：解耦 Slint 窗口与 Linux 桌面通知

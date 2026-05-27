@@ -190,11 +190,18 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 let buffer = guard.ctx.session.buffer.clone();
                 let candidates: Vec<qianyan_ime_ui::DisplayCandidate> =
                     guard.ctx.session.candidates.iter().take(10).enumerate().map(|(i, c)| {
+                        let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
+                        let full_display = if is_fuzzy {
+                            format!("{}.{}(模糊)", i + 1, c.text)
+                        } else {
+                            format!("{}.{}({})", i + 1, c.text, c.hint)
+                        };
                         qianyan_ime_ui::DisplayCandidate {
                             text: c.text.to_string(),
                             label: format!("{}.", i + 1),
                             hint: c.hint.to_string(),
-                            full_display: format!("{}.{}({})", i + 1, c.text, c.hint),
+                            full_display,
+                            is_fuzzy,
                         }
                     }).collect();
                 let selected = guard.ctx.session.selected;

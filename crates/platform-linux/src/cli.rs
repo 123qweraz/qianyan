@@ -119,6 +119,7 @@ fn run_bench_mode() {
                         filter_mode: engine::processor::FilterMode::None,
                         aux_filter: "",
                         context: None,
+                        fuzzy_enabled: false,
                     })
                     .0
                     .is_empty();
