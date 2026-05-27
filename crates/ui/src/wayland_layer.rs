@@ -459,9 +459,18 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                     }
                 }
                 WlCmd::HideCandidate => {
-                    if let Some(ref layer) = state.candidate_layer {
-                        layer.wl_surface().attach(None, 0, 0);
-                        layer.wl_surface().commit();
+                    // Don't attach None (which unmaps the surface, causing issues on KDE).
+                    // Use a 1x1 transparent buffer instead so the surface stays mapped.
+                    if let Some(ref mut pool) = state.candidate_pool {
+                        if let Some(ref layer) = state.candidate_layer {
+                            if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                                canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                                if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                    layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                    layer.commit();
+                                }
+                            }
+                        }
                     }
                 }
                 WlCmd::ShowStatus { x, y, w, h, pixels } => {
@@ -475,9 +484,16 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                     }
                 }
                 WlCmd::HideStatus => {
-                    if let Some(ref layer) = state.status_layer {
-                        layer.wl_surface().attach(None, 0, 0);
-                        layer.wl_surface().commit();
+                    if let Some(ref mut pool) = state.status_pool {
+                        if let Some(ref layer) = state.status_layer {
+                            if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                                canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                                if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                    layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                    layer.commit();
+                                }
+                            }
+                        }
                     }
                 }
                 WlCmd::Exit => return,
