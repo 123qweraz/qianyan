@@ -245,7 +245,26 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
 fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     let mut displays: Vec<Box<dyn CandidateDisplay>> = Vec::new();
     eprintln!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
+
+    // On Wayland, use layer-shell overlay instead of Slint winit windows
+    // to avoid taskbar icons. Never fall back to SlintDisplay on Wayland,
+    // which would create real windows with taskbar icons.
+    #[cfg(target_os = "linux")]
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
+            eprintln!("[GUI_DEBUG] Using WaylandLayerDisplay");
+            displays.push(Box::new(wl_display));
+        } else {
+            eprintln!("[GUI_DEBUG] WaylandLayerDisplay init failed, no window display available");
+        }
+    } else {
+        eprintln!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");
+        displays.push(Box::new(SlintDisplay::new(config.clone())));
+    }
+
+    #[cfg(not(target_os = "linux"))]
     displays.push(Box::new(SlintDisplay::new(config.clone())));
+
     if cfg!(target_os = "linux") && config.linux.show_notification {
         eprintln!("[GUI_DEBUG] create_displays: adding LinuxNotifyDisplay");
         displays.push(Box::new(LinuxNotifyDisplay::new(config.clone())));
