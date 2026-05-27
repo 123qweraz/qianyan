@@ -4544,6 +4544,10 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
+ "wayland-client",
+ "wayland-protocols",
+ "wayland-protocols-misc",
+ "xkbcommon 0.8.0",
 ]
 
 [[package]]
