@@ -151,13 +151,12 @@ fn setup_slint_platform() -> Option<()> {
 }
 
 fn render_window_to_buffer(
-    window: &slint::Window,
+    _window: &slint::Window,
     width: u32,
     height: u32,
     renderer: &slint::platform::software_renderer::SoftwareRenderer,
 ) -> Vec<u8> {
     eprintln!("[WL_DEBUG] render_window_to_buffer: {}x{}", width, height);
-    window.set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(width, height)));
 
     let pixel_count = (width * height) as usize;
     let mut rgba_pixels = vec![0u8; pixel_count * 4];
@@ -448,9 +447,11 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                 WlCmd::ShowCandidate { x, y, w, h, pixels } => {
                     eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} pixels={}", x, y, w, h, pixels.len());
                     if let Some(ref layer) = state.candidate_layer {
-                        layer.set_anchor(Anchor::TOP | Anchor::LEFT);
+                        layer.set_anchor(Anchor::BOTTOM | Anchor::LEFT);
                         layer.set_size(w.max(1), h.max(1));
-                        layer.set_margin(y.max(0) as i32, 0, 0, x.max(0) as i32);
+                        // When cursor y is available, place window above the cursor.
+                        // When y=0 (no cursor info), window sits at bottom-left.
+                        layer.set_margin(0, 0, y.max(0) as i32, x.max(0) as i32);
                         if let Some(ref mut pool) = state.candidate_pool {
                             submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
                         }
@@ -475,9 +476,9 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                 }
                 WlCmd::ShowStatus { x, y, w, h, pixels } => {
                     if let Some(ref layer) = state.status_layer {
-                        layer.set_anchor(Anchor::TOP | Anchor::LEFT);
+                        layer.set_anchor(Anchor::BOTTOM | Anchor::LEFT);
                         layer.set_size(w.max(1), h.max(1));
-                        layer.set_margin(y.max(0) as i32, 0, 0, x.max(0) as i32);
+                        layer.set_margin(0, 0, (y + 28).max(0) as i32, x.max(0) as i32);
                         if let Some(ref mut pool) = state.status_pool {
                             submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
                         }
@@ -570,9 +571,11 @@ impl WaylandLayerDisplay {
         let candidate_window = CandidateWindow::new().ok()?;
         let status_bar = StatusBar::new().ok()?;
 
-        // Set initial window sizes so first render has correct dimensions
-        candidate_window.window().set_size(slint::WindowSize::Logical(slint::LogicalSize::new(400.0, 200.0)));
-        status_bar.window().set_size(slint::WindowSize::Logical(slint::LogicalSize::new(60.0, 28.0)));
+        // Set initial sizes for the layer surfaces before any content arrives.
+        // Candidate window: fixed 600px wide, height auto.
+        candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(600, 100)));
+        // Status bar: will be sized by its binding.
+        status_bar.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(60, 28)));
         slint::platform::update_timers_and_animations();
 
         // Get the renderer from the offscreen window adapter.
@@ -750,8 +753,19 @@ impl CandidateDisplay for WaylandLayerDisplay {
             std::rc::Rc::new(slint::VecModel::from(cand_models)),
         ));
 
+        // Let Slint compute the preferred size from content, twice to ensure
+        // the binding evaluation propagates through to adapter set_size.
         slint::platform::update_timers_and_animations();
-        self.set_visible(true);
+        slint::platform::update_timers_and_animations();
+        let size = self.candidate_window.window().size();
+        eprintln!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
+
+        // Always render content regardless of visibility state.
+        if !self.window_visible {
+            self.window_visible = true;
+            self.candidate_window.set_is_visible(true);
+        }
+        self.render_and_send_candidate(size.width.max(1), size.height.max(1));
     }
 
     fn update_status(&mut self, text: &str, chinese_enabled: bool) {

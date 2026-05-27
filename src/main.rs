@@ -365,24 +365,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Forward events from gui_rx to IPC
+        let stream = std::sync::Mutex::new(Some(stream));
         std::thread::spawn(move || {
             while let Ok(event) = gui_rx.recv() {
+                // Take the stream, if it was already consumed (GUI died) -> skip
+                let mut stream_guard = match stream.lock() {
+                    Ok(g) => g,
+                    Err(_) => break,
+                };
+                let stream_ref = match stream_guard.as_mut() {
+                    Some(s) => s,
+                    None => break, // already closed
+                };
                 match event {
                     GuiEvent::HideAndAck(ack_tx) => {
-                        let _ = send_main_to_gui(&mut stream, &MainToGui::HideCandidate);
-                        match recv_gui_to_main(&mut stream, Some(Duration::from_millis(100))) {
+                        if send_main_to_gui(stream_ref, &MainToGui::HideCandidate).is_err() {
+                            stream_guard.take(); // GUI died
+                            let _ = ack_tx.send(());
+                            break;
+                        }
+                        match recv_gui_to_main(stream_ref, Some(Duration::from_millis(100))) {
                             Ok(Some(GuiToMain::Ack)) => {},
                             _ => {},
                         }
                         let _ = ack_tx.send(());
                     }
                     GuiEvent::Exit => {
-                        let _ = send_main_to_gui(&mut stream, &MainToGui::Exit);
+                        let _ = send_main_to_gui(stream_ref, &MainToGui::Exit);
                         break;
                     }
                     other => {
                         if let Some(ipc) = gui_event_to_ipc(other) {
-                            let _ = send_main_to_gui(&mut stream, &ipc);
+                            if send_main_to_gui(stream_ref, &ipc).is_err() {
+                                stream_guard.take(); // GUI died
+                                break;
+                            }
                         }
                     }
                 }

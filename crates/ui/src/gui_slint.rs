@@ -105,11 +105,16 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                 MainToGui::HideCandidate => {
                     let (ack_tx, ack_rx) = std::sync::mpsc::channel();
                     let r = slint::invoke_from_event_loop(move || {
-                        DISPLAYS.with(|d| {
-                            for display in d.borrow_mut().iter_mut() {
-                                display.set_visible(false);
-                            }
-                        });
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            DISPLAYS.with(|d| {
+                                for display in d.borrow_mut().iter_mut() {
+                                    display.set_visible(false);
+                                }
+                            });
+                        }));
+                        if let Err(e) = result {
+                            log::error!("HideCandidate callback panicked: {:?}", e);
+                        }
                         let _ = ack_tx.send(());
                     });
                     if r.is_err() {

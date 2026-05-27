@@ -101,9 +101,11 @@ export component CandidateWindow inherits Window {
     no-frame: true;
     background: transparent;
     always-on-top: true;
-    
-    width: main_rect.preferred-width;
-    height: main_rect.preferred-height;
+
+    // Fixed width to accommodate candidates with English hints
+    width: 600px;
+    // Height adapts to content, minimum 100px for readability
+    height: max(main_rect.preferred-height, 100px);
 
     main_rect := Rectangle {
         visible: is_visible;
