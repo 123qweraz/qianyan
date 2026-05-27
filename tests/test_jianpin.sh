@@ -6,7 +6,7 @@ cargo build --quiet
 
 echo "--- 开始测试简拼匹配 (nh -> 你好) ---"
 # 使用 printf 模拟输入，通过 --test 模式运行，并检查输出
-output=$(printf "nh\nexit\n" | cargo run --quiet -- --test)
+output=$(printf "nh\nexit\n" | cargo run --quiet --bin qianyan-ime -- --test)
 
 if echo "$output" | grep -q "你好"; then
     echo "✅ 测试通过: 'nh' 匹配到了 '你好'"
@@ -18,7 +18,7 @@ fi
 
 echo ""
 echo "--- 开始测试全拼匹配 (zhao -> 赵/找) ---"
-output=$(printf "zhao\nexit\n" | cargo run --quiet -- --test)
+output=$(printf "zhao\nexit\n" | cargo run --quiet --bin qianyan-ime -- --test)
 
 if echo "$output" | grep -qE "赵|找"; then
     echo "✅ 测试通过: 'zhao' 匹配到了预期汉字"

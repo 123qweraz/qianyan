@@ -43,9 +43,12 @@ pub struct SchemeContext<'a> {
     pub syllables: &'a std::collections::HashSet<String>,
     pub syllable_freq: &'a HashMap<String, u64>,
     pub base_syllables: &'a std::collections::HashSet<String>,
-    pub _user_dict: &'a Arc<ArcSwap<UserDictData>>,
+    pub user_dict: &'a Arc<ArcSwap<UserDictData>>,
+    pub usage_history: &'a Arc<ArcSwap<UserDictData>>,
+    pub ngram_history: &'a Arc<ArcSwap<UserDictData>>,
     pub active_profiles: &'a [String],
     pub candidate_count: usize,
+    pub last_word: Option<&'a str>,
     pub _filter_mode: FilterMode,
     pub _aux_filter: &'a str,
 }
@@ -60,6 +63,11 @@ pub trait InputScheme: Send + Sync {
 
     /// 检索阶段：执行词库查找
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate>;
+
+    /// 分词阶段：返回输入字符串的分词结果
+    fn segment(&self, buffer: &str, _context: &SchemeContext) -> Vec<String> {
+        vec![buffer.to_string()]
+    }
 
     /// 后处理阶段：过滤、排序和修饰结果
     fn post_process(

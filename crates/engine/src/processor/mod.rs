@@ -533,6 +533,18 @@ impl Processor {
         self.ctx.session.has_dict_match = !self.ctx.session.candidates.is_empty();
         self.ctx.session.last_lookup_pinyin = self.ctx.session.buffer.clone();
 
+        // Global 模式：用辅助码过滤候选词
+        if self.ctx.session.filter_mode == FilterMode::Global && !self.ctx.session.aux_filter.is_empty() {
+            let mode = self.ctx.config.master_config.input.english_aux_mode;
+            let aux_filter = self.ctx.session.aux_filter.clone();
+            self
+                .ctx
+                .session
+                .candidates
+                .retain(|c| self.ctx.engine.matches_filter(c, &aux_filter, mode));
+            self.ctx.session.has_dict_match = !self.ctx.session.candidates.is_empty();
+        }
+
         // 智能辅码：输入完整拼音后直接追加字母自动触发辅码过滤
         if self.ctx.config.master_config.input.enable_smart_aux
             && self.ctx.session.filter_mode == FilterMode::None

@@ -153,15 +153,23 @@ pub fn handle_composing(
                 }
             }
         }
+        let last_word = ctx
+            .session_state
+            .commit_history
+            .last()
+            .map(|(_, word)| word.as_str());
         let context = crate::scheme::SchemeContext {
             config: &ctx.config.master_config,
             tries: &tries_map,
             syllables: &ctx.syllables,
             syllable_freq: &ctx.engine.syllable_freq,
             base_syllables: &ctx.engine.base_syllables,
-            _user_dict: &ctx.config.learned_words,
+            user_dict: &ctx.config.learned_words,
+            usage_history: &ctx.engine.usage_history,
+            ngram_history: &ctx.engine.ngram_history,
             active_profiles: &ctx.session_state.active_profiles,
             candidate_count: ctx.session.candidates.len(),
+            last_word,
             _filter_mode: ctx.session.filter_mode.clone(),
             _aux_filter: &ctx.session.aux_filter,
         };

@@ -11,11 +11,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 // 调频衰减算法参数
-const RECENCY_BOOST_BASE: f64 = 6000.0;   // 位置 0（最近使用）的最大衰减加成
-const FREQ_BOOST_SCALE: f64 = 2000.0;     // 对数频率缩放系数
-const MAX_USAGE_BOOST: f64 = 15000.0;     // 单词最大总加成（避免旧使用永久霸榜）
-const NGRAM_BOOST_SCALE: f64 = 3000.0;    // N-Gram 对数缩放系数
-const MAX_NGRAM_BOOST: f64 = 10000.0;     // N-Gram 最大加成
+pub(crate) const RECENCY_BOOST_BASE: f64 = 6000.0;
+pub(crate) const FREQ_BOOST_SCALE: f64 = 2000.0;
+pub(crate) const MAX_USAGE_BOOST: f64 = 15000.0;
+pub(crate) const NGRAM_BOOST_SCALE: f64 = 3000.0;
+pub(crate) const MAX_NGRAM_BOOST: f64 = 10000.0;
 
 const PREWARM_ENTRIES: usize = 1000;
 const MAX_LOOKUP_LIMIT: usize = 500;
@@ -102,7 +102,7 @@ impl DefaultSegmentor {
     }
 
     /// 单轮 Viterbi DP 切分：直接在原始字符串上做最优切分，避免两轮法中的贪心锁定问题
-    fn viterbi_segment(input: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String> {
+    pub(crate) fn viterbi_segment(input: &str, syllable_freq: &HashMap<String, u64>, base_syllables: &HashSet<String>) -> Vec<String> {
         let n = input.len();
         if n == 0 {
             return vec![];
@@ -662,7 +662,14 @@ impl Translator for UserDictTranslator {
         let query = segments.join("");
         let mut results = Vec::new();
         let dict = self.user_dict.load();
+        log::info!("UserDictTranslator: query={}, profile={}, dict_keys={:?}, has_profile={}", 
+            query, self.profile, 
+            dict.keys().collect::<Vec<_>>(),
+            dict.contains_key(&self.profile));
         if let Some(profile_dict) = dict.get(&self.profile) {
+            log::info!("UserDictTranslator: profile_dict keys={:?}, has_query={}",
+                profile_dict.keys().collect::<Vec<_>>(),
+                profile_dict.contains_key(&query));
             if let Some(words) = profile_dict.get(&query) {
                 for (word, weight) in words {
                     results.push(Candidate {
@@ -1029,7 +1036,7 @@ impl Filter for AdaptiveFilter {
 }
 
 /// 衰减算法：位置越靠后（越久没用），加成越小；次数用对数缩放，避免旧使用无限叠加
-fn compute_decay_boost(pos: usize, count: u32) -> f64 {
+pub(crate) fn compute_decay_boost(pos: usize, count: u32) -> f64 {
     // 位置衰减：最近（pos=0）拿满，越远衰减越慢（sqrt）
     let recency = RECENCY_BOOST_BASE / (1.0 + (pos as f64).sqrt());
     // 频率衰减：对数缩放，次数越多收益越小，上限 20 次
@@ -1126,9 +1133,9 @@ pub struct SearchEngine {
     pub syllables: Arc<HashSet<String>>,
     pub syllable_freq: Arc<HashMap<String, u64>>,
     pub base_syllables: Arc<HashSet<String>>,
-    learned_words: Arc<ArcSwap<UserDictData>>,
-    usage_history: Arc<ArcSwap<UserDictData>>,
-    ngram_history: Arc<ArcSwap<UserDictData>>,
+    pub(crate) learned_words: Arc<ArcSwap<UserDictData>>,
+    pub(crate) usage_history: Arc<ArcSwap<UserDictData>>,
+    pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     pipelines: Arc<RwLock<PipelineCache>>,
 }
@@ -1180,8 +1187,77 @@ impl SearchEngine {
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
         log::info!("engine_search: profile={}, buffer={}", query.profile, query.buffer);
 
+        // 优先走方案路径（ChineseScheme 等语言特定逻辑）
+        if let Some(scheme) = self.schemes.get(query.profile) {
+            let mut tries_map = HashMap::new();
+            if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
+                if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
+                    tries_map.insert(query.profile.to_string(), trie.clone());
+                }
+            }
+            let context = crate::scheme::SchemeContext {
+                config: query.config,
+                tries: &tries_map,
+                syllables: query.syllables,
+                syllable_freq: &self.syllable_freq,
+                base_syllables: &self.base_syllables,
+                user_dict: &self.learned_words,
+                usage_history: &self.usage_history,
+                ngram_history: &self.ngram_history,
+                active_profiles: &[query.profile.to_string()],
+                candidate_count: 0,
+                last_word: query.context,
+                _filter_mode: query.filter_mode.clone(),
+                _aux_filter: query.aux_filter,
+            };
+
+            let pre_processed = scheme.pre_process(query.buffer, &context);
+            let mut scheme_candidates = scheme.lookup(&pre_processed, &context);
+            scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
+
+            let mut results = Vec::new();
+            for sc in scheme_candidates {
+                let hint = {
+                    let mut h = String::new();
+                    if query.config.appearance.show_english_aux && !sc.english.is_empty() {
+                        h.push_str(&sc.english);
+                    }
+                    if query.config.appearance.show_stroke_aux && !sc.stroke_aux.is_empty() {
+                        if !h.is_empty() { h.push(' '); }
+                        h.push_str(&sc.stroke_aux);
+                    }
+                    if h.is_empty() { Arc::from(sc.tone.as_str()) } else { Arc::from(h) }
+                };
+                results.push(Candidate {
+                    text: if query.config.input.enable_traditional {
+                        Arc::from(sc.traditional.as_str())
+                    } else {
+                        Arc::from(sc.simplified.as_str())
+                    },
+                    simplified: Arc::from(sc.simplified.as_str()),
+                    traditional: Arc::from(sc.traditional.as_str()),
+                    hint,
+                    english_aux: Arc::from(sc.english.as_str()),
+                    stroke_aux: Arc::from(sc.stroke_aux.as_str()),
+                    source: Arc::from("Engine"),
+                    weight: sc.weight as f64,
+                    match_level: sc.match_level,
+                });
+            }
+
+            // Global 模式辅码过滤
+            if query.filter_mode == crate::processor::FilterMode::Global
+                && !query.aux_filter.is_empty()
+            {
+                results.retain(|c| self.matches_filter(c, query.aux_filter, query.config.input.english_aux_mode));
+            }
+
+            results.truncate(query.limit);
+            return (results, vec![]);
+        }
+
+        // 没有方案时回退到旧的 pipeline 路径
         if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
-            // 如果有辅助码过滤，我们需要从 Translator 获取更多候选项进行过滤
             let search_limit = if !query.aux_filter.is_empty() {
                 MAX_LOOKUP_LIMIT
             } else {
@@ -1206,51 +1282,6 @@ impl SearchEngine {
             
             final_results.truncate(query.limit);
             return (final_results, segments);
-        }
-
-        if let Some(scheme) = self.schemes.get(query.profile) {
-            let mut tries_map = HashMap::new();
-            if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
-                if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
-                    tries_map.insert(query.profile.to_string(), trie.clone());
-                }
-            }
-            let context = crate::scheme::SchemeContext {
-                config: query.config,
-                tries: &tries_map,
-                syllables: query.syllables,
-                syllable_freq: &self.syllable_freq,
-                base_syllables: &self.base_syllables,
-                _user_dict: &Arc::new(arc_swap::ArcSwap::from_pointee(HashMap::new())),
-                active_profiles: &[query.profile.to_string()],
-                candidate_count: 0,
-                _filter_mode: query.filter_mode.clone(),
-                _aux_filter: query.aux_filter,
-            };
-
-            let pre_processed = scheme.pre_process(query.buffer, &context);
-            let mut scheme_candidates = scheme.lookup(&pre_processed, &context);
-            scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
-
-            let mut results = Vec::new();
-            for sc in scheme_candidates {
-                results.push(Candidate {
-                    text: if query.config.input.enable_traditional {
-                        Arc::from(sc.traditional.as_str())
-                    } else {
-                        Arc::from(sc.simplified.as_str())
-                    },
-                    simplified: Arc::from(sc.simplified.as_str()),
-                    traditional: Arc::from(sc.traditional.as_str()),
-                    hint: Arc::from(sc.tone.as_str()),
-                    english_aux: Arc::from(sc.english.as_str()),
-                    stroke_aux: Arc::from(sc.stroke_aux.as_str()),
-                    source: Arc::from("Engine"),
-                    weight: sc.weight as f64,
-                    match_level: sc.match_level,
-                });
-            }
-            return (results, vec![]);
         }
 
         (vec![], vec![])
