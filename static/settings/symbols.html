@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>符号选择器 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .symbol-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .category-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: var(--apple-card);
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--apple-border);
+            position: sticky;
+            top: 10px;
+            z-index: 10;
+            backdrop-filter: blur(15px);
+        }
+
+        .category-tab {
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f0f0f2;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid transparent;
+        }
+
+        .category-tab.active {
+            background: var(--apple-accent);
+            color: white;
+            border-color: var(--apple-accent);
+        }
+
+        .search-bar-container {
+            background: var(--apple-card);
+            padding: 12px 24px;
+            border-radius: 16px;
+            border: 1px solid var(--apple-border);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #symbol-search {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            outline: none;
+            font-weight: 500;
+        }
+
+        #symbol-search:focus {
+            box-shadow: none;
+        }
+
+        .view-panel {
+            background: var(--apple-card);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--apple-border);
+            min-height: 400px;
+            position: relative;
+        }
+
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+            gap: 8px;
+        }
+
+        .keyboard-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .kb-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .symbol-item {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e5e7;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.1s;
+            user-select: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
+        }
+
+        .kb-key {
+            min-width: 40px;
+            height: 45px;
+            padding: 0 5px;
+        }
+
+        .kb-key-wide {
+            min-width: 80px;
+            background: #e5e5e7;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .symbol-item:hover {
+            transform: translateY(-2px);
+            border-color: var(--apple-accent);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .symbol-item:active {
+            transform: scale(0.95);
+            background: #f5f5f7;
+        }
+
+        .symbol-item.active-shift {
+            background: var(--apple-accent);
+            color: white;
+        }
+
+        .fav-star {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 8px;
+            color: #ccc;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .symbol-item:hover .fav-star {
+            opacity: 1;
+        }
+
+        .symbol-item.is-fav .fav-star {
+            opacity: 1;
+            color: #ffcc00;
+        }
+
+        .bulk-copy-container {
+            background: var(--apple-card);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--apple-border);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #bulk-input {
+            flex: 1;
+            font-size: 18px;
+            letter-spacing: 2px;
+            min-height: 50px;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 20px;
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .shift-indicator {
+            font-size: 12px;
+            color: var(--apple-secondary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>符号选择器</h1>
+        </header>
+
+        <div class="symbol-container">
+            <div class="search-bar-container">
+                <span style="font-size: 20px;">🔍</span>
+                <input type="text" id="symbol-search" placeholder="搜索符号 (例如: 星星, 箭头, alpha)...">
+            </div>
+
+            <div class="category-tabs" id="category-tabs"></div>
+
+            <div class="view-panel">
+                <div class="section-header">
+                    <h3 id="panel-title">最近使用</h3>
+                    <div id="keyboard-controls" style="display: none;">
+                        <span class="shift-indicator" id="shift-status">小写模式</span>
+                    </div>
+                </div>
+                <div id="main-display"></div>
+            </div>
+
+            <div class="bulk-copy-container">
+                <div class="section-header">
+                    <h3>批量复制</h3>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="clearBulk()">清空</button>
+                </div>
+                <input type="text" id="bulk-input" placeholder="点击符号自动添加到此处...">
+                <div class="bulk-actions">
+                    <button class="btn" onclick="copyBulk()">复制全部内容</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">已复制</div>
+
+    <script>
+        const symbolData = {
+            "最近": { type: "grid", data: [] },
+            "收藏": { type: "grid", data: [] },
+            "常用": { type: "grid", data: "， 。 ？ ！ 、 ； ： “ ” ‘ ’ （ ） 【 】 《 》 ~ @ # ￥ % …… & * - _ = + ｜".split(' ') },
+            "希腊语": {
+                type: "keyboard",
+                rows: [
+                    "分号(;) ς ε ρ τ υ θ ι ο π".split(' '),
+                    "α σ δ φ γ η ξ κ λ".split(' '),
+                    "Shift ζ χ ψ ω β ν μ".split(' ')
+                ],
+                map: {
+                    lower: "α β γ δ ε ζ η θ ι κ λ μ ν ξ ο π ρ σ τ υ φ χ ψ ω ς".split(' '),
+                    upper: "Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω".split(' ')
+                }
+            },
+            "俄语": {
+                type: "keyboard",
+                rows: [
+                    "й ц у к е н г ш щ з х ъ".split(' '),
+                    "ф ы в а п р о л д ж э".split(' '),
+                    "Shift я ч с м и т ь б ю".split(' ')
+                ],
+                map: {
+                    lower: "а б в г д е ё ж з и й к л m н о п р с τ у ф х ц ч ш щ ъ ы ь э ю я".split(' '),
+                    upper: "А Б В Г Д Е Ё Ж З И Й К Л М Н Ｏ П Р С Т У Φ Х Ц Ч Ш Щ Ъ Ы Ь Э Ю Я".split(' ')
+                }
+            },
+            "欧洲语言": {
+                type: "keyboard",
+                rows: [
+                    "á à â ä ã å æ ç é è".split(' '),
+                    "ê ë í ì î ï ñ ó ò ô".split(' '),
+                    "ö õ ø ú ù û ü ý þ ß".split(' '),
+                    "Shift".split(' ')
+                ],
+                map: {
+                    lower: "á à â ä ã å æ ç é è ê ë í ì î ï ñ ó ò ô ö õ ø ú ù û ü ý þ ß".split(' '),
+                    upper: "Á À Â Ä Ã Å Æ Ç É È Ê Ë Í Ì Î Ï Ñ Ó Ò Ô Ö Õ Ø Ú Ù Û Ü Ý Þ ẞ".split(' ')
+                }
+            },
+            "日语": {
+                type: "keyboard",
+                rows: [
+                    "あ い う え お".split(' '),
+                    "か き く け こ".split(' '),
+                    "さ し す せ そ".split(' '),
+                    "た ち つ て と".split(' '),
+                    "な に ぬ ね の".split(' '),
+                    "は ひ ふ へ ほ".split(' '),
+                    "ま み む め も".split(' '),
+                    "や ゆ よ".split(' '),
+                    "ら り る れ ろ".split(' '),
+                    "わ を ん".split(' '),
+                    "Shift(平/片)".split(' ')
+                ],
+                map: {
+                    lower: "あ い う え お か き く け こ さ し す せ そ た ち つ て と な に ぬ ね の は ひ ふ へ ほ ま み む め も や ゆ よ ら り る れ ろ わ を ん".split(' '),
+                    upper: "ア イ ウ エ オ カ キ ク ケ コ サ シ ス セ ソ タ チ ツ テ ト ナ ニ ヌ ネ ノ ハ ヒ フ ヘ ホ マ ミ ム メ モ ヤ ユ ヨ ラ リ ル レ ロ ワ ヲ ン".split(' ')
+                }
+            },
+            "韩语": {
+                type: "keyboard",
+                rows: [
+                    "ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ".split(' '),
+                    "ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ".split(' '),
+                    "ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ".split(' '),
+                    "ㅠ ㅡ ㅣ ㄲ ㄸ ㅃ ㅆ".split(' '),
+                    "Shift".split(' ')
+                ],
+                map: {
+                    lower: "ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㄲ ㄸ ㅃ ㅆ".split(' '),
+                    upper: "ㄲ ㄸ ㅃ ㅆ ㅉ ㅐ ㅒ ㅔ ㅖ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ".split(' ') // Approximate mapping
+                }
+            },
+            "制图符号": { type: "grid", data: "─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏ ┐ ┑ ┒ ┓ └ ┕ ┖ ┗ ┘ ┙ ┚ ┛ ├ ┝ ┞ ┟ ┠ ┡ ┢ ┣ ┤ ┥ ┦ ┧ ┨ ┩ ┪ ┫ ┬ ┭ ┮ ┯ ┰ ┱ ┲ ┳ ┴ ┵ ┶ ┷ ┸ ┹ ┺ ┻ ┼ ┽ ┾ ┿ ╀ ╁ ╂ ╃ ╄ ╅ ╆ ╇ ╈ ╉ ╊ ╋ ═ ║ ╒ ╓ ╔ ╕ ╖ ╗ ╘ ╙ ╚ ╛ ╜ ╝ ╞ ╟ ╠ ╡ ╢ ╣ ╤ ╥ ╦ ╧ ╨ ╩ ╪ ╫ ╬".split(' ') },
+            "偏旁部首": { type: "grid", data: "⺀ ⺁ ⺂ ⺃ ⺄ ⺆ ⺇ ⺈ ⺉ ⺊ ⺋ ⺌ ⺍ ⺎ ⺏ ⺐ ⺑ ⺒ ⺓ ⺔ ⺕ ⺖ ⺗ ⺘ ⺙ ⺚ ⺛ ⺜ ⺝ ⺞ ⺟ ⺠ ⺡ ⺢ ⺣ ⺤ ⺥ ⺦ ⺧ ⺨ ⺩ ⺪ ⺫ ⺬ ⺭ ⺮ ⺯ ⺰ ⺱ ⺲ ⺳ ⺴ ⺵ ⺶ ⺷ ⺸ ⺹ ⺺ ⺻ ⺼ ⺽ ⺾ ⺿ ⻀ ⻁ ⻂ ⻃ ⻄ ⻅ ⻆ ⻇ ⻈ ⻉ ⻊ ⻋ ⻌ ⻍ ⻎ ⻏ ⻐ ⻑ ⻒ ⻓ ⻔ ⻕ ⻖ ⻗ ⻘ ⻙ ⻚ ⻛ ⻜ ⻝ ⻞ ⻟ ⻠ ⻡ ⻢ ⻣ ⻤ ⻥ ⻦ ⻧ ⻨ ⻩ ⻪ ⻫ ⻬ ⻭ ⻮ ⻯ ⻰ ⻱ ⻲ ⻳".split(' ') },
+            "拼音音调": { type: "grid", data: "ā á ǎ à ē é ě è ī í ǐ ì ō ó ǒ ò ū ú ǔ ù ǖ ǘ ǚ ǜ ń ň ǹ ḿ m̀".split(' ') },
+            "物理/CAD": { type: "grid", data: "⌀ ± ° ⊥ ∥ ∠ ⌒ ⊙ ≡ ≌ ≈ ∝ ≠ ≤ ≥ ∞ ℏ ℃ ℉ Å Ω ℧".split(' ') },
+            "数学": { type: "grid", data: "+ - × ÷ = √ ∏ ∑ ∫ ∬ ∭ ∂ ∇ ∆ ∅ ∈ ∉ ∋ ∌ ∓ ∕ ∖ ∗ ∘ ∙ ∟ ∠ ∥ ∧ ∨ ∩ ∪".split(' ') },
+            "货币": { type: "grid", data: "￥ $ € £ ฿ ₵ ₡ ₢ ₣ ₤ ₥ ₦ ₧ ₨ ₩ ₪ ₫ ₭ ₮ ₯ ₰ ₱ ₲ ₳ ₴ ₵ ₶ ₷ ₸ ₹ ₺ ₿".split(' ') },
+            "版权": { type: "grid", data: "© ® ™ ℠ ℗  ⌘ ⌥ ⇧ ⌃".split(' ') },
+            "箭头": { type: "grid", data: "← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙ ↞ ↟ ↠ ↡ ↩ ↪ ↵ ↶ ↷ ↺ ↻ ⇐ ⇑ ⇒ ⇓ ⇔ ⇕".split(' ') },
+            "颜文字": { type: "grid", data: "(´･ω･`) (╯°□°）╯︵ ┻━┻ O(∩_∩)O (ಥ_ಥ) ( ͡° ͜ʖ ͡°) ¯\\_(ツ)_/¯ (づ￣ ³￣)づ (⊙_⊙) (￣▽￣)ノ (≧▽≦)".split(' ') },
+            "特殊": { type: "grid", data: "★ ☆ ⚡ ☀ ☁ ☔ ❄ ✨ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ ✱ ✲ ✳ ✴ ✵ ✶ ✷ ✸ ✹ ✺ ✻ ✼ ✽ ✾ ✿ ❀ ❁ ❂ ❃".split(' ') }
+        };
+
+        const searchTags = {
+            "星星": "★ ☆ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰",
+            "打勾": "✓ ✔ ✅",
+            "打叉": "× ✗ ✘ ❎",
+            "心": "♥ ♡ ❤ ❣",
+            "圆": "○ ● ◌ ◍ ◎ ⊙",
+            "方": "□ ■ ▢ ▣ ▤ ▥ ▦ ▧ ▨ ▩",
+            "三角": "△ ▽ ◁ ▷ ▲ ▼ ◀ ▶",
+            "对齐": "⊥ ∥ ∠ ⌒",
+            "alpha": "α Α", "beta": "β Β", "gamma": "γ Γ", "delta": "δ Δ"
+        };
+
+        let currentCategory = "最近";
+        let isShifted = false;
+        let recentSymbols = JSON.parse(localStorage.getItem('recent_symbols') || '[]');
+        let favoriteSymbols = JSON.parse(localStorage.getItem('favorite_symbols') || '[]');
+
+        function init() {
+            symbolData["最近"].data = recentSymbols;
+            symbolData["收藏"].data = favoriteSymbols;
+            renderTabs();
+            renderContent();
+            setupSearch();
+            setupGlobalEvents();
+        }
+
+        function setupGlobalEvents() {
+            // Fix backspace bug: prevent backspace from navigating back
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace') {
+                    const activeEl = document.activeElement;
+                    const isInput = activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA';
+                    if (!isInput) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('category-tabs');
+            container.innerHTML = '';
+            Object.keys(symbolData).forEach(cat => {
+                const tab = document.createElement('div');
+                tab.className = `category-tab ${cat === currentCategory ? 'active' : ''}`;
+                tab.textContent = cat;
+                tab.onclick = () => {
+                    currentCategory = cat;
+                    isShifted = false;
+                    document.getElementById('symbol-search').value = '';
+                    renderTabs();
+                    renderContent();
+                };
+                container.appendChild(tab);
+            });
+        }
+
+        function renderContent(searchResult = null) {
+            const display = document.getElementById('main-display');
+            const title = document.getElementById('panel-title');
+            const controls = document.getElementById('keyboard-controls');
+            
+            display.innerHTML = '';
+            
+            if (searchResult) {
+                title.textContent = `搜索结果 (${searchResult.length})`;
+                controls.style.display = 'none';
+                display.className = 'symbol-grid';
+                searchResult.forEach(sym => display.appendChild(createSymbolItem(sym)));
+                return;
+            }
+
+            const config = symbolData[currentCategory];
+            title.textContent = currentCategory;
+            controls.style.display = config.type === 'keyboard' ? 'block' : 'none';
+            updateShiftStatus();
+
+            if (config.type === 'grid') {
+                display.className = 'symbol-grid';
+                if (config.data.length === 0) {
+                    display.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #999; padding: 40px;">暂无内容</div>`;
+                }
+                config.data.forEach(sym => display.appendChild(createSymbolItem(sym)));
+            } else if (config.type === 'keyboard') {
+                display.className = 'keyboard-layout';
+                config.rows.forEach(row => {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'kb-row';
+                    row.forEach(key => {
+                        if (key.startsWith('Shift')) {
+                            const btn = document.createElement('div');
+                            btn.className = `symbol-item kb-key kb-key-wide ${isShifted ? 'active-shift' : ''}`;
+                            btn.textContent = key;
+                            btn.onclick = toggleShift;
+                            rowDiv.appendChild(btn);
+                        } else {
+                            const sym = transformChar(key);
+                            const item = createSymbolItem(sym);
+                            item.classList.add('kb-key');
+                            rowDiv.appendChild(item);
+                        }
+                    });
+                    display.appendChild(rowDiv);
+                });
+            }
+        }
+
+        function createSymbolItem(sym) {
+            const item = document.createElement('div');
+            item.className = 'symbol-item';
+            if (favoriteSymbols.includes(sym)) item.classList.add('is-fav');
+            item.textContent = sym;
+            
+            const star = document.createElement('span');
+            star.className = 'fav-star';
+            star.textContent = '★';
+            star.onclick = (e) => {
+                e.stopPropagation();
+                toggleFavorite(sym);
+            };
+            
+            item.appendChild(star);
+            item.onclick = () => handleSymbolClick(sym);
+            return item;
+        }
+
+        function transformChar(char) {
+            const config = symbolData[currentCategory];
+            if (!config.map) return char;
+            
+            // For Japanese and others, the keys in rows are the actual lowercase chars
+            const idx = config.map.lower.indexOf(char);
+            if (idx === -1) return char;
+            return isShifted ? (config.map.upper[idx] || char) : config.map.lower[idx];
+        }
+
+        function toggleShift() {
+            isShifted = !isShifted;
+            renderContent();
+        }
+
+        function updateShiftStatus() {
+            const status = document.getElementById('shift-status');
+            const isJapanese = currentCategory === '日语';
+            if (isJapanese) {
+                status.textContent = isShifted ? '当前：片假名 (Katakana)' : '当前：平假名 (Hiragana)';
+            } else {
+                status.textContent = isShifted ? '大写模式 (Shift ON)' : '小写模式 (Shift OFF)';
+            }
+        }
+
+        function handleSymbolClick(sym) {
+            const bulkInput = document.getElementById('bulk-input');
+            bulkInput.value += sym;
+            copyToClipboard(sym);
+            addToRecent(sym);
+        }
+
+        function addToRecent(sym) {
+            recentSymbols = [sym, ...recentSymbols.filter(s => s !== sym)].slice(0, 50);
+            localStorage.setItem('recent_symbols', JSON.stringify(recentSymbols));
+            symbolData["最近"].data = recentSymbols;
+            if (currentCategory === "最近") renderContent();
+        }
+
+        function toggleFavorite(sym) {
+            if (favoriteSymbols.includes(sym)) {
+                favoriteSymbols = favoriteSymbols.filter(s => s !== sym);
+            } else {
+                favoriteSymbols.unshift(sym);
+            }
+            localStorage.setItem('favorite_symbols', JSON.stringify(favoriteSymbols));
+            symbolData["收藏"].data = favoriteSymbols;
+            renderTabs();
+            renderContent();
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('symbol-search');
+            searchInput.oninput = () => {
+                const query = searchInput.value.trim().toLowerCase();
+                if (!query) {
+                    renderContent();
+                    return;
+                }
+
+                let results = [];
+                Object.keys(searchTags).forEach(tag => {
+                    if (tag.includes(query)) results.push(...searchTags[tag].split(' '));
+                });
+
+                Object.values(symbolData).forEach(cat => {
+                    const data = cat.type === 'grid' ? cat.data : [...cat.map.lower, ...cat.map.upper];
+                    data.forEach(sym => {
+                        if (sym.includes(query) && !results.includes(sym)) results.push(sym);
+                    });
+                });
+
+                renderContent(results);
+            };
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`已复制: ${text}`);
+            });
+        }
+
+        function copyBulk() {
+            const bulkInput = document.getElementById('bulk-input');
+            if (bulkInput.value) copyToClipboard(bulkInput.value);
+        }
+
+        function clearBulk() {
+            document.getElementById('bulk-input').value = '';
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 1500);
+        }
+
+        init();
+    </script>
+</body>
+</html>

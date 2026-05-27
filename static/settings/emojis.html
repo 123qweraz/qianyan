@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表情包选择器 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .emoji-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .category-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: var(--apple-card);
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--apple-border);
+            position: sticky;
+            top: 10px;
+            z-index: 10;
+            backdrop-filter: blur(15px);
+        }
+
+        .category-tab {
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f0f0f2;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .category-tab.active {
+            background: var(--apple-accent);
+            color: white;
+        }
+
+        .view-panel {
+            background: var(--apple-card);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--apple-border);
+            min-height: 400px;
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            gap: 12px;
+        }
+
+        .emoji-item {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e5e7;
+            cursor: pointer;
+            font-size: 28px;
+            transition: all 0.1s;
+            user-select: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .emoji-item:hover {
+            transform: scale(1.15);
+            border-color: var(--apple-accent);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 2;
+        }
+
+        .bulk-copy-container {
+            background: var(--apple-card);
+            padding: 24px;
+            border-radius: 24px;
+            border: 1px solid var(--apple-border);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #bulk-input {
+            flex: 1;
+            font-size: 24px;
+            min-height: 60px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 20px;
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>表情包选择器</h1>
+        </header>
+
+        <div class="emoji-container">
+            <div class="category-tabs" id="category-tabs"></div>
+
+            <div class="view-panel">
+                <div class="emoji-grid" id="emoji-grid"></div>
+            </div>
+
+            <div class="bulk-copy-container">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>批量提取</h3>
+                    <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="clearBulk()">清空</button>
+                </div>
+                <input type="text" id="bulk-input" placeholder="点击表情添加到此处...">
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="btn" onclick="copyBulk()">全部复制</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">已复制</div>
+
+    <script>
+        const emojiData = {
+            "表情与人物": "😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️ 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🤭 🤫 🤥 😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠 😈 👿 👹 👺 🤡 💩 👻 💀 ☠️ 👽 👾 🤖 🎃 😺 😸 😻 😼 😽 🙀 😿 😾 🤲 👐 🙌 👏 🤝 👍 👎 👊 ✊ 🤛 🤜 🤞 ✌️ 🤟 🤘 👌 🤏 👈 👉 👆 👇 ✋ 🤚 🖐 🖖 👋 🤙 💪 🖕 ✍️ 🙏".split(' '),
+            "动物与自然": "🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐽 🐸 🐵 🙈 🙉 🙊 🐒 🐔 🐧 🐦 🐤 🐣 🐥 🦆 🦅 🦉 🦇 🐺 🐗 🐴 🦄 🐝 🐛 🦋 🐌 🐞 🐜 🦟 🦗 🕷 🕸 🦂 🐢 🐍 🦎 🦖 🦕 🐙 🦑 🦐 🦞 🦀 🐡 🐠 🐟 🐬 🐳 🐋 🦈 🐊 🐅 🐆 🦓 🦍 🐘 🦛 🦏 🐪 🐫 🦒 🦘 🐃 🐂 🐄 🐎 🐖 🐏 🐑 🐐 🦌 🐕 🐩 🐈 🐓 🦃 🦚 🦜 🦢 🕊 🐇 🦝 🦡 🐁 🐀 🐿 🦔 🐾 🐉 🐲 🌵 🎄 🌲 🌳 🌴 🌱 🌿 ☘️ 🍀 🎍 🎋 🍃 🍂 🍁 🍄 🐚 🌾 💐 🌷 🌹 🥀 🌺 🌸 🌼 🌻 🌞 🌝 🌛 🌜 🌚 🌕 🌖 🌗 🌘 🌑 🌒 🌓 🌔 🌙 🌎 🌍 🌏 🪐 💫 ⭐️ 🌟 ✨ ⚡️ ☄️ 💥 🔥 🌪 🌈 ☀️ 🌤 ⛅️ 🌥 ☁️ 🌦 🌧 ⛈ 🌩 🌨 ❄️ ☃️ ⛄️ 🌬 💨 💧 💦 ☔️ ☂️ 🌊 🌫".split(' '),
+            "食物与饮料": "🍏 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🍆 🥑 🥦 🥬 🥒 🌶 🌽 🥕 🧄 🧅 🥔 🍠 🥐 🥯 🍞 🥖 🥨 🧀 🥚 🍳 🧈 🥞 🧇 🥓 🥩 🍗 🍖 🌭 🍔 🍟 🍕 🥪 🥙 🌮 🌯 🥗 🥘 🥫 🍝 🍜 🍲 🍛 🍣 🍱 🥟 🍤 🍙 🍚 🍘 🍥 🥠 🥮 🍢 🍡 🍧 🍨 🍦 🥧 🧁 🍰 🎂 福利 🍭 🍬 🍫 🍿 🧂 🍩 🍪 🌰 🥜 🍯 🥛 ☕️ 🍵 🧉 🍶 🍺 🍻 🥂 🍷 🥃 🍸 🍹 🍾 🧊 🥤".split(' '),
+            "活动与地点": "⚽️ 🏀 🏈 ⚾️ 🥎 🎾 🏐 🏉 🎱 🏓 🏸 🥅 🏒 👡 ⛸ 🎿 ⛷ 🏂 🏋️‍♀️ 🤺 🤼‍♂️ 🤸‍♀️ ⛹️‍♂️ 🤺 🤾‍♀️ 🏌️‍♂️ 🏇 🧘‍♀️ 🏄‍♂️ 🏊‍♂️ 🤽‍♂️ 🚣‍♂️ 🧗‍♀️ 🚵‍♂️ 🚴‍♂️ 🏆 🥇 🥈 🥉 🏅 🎖 🎫 🎟 🎪 🎭 🎨 🎬 🎤 🎧 🎼 🎹 🥁 🎷 🎺 🎸 🎻 🎲 🎯 🎳 🎮 🎰 🚗 🚕 🚙 🚌 🚎 🏎 🚓 🚑 🚒 🚐 🚚 🚛 🚜 🛴 🚲 🛵 🏍 🚨 🚔 🚍 🚘 🚖 🚡 🚠 🚟 🚃 🚋 🚞 🚝 🚄 🚅 🚈 🚂 🚆 🚇 🚊 🚉 ✈️ 🛫 🛬 🛩 💺 🛰 🚀 🛸 🚁 🛶 ⛵️ 🚤 🛥 🛳 ⛴ 🚢 ⚓️ ⛽️ 🚧 🗺 🗿 🗽 🗼 🏰 🏯 🏟 🎡 🎢 🎠 ⛲️ ⛱ 🏖 🏝 🏜 🌋 ⛰ 🏔 🗻 🏕 ⛺️ 🏠 🏡 🏘 🏚 🏗 🏭 🏢 🏤 🏥 🏦 🏨 🏪 🏫 🏩 💒 🏛 ⛪️ 🕌 🕍 🕋 ⛩ 🛤 🛣 🗾 🎑 🏞 🌅 🌄 🌠 🎇 🎆 🌇 🌆 🏙 🌃 🌌 🌉 🌁".split(' '),
+            "生活用品": "⌚️ 📱 📲 💻 ⌨️ 🖱 🖨 🖥 📺 📷 📸 📹 📼 🔍 🔎 🕯 💡 🔦 🏮 📔 📕 📖 📗 📘 📙 📚 📓 📒 📃 📜 📄 📅 📆 📇 📈 📉 📊 📋 📌 📍 📎 📏 📐 ✂️ 🗃 🗄 🗑 🔒 🔓 🔏 🔐 🔑 🗝 🔨 ⛏ ⚒ 🛠 🗡 ⚔️ 🔫 🏹 🛡 🔧 🔩 ⚙️ 🗜 ⚖️ 🔗 ⛓ 🧼 🧽 🧴 🛁 🚿 🚽 🧹 🧻 🧺 🛀".split(' '),
+            "时间与符号": "🕛 🕧 🕐 🕜 🕑 🕝 🕒 🕞 🕓 🕟 🕔 🕠 🕕 🕡 🕖 🕢 🕗 🕣 🕘 🕤 🕙 🕥 🕚 🕦 ⌛️ ⏳ ⌚️ ⏰ ⏱ ⏲ 🕰 🏧 🚮 🚰 ♿️ 🚹 🚺 🚻 🚼 🚾 🛂 🛃 🛄 🛅 ⚠️ 🚸 ⛔️ 🚫 🚳 🚭 🚯 🚱 🚷 📵 🔞 ☢️ ☣️ ⬆️ ↗️ ➡️ ↘️ ↓ ↙️ ← ↖️ ↕️ ↔️ ↩️ ↪️ ⤴️ ⤵️ 🔃 🔄 🔙 🔚 🔛 🔜 🔝 🛐 ⚛️ 🕉 ✡️ ☸️ ☯️ ✝️ ☦️ ☪️ ☮️ 🕎 🔯 ♈️ ♉️ ♊️ ♋️ ♌️ ♍️ ♎️ ♏️ ♐️ ♑️ ♒️ ♓️ ⛎ 🔀 🔁 🔂 ▶️ ⏩ ⏭ ⏯ ◀️ ⏪ ⏮ 🔼 ⏫ 🔽 ⏬ ⏸ ⏹ ⏺ ⏏️ 🎦 🔅 💡 💢 ♨️ ♻️ 🉐 ㊙️ ㊗️ 🉑 ➕ ➖ ➗ ✖️ ♾ ‼️ ⁉️ ❓ ❔ ❕ ❗️ 〰️ 💱 💲 ⚕️ ⚖️ 〽️ ✳️ ✴️ ❇️ ©️ ®️ ™️".split(' '),
+            "数字与颜色": "0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣ 🔟 🔴 🟠 🟡 🟢 🔵 🟣 ⚫️ ⚪️ 🟤 🟥 🟧 🟨 🟩 🟦 🟪 ⬛️ ⬜️ 🟫".split(' '),
+            "亚洲国旗": "🇨🇳 🇭🇰 🇲🇴 🇹🇼 🇯🇵 🇰🇷 🇰🇵 🇲🇳 🇮🇳 🇵🇰 🇧🇩 🇵🇭 🇻🇳 🇹🇭 🇲🇾 🇸🇬 🇮🇱 🇸🇦 🇦🇪 🇹🇷 🇮🇷 🇮🇶 🇰🇿 🇺🇿 🇰🇬 🇹🇯 🇹🇲 🇦🇫 🇳🇵 🇱🇰 🇲🇲 🇰🇭 🇱🇦 🇧🇳 🇹🇱 🇴🇲 🇶🇦 🇰🇼 🇧🇭 🇾🇪 🇸🇾 🇱🇧 🇯🇴 🇵🇸 🇦🇲 🇦🇿 🇬🇪 🇨🇾".split(' '),
+            "欧洲国旗": "🇷🇺 🇩🇪 🇫🇷 🇬🇧 🇮🇹 🇪🇸 🇺🇦 🇵🇱 🇷🇴 🇳🇱 🇧🇪 🇬🇷 🇨🇿 🇵🇹 🇸🇪 🇭🇺 🇦🇹 🇨🇭 🇧🇾 🇦🇱 🇧🇬 🇩🇰 🇫🇮 🇸🇰 🇳🇴 🇮🇪 🇭🇷 🇲🇩 🇧🇦 🇱🇹 🇸🇮 🇱🇻 🇪🇪 🇲Ｅ 🇱🇺 🇮🇸 🇦🇩 🇲🇨 🇸🇲 🇻🇦 🇱🇮 🇽🇰".split(' '),
+            "非洲国旗": "🇳🇬 🇪🇹 🇪🇬 🇨🇩 🇹🇿 🇿🇦 🇰🇪 🇺🇬 🇩🇿 🇸🇩 🇲🇦 🇦🇴 🇬🇭 🇲🇿 🇨🇮 🇿🇲 🇲🇱 🇧🇫 🇲🇼 🇸🇳 🇹🇩 🇸🇴 🇿🇼 🇬🇳 🇷🇼 🇧🇯 🇧🇮 🇸🇸 🇪🇷 🇸🇱 🇹🇬 🇱🇾 🇨🇫 🇲🇷 🇨🇬 🇱🇷 🇳🇦 🇬🇦 🇱Ｓ 🇧🇼 🇬🇲 🇬🇼 🇲Ｕ 🇸🇿 🇩🇯 🇰Ｍ 🇨Ｖ 🇸Ｔ 🇸Ｃ".split(' '),
+            "美洲国旗": "🇺🇸 🇨🇦 🇲🇽 🇧🇷 🇦🇷 🇨Ｌ 🇵🇪 🇨Ｏ 🇻Ｅ 🇪🇨 🇧🇴 🇵🇾 🇺🇾 🇬Ｙ ＳＲ 🇵🇦 🇨Ｒ 🇳Ｉ 🇸Ｖ 🇭🇳 🇬Ｔ 🇧🇿 🇨🇺 🇭🇹 🇩Ｏ 🇯🇲 🇧🇸 🇧🇧 🇱Ｃ 🇻Ｃ 🇬Ｄ 🇦Ｇ 🇰Ｎ 🇩Ｍ 🇹Ｔ".split(' '),
+            "大洋洲国旗": "🇦🇺 🇳🇿 🇵🇬 🇫🇯 🇸🇧 🇻🇺 🇼Ｓ 🇰Ｉ 🇹Ｏ 🇫Ｍ 🇲Ｈ 🇵Ｗ 🇳🇷 🇹Ｖ".split(' ')
+        };
+
+        let currentCategory = "表情与人物";
+
+        function init() {
+            renderTabs();
+            renderEmojis();
+            // Fix backspace
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('category-tabs');
+            container.innerHTML = '';
+            Object.keys(emojiData).forEach(cat => {
+                const tab = document.createElement('div');
+                tab.className = `category-tab ${cat === currentCategory ? 'active' : ''}`;
+                tab.textContent = cat;
+                tab.onclick = () => {
+                    currentCategory = cat;
+                    renderTabs();
+                    renderEmojis();
+                };
+                container.appendChild(tab);
+            });
+        }
+
+        function renderEmojis() {
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = '';
+            emojiData[currentCategory].forEach(emoji => {
+                if (!emoji || emoji.trim() === "") return;
+                const item = document.createElement('div');
+                item.className = 'emoji-item';
+                item.textContent = emoji;
+                item.onclick = () => {
+                    document.getElementById('bulk-input').value += emoji;
+                    navigator.clipboard.writeText(emoji).then(() => showToast(`已复制: ${emoji}`));
+                };
+                grid.appendChild(item);
+            });
+        }
+
+        function copyBulk() {
+            const val = document.getElementById('bulk-input').value;
+            if (val) navigator.clipboard.writeText(val).then(() => showToast("已复制全部"));
+        }
+
+        function clearBulk() {
+            document.getElementById('bulk-input').value = '';
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 1500);
+        }
+
+        init();
+    </script>
+</body>
+</html>

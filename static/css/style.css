@@ -30,13 +30,27 @@ header {
     gap: 20px;
 }
 
-.back-link {
-    text-decoration: none;
-    color: var(--apple-accent);
-    font-weight: 500;
-    display: flex;
+.btn-back {
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--apple-border);
+    background: white;
+    color: var(--apple-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.btn-back:hover {
+    background: #f5f5f7;
+    border-color: #86868b;
+    color: var(--apple-text);
+    transform: none;
 }
 
 h1 {
