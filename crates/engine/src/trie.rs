@@ -782,6 +782,12 @@ mod tests {
             r[0] == "全面" || r[0] == "前面",
             "qmian[0] expected 全面 or 前面, got {}", r[0]
         );
+
+        // zhonf: typo correction → zhong → 中
+        let r = search(&engine, &config, "zhonf", &syllables);
+        println!("zhonf top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "zhonf should not be empty (typo correction)");
+        assert!(r[0] == "中", "zhonf[0] expected 中 (corrected to zhong), got {}", r[0]);
     }
 
     #[test]
