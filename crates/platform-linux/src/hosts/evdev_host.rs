@@ -267,7 +267,6 @@ impl EvdevHost {
                         p.ctx.session.best_segmentation = segments;
                         p.ctx.session.has_dict_match = !p.ctx.session.candidates.is_empty();
                         p.ctx.session.last_lookup_pinyin = p.ctx.session.buffer.clone();
-                        p.trigger_prefetch();
 
                         if p.ctx.session.candidates.is_empty() {
                             let buf_arc: std::sync::Arc<str> = std::sync::Arc::from(

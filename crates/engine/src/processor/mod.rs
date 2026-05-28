@@ -8,7 +8,6 @@ pub mod session_state;
 pub mod utils;
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -58,7 +57,6 @@ pub enum FilterMode {
 
 pub struct Processor {
     pub ctx: EngineContext,
-    prefetch_running: Arc<AtomicBool>,
 }
 
 impl Processor {
@@ -69,7 +67,6 @@ impl Processor {
     ) -> Self {
         Self {
             ctx: EngineContext::new(trie_paths, syllables, syllable_freq),
-            prefetch_running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -619,8 +616,6 @@ impl Processor {
             }
         }
 
-        self.trigger_prefetch();
-
         if self.ctx.session.candidates.len() == 1
             && self.ctx.session.filter_mode == FilterMode::Global
         {
@@ -647,58 +642,6 @@ impl Processor {
         }
         self.ctx.session.update_state();
         self.check_auto_commit()
-    }
-
-    pub fn trigger_prefetch(&self) {
-        if self.ctx.session.buffer.len() < 2 {
-            return;
-        }
-
-        if self
-            .prefetch_running
-            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-            .is_err()
-        {
-            return;
-        }
-
-        let buffer = self.ctx.session.buffer.clone();
-        let profile = self
-            .ctx
-            .session_state
-            .active_profiles
-            .first()
-            .cloned()
-            .unwrap_or_default();
-        let syllables = self.ctx.syllables.clone();
-        let config = self.ctx.config.master_config.clone();
-        let engine = self.ctx.engine.clone();
-        let flag = self.prefetch_running.clone();
-
-        std::thread::spawn(move || {
-            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                let common_suffixes = [
-                    "a", "i", "n", "g", "o", "e", "u", "an", "ang", "en", "ong", "ian", "iao",
-                ];
-
-                for suffix in &common_suffixes {
-                    let next_buffer = format!("{}{}", buffer, suffix);
-                    let query = crate::pipeline::SearchQuery {
-                        buffer: &next_buffer,
-                        profile: &profile,
-                        syllables: &syllables,
-                        config: &config,
-                        limit: 3,
-                        filter_mode: FilterMode::None,
-                        aux_filter: "",
-                        context: None,
-                        fuzzy_enabled: false,
-                    };
-                    let _ = engine.search(query);
-                }
-            }));
-            flag.store(false, Ordering::Release);
-        });
     }
 
     pub fn reset(&mut self) {

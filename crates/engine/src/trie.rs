@@ -598,6 +598,67 @@ mod tests {
     }
 
     #[test]
+    fn test_zho_completion() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let config = qianyan_ime_core::config::Config::load();
+
+        let mut trie_paths = std::collections::HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(std::collections::HashSet::new()),
+            Arc::new(std::collections::HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            {
+                let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        let query = SearchQuery {
+            buffer: "zho",
+            profile: "chinese",
+            syllables: &std::collections::HashSet::new(),
+            config: &config,
+            limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+            filter_mode: crate::processor::FilterMode::None,
+            aux_filter: "",
+            context: None,
+            fuzzy_enabled: false,
+        };
+        let (candidates, _) = engine.search(query);
+        let count = candidates.len();
+
+        assert!(count > 0, "Expected some candidates for 'zho'");
+        assert!(
+            candidates[0].text.as_ref() == "中",
+            "First result for 'zho' should be 中, got {}",
+            candidates[0].text
+        );
+    }
+
+    #[test]
     fn test_trie_result_clone() {
         let result = TrieResult {
             word: "test",

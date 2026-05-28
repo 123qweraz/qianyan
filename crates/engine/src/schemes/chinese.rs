@@ -1,5 +1,27 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 use crate::FuzzyPinyinConfig;
+use fst::automaton::Levenshtein;
+use fst::{Automaton, IntoStreamer, Streamer};
+
+fn lev_distance(a: &str, b: &str) -> u32 {
+    let ac: Vec<char> = a.chars().collect();
+    let bc: Vec<char> = b.chars().collect();
+    let m = ac.len();
+    let n = bc.len();
+    let mut dp = vec![0u32; (m + 1) * (n + 1)];
+    for i in 0..=m { dp[i * (n + 1)] = i as u32; }
+    for j in 0..=n { dp[j] = j as u32; }
+    for i in 1..=m {
+        for j in 1..=n {
+            let cost = if ac[i - 1] == bc[j - 1] { 0 } else { 1 };
+            let idx = i * (n + 1) + j;
+            dp[idx] = (dp[(i - 1) * (n + 1) + j] + 1)
+                .min(dp[i * (n + 1) + (j - 1)] + 1)
+                .min(dp[(i - 1) * (n + 1) + (j - 1)] + cost);
+        }
+    }
+    dp[m * (n + 1) + n]
+}
 
 pub struct ChineseScheme;
 
@@ -236,7 +258,11 @@ impl ChineseScheme {
         if normalized.is_empty() {
             return vec![];
         }
-        crate::pipeline::DefaultSegmentor::viterbi_segment(&normalized, context.syllable_freq, context.base_syllables)
+        let segments = crate::pipeline::DefaultSegmentor::viterbi_segment(&normalized, context.syllable_freq, context.base_syllables);
+        if segments.iter().all(|s: &String| s.len() == 1) {
+            return vec![];
+        }
+        segments
     }
 }
 
@@ -279,6 +305,7 @@ impl InputScheme for ChineseScheme {
         if !query.contains(' ') {
             let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
             smart_segments = self.segment_buffer(&pinyin_only, delimiters, context);
+            log::info!("lookup: query={}, segments={:?}", query, smart_segments);
         }
         // 原始切分检索
         let mut last_matches_raw = Vec::new();
@@ -302,29 +329,63 @@ impl InputScheme for ChineseScheme {
                                     3,
                                 ));
                             }
-                        }
-                        if context.config.input.enable_prefix_matching && !py.is_empty() {
-                            let limit = if part.stroke_aux.is_some() || part.english_aux.is_some() {
-                                50
-                            } else if py.len() > 3 {
-                                5
-                            } else {
-                                20
-                            };
-                            let m = d.search_bfs(py, limit);
-                            for tr in m {
-                                matches.push((
-                                    tr.word.to_string(),
-                                    tr.trad.to_string(),
-                                    tr.tone.to_string(),
-                                    tr.en.to_string(),
-                                    tr.stroke_aux.to_string(),
-                                    tr.weight,
-                                    1,
-                                ));
+                        } else if context.config.input.enable_prefix_matching && !py.is_empty() {
+                            let matcher = fst::automaton::Str::new(py).starts_with();
+                            let mut comp_keys: Vec<String> = Vec::new();
+                            let max_key_len = if py.len() <= 3 { 6usize } else { py.len() + 2 };
+                            let mut stream = d.index.search(matcher).into_stream();
+                            while let Some((key_bytes, _)) = stream.next() {
+                                if let Ok(key) = std::str::from_utf8(key_bytes) {
+                                    let klen = key.len();
+                                    if klen > py.len() && klen <= max_key_len {
+                                        comp_keys.push(key.to_string());
+                                        if comp_keys.len() >= 30 { break; }
+                                    }
+                                }
                             }
-                            if matches.len() >= max_results {
-                                break;
+                            if comp_keys.is_empty() {
+                                if let Ok(lev) = Levenshtein::new(py, 1u32) {
+                                    let mut corr_keys: Vec<(String, u32)> = Vec::new();
+                                    let mut stream2 = d.index.search(lev).into_stream();
+                                    while let Some((key_bytes, _)) = stream2.next() {
+                                        if let Ok(key) = std::str::from_utf8(key_bytes) {
+                                            if key != py {
+                                                let dist = lev_distance(py, key);
+                                                corr_keys.push((key.to_string(), dist));
+                                                if corr_keys.len() >= 20 { break; }
+                                            }
+                                        }
+                                    }
+                                    corr_keys.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.len().cmp(&b.0.len())));
+                                    comp_keys = corr_keys.into_iter().map(|(k, _)| k).collect();
+                                }
+                            } else {
+                                comp_keys.sort_by(|a, b| a.len().cmp(&b.len()));
+                            }
+                            comp_keys.truncate(10);
+                            for key in comp_keys {
+                                if let Some(entries) = d.get_all_exact(&key) {
+                                    if py.len() <= 3 && !entries.iter().any(|tr| tr.word.chars().count() == 1) {
+                                        continue;
+                                    }
+                                    for tr in entries.iter() {
+                                        matches.push((
+                                            tr.word.to_string(),
+                                            tr.trad.to_string(),
+                                            tr.tone.to_string(),
+                                            tr.en.to_string(),
+                                            tr.stroke_aux.to_string(),
+                                            tr.weight,
+                                            1,
+                                        ));
+                                        if matches.len() >= max_results {
+                                            break;
+                                        }
+                                    }
+                                }
+                                if matches.len() >= max_results {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -370,6 +431,12 @@ impl InputScheme for ChineseScheme {
                 final_results.push(cand);
             }
         }
+
+        log::info!("lookup: after s1, len={}, top3=[{}, {}, {}]",
+            final_results.len(),
+            final_results.get(0).map(|c| c.text.as_str()).unwrap_or(""),
+            final_results.get(1).map(|c| c.text.as_str()).unwrap_or(""),
+            final_results.get(2).map(|c| c.text.as_str()).unwrap_or(""));
 
         // 策略 2: 简拼检索
         if final_results.len() < min_results_needed
