@@ -791,6 +791,114 @@ mod tests {
     }
 
     #[test]
+    fn test_rerank() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = false;
+        config.input.enable_prefix_matching = false;
+        config.input.enable_fuzzy_pinyin = false;
+        config.input.enable_fixed_first_candidate = true;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        let usage_history = Arc::new(ArcSwap::new(Arc::new(HashMap::<
+            String, HashMap<String, Vec<(String, u32)>>
+        >::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            usage_history.clone(),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+        }
+
+        // Search "da" without any usage history
+        let r1 = search(&engine, &config, "da", &syllables);
+        println!("da (no history) top5: {:?}", &r1[..5.min(r1.len())]);
+        assert!(!r1.is_empty(), "da should have results");
+        let da_pos = r1.iter().position(|w| w == "打").unwrap_or(usize::MAX);
+        println!("da '打' pos (no history): {}", da_pos);
+        assert!(r1[0] == "大", "Without history, 大 should be first");
+
+        // Simulate typing "打" 5 times → fixed_first_candidate triggers (count >= 3)
+        let mut usage: HashMap<String, HashMap<String, Vec<(String, u32)>>> = HashMap::new();
+        let mut da_entries: HashMap<String, Vec<(String, u32)>> = HashMap::new();
+        da_entries.insert("da".to_string(), vec![("打".to_string(), 5)]);
+        usage.insert("chinese".to_string(), da_entries);
+        usage_history.store(Arc::new(usage));
+
+        // Search again — "打" should now be first (fixed)
+        let r2 = search(&engine, &config, "da", &syllables);
+        println!("da (打x5 fixed) top5: {:?}", &r2[..5.min(r2.len())]);
+        assert!(r2[0] == "打", "With 5 uses + fixed_first_candidate, 打 should be first. Got: {}", r2[0]);
+
+        // Disable fixed_first_candidate, test normal re-rank with moderate boost
+        config.input.enable_fixed_first_candidate = false;
+
+        // "打" at count=5, pos=0 should still get significant boost
+        let r3 = search(&engine, &config, "da", &syllables);
+        println!("da (打x5 no fix) top5: {:?}", &r3[..5.min(r3.len())]);
+        let da_pos3 = r3.iter().position(|w| w == "打").unwrap_or(usize::MAX);
+        assert!(da_pos3 <= 1, "打 with 5 uses should be at pos <=1, got {}", da_pos3);
+
+        // Now boost "大" more
+        let mut usage2: HashMap<String, HashMap<String, Vec<(String, u32)>>> = HashMap::new();
+        let mut da_entries2: HashMap<String, Vec<(String, u32)>> = HashMap::new();
+        da_entries2.insert("da".to_string(), vec![("大".to_string(), 20), ("打".to_string(), 3)]);
+        usage2.insert("chinese".to_string(), da_entries2);
+        usage_history.store(Arc::new(usage2));
+
+        let r4 = search(&engine, &config, "da", &syllables);
+        println!("da (大x20, 打x3) top5: {:?}", &r4[..5.min(r4.len())]);
+        assert!(r4[0] == "大", "大 (20 uses) should be first. Got: {}", r4[0]);
+
+        // Clean up test data
+        usage_history.store(Arc::new(HashMap::new()));
+    }
+
+    #[test]
     fn test_zho_completion() {
         use crate::pipeline::{SearchEngine, SearchQuery};
         use crate::scheme::InputScheme;

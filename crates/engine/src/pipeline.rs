@@ -11,11 +11,11 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 // 调频衰减算法参数
-pub(crate) const RECENCY_BOOST_BASE: f64 = 6000.0;
-pub(crate) const FREQ_BOOST_SCALE: f64 = 2000.0;
-pub(crate) const MAX_USAGE_BOOST: f64 = 15000.0;
-pub(crate) const NGRAM_BOOST_SCALE: f64 = 3000.0;
-pub(crate) const MAX_NGRAM_BOOST: f64 = 10000.0;
+pub(crate) const RECENCY_BOOST_BASE: f64 = 5000000.0;
+pub(crate) const FREQ_BOOST_SCALE: f64 = 1000000.0;
+pub(crate) const MAX_USAGE_BOOST: f64 = 10000000.0;
+pub(crate) const NGRAM_BOOST_SCALE: f64 = 2000000.0;
+pub(crate) const MAX_NGRAM_BOOST: f64 = 5000000.0;
 
 const PREWARM_ENTRIES: usize = 1000;
 pub const MAX_LOOKUP_LIMIT: usize = 500;

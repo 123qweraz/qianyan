@@ -626,6 +626,20 @@ impl InputScheme for ChineseScheme {
                             c.weight += (crate::pipeline::compute_decay_boost(pos, count) as u32).max(1);
                         }
                     }
+
+                    // 置顶首候选：最近常用词自动排第一
+                    if context.config.input.enable_fixed_first_candidate {
+                        if let Some((fixed_word, fixed_count)) = entries.first() {
+                            if *fixed_count >= 3 {
+                                for c in &mut *candidates {
+                                    if c.simplified.as_str() == fixed_word {
+                                        c.weight += 20000000;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
