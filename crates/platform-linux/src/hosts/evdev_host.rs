@@ -565,6 +565,8 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
                 pinyin: "".into(),
                 candidates: vec![],
                 selected: 0,
+                page: 0,
+                total_pages: 0,
                 sentence: "".into(),
                 cursor_pos: 0,
                 commit_mode: p.ctx.config.commit_mode().to_string(),
@@ -600,11 +602,15 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
             }
 
             let relative_selected = p.ctx.session.selected.saturating_sub(start);
+            let current_page = if page_size > 0 { start / page_size } else { 0 };
+            let total_pages = if page_size > 0 { (p.ctx.session.candidates.len() + page_size - 1) / page_size } else { 0 };
 
             let _ = tx.send(GuiEvent::Update {
                 pinyin,
                 candidates: display_candidates,
                 selected: relative_selected,
+                page: current_page,
+                total_pages,
                 sentence: p.ctx.session.joined_sentence.clone(),
                 cursor_pos: p.ctx.session.cursor_pos,
                 commit_mode: p.ctx.config.commit_mode().to_string(),
@@ -614,6 +620,8 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
                 pinyin: "".into(),
                 candidates: vec![],
                 selected: 0,
+                page: 0,
+                total_pages: 0,
                 sentence: "".into(),
                 cursor_pos: 0,
                 commit_mode: p.ctx.config.commit_mode().to_string(),

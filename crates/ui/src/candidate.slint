@@ -79,6 +79,8 @@ export component CandidateWindow inherits Window {
     in property <string> pinyin;
     in property <[CandidateData]> candidates;
     in property <int> selected_index: 0;
+    in property <int> current_page: 0;
+    in property <int> total_pages: 0;
     in property <bool> is_visible: false;
     in property <bool> is_horizontal: true;
     in property <bool> show_english_aux: true;
@@ -128,14 +130,25 @@ export component CandidateWindow inherits Window {
 
             if pinyin != "" : HorizontalLayout {
                 padding-left: 8px;
+                padding-right: 8px;
                 padding-top: 2px;
                 padding-bottom: 2px;
+                spacing: 8px;
                 Text {
                     text: pinyin;
                     color: accent_color;
                     font-size: pinyin_font_size;
                     font-family: pinyin_font_family;
                     font-weight: 600;
+                }
+                Rectangle { }
+                Text {
+                    text: total_pages > 0 ? (current_page + 1) + "/" + total_pages : "";
+                    color: aux_text_color;
+                    font-size: pinyin_font_size * 0.8;
+                    font-family: pinyin_font_family;
+                    font-weight: 400;
+                    vertical-alignment: center;
                 }
             }
 

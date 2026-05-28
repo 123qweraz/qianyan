@@ -66,6 +66,8 @@ pub enum MainToGui {
         pinyin: String,
         candidates: Vec<DisplayCandidateMsg>,
         selected: usize,
+        page: usize,
+        total_pages: usize,
     },
     MoveTo { x: i32, y: i32 },
     SetVisible(bool),
@@ -95,6 +97,8 @@ pub struct AppStateMsg {
     pub pinyin: String,
     pub candidates: Vec<DisplayCandidateMsg>,
     pub selected_index: usize,
+    pub page: usize,
+    pub total_pages: usize,
     pub status_text: String,
 }
 

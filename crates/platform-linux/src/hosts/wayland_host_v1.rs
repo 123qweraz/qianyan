@@ -206,6 +206,8 @@ impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
                     pinyin: String::new(),
                     candidates: vec![],
                     selected: 0,
+                    page: 0,
+                    total_pages: 0,
                     sentence: String::new(),
                     cursor_pos: 0,
                     commit_mode: String::new(),
@@ -294,6 +296,10 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                         }
                     }).collect();
                 let selected = guard.ctx.session.selected;
+                let page_size = guard.ctx.config.page_size();
+                let total_candidates = guard.ctx.session.candidates.len();
+                let current_page = if page_size > 0 { guard.ctx.session.page / page_size } else { 0 };
+                let total_pages = if page_size > 0 { (total_candidates + page_size - 1) / page_size } else { 0 };
                 let _preedit = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
                 drop(guard);
 
@@ -304,6 +310,8 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     pinyin: buffer,
                     candidates,
                     selected,
+                    page: current_page,
+                    total_pages,
                     sentence: String::new(),
                     cursor_pos: 0,
                     commit_mode: String::new(),

@@ -184,10 +184,10 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                             is_fuzzy: c.is_fuzzy,
                         }
                     }).collect();
-                    display.update_candidates(&state.pinyin, candidates, state.selected_index);
+                    display.update_candidates(&state.pinyin, candidates, state.selected_index, state.page, state.total_pages);
                 }
             }
-            MainToGui::Update { pinyin, candidates, selected } => {
+            MainToGui::Update { pinyin, candidates, selected, page, total_pages } => {
                 let cands: Vec<_> = candidates.iter().map(|c| {
                     let full_display = if c.is_fuzzy {
                         format!("{}.{}(模糊)", c.label, c.text)
@@ -203,7 +203,7 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     }
                 }).collect();
                 for display in displays.iter_mut() {
-                    display.update_candidates(pinyin, cands.clone(), *selected);
+                    display.update_candidates(pinyin, cands.clone(), *selected, *page, *total_pages);
                 }
             }
             MainToGui::MoveTo { x, y } => {
@@ -296,15 +296,15 @@ fn handle_event(
     config: &Arc<RwLock<Config>>,
 ) {
     match event {
-        GuiEvent::Update { pinyin, candidates, selected, .. } => {
+        GuiEvent::Update { pinyin, candidates, selected, page, total_pages, .. } => {
             for d in displays.iter_mut() {
-                d.update_candidates(&pinyin, candidates.clone(), selected);
+                d.update_candidates(&pinyin, candidates.clone(), selected, page, total_pages);
             }
         }
         GuiEvent::SyncState(state) => {
             for d in displays.iter_mut() {
                 d.update_status(&state.status_text, state.chinese_enabled);
-                d.update_candidates(&state.pinyin, state.candidates.clone(), state.selected_index);
+                d.update_candidates(&state.pinyin, state.candidates.clone(), state.selected_index, state.page, state.total_pages);
             }
         }
         GuiEvent::ShowStatus(text, chinese_enabled) => {

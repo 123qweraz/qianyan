@@ -18,7 +18,7 @@ pub(crate) const NGRAM_BOOST_SCALE: f64 = 3000.0;
 pub(crate) const MAX_NGRAM_BOOST: f64 = 10000.0;
 
 const PREWARM_ENTRIES: usize = 1000;
-const MAX_LOOKUP_LIMIT: usize = 500;
+pub const MAX_LOOKUP_LIMIT: usize = 500;
 const CACHE_TTL_MS: u64 = 300;
 
 /// 候选项
@@ -1518,7 +1518,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         profile: &current_profile,
         syllables: &ctx.syllables,
         config: &ctx.config.master_config,
-        limit: 20,
+        limit: MAX_LOOKUP_LIMIT,
         filter_mode: ctx.session.filter_mode.clone(),
         aux_filter: &ctx.session.aux_filter,
         context: last_word,
@@ -1541,7 +1541,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
                 profile: &current_profile,
                 syllables: &ctx.syllables,
                 config: &ctx.config.master_config,
-                limit: 20,
+                limit: MAX_LOOKUP_LIMIT,
                 filter_mode: FilterMode::Global,
                 aux_filter: &aux_chars,
                 context: last_word,

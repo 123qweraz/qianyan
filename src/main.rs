@@ -175,6 +175,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pinyin: "".into(),
         candidates: vec![],
         selected_index: 0,
+        page: 0,
+        total_pages: 0,
         status_text: "中".into(),
     }));
 
@@ -424,7 +426,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::MainToGui> {
     use qianyan_ime_ui::ipc::transport::{self, MainToGui};
     match event {
-        GuiEvent::Update { pinyin, candidates, selected, .. } => {
+        GuiEvent::Update { pinyin, candidates, selected, page, total_pages, .. } => {
             Some(MainToGui::Update {
                 pinyin,
                 candidates: candidates.into_iter().map(|c| transport::DisplayCandidateMsg {
@@ -434,6 +436,8 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
                     is_fuzzy: c.is_fuzzy,
                 }).collect(),
                 selected,
+                page,
+                total_pages,
             })
         }
         GuiEvent::SyncState(state) => {
@@ -451,6 +455,8 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
                     is_fuzzy: c.is_fuzzy,
                 }).collect(),
                 selected_index: state.selected_index,
+                page: state.page,
+                total_pages: state.total_pages,
                 status_text: state.status_text,
             }))
         }

@@ -148,30 +148,24 @@ impl Trie {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
         let mut stream = self.index.search(matcher).into_stream();
 
+        // 收集所有匹配 key 的完整数据块
         while let Some((_, offset)) = stream.next() {
-            let mut stop = false;
             self.read_block(offset as usize, |pair| {
-                if !stop && seen.insert(pair.word) {
-                    // 应用等级过滤
+                if seen.insert(pair.word) {
                     if let Some(filter_level) = level_filter {
                         if pair.stroke_aux == filter_level {
                             results.push(pair);
-                            if results.len() >= limit {
-                                stop = true;
-                            }
                         }
                     } else {
                         results.push(pair);
-                        if results.len() >= limit {
-                            stop = true;
-                        }
                     }
                 }
             });
-            if stop {
-                break;
-            }
         }
+
+        // 按 weight 降序排列，取前 limit 条（避免存储顺序导致高权重词被遗漏）
+        results.sort_by(|a, b| b.weight.cmp(&a.weight));
+        results.truncate(limit);
         results
     }
 
@@ -503,6 +497,105 @@ impl Trie {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_qi_exact_lookup() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+
+        assert!(trie.index.get("qi").is_some(), "Key 'qi' not found in trie index!");
+        let results = trie.get_all_exact("qi").expect("No results for 'qi'!");
+        assert!(results.iter().any(|r| r.word == "器"), "器 not found in trie for 'qi'");
+    }
+
+    #[test]
+    fn test_candidate_count_chinese() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        // Load a real Config to get enable_prefix_matching=true etc.
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let config = qianyan_ime_core::config::Config::load();
+
+        let mut trie_paths = std::collections::HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: std::collections::HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables),
+            Arc::new(std::collections::HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            {
+                let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        // Test "li" — there are MANY characters for li (里力立利理李离例 etc.)
+        // Should return way more than 20 candidates
+        let query = SearchQuery {
+            buffer: "li",
+            profile: "chinese",
+            syllables: &std::collections::HashSet::new(),
+            config: &config,
+            limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+            filter_mode: crate::processor::FilterMode::None,
+            aux_filter: "",
+            context: None,
+            fuzzy_enabled: false,
+        };
+        let (candidates, _) = engine.search(query);
+        let count = candidates.len();
+
+        // Print top 30 for inspection
+        println!("=== 'li' search: {} total candidates ===", count);
+        for (i, c) in candidates.iter().enumerate().take(30) {
+            println!("  [{}] {} weight={}", i, c.text, c.weight);
+        }
+
+        // There should be WAY more than 20 — at least 50+ characters for common pinyin "li"
+        assert!(count > 40,
+            "Only {} candidates for 'li' — expected >40! The result limit is still too aggressive.",
+            count);
+
+        // Also verify the trie itself has 80+ entries for "li"
+        let trie = Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+        let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
+        println!("'li' exact trie entries: {}", trie_count);
+        assert!(trie_count > 50, "Only {} entries in trie for 'li'!", trie_count);
+    }
 
     #[test]
     fn test_trie_result_clone() {

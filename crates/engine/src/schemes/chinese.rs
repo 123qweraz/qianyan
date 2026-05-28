@@ -246,8 +246,8 @@ impl InputScheme for ChineseScheme {
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        let min_results_needed = 6;
-        let max_results = 50;
+        let min_results_needed = 500;
+        let max_results = 500;
 
         // 用户词典检索
         if let Some(profile) = context.active_profiles.first() {

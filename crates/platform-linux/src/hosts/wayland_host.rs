@@ -206,6 +206,10 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                     }).collect();
                 let selected = guard.ctx.session.selected;
                 let preedit = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
+                let page_size = guard.ctx.config.page_size();
+                let total_candidates = guard.ctx.session.candidates.len();
+                let current_page = if page_size > 0 { guard.ctx.session.page / page_size } else { 0 };
+                let total_pages = if page_size > 0 { (total_candidates + page_size - 1) / page_size } else { 0 };
                 drop(guard);
 
                 Self::handle_action(state, &action, conn, utf8_text, key, time);
@@ -215,6 +219,8 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                     pinyin: buffer,
                     candidates,
                     selected,
+                    page: current_page,
+                    total_pages,
                     sentence: String::new(),
                     cursor_pos: 0,
                     commit_mode: String::new(),

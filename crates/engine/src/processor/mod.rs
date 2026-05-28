@@ -388,7 +388,7 @@ impl Processor {
                         self.ctx.session.fuzzy_activated = true;
                         self.ctx.session.page = 0;
                         self.ctx.session.selected = 0;
-                        if let Some(relook) = self.lookup_with_limit(20) {
+                        if let Some(relook) = self.lookup_with_limit(crate::pipeline::MAX_LOOKUP_LIMIT) {
                             return relook;
                         }
                     }
@@ -477,7 +477,7 @@ impl Processor {
     }
 
     pub fn lookup(&mut self) -> Option<Action> {
-        self.lookup_with_limit(20)
+        self.lookup_with_limit(crate::pipeline::MAX_LOOKUP_LIMIT)
     }
 
     pub fn lookup_with_limit(&mut self, limit: usize) -> Option<Action> {

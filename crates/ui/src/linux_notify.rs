@@ -24,6 +24,8 @@ impl CandidateDisplay for LinuxNotifyDisplay {
         pinyin: &str,
         candidates: Vec<DisplayCandidate>,
         selected: usize,
+        _page: usize,
+        _total_pages: usize,
     ) {
         eprintln!("[NOTIFY_DEBUG] update_candidates: pinyin='{}' candidates={}", pinyin, candidates.len());
         if pinyin.is_empty() {

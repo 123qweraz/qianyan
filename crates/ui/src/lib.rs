@@ -25,7 +25,7 @@ pub struct DisplayCandidate {
 /// 核心显示接口：解耦 Slint 窗口与 Linux 桌面通知
 pub trait CandidateDisplay {
     /// 更新候选词列表及拼音
-    fn update_candidates(&mut self, pinyin: &str, candidates: Vec<DisplayCandidate>, selected: usize);
+    fn update_candidates(&mut self, pinyin: &str, candidates: Vec<DisplayCandidate>, selected: usize, page: usize, total_pages: usize);
     
     /// 更新状态栏显示（中/英模式文字）
     fn update_status(&mut self, text: &str, chinese_enabled: bool);
@@ -56,6 +56,8 @@ pub struct AppState {
     pub pinyin: String,
     pub candidates: Vec<DisplayCandidate>,
     pub selected_index: usize,
+    pub page: usize,
+    pub total_pages: usize,
     pub status_text: String,
 }
 
@@ -67,6 +69,8 @@ pub enum GuiEvent {
         pinyin: String,
         candidates: Vec<DisplayCandidate>,
         selected: usize,
+        page: usize,
+        total_pages: usize,
         sentence: String,
         cursor_pos: usize,
         commit_mode: String,

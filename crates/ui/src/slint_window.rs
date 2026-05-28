@@ -293,6 +293,8 @@ impl CandidateDisplay for SlintDisplay {
         pinyin: &str,
         candidates: Vec<crate::DisplayCandidate>,
         selected: usize,
+        page: usize,
+        total_pages: usize,
     ) {
         if !self.candidate_enabled || pinyin.is_empty() || !self.config.appearance.show_candidates {
             self.set_visible(false);
@@ -301,6 +303,8 @@ impl CandidateDisplay for SlintDisplay {
 
         self.window.set_pinyin(SharedString::from(pinyin));
         self.window.set_selected_index(selected as i32);
+        self.window.set_current_page(page as i32);
+        self.window.set_total_pages(total_pages as i32);
 
         let mut cand_models = Vec::new();
         for c in candidates {

@@ -730,6 +730,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
         pinyin: &str,
         candidates: Vec<crate::DisplayCandidate>,
         selected: usize,
+        page: usize,
+        total_pages: usize,
     ) {
         if !self.candidate_enabled || pinyin.is_empty() || !self.config.appearance.show_candidates {
             self.set_visible(false);
@@ -739,6 +741,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
         self.candidate_window
             .set_pinyin(slint::SharedString::from(pinyin));
         self.candidate_window.set_selected_index(selected as i32);
+        self.candidate_window.set_current_page(page as i32);
+        self.candidate_window.set_total_pages(total_pages as i32);
 
         let mut cand_models = Vec::new();
         for c in candidates {
