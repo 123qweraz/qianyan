@@ -1066,9 +1066,11 @@ struct PinyinConvertResponse {
     pinyin: String,
 }
 
-static CHINESE_WORD_MAP: OnceLock<HashMap<String, String>> = OnceLock::new();
+type WordMap = HashMap<String, (String, u32)>;
 
-fn load_chinese_word_map() -> HashMap<String, String> {
+static CHINESE_WORD_MAP: OnceLock<WordMap> = OnceLock::new();
+
+fn load_chinese_word_map() -> WordMap {
     let root = qianyan_ime_core::utils::find_project_root();
     let data_dir = root.join("data");
     let index_path = data_dir.join("chinese/trie.index");
@@ -1082,68 +1084,132 @@ fn load_chinese_word_map() -> HashMap<String, String> {
         }
     };
 
-    let mut map = HashMap::new();
+    let mut map = WordMap::new();
     let mut stream = trie.index.stream();
     while let Some((pinyin_bytes, offset)) = stream.next() {
         let pinyin = String::from_utf8_lossy(pinyin_bytes).to_string();
         trie.read_block(offset as usize, |tr| {
             let word = tr.word.to_string();
-            map.entry(word).or_insert_with(|| pinyin.clone());
+            map.entry(word).or_insert_with(|| (pinyin.clone(), tr.weight));
         });
     }
     map
 }
 
-fn get_chinese_word_map() -> &'static HashMap<String, String> {
+fn get_chinese_word_map() -> &'static WordMap {
     CHINESE_WORD_MAP.get_or_init(load_chinese_word_map)
 }
 
-fn segment_and_convert(
-    text: &str,
-    map: &HashMap<String, String>,
-) -> (String, String) {
-    let chars: Vec<char> = text.chars().collect();
-    let len = chars.len();
-    let max_word_len = map
-        .keys()
-        .map(|k| k.chars().count())
-        .max()
-        .unwrap_or(6)
-        .min(8);
+fn is_word_in_map(word: &str, map: &WordMap) -> bool {
+    map.contains_key(word)
+}
 
-    let mut segmented = Vec::new();
-    let mut pinyin = Vec::new();
+fn word_weight(word: &str, map: &WordMap) -> u32 {
+    map.get(word).map_or(0, |e| e.1)
+}
+
+fn word_pinyin(word: &str, map: &WordMap) -> String {
+    map.get(word).map_or_else(|| word.to_string(), |e| e.0.clone())
+}
+
+fn max_word_len(map: &WordMap) -> usize {
+    map.keys().map(|k| k.chars().count()).max().unwrap_or(6).min(8)
+}
+
+fn segment_forward(chars: &[char], map: &WordMap, max_len: usize) -> Vec<String> {
+    let mut words = Vec::new();
     let mut i = 0;
-
-    while i < len {
+    while i < chars.len() {
         if !is_chinese(chars[i]) {
-            segmented.push(chars[i].to_string());
-            pinyin.push(chars[i].to_string());
+            words.push(chars[i].to_string());
             i += 1;
             continue;
         }
-
-        let remaining = len - i;
-        let lookahead = max_word_len.min(remaining);
+        let lookahead = max_len.min(chars.len() - i);
         let mut found = false;
-
-        for word_len in (1..=lookahead).rev() {
-            let word: String = chars[i..i + word_len].iter().collect();
-            if let Some(py) = map.get(&word) {
-                segmented.push(word);
-                pinyin.push(py.clone());
-                i += word_len;
+        for len in (1..=lookahead).rev() {
+            let word: String = chars[i..i + len].iter().collect();
+            if is_word_in_map(&word, map) {
+                words.push(word);
+                i += len;
                 found = true;
                 break;
             }
         }
-
         if !found {
-            let c = chars[i].to_string();
-            segmented.push(c.clone());
-            pinyin.push(c);
+            words.push(chars[i].to_string());
             i += 1;
         }
+    }
+    words
+}
+
+fn segment_backward(chars: &[char], map: &WordMap, max_len: usize) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut i = chars.len();
+    while i > 0 {
+        if !is_chinese(chars[i - 1]) {
+            words.push(chars[i - 1].to_string());
+            i -= 1;
+            continue;
+        }
+        let lookahead = max_len.min(i);
+        let mut found = false;
+        for len in (1..=lookahead).rev() {
+            let word: String = chars[i - len..i].iter().collect();
+            if is_word_in_map(&word, map) {
+                words.push(word);
+                i -= len;
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            words.push(chars[i - 1].to_string());
+            i -= 1;
+        }
+    }
+    words.reverse();
+    words
+}
+
+fn single_char_count(words: &[String]) -> usize {
+    words.iter().filter(|w| w.chars().count() == 1).count()
+}
+
+fn total_weight(words: &[String], map: &WordMap) -> u64 {
+    words.iter().map(|w| word_weight(w, map) as u64).sum()
+}
+
+fn segment_and_convert(
+    text: &str,
+    map: &WordMap,
+) -> (String, String) {
+    let chars: Vec<char> = text.chars().collect();
+    let max_len = max_word_len(map);
+
+    let forward = segment_forward(&chars, map, max_len);
+    let backward = segment_backward(&chars, map, max_len);
+
+    let words = if forward == backward {
+        &forward
+    } else {
+        let f1 = single_char_count(&forward);
+        let f2 = single_char_count(&backward);
+        if f1 != f2 {
+            if f1 < f2 { &forward } else { &backward }
+        } else {
+            let fw = total_weight(&forward, map);
+            let bw = total_weight(&backward, map);
+            if fw >= bw { &forward } else { &backward }
+        }
+    };
+
+    let mut segmented = Vec::new();
+    let mut pinyin = Vec::new();
+    for word in words {
+        segmented.push(word.clone());
+        pinyin.push(word_pinyin(word, map));
     }
 
     (segmented.join(" "), pinyin.join(" "))
