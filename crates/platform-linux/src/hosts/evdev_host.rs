@@ -2,6 +2,7 @@ use super::vkbd::Vkbd;
 use evdev::{Device, InputEventKind, Key};
 use qianyan_ime_core::{InputMethodHost, Rect};
 use qianyan_ime_engine::keys::VirtualKey;
+use qianyan_ime_engine::pipeline::MAX_LOOKUP_LIMIT;
 use qianyan_ime_engine::processor::Action;
 use qianyan_ime_engine::Processor;
 use qianyan_ime_ui::GuiEvent;
@@ -252,7 +253,7 @@ impl EvdevHost {
                         profile: &profile,
                         syllables: &syllables,
                         config: &config,
-                        limit: 20,
+                        limit: MAX_LOOKUP_LIMIT,
                         filter_mode,
                         aux_filter: &aux_filter,
                         context: None,
