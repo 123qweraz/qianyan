@@ -339,6 +339,97 @@ impl Trie {
         false
     }
 
+    /// 混拼检索：segments 为 (segment, is_initial) 对
+    /// is_initial=true → 声母简拼 (starts_with)，false → 全音节精确匹配
+    pub fn search_abbreviation_mixed(
+        &self,
+        segments: &[(String, bool)],
+        syllables: &std::collections::HashSet<String>,
+        limit: usize,
+    ) -> Vec<TrieResult<'_>> {
+        if segments.is_empty() {
+            return Vec::new();
+        }
+        let mut results = Vec::with_capacity(limit);
+        let mut seen = std::collections::HashSet::new();
+
+        let first_seg = &segments[0].0;
+        let matcher = fst::automaton::Str::new(first_seg).starts_with();
+        let mut stream = self.index.search(matcher).into_stream();
+
+        while let Some((key_bytes, offset)) = stream.next() {
+            let key = String::from_utf8_lossy(key_bytes);
+            if self.recursive_mixed_match(&key, segments, syllables) {
+                let mut stop = false;
+                self.read_block(offset as usize, |pair| {
+                    if !stop && seen.insert(pair.word) {
+                        results.push(pair);
+                        if results.len() >= ABBREVIATION_SCAN_LIMIT {
+                            stop = true;
+                        }
+                    }
+                });
+                if stop {
+                    break;
+                }
+            }
+            if results.len() >= ABBREVIATION_SCAN_LIMIT {
+                break;
+            }
+        }
+        results
+    }
+
+    fn recursive_mixed_match(
+        &self,
+        key: &str,
+        segments: &[(String, bool)],
+        syllables: &std::collections::HashSet<String>,
+    ) -> bool {
+        if segments.is_empty() {
+            return key.is_empty();
+        }
+        if key.is_empty() {
+            return false;
+        }
+
+        let (first_seg, is_initial) = &segments[0];
+
+        for (char_count, (byte_idx, _)) in key.char_indices().enumerate() {
+            let len = byte_idx;
+            if len > 0 && len <= 10 {
+                let syl = &key[..len];
+                if syllables.contains(syl) {
+                    let matches = if *is_initial {
+                        syl.starts_with(first_seg.as_str())
+                    } else {
+                        syl == first_seg.as_str()
+                    };
+                    if matches {
+                        if self.recursive_mixed_match(&key[len..], &segments[1..], syllables) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            if char_count > 8 {
+                break;
+            }
+        }
+
+        if segments.len() == 1 && syllables.contains(key) {
+            let matches = if *is_initial {
+                key.starts_with(first_seg.as_str())
+            } else {
+                key == first_seg.as_str()
+            };
+            if matches {
+                return true;
+            }
+        }
+
+        false
+    }
 
 
     pub fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
@@ -595,6 +686,102 @@ mod tests {
         let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
         println!("'li' exact trie entries: {}", trie_count);
         assert!(trie_count > 50, "Only {} entries in trie for 'li'!", trie_count);
+    }
+
+    #[test]
+    fn test_comprehensive_lookup() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = true;
+        config.input.enable_prefix_matching = true;
+        config.input.enable_fuzzy_pinyin = false;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+        }
+
+        // zho: prefix completion → zhong → 中 first
+        let r = search(&engine, &config, "zho", &syllables);
+        println!("zho top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "zho should not be empty");
+        assert!(r[0] == "中", "zho[0] expected 中, got {}", r[0]);
+
+        // guor: prefix completion → guoran → 果然
+        let r = search(&engine, &config, "guor", &syllables);
+        println!("guor top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "guor should not be empty");
+
+        // zm: abbreviation → 怎么/咱们 first
+        let r = search(&engine, &config, "zm", &syllables);
+        println!("zm top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "zm should not be empty");
+        assert!(r[0] == "怎么", "zm[0] expected 怎么, got {}", r[0]);
+
+        // sm: abbreviation → 什么 first
+        let r = search(&engine, &config, "sm", &syllables);
+        println!("sm top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "sm should not be empty");
+        assert!(r[0] == "什么", "sm[0] expected 什么, got {}", r[0]);
+
+        // qkun: mixed abbreviation
+        let r = search(&engine, &config, "qkun", &syllables);
+        println!("qkun top10: {:?}", &r[..10.min(r.len())]);
+
+        // qmian: mixed abbreviation → 前面/全面
+        let r = search(&engine, &config, "qmian", &syllables);
+        println!("qmian top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "qmian should not be empty");
+        assert!(
+            r[0] == "全面" || r[0] == "前面",
+            "qmian[0] expected 全面 or 前面, got {}", r[0]
+        );
     }
 
     #[test]

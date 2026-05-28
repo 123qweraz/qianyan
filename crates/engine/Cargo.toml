@@ -11,6 +11,6 @@ log = { workspace = true }
 thiserror = { workspace = true }
 rodio = { workspace = true }
 walkdir = { workspace = true }
-fst = { workspace = true, features = ["levenshtein"] }
+fst = { workspace = true }
 memmap2 = { workspace = true }
 arc-swap = { workspace = true }
