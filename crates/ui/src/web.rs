@@ -5,10 +5,12 @@ use axum::{
     http::{StatusCode, Uri, HeaderName, header},
     Router,
 };
+use qianyan_ime_engine::fst::Streamer;
 use serde::Serialize;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, OnceLock};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::HashMap;
+
 use qianyan_ime_core::Config;
 use qianyan_ime_engine::trie::Trie;
 use rust_embed::RustEmbed;
@@ -67,6 +69,7 @@ impl WebServer {
             .route("/api/dict/entry/add", post(add_dict_entry_full))
             .route("/api/dict/clear_user", post(clear_user_dict))
             .route("/api/keyboard/send", post(send_key_handler))
+            .route("/api/pinyin/convert", post(pinyin_convert_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
@@ -1050,4 +1053,117 @@ async fn send_key_handler(
     let _ = tray_tx.send(TrayEvent::SendKey(key));
     
     StatusCode::OK
+}
+
+#[derive(serde::Deserialize)]
+struct PinyinConvertRequest {
+    text: String,
+}
+
+#[derive(Serialize)]
+struct PinyinConvertResponse {
+    segmented: String,
+    pinyin: String,
+}
+
+static CHINESE_WORD_MAP: OnceLock<HashMap<String, String>> = OnceLock::new();
+
+fn load_chinese_word_map() -> HashMap<String, String> {
+    let root = qianyan_ime_core::utils::find_project_root();
+    let data_dir = root.join("data");
+    let index_path = data_dir.join("chinese/trie.index");
+    let data_path = data_dir.join("chinese/trie.data");
+
+    let trie = match Trie::load(&index_path, &data_path, false) {
+        Ok(t) => t,
+        Err(e) => {
+            log::warn!("[pinyin] Failed to load chinese trie: {}", e);
+            return HashMap::new();
+        }
+    };
+
+    let mut map = HashMap::new();
+    let mut stream = trie.index.stream();
+    while let Some((pinyin_bytes, offset)) = stream.next() {
+        let pinyin = String::from_utf8_lossy(pinyin_bytes).to_string();
+        trie.read_block(offset as usize, |tr| {
+            let word = tr.word.to_string();
+            map.entry(word).or_insert_with(|| pinyin.clone());
+        });
+    }
+    map
+}
+
+fn get_chinese_word_map() -> &'static HashMap<String, String> {
+    CHINESE_WORD_MAP.get_or_init(load_chinese_word_map)
+}
+
+fn segment_and_convert(
+    text: &str,
+    map: &HashMap<String, String>,
+) -> (String, String) {
+    let chars: Vec<char> = text.chars().collect();
+    let len = chars.len();
+    let max_word_len = map
+        .keys()
+        .map(|k| k.chars().count())
+        .max()
+        .unwrap_or(6)
+        .min(8);
+
+    let mut segmented = Vec::new();
+    let mut pinyin = Vec::new();
+    let mut i = 0;
+
+    while i < len {
+        if !is_chinese(chars[i]) {
+            segmented.push(chars[i].to_string());
+            pinyin.push(chars[i].to_string());
+            i += 1;
+            continue;
+        }
+
+        let remaining = len - i;
+        let lookahead = max_word_len.min(remaining);
+        let mut found = false;
+
+        for word_len in (1..=lookahead).rev() {
+            let word: String = chars[i..i + word_len].iter().collect();
+            if let Some(py) = map.get(&word) {
+                segmented.push(word);
+                pinyin.push(py.clone());
+                i += word_len;
+                found = true;
+                break;
+            }
+        }
+
+        if !found {
+            let c = chars[i].to_string();
+            segmented.push(c.clone());
+            pinyin.push(c);
+            i += 1;
+        }
+    }
+
+    (segmented.join(" "), pinyin.join(" "))
+}
+
+async fn pinyin_convert_handler(
+    State(_): State<WebState>,
+    Json(req): Json<PinyinConvertRequest>,
+) -> Json<PinyinConvertResponse> {
+    let map = get_chinese_word_map();
+    if map.is_empty() {
+        return Json(PinyinConvertResponse {
+            segmented: req.text.clone(),
+            pinyin: req.text,
+        });
+    }
+    let (segmented, pinyin) = segment_and_convert(&req.text, map);
+    Json(PinyinConvertResponse { segmented, pinyin })
+}
+
+fn is_chinese(c: char) -> bool {
+    (c >= '\u{4e00}' && c <= '\u{9fa5}') || (c >= '\u{3400}' && c <= '\u{4dbf}')
 }

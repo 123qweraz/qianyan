@@ -33,7 +33,7 @@ impl AsRef<[u8]> for TrieData {
 
 #[derive(Clone)]
 pub struct Trie {
-    index: Map<TrieData>,
+    pub index: Map<TrieData>,
     data: TrieData,
 }
 
@@ -347,7 +347,7 @@ impl Trie {
 
 
 
-    fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
+    pub fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
         let data = self.data.as_ref();
         if offset + 4 > data.len() {
             log::warn!("[Trie] read_block: offset {} beyond data length {}", offset, data.len());

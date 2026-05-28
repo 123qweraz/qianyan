@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>句子转拼音 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .converter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .input-area, .output-area {
+            background: var(--apple-card);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid var(--apple-border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border-radius: 12px;
+            border: 2px solid var(--apple-border);
+            font-size: 18px;
+            line-height: 1.6;
+            outline: none;
+            transition: all 0.2s;
+            background: #fff;
+            color: var(--apple-text);
+            resize: vertical;
+        }
+
+        textarea:focus {
+            border-color: var(--apple-accent);
+            box-shadow: 0 0 0 4px rgba(0,113,227,0.1);
+        }
+
+        .result-box {
+            min-height: 120px;
+            padding: 16px;
+            background: #f5f5f7;
+            border-radius: 12px;
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--apple-text);
+            word-break: break-all;
+            white-space: pre-wrap;
+            border: 2px solid transparent;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .loading {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .tip {
+            font-size: 14px;
+            color: var(--apple-secondary);
+            margin-top: -8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>句子转拼音</h1>
+        </header>
+
+        <div class="converter-container">
+            <div class="input-area">
+                <h3>输入中文句子</h3>
+                <textarea id="input-text" placeholder="在这里输入一段话，例如：千言输入法非常好用..."></textarea>
+                <div class="tip">提示：程序会自动进行简单的分词并转换。</div>
+                <div class="actions">
+                    <button class="btn btn-danger" onclick="clearInput()">清空</button>
+                    <button class="btn" id="convert-btn" onclick="convert()">立即转换</button>
+                </div>
+            </div>
+
+            <div class="output-area">
+                <h3>分词结果</h3>
+                <div id="output-segmented" class="result-box">等待输入...</div>
+                <div class="actions">
+                    <button class="btn" onclick="copyResult('segmented')">复制分词</button>
+                </div>
+            </div>
+
+            <div class="output-area">
+                <h3>拼音结果</h3>
+                <div id="output-pinyin" class="result-box">等待输入...</div>
+                <div class="actions">
+                    <button class="btn" onclick="copyResult('pinyin')">复制拼音</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        function clearInput() {
+            document.getElementById('input-text').value = '';
+            document.getElementById('output-segmented').innerText = '等待输入...';
+            document.getElementById('output-pinyin').innerText = '等待输入...';
+        }
+
+        async function convert() {
+            const input = document.getElementById('input-text').value.trim();
+            if (!input) return;
+
+            const btn = document.getElementById('convert-btn');
+            const outSeg = document.getElementById('output-segmented');
+            const outPy = document.getElementById('output-pinyin');
+
+            btn.classList.add('loading');
+            btn.innerText = '正在转换...';
+            outSeg.innerText = '正在分词，请稍候...';
+            outPy.innerText = '正在转换拼音，请稍候...';
+
+            try {
+                const response = await fetch('/api/pinyin/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: input })
+                });
+                
+                const data = await response.json();
+                outSeg.innerText = data.segmented;
+                outPy.innerText = data.pinyin;
+            } catch (e) {
+                outSeg.innerText = '转换失败，请检查网络或引擎状态。';
+                outPy.innerText = '';
+                console.error(e);
+            } finally {
+                btn.classList.remove('loading');
+                btn.innerText = '立即转换';
+            }
+        }
+
+        function copyResult(type) {
+            const id = type === 'pinyin' ? 'output-pinyin' : 'output-segmented';
+            const text = document.getElementById(id).innerText;
+            if (text && text !== '等待输入...' && text !== '正在转换...' && text !== '正在分词，请稍候...' && text !== '正在转换拼音，请稍候...') {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('结果已复制到剪贴板');
+                });
+            }
+        }
+    </script>
+</body>
+</html>
