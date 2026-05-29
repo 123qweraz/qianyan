@@ -30,10 +30,10 @@ def extract_pairs(data):
     return results
 
 def main():
-    data = load_json("chars.json")
+    data = load_json("level3.json")
     results = extract_pairs(data)
 
-    with open("chars_output.txt", "w", encoding="utf-8") as f:
+    with open("level3_output.txt", "w", encoding="utf-8") as f:
         f.write("\n".join(results))
 
 if __name__ == "__main__":

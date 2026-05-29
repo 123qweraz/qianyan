@@ -1,1232 +1,1232 @@
-ai 矮 Low: Short
-ai 挨 Suffer: Endure
-ai 暧 Warm: Ambiance
-ai 皑 White: White 
-an 鞍 Saddle: Saddle 
-an 黯 Dim: Gloomy
-an 胺 Amine: Amine 
-an 铵 Ammonium: Ammonium
-ao 敖 Proud: Proud
-ao 熬 Boil: Boil
-ao 澳 Bay: Macau
-ao 袄 Coat: Garment
-ao 螯 Crab: Pincer
-ao 拗 Stubborn: Obstinate
-ba 爸 Dad: Father
-ba 霸 Hegemon: Ruler
-ba 靶 Mark: Target
-bai 擘 Break: Split
-ban 搬 Carry: Transport
-ban 伴 Partner: Associate
-ban 斑 Spot: Mark
-ban 阪 Slope: Incline
-ban 坂 Slope: Hill
-ban 瘢 Scar: Cicatrix
-bao 瀑 Waterfall: Cascade
-bao 薄 Thin: Slender
-bao 饱 Full: Abundant
-bao 煲 Stew: Broth
-bao 褓 Swaddle: Wrap
-bao 孢 Spore: Germ
-bei 辈 Age: Generation
-bei 臂 Arm: Limb
-bei 悲 Sad: Sorrow
-bei 碑 Stone: Monument
-bei 陂 Slope: Incline
-ben 本 Root: Origin
-ben 奔 Run: Sprint
-bi 必 Must: Necessity
-bi 痹 Numbness: Paralysis
-bi 筚 Wicker: Matting
-bi 敝 Tattered: Shabby
-bi 裨 Benefit: Advantage
-bi 毙 Die: Die
-bian 砭 Stone needle: Lancet
-bian 苄 Spice: Benzyl 
-bian 辩 Argue: Debate
-bian 汴 Bian River: Bian
-biao 标 Mark: Label
-biao 裱 Mount: Frame
-biao 鳔 Swim bladder: Bladder
-bin 彬 Refined: Elegant
-bin 斌 Refined: Cultured
-bin 摈 Reject: Dismiss
-bing 摒 Abandon: Reject
-bing 屏 Screen: Display
-bo 波 Ripple: Wave
-bo 驳 Refute: Contradict
-bo 搏 Fight: Struggle
-bo 箔 Foil: Foil
-bo 亳 Bo (city): Bo
-bu 捕 Catch: Trap
-bu 堡 Fortress: Keep
-cai 裁 Cut: Sever
-can 灿 Bright: Radiant
-can 掺 Blend: Mix
-can 璨 Bright: Luminous
-can 粲 Bright: Bright
-cang 舱 Hold: Cabin
-cang 苍 Grey: Greyish
-ceng 嶒 Rugged: Craggy
-cha 诧 Surprise: Surprised
-cha 茬 Stubble: Stubble
-chan 潺 Gurgle: Murmur
-chang 场 Field: Arena
-chang 厂 Factory: Plant
-chang 唱 Sing: Chant
-chao 钞 Money: Cash
-che 扯 Pull: Drag
-che 掣 Pull: Yank
-chen 沉 Sink: Submerge
-chen 晨 Morning: Dawn
-chen 称 Weigh: Measure
-chen 瞋 Angry: Furious
-cheng 成 Succeed: Excel
-cheng 逞 Succeed: Triumph
-cheng 秤 Scale: Weigh
-cheng 澄 Clear: Purity
-cheng 程 Process: Method
-cheng 撑 Prop: Support
-cheng 呈 Present: Display
-chi 哧 Hiss: Sibilate
-chi 痴 Idiot: Fool
-chi 敕 Imperial order: Decree
-chi 媸 Ugly: Hideous
-chi 驰 Speed: Quickness
-chi 耻 Shame: Disgrace
-chi 叱 Shout: Yell
-chi 侈 Wasteful: Extravagant
-chi 笞 Whip: Lash
-chong 充 Fill: Replenish
-chong 虫 Insect: Bug
-chou 筹 Plan: Scheme
-chou 愁 Sorrow: Grief
-chou 绸 Silk: Fabric
-chu 除 Eliminate: Remove
-chu 杵 Pestle: Grinder
-chu 初 First: Initial
-chu 触 Feel: Sense
-chu 储 Save: Store
-chu 褚 Surname Chu: Chu
-chu 矗 Towering: Erect
-chu 蜍 Toad: Amphibian
-chuang 怆 Sad: Gloomy
-chui 锤 Beat: Hit
-chui 捶 Beat: Pound
-chun 椿 Spring: Camellia
-chun 淳 Pure: Simple
-chun 醇 Pure: Mellow
-ci 祠 Temple: Shrine
-ci 瓷 China: Porcelain
-cong 囱 Chimney: Vinegar
-cui 萃 Gather: Collect
-cuo 锉 File: Abrade
-da 大 Big: Large
-da 瘩 Bump: Lump
-da 褡 Bag: Pouch
-dai 岱 Dai Mountain: Mountain
-dai 傣 Dai (ethnic): Dai (ethnic group)
-dan 淡 Light: Pale
-dan 箪 Bamboo basket: Basket
-dan 殚 Exhaust: Deplete
-dan 旦 Dawn: Morning
-dan 耽 Delay: Postpone
-dan 郸 Dancheng (county): dan
-dan 儋 Danzhou (city): Dan
-dang 荡 Swing: Dance
-dang 挡 Stop: Block
-dao 到 Reach: Way
-dao 稻 Rice: Grain
-dao 祷 Beg: Pray
-di 帝 God: Emperor
-di 迪 Guide: Guide
-di 的 Possessive: Possessive
-di 笛 Pipe: Flute
-di 狄 Di (ethnic): Di
-di 邸 Mansion: Residence
-di 涤 Wash: Cleanse
-di 砥 Whetstone: Grinding stone
-dian 电 Lightning: Electric
-dian 淀 Lake: Starch
-dian 奠 Commemorate: Remember
-dian 颠 Top: Apex
-dian 佃 Tenant: Leaseholder
-dian 巅 Peak: Summit
-dian 惦 Miss: Longing
-dian 癫 Mad: Crazy
-dian 靛 Indigo: Blue
-die 爹 Dad: Father
-die 碟 Dish: Plate
-ding 顶 Top: Summit
-ding 鼎 Tripod: Cauldron
-ding 仃 Alone: Isolated
-ding 叮 Bite: Prick
-dou 窦 Cave: Grotto
-du 督 Monitor: Supervise
-du 渡 Cross: Traverse
-du 镀 Coat: Plating
-du 犊 Calf: Bovine
-du 肚 Belly: Abdomen
-du 笃 Sincere: Genuine
-duan 短 Short: Petite
-duan 煅 Forge: Temper
-dun 囤 Store: Accumulate
-dun 沌 Muddled: Confused
-dun 墩 Mound: Knoll
-duo 度 Measure: Gauge
-duo 舵 Helm: Rudder
-duo 堕 Fall: Decline
-duo 踱 Stroll: Wander
-duo 咄 Scold: Reprimand
-duo 跺 Tap: Stomp
-duo 掇 Pick: Gather
-e 愕 Shocked: Startled
-e 遏 Stop: Curb
-e 谔 Straightforward: Blunt
-e 婀 Graceful: Elegant
-e 娥 Beautiful: Lovely
-e 阏 Block: Obstruct
-fa 乏 Lack: Deficiency
-fan 烦 Tired: Annoyed
-fan 反 Reverse: Opposite
-fan 饭 Rice: Meal
-fan 返 Return: Revert
-fang 方 Direction: Orientation
-fang 芳 Fragrant: Sweet-smelling
-fang 肪 Fat: Adipose
-fei 飞 Fly: Fly
-fei 肥 Fat: Adipose
-fei 蜚 Fly: Insect
-fei 费 Cost: Expense
-fei 妃 Concubine: Consort
-fei 啡 Coffee: Beverage
-fen 芬 Scent: Fragrance
-fen 愤 Angry: Irritated
-feng 冯 Surname: Feng
-feng 缝 Sew: Mend
-feng 俸 Salary: Wage
-feng 凤 Phoenix: Bird
-fu 夫 Man: husband
-fu 复 Repeat: Foot
-fu 富 Rich: Rich
-fu 驸 Attendant: Prince's son
-fu 抚 Stroke: Caress
-fu 扶 Help: Support
-fu 孵 Hatch: Incubate
-fu 腹 Belly: Abdomen
-fu 俯 Bow: Bend
-ga 噶 Ga (syllable): Ga
-gai 赅 Include: Encompass
-gan 擀 Roll: Flatten
-gan 淦 Gan River: Gan
-gang 港 Harbor: gang
-gang 冈 Hill: Group
-gao 睾 Testicle: Gonad
-gao 搞 Do: Engage
-gao 稿 Draft: Manuscript
-ge 阁 Cabinet: Pavilion
-ge 割 Cut: Sever
-ge 咯 Cough: Hack
-ge 歌 Song: Melody
-ge 戈 Spear: Weapon
-ge 仡 Strong: Robust
-gong 躬 Bow: Flex
-gong 龚 Surname Gong: Gong
-gong 巩 Strengthen: Solidify
-gou 购 Buy: Purchase
-gou 篝 Bonfire: Campfire
-gu 姑 Aunt: Relative
-gu 沽 Buy: Sell
-gu 鹘 Vulture: Hawk
-gu 梏 Fetter: Shackle
-gu 估 Guess: Estimate
-guan 罐 Can: Jar
-guan 观 Watch: View
-guan 纶 Silk thread: Filament
-gui 鬼 Ghost: Phantom
-gui 瑰 Gem: Jewel
-gun 衮 Royal robe: Imperial robe
-gun 磙 Roller: Millstone
-hai 海 Sea: Ocean
-hai 骇 Shock: Alarm
-hai 骸 Skeleton: Frame
-han 含 Hold: Include
-han 邯 Handan (city): Handan
-han 函 Case: Letter
-han 韩 Surname: Han
-han 撼 Shake: Tremble
-han 焊 Weld: Join
-han 罕 Rare: Scarce
-hao 毫 Slight: Hair
-hao 皓 Bright: Pure
-hao 颢 Bright: Radiant
-hao 耗 Waste: Consume
-hao 嗥 Howl: Cry
-hao 濠 Hao River: River
-he 和 Harmonious: And
-he 何 How: What
-he 阂 Hinder: Barrier
-he 褐 Dark: Brown
-he 诃 Scold: Reprimand
-hong 红 Red: Vermilion
-hong 虹 Rainbow: Bow
-hong 闳 Vast: Immense
-hong 弘 Grand: Expansive
-hong 泓 Deep: Profound
-hong 讧 Dispute: Conflict
-hu 斛 Peck: Measure
-hu 核 Nucleus: Core
-hu 护 Guard: Protect
-hu 葫 Gourd: Squash
-hu 猢 Monkey: Ape
-hu 觳 Fear: Dread
-hu 扈 Accompany: Follow
-hua 化 Change: Transform
-hua 画 Draw: Sketch
-huan 换 Replace: Exchange
-huan 环 Ring: Circle
-huan 豢 Raise: Foster
-huan 缓 Slow: Gradual
-huan 还 Still: Constant
-huan 患 Suffer: Afflict
-huan 桓 Surname Huan: Huan
-huan 涣 Scatter: Disperse
-huan 圜 Circle: Round
-huan 獾 Badger: Mustelid
-huang 惶 Anxious: Fearful
-huang 潢 Huang River: Huang
-huang 湟 Huang River: Huang
-hui 恢 Restore: Gathering
-hui 徽 Badge: Emblem
-hui 贿 Bribe: Corruption
-hui 彗 Broom: Sweeper
-hui 秽 Dirty: Filthy
-hui 烩 Stew: Braise
-hun 昏 Dusk: Dim
-huo 蠖 Looper: Cycle
-huo 获 Get: Obtain
-huo 货 Goods: Merchandise
-ji 吉 Lucky: Auspicious
-ji 瘠 Lean: Barren
-ji 集 Gather: Collect
-ji 圾 Garbage: Refuse
-ji 骥 Steed: Charger
-ji 嵇 Surname Ji: Ji
-ji 荠 Shepherd's purse: Purslane
-ji 暨 And: Link
-ji 机 Chance: Opportunity
-ji 鸡 Chicken: Fowl
-ji 纪 Record: Chronicle
-ji 佶 Upright: Erect
-ji 亟 Urgent: Immediate
-ji 挤 Push: Squeeze
-ji 楫 Oar: Paddle
-ji 际 Edge: Boundary
-ji 辑 Edit: Compile
-ji 嫉 Envy: Jealousy
-ji 迹 Mark: trace
-ji 绩 Merit: merit
-ji 肌 Muscle: muscle
-ji 讥 Mock: mock
-ji 稷 Millet: millet
-ji 畸 Irregular: Abnormal
-ji 矶 Jetty: Reef
-ji 祭 Worship: Sacrifice
-ji 藉 Depend: Rely
-ji 汲 Draw water: Extract
-jia 假 Fake: Sham
-jia 镓 Gallium: Element
-jia 戛 Sudden: Abrupt
-jia 胛 Shoulder blade: Back blade
-jia 稼 Crops: Harvest
-jia 枷 Cangue: Yoke
-jia 跏 Cross-legged: Pose
-jian 监 Monitor: Oversee
-jian 鉴 Mirror: Reflect
-jian 涧 Mountain: Gorge
-jian 间 Between: Inter
-jian 建 Build: Erect
-jian 简 Brief: Concise
-jian 兼 Both: Combine
-jian 鲣 Bonito: Fish
-jian 渐 Slowly: Gradually
-jian 肩 Shoulder: Joint
-jian 健 Strong: Robust
-jian 溅 Splash: Splashing
-jian 缄 Seal: Close
-jian 鞯 Saddle pad: Pad
-jian 坚 Firm: Robust
-jian 煎 Fry: Cook
-jian 饯 Feast: Banquet
-jian 翦 Cut: Trim
-jian 减 Reduce: Decrease
-jian 荐 Recommend: Suggest
-jian 谏 Remonstrate: Admonish
-jian 奸 Traitor: adulterer
-jian 腱 Tendon: tendon
-jian 践 On: practice
-jian 裥 Pleat: Crease
-jian 柬 Note: Memo
-jian 笺 Note: Stationery
-jiang 浆 Paste: Mixture
-jiang 糨 Paste: Thickener
-jiang 绛 Crimson: Deep red
-jiang 豇 Cowpea: Bean
-jiao 绞 Twist: Wring
-jiao 交 Meet: Encounter
-jiao 搅 Mix: Stir
-jiao 饺 Dumpling: Chinese dumpling
-jiao 蕉 Banana: Plantain
-jiao 皎 Bright: Brightness
-jiao 骄 Proud: Arrogant
-jiao 椒 Pepper: Spice
-jiao 窖 Pit: Cellar
-jiao 缴 Hand: Payment
-jiao 茭 Wild rice: Grain
-jiao 鹪 Wren: Bird
-jie 接 Receive: Connect
-jie 街 Road: Street
-jie 劫 Rob: Robbery
-jie 嗟 Alas: Grief
-jie 竭 Use: Consume
-jin 紧 Firm: Tight
-jin 禁 Forbid: Prohibit
-jin 津 Ferry: Crossing
-jin 襟 Front: Lapel
-jin 馑 Famine: Scarcity
-jin 晋 Advance: Progress
-jin 巾 Towel: Cloth
-jin 筋 Tendon: Ligament
-jing 劲 Energy: Vigor
-jing 径 Path: Way
-jing 警 Warn: Caution
-jing 憬 Hope: Enlightenment
-jing 荆 Thorns: Thorn
-jiu 究 Study: Research
-jiu 厩 Stable: Barn
-jiu 灸 Cauterize: Moxibust
-jiu 鸠 Pigeon: Dove
-jiu 赳 Valiant: Brave
-ju 具 Have: Possess
-ju 飓 Hurricane: Tropical cyclone
-ju 掬 Hold: Scoop
-ju 举 Lift: Raise
-ju 居 Live: Reside
-ju 苣 Lettuce: Salad
-ju 局 Bureau: Office
-ju 疽 Boil: Abscess
-ju 榉 Beech: Tree
-ju 据 Occupy: Data
-ju 踞 Sit: Squat
-ju 遽 Sudden: Abrupt
-ju 裾 Skirt: Hem
-ju 莒 Surname Ju: Clan name Ju
-ju 驹 Foal: Young horse
-ju 矩 Rule: Principle
-ju 拘 Arrest: Detain
-ju 菊 Chrysanthemu: Chrysanthemum
-ju 咀 Chew: Masticate
-jue 攫 Seize: Grasp
-jun 军 Army: Military force
-jun 骏 Steed: Horse
-jun 竣 Finish: Conclude
-kai 忾 Anger: Fury
-kan 看 See: View
-kan 坎 Step: Tread
-kan 槛 Threshold: Boundary
-kang 炕 Heated: Warmed
-kao 拷 Torture: Interrogate
-ke 刻 Carve: Engrave
-ke 课 Class: Lesson
-ke 坷 Clod: Lump
-ke 客 Guest: Visitor
-ke 颗 Grain: Seed
-ke 溘 Suddenly: Abruptly
-ke 磕 Hit: Strike
-ke 稞 Highland barley: Grain
-kou 寇 Bandit: Invader
-ku 苦 Painful: Suffering
-ku 裤 Pants: Trousers
-ku 酷 Cool: Trendy
-ku 窟 Cave: Grotto
-ku 骷 Skull: Bone
-kua 挎 Carry: Haul
-kuai 脍 Sliced meat: Fillet
-kui 愧 Guilty: Culpable
-kui 魁 Giant: Huge
-kui 馈 Gift: Present
-kui 馗 Ghost: Spirit
-kui 跬 Step: Pace
-kui 悝 Sad: Gloomy
-kui 匮 Box: Lack
-kun 困 Sleepy: Tired
-la 拉 Pull: Drag
-lai 徕 Come: Arrive
-lan 览 See: Browse
-lan 兰 Orchid: Lany
-lan 榄 Olive: Languid
-lan 揽 Embrace: Languish
-lan 滥 Excessive: Loose
-lang 浪 Wave: Surge
-lang 朗 Clear: Bright
-lang 啷 Clang: Ring
-lao 捞 Fish: Scoop
-lao 落 Fall: Drop
-lao 潦 Flooded: Messy
-lao 唠 Chat: chat
-lao 酪 Cheese: Old
-lei 泪 Tear: Liquid
-lei 磊 Pile of stones: Heap
-lei 垒 Pile: Barrier
-lei 儡 Puppet: Dummy
-lei 耒 Plow: Implement
-li 戾 Fierce: Savage
-li 理 Reason: Logic
-li 俚 Rustic: Rural
-li 例 Example: Instance
-li 鲡 Eel: Fish
-li 郦 Surname Li: Li
-li 罹 Suffer: Afflict
-li 娌 Sister-in-law: Relative
-li 枥 Stable: Barn
-li 粒 Grain: Particle
-li 砾 Gravel: Pebbles
-li 蠡 Gourd: Vessel
-li 逦 Winding: Meandering
-li 醴 Wine: Nectar
-li 鹂 Oriole: Bird
-li 栎 Oak: Oak
-lian 濂 Lian: Lian
-lian 练 Refine: Practice
-lian 涟 Ripple: Ripple
-lian 潋 Rippling: Shimmering
-lian 镰 Sickle: Sickle
-lian 鲢 Silver carp: Silver carp
-liang 亮 Shiny: Shiny
-liang 踉 Stagger: Wobble
-liang 粮 Food: Grain
-liang 谅 Forgive: Pardon
-liao 镣 Chain: Shackles
-liao 料 Predict: Material
-liao 廖 Liao: Liao
-liao 鹩 Wren: Wren
-lin 磷 Phosphorus: Phosphorus
-lin 霖 Continuous rain: Continuous rain
-lin 粼 Clear: Sparkling
-lin 遴 Select: Choose
-lin 赁 Rent: Lease
-ling 令 Order: Command
-ling 伶 Actor: Performer
-ling 羚 Antelope: Ungulate
-long 拢 Gather: Length
-long 陇 Gansu: Long
-long 垄 Ridge: long
-long 砻 Rice huller: lengthy
-lou 搂 Hug: Embrace
-lou 篓 Crate: Basket
-lou 镂 Carve: Engrave
-lu 露 Dew: Dew
-lu 鹿 Deer: deer
-lu 陆 Formal six: land
-lu 漉 Filter: Strainer
-lu 麓 Foot of mountain: Base of mountain
-lu 炉 Stove: Heater
-lu 掳 Seize: Abduct
-lu 栌 Tree: Wood
-lu 庐 Hut: Shelter
-lu 鹭 Heron: Bird
-lu 卤 Bittern: Pickle
-lu 舻 Boat: Vessel
-luo 箩 Sieve: Basket
-luo 摞 Pile: Mound
-lv 闾 Lane: Alley
-lv 褛 Tattered: Ragged
-lv 履 Shoe: Footwear
-lv 虑 Consider: Worry
-lv 氯 Chlorine: Chlorine
-ma 麻 Hemp: Hemp
-ma 妈 Mother: Mom
-ma 抹 Wipe: Clean
-ma 嬷 Grandma: Grandmother
-ma 摩 Touch: Contact
-mai 迈 Step: Pace
-man 曼 Slow: Graceful
-man 埋 Cover: Bury
-mang 忙 Busy: Occupied
-mang 芒 Bristle: Point
-mang 茫 Boundless: Vast
-mang 盲 Blind: Unseeing
-mang 氓 Rustic: Ruffian
-mao 瑁 Tortoise shell: Shell
-mao 袤 Length: Extent
-mei 莓 Berry: Fruit
-meng 朦 Dim: Hazy
-meng 孟 First: Initial
-meng 懵 Muddled: Confused
-mi 谜 Riddle: Enigma
-mian 绵 Soft: Fluffy
-mian 腼 Shy: Timid
-mian 冕 Crown: Diadem
-miao 描 Draw: Depict
-miao 藐 Despise: Contemn
-miao 邈 Distant: Remote
-min 民 People: People
-min 悯 Pity: Compassion
-min 闵 Pity: Sympathy
-mo 蓦 Sudden: Suddenly
-mou 牟 Seek: Mow
-mu 慕 Envy: Admire
-mu 亩 Chinese: Mu
-mu 拇 Thumb: Digit
-na 那 That: That
-nai 乃 Thus: As
-nai 鼐 Tripod: Stand
-ni 逆 Reverse: Inverse
-ni 霓 Rainbow: Spectrum
-ni 拟 Plan: Plan
-ni 呢 Particle: Sentence-final particle
-ni 倪 Surname Ni: Ni
-ni 怩 Shy: Bashful
-ni 旎 Graceful: Elegant
-nian 粘 Stick: Sticky
-nie 聂 Surname: Nie
-niu 钮 Knob: Button
-nong 脓 Pus: Discharge
-ou 讴 Sing: Praise
-pa 葩 Flower: Bloom
-pa 趴 Crawl: Prone
-pa 耙 Harrow: Rake
-pa 扒 Scratch: Peel
-pan 潘 Surname: Pan 
-pan 磐 Stone: Bedrock
-pang 庞 Huge: Massive
-pei 赔 Pay: Compensate
-peng 捧 Hold up: Support
-pi 琵 Pipa (instrument): Pipa
-pi 郫 Pixian (county): Pixian
-pi 譬 Compare: Liken
-pi 媲 Compare: Rival
-pi 狉 Wild: Untamed
-pi 啤 Beer: Ale
-pi 坯 Blank: Raw
-pi 僻 Remote: Isolated
-pi 睥 Look down: Gaze down
-pian 骈 Paired: Coupled
-pian 骗 Cheat: To cheat
-piao 漂 Float: Drift
-piao 朴 Plain: Unadorned
-ping 萍 Duckweed: Aquatic
-po 魄 Soul: Essence
-po 泼 Splash: Pour
-po 珀 Amber: Resin
-po 朴 Plain: Surname
-pu 葡 Grape: Vine
-pu 圃 Garden: Nursery
-pu 仆 Servant: Attendant
-pu 菩 Benevolent: Compassionate
-pu 溥 Broad: Extensive
-qi 葺 Repair: Mend
-qi 气 Air: Breath
-qi 弃 Abandon: Desert
-qi 契 Agreement: Pact
-qi 祁 Surname Qi: Qi
-qi 颀 Tall: Slender
-qi 脐 Navel: Umbilicus
-qi 泣 Weep: Cry
-qi 歧 Fork: Junction
-qi 岐 Fork: Branch
-qi 畦 Field: Plot
-qi 砌 Build: Construct
-qi 琦 Jade: Gemstone
-qi 迄 Up: Until 
-qi 祇 God: Deity
-qi 碛 Gravel: Sandbed
-qian 钱 Coin: Money
-qian 掮 Carry: Money
-qian 签 Sign: Mark
-qian 遣 Send: Dispatch
-qian 纤 Slender: Delicate
-qian 钤 Seal: Emblem
-qian 歉 Regret: Apologetic
-qian 谦 Modest: Humble
-qian 迁 Move: Relocate
-qian 愆 Mistake: Fault
-qian 骞 Lift: Ascend
-qiang 呛 Choke: Gasp
-qiang 锵 Clink: Clang
-qiang 嫱 Court lady: Maiden
-qiao 壳 Shell: Cover
-qiao 橇 Sled: Toboggan
-qiao 桥 Bridge: Crossing
-qiao 雀 Bird: Avian
-qiao 翘 Tilt: Angle
-qiao 跷 Tilt: Lift
-qiao 撬 Prize: Award
-qiao 樵 Woodcutter: Woodcutter
-qie 且 And: Moreover
-qie 切 Cut: Slice
-qie 惬 Satisfied: Content
-qin 寝 Sleep: Repose
-qin 沁 Seep: Permeate
-qing 倾 Pour: Spill
-qing 晴 Fine: Clear
-qing 苘 Mallow: Mallow
-qing 氰 Cyanide: Cyanide
-qiu 秋 Fall: Autumn
-qu 去 Go: Depart
-qu 取 Get: Obtain
-qu 区 Region: Area
-qu 衢 Road: Thoroughfare
-qu 曲 Bend: Curve
-qu 躯 Body: Physique
-qu 渠 Ditch: Canal
-qu 祛 Dispel: Remove
-qu 蛆 Maggot: Maggot
-qu 龋 Tooth decay: Caries
-quan 圈 Circle: Circle
-quan 蜷 Curl: Bend
-que 阙 Tower: Gate
-ran 冉 Slowly: Slowly rising
-ran 髯 Beard: Facial hair
-rang 攘 Seize: Wrest
-ren 认 Admit: Recognize
-ren 荏 Tender: Delicate
-rong 溶 Melt: Dissolve
-rong 熔 Melt: Fusion
-rong 茸 Soft: Fluffy
-rong 嵘 Towering: Lofty
-rou 糅 Mix: Blend
-ru 褥 Mattress: Bedding
-ru 濡 Soak: Dampen
-rui 瑞 Lucky: Auspicious
-rui 蕤 Luxuriant: Lush
-rui 蕊 Stamen: Pollen
-rui 芮 Small: Tiny
-sao 臊 Shy: Bashful
-se 铯 Cesium: Element
-sha 霎 Moment: Instant
-sha 杉 Cedar: Evergreen
-shan 单 Single: Alone
-shan 膳 Meal: Food
-shang 汤 Soup: Broth
-shao 烧 Burn: Roast
-shao 韶 Beautiful: Graceful
-shao 邵 Surname Shao: Shao
-shao 勺 Spoon: Ladle
-she 畲 She (ethnic): She
-she 摄 Take: Capture
-she 奢 Luxurious: Opulent
-sheng 生 Live: Living
-sheng 剩 Leftover: Remainder
-shi 试 Try: Test
-shi 史 Record: History
-shi 式 Form: Style
-shi 拾 Formal ten: Ten
-shi 豉 Fermented soybean: Black beans
-shi 拭 Wipe: Blot
-shi 什 What: Miscellaneous 
-shi 始 Start: Commence
-shi 士 Scholar: Academic
-shi 侍 Serve: Attendant
-shi 驶 Sail: Cruise
-shi 轼 Shaft: Bracket
-shi 鲥 Shad: Shad
-shi 饰 Adorn: Ornament
-shi 蚀 Erode: Wane
-shi 噬 Bite: Devour
-shi 逝 Die: Pass
-shi 矢 Dart: Arrow
-shi 筮 Divine: Oracle
-shou 寿 Birthday: Longevity
-shu 术 Skill: Method 
-shu 述 State: Describe
-shu 殊 Special: Unique
-shu 署 Sign: Department
-shu 倏 Sudden: Rapid
-shu 薯 Tuber: Yam
-shu 舒 Comfortable: Easy
-shu 抒 Convey: Express
-shu 漱 Rinse: Gargle
-shu 赎 Redeem: Buy back
-shu 纾 Relieve: Ease
-shu 蔬 Greens: Vegetables
-shu 恕 Pardon: Excuse
-shu 塾 Private school: Academy
-shu 戍 Defend: Guard
-shuan 栓 Bolt: Fastener
-shuan 闩 Bolt: Latch
-shun 舜 Shun (sage): Shun 
-shuo 数 Number: Count
-si 死 Die: Perish
-si 司 Department: Bureau
-si 蛳 Snail: Gastropod
-si 耜 Plowshare: Implement
-si 嗣 Heir: Descendant
-song 嵩 Song Mountain: Mount Song
-song 淞 Song River: River Song
-su 诉 Sue: complain
-su 肃 Solemn: solemn
-su 愫 Sincere: genuine
-su 缩 Shrink: contract
-su 簌 Rustle: Flutter
-su 谡 Respectful: Deferential
-su 僳 Lisu (ethnic): Lisu
-su 酥 Crisp: Flaky
-su 稣 Crisp: Revive
-sui 绥 Soothe: Pacify
-sui 睢 Stare: Gaze
-sui 祟 Disaster: Calamity
-sui 隧 Tunnel: Passage
-suo 索 Rope: Cord
-suo 嗦 Repeat: Echo
-suo 琐 Small: Trivial
-suo 蓑 Straw raincoat: Garment
-suo 唢 Suona: Instrument
-suo 桫 Cycad: Plant
-ta 遢 Sloppy: Messy
-ta 塔 Tower: Spire
-ta 踏 Tread: Step
-ta 榻 Couch: Sofa
-ta 蹋 On: Tread
-ta 獭 Otter: Mustelid
-tai 态 State: Condition
-tai 泰 Safe: Tranquil
-tan 谈 Talk: Discuss
-tan 谭 Talk: Tan
-tan 郯 Surname Tan: Tan (surname)
-tang 瑭 Tang (dynasty): Dynasty
-tang 堂 Hall: Chamber
-tang 膛 Chest: Barrel
-tao 饕 Glutton: Devourer
-ti 提 Carry: Lift
-ti 啼 Cry: Wail
-ti 剃 Cut: Shave
-ti 涕 Tear: Mucus
-ti 屉 Shelf: Drawer
-tian 天 Sky: Heaven
-tian 腆 Shy: Bashful
-tian 田 Farm: Field
-tian 填 Fill: Complete
-tian 恬 Calm: Tranquil
-ting 汀 Sandbar: Beach
-ting 庭 Hall: Patio
-ting 町 Field: Plain
-tong 同 Same: Identical
-tong 佟 Surname Tong: Clan Name
-tu 涂 Spread: Apply
-tu 堍 Slope: Incline
-tu 途 Road: Path
-tu 兔 Rabbit: Bunny
-tu 秃 Bald: Hairless
-tu 荼 Bitter herb: Astringent plant
-tuan 抟 Roll: Coil
-tuo 拓 Develop: Expand
-tuo 托 Hold: Support
-wa 哇 Wow: Exclamation
-wa 佤 Wa (ethnic): Tribe
-wan 菀 Lush: Verdant
-wan 宛 As: Wan
-wang 往 Past: Towards
-wang 汪 Deep: Vast 
-wang 罔 Deceive: Deceive
-wang 枉 Crooked: Crooked
-wei 为 Do: Do
-wei 娓 Talkative: Chatty
-wei 嵬 Towering: Lofty
-wei 围 Surround: Encircle
-wei 谓 Say: Utter
-wei 诿 Shirk: Shirk
-wei 维 Maintain: Preserve
-wei 尉 Military: Officer
-wei 委 Entrust: Committee
-wei 唯 Only: Sole
-wei 惟 Only: Merely 
-wei 帷 Curtain: Drape
-wei 畏 Fear: Dread
-wei 伪 Fake: Pseudo
-wei 萎 Fade: Wei
-wo 龌 Dirty: Filthy
-wo 蜗 Snail: Gastropod
-wo 渥 Moist: Humid
-wo 斡 Mediate: Intercede
-wu 勿 Not: Not
-wu 毋 Not: Must not
-wu 舞 Move: Dance
-wu 晤 Meet: Encounter
-wu 务 Duty: Obligation
-wu 污 Dirty: Soiled
-wu 误 Error: Mistake
-wu 恶 Evil: Wicked
-wu 妩 Charming: Graceful
-wu 鹉 Parrot: Mimic
-wu 骛 Pursue: Strive
-xi 奚 Why: Xi 
-xi 禧 Joy: Bliss
-xi 系 Tie: Tie
-xi 细 Thin: Fine
-xi 锡 Tin: Metal Tin
-xi 息 Rest: Rest
-xi 稀 Rare: Sparse
-xi 习 Learn: Practice 
-xi 蜥 Lizard: Lizard
-xi 吸 Absorb: Intake
-xi 析 Analyze: Dissect
-xi 烯 Alkene: Olefin
-xi 昔 Past: Former
-xi 蹊 Path: Trail
-xi 淅 Patter: Drip
-xi 檄 Proclamation: Manifesto 
-xi 栖 Perch: Roost
-xi 徙 Move: Relocate
-xi 鼷 Mouse: Small mouse 
-xi 膝 Knee: Joint
-xi 嘻 Giggle: Heh
-xi 隙 Gap: Gap
-xi 腊 Bacon: Cured meat 
-xi 兮 Exclamation: Interjection
-xi 蟋 Cricket: Insect
-xi 浠 Xi River: xi
-xia 下 Below: Under 
-xia 匣 Box: Casket 
-xia 吓 Scare: Scare
-xia 黠 Cunning: Wily
-xia 罅 Crack: Fissure
-xia 辖 Govern: Jurisdiction
-xian 仙 Fairy: Immortal
-xian 闲 Free: Spare
-xian 弦 Chord: String
-xian 线 Line: Boundary
-xian 限 Limit: Restriction
-xian 掀 Lift: Hoist
-xian 宪 Law: Constitution
-xian 鲜 Rare: Fresh
-xian 暹 Distant: Siam
-xian 娴 Skilled: Accomplished
-xian 痫 Epilepsy: Disorder
-xiang 向 Towards: Aim
-xiang 像 Like: Like
-xiang 象 Like: Elephant
-xiang 祥 Lucky: Auspicious
-xiang 香 Sweet: Fragrant
-xiang 厢 Side: Compartment
-xiang 镶 Set: Inlay
-xiang 庠 School: Academy
-xiao 肖 Like: Xiao
-xiao 潇 Deep: Unrestrained 
-xiao 逍 Free: Liberated
-xiao 箫 Pipe: Flute
-xie 鞋 Shoe: Footwear
-xie 蝎 Scorpion: Scorpion
-xie 械 Tool: Apparatus
-xie 携 Take: Carry
-xie 偕 Together: Jointly
-xie 邪 Heretical: Unorthodox
-xie 谐 Humorous: Comical
-xie 挟 Hold: Grip
-xie 燮 Harmonize: Balance
-xie 撷 Pick: Gather
-xing 醒 Sober: Awake
-xing 邢 Surname Xing: Xing
-xing 型 Type: Model
-xing 刑 Torture: Punishment
-xing 猩 Ape: Simian
-xiong 匈 Chest: Bosom
-xiu 修 Repair: Mend
-xiu 休 Rest: Leisure
-xiu 嗅 Smell: Odor
-xiu 臭 Stinky: Foul
-xu 许 Allow: Permit
-xu 虚 Empty: Void
-xu 戌 Eleventh: Dog
-xu 需 Need: Require
-xu 叙 Narrate: Tell
-xu 蓄 Store: Accumulate
-xu 顼 Surname Xu: Xu
-xu 绪 Clue: Hint
-xu 胥 Official: Functionary
-xu 酗 Binge: Excess
-xuan 选 Choose: Select
-xuan 眩 Dizzy: Vertiginous
-xuan 炫 Dazzle: Blinding
-xuan 暄 Warm: Temper
-xuan 渲 Wash: Dilute
-xue 雪 Snow: Flake
-xun 寻 Find: Seek
-xun 迅 Fast: Swift
-xun 循 Follow: Trace
-xun 薰 Fragrant: Perfume
-xun 汛 Flood: Inundate
-xun 徇 Follow: Yield
-xun 旬 Month: Ten days
-xun 荀 Surname Xun: Xun
-xun 醺 Drunk: Intoxicated
-ya 呀 Ah: Oh
-ya 崖 Cliff: Precipice
-yan 延 Extend: Prolong
-yan 沿 Edge: Border
-yan 雁 Wild: Goose
-yan 研 Study: Research
-yan 咽 Swallow: Throat
-yan 衍 Spread: Derive
-yan 俨 Solemn: Imposing
-yan 腌 Salt: Preserved
-yan 谚 Saying: Adage
-yan 郾 Surname Yan: Yan
-yan 验 Test: Examination
-yan 厌 Tired: Weary
-yan 彦 Talented: Gifted
-yan 砚 Tablet: Writing tablet
-yan 晏 Peaceful: Calm
-yan 焰 Flame: Blaze
-yan 宴 Feast: Banquet
-yan 掩 Hide: Conceal
-yan 艳 Gorgeous: Beautiful
-yan 阎 Gate: Portal
-yan 蜒 Gecko: Anile lizard
-yan 岩 Rock: Crag
-yan 胭 Rouge: Tint
-yan 嫣 Beautiful: Yan
-yan 妍 Beautiful: Yan
-yan 湮 Bury: Sink
-yan 偃 Lie: Lie down
-yang 养 Raise: Nurture
-yang 扬 Raise: Spread
-yang 漾 Ripple: Undulate
-yang 样 Sample: Example
-yang 炀 Scorch: Blaze
-yang 疡 Sore: Ulcer
-yang 恙 Illness: Ailment
-yang 怏 Dissatisfied: Unhappy
-yao 要 Want: Need
-yao 腰 Waist: Midsection
-yao 摇 Shake: Tremble
-yao 姚 Surname: Yao
-yao 夭 Delicate: Fragile
-yao 肴 Dish: Cuisine
-yao 繇 Divination: Oracle
-yao 吆 Call: Shout
-yao 徭 Corvée: Labor
-yao 窑 Kiln: Oven
-yao 鳐 Ray: Skate
-ye 也 Particle: Also
-ye 业 Career: Trade
-ye 椰 Coconut: Nut
-ye 液 Fluid: Liquid
-ye 掖 Support: Aid
-ye 咽 Swallow: Throat
-yi 衣 Clothes: Apparel
-yi 仪 Ceremony: Rite
-yi 颐 Cheek: Jowl
-yi 弈 Chess: Game
-yi 饴 Candy: Sweetmeat
-yi 刈 Cut: Mow
-yi 亿 Hundred: A hundred million
-yi 缢 Hang: Suspend
-yi 易 Easy: Change
-yi 逸 Ease: Leisure
-yi 依 Rely: Depend
-yi 抑 Restrain: Curb
-yi 漪 Ripple: Wave
-yi 宜 Suitable: Appropriate
-yi 乙 Second: Following
-yi 绎 Sort: Arrange
-yi 揖 Salute: Bow
-yi 呓 Sleeptalk: Talk in sleep
-yi 医 Treat: Heal
-yi 亦 Too: Also
-yi 尾 Tail: Appendage
-yi 遗 Behind: Remnant
-yi 溢 Brim: Overflow
-yi 奕 Bright: Splendid
-yi 猗 Beautiful: Graceful
-yi 矣 Particle: Marker
-yi 疫 Plague: Epidemic
-yi 毅 Firm: Determined
-yi 夷 Flat: Level
-yi 谊 Friendship: Amity
-yi 彝 Yi (ethnic): Yi (ethnic group)
-yin 吟 Recite: Chant
-yin 音 Sound: Tone
-yin 银 Silver: Metal
-yin 阴 Shade: Shadow
-yin 隐 Hide: Conceal
-yin 瘾 Habit: Addiction
-yin 淫 Excessive: Lewdness
-yin 喑 Mute: Speechless
-ying 应 Should: Respond
-ying 颖 Sharp: Clever
-ying 硬 Hard: Tough
-ying 鹰 Hawk: Bird of Prey
-ying 膺 Chest: Breast
-ying 媵 Concubine: Mistress
-ying 赢 Win: Victory
-ying 萦 Wind: Lingering
-ying 楹 Pillar: Column
-yong 永 Forever: Eternal
-yong 邕 Yong (city): Yong
-you 诱 Lure: Tempt
-you 忧 Worry: Anxiety
-you 莠 Weeds: Grasses
-you 鼬 Weasel: Mustelid
-you 悠 Distant: Remote
-you 黝 Dark: Black
-you 攸 Distant: Remote
-yu 与 And: With
-yu 域 Area: Sphere
-yu 御 Imperial: Regal
-yu 寓 Imply: Suggest
-yu 谕 Instruct: Command
-yu 语 Speak: Language
-yu 愚 Stupid: Foolish
-yu 俞 Surname Yu: Yu
-yu 迂 Stubborn: Obstinate
-yu 鬻 Sell: Vend
-yu 余 Remaining: Leftover
-yu 雩 Rain ceremony: Ceremony
-yu 狱 Jail: Prison
-yu 瑜 Jade: Gem
-yu 遇 Meet: Encounter
-yu 愈 More: Better
-yu 尉 Military: Officer
-yu 欲 Want: Desire
-yu 浴 Wash: Bath
-yu 鱼 Fish: Aquatic
-yu 誉 Fame: Reputation
-yu 渔 Fish: Netting
-yu 谀 Flatter: Praise
-yu 圄 Prison: Jail
-yu 峪 Valley: Gorge
-yu 揄 Lift: Tease
-yu 愉 Happy: Joyful
-yu 禺 Yu (state): Yu (a state)
-yu 煜 Bright: Luminous
-yu 聿 Brush: Writing implement
-yu 舆 Cart: Vehicle
-yu 渝 Change: Alteration
-yu 阈 Threshold: Limit
-yuan 原 Source: Origin
-yuan 源 Source: Root
-yuan 远 Far: Distant
-yuan 元 First: Origin
-yuan 缘 Fate: Connection
-yuan 鸳 Mandarin: Mandarin duck
-yuan 冤 Wronged: Grievance
-yuan 垣 Wall: Barrier
-yue 曰 Say: Utter
-yun 云 Say: Cloud
-yun 恽 Surname Yun: Yun (Surname)
-yun 郧 Surname Yun: Yun (Surname)
-yun 纭 Confused: Doubtful
-yun 韵 Rhyme: Rhythm
-yun 芸 Rue: Herb
-za 砸 Hit: Strike
-zai 再 Again: Once more
-zai 栽 Grow: Plant
-zai 仔 Young: Juvenile
-zai 崽 Young animal: Offspring
-zang 赃 Booty: Stolen goods
-zao 噪 Din: Noise
-zao 枣 Date: Fruit
-zha 榨 Press: Squeeze
-zha 栅 Fence: Barrier
-zha 喳 Chatter: Prattle
-zha 咤 Shout: Cry
-zhai 寨 Stockade: Fortress
-zhai 斋 Study: Temple
-zhan 詹 Surname Zhan: Zhan
-zhan 盏 Cup: Vessel
-zhan 沾 Dip: Adhere
-zhan 蘸 Dip: Immerse
-zhan 湛 Deep: Profound
-zhang 章 Rule: Chapter
-zhang 涨 Rise: Increase
-zhang 嶂 Peak: Summit
-zhang 樟 Tree: Camphor
-zhang 仗 Battle: Fight
-zhang 障 Barrier: Obstacle
-zhang 账 Bill: Account
-zhang 杖 Cane: Staff
-zhao 照 Shine: Illuminate
-zhao 钊 Surname Zhao: Zhao
-zhao 爪 Claw: Talon
-zhao 昭 Clear: Bright
-zhe 鹧 Partridge: Gamebird
-zhe 哲 Wise: Sagacious
-zhe 遮 Hide: Cover
-zhe 辙 Rut: Track
-zhe 蜇 Sting: Prick
-zhen 镇 Town: City
-zhen 祯 Auspicious: Favorable
-zhen 臻 Attain: Perfect
-zhen 箴 Admonish: Caution
-zhen 砧 Anvil: Block
-zhen 震 Shake: Tremble
-zhen 振 Shake: Vibrate
-zhen 甄 Select: Discern
-zhen 珍 Rare: Precious
-zhen 赈 Relieve: Aid
-zhen 侦 Detect: Investigate
-zhen 缜 Dense: Close
-zhen 圳 Ditch: Trench
-zheng 诤 Remonstrate: Protest
-zheng 政 Politics: Governance
-zheng 证 Prove: Verify
-zheng 症 Symptom: Indication
-zhi 识 Know: Know
-zhi 至 Until: Until
-zhi 之 Possessive: of
-zhi 置 Put: place
-zhi 痣 Mole: Spot
-zhi 支 Support: Aid
-zhi 止 Stop: Halt
-zhi 峙 Stand: Maintain
-zhi 挚 Sincere: Genuine
-zhi 蜘 Spider: Arachnid
-zhi 跖 Sole: Bottom
-zhi 氏 Surname: Family name
-zhi 治 Cure: Remedy
-zhi 掷 Cast: Hurl
-zhi 祉 Blessing: Grace
-zhi 豸 Beast: Creature
-zhi 帙 Book cover: Volume
-zhi 芷 Angelica: Herb
-zhi 脂 Fat: Lipid
-zhi 帜 Flag: Banner
-zhi 桎 Fetter: Shackle
-zhi 炙 Roast: Grill
-zhi 踯 Linger: Hesitate
-zhong 仲 Middle: Second
-zhong 衷 Sincere: Heart
-zhou 妯 Sister-in-law: Relative
-zhou 咒 Curse: Hex
-zhou 帚 Broom: Sweeper
-zhu 住 Live: Reside
-zhu 躅 Linger: Dawdle
-zhu 猪 Pig: Swine
-zhu 柱 Pillar: Column
-zhu 瞩 Gaze: Observe
-zhu 烛 Candle: Taper
-zhu 舳 Ship's stern: Stern
-zhu 铢 Tiny: Minute
-zhu 诛 Kill: Execute
-zhu 贮 Keep: Reserve
-zhu 拄 On: Staff
-zhuan 砖 Tile: Brick
-zhuan 篆 Seal script: Ancient script
-zhuang 妆 Dress: Makeup
-zhui 锥 Awl: Piercer
-zhuo 酌 Drink: Consume
-zhuo 着 Particle: Grammatical marker
-zhuo 擢 Promote: Elevate
-zhuo 捉 Catch: Seize
-zhuo 拙 Clumsy: Awkward
-zhuo 灼 Burn: Incinerate
-zi 锱 Tiny: Minute
-zi 咨 Ask: Consult
-zi 恣 Arbitrary: Unrestrained
-zi 孜 Diligent: Industrious
-zong 踪 Trace: Vestige
-zong 宗 Sect: Lineage
-zong 综 Synthesize: Review
-zu 租 Hire: Lease
-zuo 作 Do: Make 
+ai 矮 Short
+ai 挨 Endure
+ai 暧 Ambiance
+ai 皑 White
+an 鞍 Saddle
+an 黯 Gloomy
+an 胺 Amine
+an 铵 Ammonium
+ao 敖 Proud
+ao 熬 Boil
+ao 澳 Macau
+ao 袄 Garment
+ao 螯 Pincer
+ao 拗 Obstinate
+ba 爸 Father
+ba 霸 Ruler
+ba 靶 Target
+bai 擘 Split
+ban 搬 Transport
+ban 伴 Associate
+ban 斑 Mark
+ban 阪 Incline
+ban 坂 Hill
+ban 瘢 Cicatrix
+bao 瀑 Cascade
+bao 薄 Slender
+bao 饱 Abundant
+bao 煲 Broth
+bao 褓 Wrap
+bao 孢 Germ
+bei 辈 Generation
+bei 臂 Limb
+bei 悲 Sorrow
+bei 碑 Monument
+bei 陂 Incline
+ben 本 Origin
+ben 奔 Sprint
+bi 必 Necessity
+bi 痹 Paralysis
+bi 筚 Matting
+bi 敝 Shabby
+bi 裨 Advantage
+bi 毙 Die
+bian 砭 Lancet
+bian 苄 Benzyl
+bian 辩 Debate
+bian 汴 Bian
+biao 标 Label
+biao 裱 Frame
+biao 鳔 Bladder
+bin 彬 Elegant
+bin 斌 Cultured
+bin 摈 Dismiss
+bing 摒 Reject
+bing 屏 Display
+bo 波 Wave
+bo 驳 Contradict
+bo 搏 Struggle
+bo 箔 Foil
+bo 亳 Bo
+bu 捕 Trap
+bu 堡 Keep
+cai 裁 Sever
+can 灿 Radiant
+can 掺 Mix
+can 璨 Luminous
+can 粲 Bright
+cang 舱 Cabin
+cang 苍 Greyish
+ceng 嶒 Craggy
+cha 诧 Surprised
+cha 茬 Stubble
+chan 潺 Murmur
+chang 场 Arena
+chang 厂 Plant
+chang 唱 Chant
+chao 钞 Cash
+che 扯 Drag
+che 掣 Yank
+chen 沉 Submerge
+chen 晨 Dawn
+chen 称 Measure
+chen 瞋 Furious
+cheng 成 Excel
+cheng 逞 Triumph
+cheng 秤 Weigh
+cheng 澄 Purity
+cheng 程 Method
+cheng 撑 Support
+cheng 呈 Display
+chi 哧 Sibilate
+chi 痴 Fool
+chi 敕 Decree
+chi 媸 Hideous
+chi 驰 Quickness
+chi 耻 Disgrace
+chi 叱 Yell
+chi 侈 Extravagant
+chi 笞 Lash
+chong 充 Replenish
+chong 虫 Bug
+chou 筹 Scheme
+chou 愁 Grief
+chou 绸 Fabric
+chu 除 Remove
+chu 杵 Grinder
+chu 初 Initial
+chu 触 Sense
+chu 储 Store
+chu 褚 Chu
+chu 矗 Erect
+chu 蜍 Amphibian
+chuang 怆 Gloomy
+chui 锤 Hit
+chui 捶 Pound
+chun 椿 Camellia
+chun 淳 Simple
+chun 醇 Mellow
+ci 祠 Shrine
+ci 瓷 Porcelain
+cong 囱 Vinegar
+cui 萃 Collect
+cuo 锉 Abrade
+da 大 Large
+da 瘩 Lump
+da 褡 Pouch
+dai 岱 Mountain
+dai 傣 Dai (ethnic group)
+dan 淡 Pale
+dan 箪 Basket
+dan 殚 Deplete
+dan 旦 Morning
+dan 耽 Postpone
+dan 郸 dan
+dan 儋 Dan
+dang 荡 Dance
+dang 挡 Block
+dao 到 Way
+dao 稻 Grain
+dao 祷 Pray
+di 帝 Emperor
+di 迪 Guide
+di 的 Possessive
+di 笛 Flute
+di 狄 Di
+di 邸 Residence
+di 涤 Cleanse
+di 砥 Grinding stone
+dian 电 Electric
+dian 淀 Starch
+dian 奠 Remember
+dian 颠 Apex
+dian 佃 Leaseholder
+dian 巅 Summit
+dian 惦 Longing
+dian 癫 Crazy
+dian 靛 Blue
+die 爹 Father
+die 碟 Plate
+ding 顶 Summit
+ding 鼎 Cauldron
+ding 仃 Isolated
+ding 叮 Prick
+dou 窦 Grotto
+du 督 Supervise
+du 渡 Traverse
+du 镀 Plating
+du 犊 Bovine
+du 肚 Abdomen
+du 笃 Genuine
+duan 短 Petite
+duan 煅 Temper
+dun 囤 Accumulate
+dun 沌 Confused
+dun 墩 Knoll
+duo 度 Gauge
+duo 舵 Rudder
+duo 堕 Decline
+duo 踱 Wander
+duo 咄 Reprimand
+duo 跺 Stomp
+duo 掇 Gather
+e 愕 Startled
+e 遏 Curb
+e 谔 Blunt
+e 婀 Elegant
+e 娥 Lovely
+e 阏 Obstruct
+fa 乏 Deficiency
+fan 烦 Annoyed
+fan 反 Opposite
+fan 饭 Meal
+fan 返 Revert
+fang 方 Orientation
+fang 芳 Sweet-smelling
+fang 肪 Adipose
+fei 飞 Fly
+fei 肥 Adipose
+fei 蜚 Insect
+fei 费 Expense
+fei 妃 Consort
+fei 啡 Beverage
+fen 芬 Fragrance
+fen 愤 Irritated
+feng 冯 Feng
+feng 缝 Mend
+feng 俸 Wage
+feng 凤 Bird
+fu 夫 husband
+fu 复 Foot
+fu 富 Rich
+fu 驸 Prince's son
+fu 抚 Caress
+fu 扶 Support
+fu 孵 Incubate
+fu 腹 Abdomen
+fu 俯 Bend
+ga 噶 Ga
+gai 赅 Encompass
+gan 擀 Flatten
+gan 淦 Gan
+gang 港 gang
+gang 冈 Group
+gao 睾 Gonad
+gao 搞 Engage
+gao 稿 Manuscript
+ge 阁 Pavilion
+ge 割 Sever
+ge 咯 Hack
+ge 歌 Melody
+ge 戈 Weapon
+ge 仡 Robust
+gong 躬 Flex
+gong 龚 Gong
+gong 巩 Solidify
+gou 购 Purchase
+gou 篝 Campfire
+gu 姑 Relative
+gu 沽 Sell
+gu 鹘 Hawk
+gu 梏 Shackle
+gu 估 Estimate
+guan 罐 Jar
+guan 观 View
+guan 纶 Filament
+gui 鬼 Phantom
+gui 瑰 Jewel
+gun 衮 Imperial robe
+gun 磙 Millstone
+hai 海 Ocean
+hai 骇 Alarm
+hai 骸 Frame
+han 含 Include
+han 邯 Handan
+han 函 Letter
+han 韩 Han
+han 撼 Tremble
+han 焊 Join
+han 罕 Scarce
+hao 毫 Hair
+hao 皓 Pure
+hao 颢 Radiant
+hao 耗 Consume
+hao 嗥 Cry
+hao 濠 River
+he 和 And
+he 何 What
+he 阂 Barrier
+he 褐 Brown
+he 诃 Reprimand
+hong 红 Vermilion
+hong 虹 Bow
+hong 闳 Immense
+hong 弘 Expansive
+hong 泓 Profound
+hong 讧 Conflict
+hu 斛 Measure
+hu 核 Core
+hu 护 Protect
+hu 葫 Squash
+hu 猢 Ape
+hu 觳 Dread
+hu 扈 Follow
+hua 化 Transform
+hua 画 Sketch
+huan 换 Exchange
+huan 环 Circle
+huan 豢 Foster
+huan 缓 Gradual
+huan 还 Constant
+huan 患 Afflict
+huan 桓 Huan
+huan 涣 Disperse
+huan 圜 Round
+huan 獾 Mustelid
+huang 惶 Fearful
+huang 潢 Huang
+huang 湟 Huang
+hui 恢 Gathering
+hui 徽 Emblem
+hui 贿 Corruption
+hui 彗 Sweeper
+hui 秽 Filthy
+hui 烩 Braise
+hun 昏 Dim
+huo 蠖 Cycle
+huo 获 Obtain
+huo 货 Merchandise
+ji 吉 Auspicious
+ji 瘠 Barren
+ji 集 Collect
+ji 圾 Refuse
+ji 骥 Charger
+ji 嵇 Ji
+ji 荠 Purslane
+ji 暨 Link
+ji 机 Opportunity
+ji 鸡 Fowl
+ji 纪 Chronicle
+ji 佶 Erect
+ji 亟 Immediate
+ji 挤 Squeeze
+ji 楫 Paddle
+ji 际 Boundary
+ji 辑 Compile
+ji 嫉 Jealousy
+ji 迹 trace
+ji 绩 merit
+ji 肌 muscle
+ji 讥 mock
+ji 稷 millet
+ji 畸 Abnormal
+ji 矶 Reef
+ji 祭 Sacrifice
+ji 藉 Rely
+ji 汲 Extract
+jia 假 Sham
+jia 镓 Element
+jia 戛 Abrupt
+jia 胛 Back blade
+jia 稼 Harvest
+jia 枷 Yoke
+jia 跏 Pose
+jian 监 Oversee
+jian 鉴 Reflect
+jian 涧 Gorge
+jian 间 Inter
+jian 建 Erect
+jian 简 Concise
+jian 兼 Combine
+jian 鲣 Fish
+jian 渐 Gradually
+jian 肩 Joint
+jian 健 Robust
+jian 溅 Splashing
+jian 缄 Close
+jian 鞯 Pad
+jian 坚 Robust
+jian 煎 Cook
+jian 饯 Banquet
+jian 翦 Trim
+jian 减 Decrease
+jian 荐 Suggest
+jian 谏 Admonish
+jian 奸 adulterer
+jian 腱 tendon
+jian 践 practice
+jian 裥 Crease
+jian 柬 Memo
+jian 笺 Stationery
+jiang 浆 Mixture
+jiang 糨 Thickener
+jiang 绛 Deep red
+jiang 豇 Bean
+jiao 绞 Wring
+jiao 交 Encounter
+jiao 搅 Stir
+jiao 饺 Chinese dumpling
+jiao 蕉 Plantain
+jiao 皎 Brightness
+jiao 骄 Arrogant
+jiao 椒 Spice
+jiao 窖 Cellar
+jiao 缴 Payment
+jiao 茭 Grain
+jiao 鹪 Bird
+jie 接 Connect
+jie 街 Street
+jie 劫 Robbery
+jie 嗟 Grief
+jie 竭 Consume
+jin 紧 Tight
+jin 禁 Prohibit
+jin 津 Crossing
+jin 襟 Lapel
+jin 馑 Scarcity
+jin 晋 Progress
+jin 巾 Cloth
+jin 筋 Ligament
+jing 劲 Vigor
+jing 径 Way
+jing 警 Caution
+jing 憬 Enlightenment
+jing 荆 Thorn
+jiu 究 Research
+jiu 厩 Barn
+jiu 灸 Moxibust
+jiu 鸠 Dove
+jiu 赳 Brave
+ju 具 Possess
+ju 飓 Tropical cyclone
+ju 掬 Scoop
+ju 举 Raise
+ju 居 Reside
+ju 苣 Salad
+ju 局 Office
+ju 疽 Abscess
+ju 榉 Tree
+ju 据 Data
+ju 踞 Squat
+ju 遽 Abrupt
+ju 裾 Hem
+ju 莒 Clan name Ju
+ju 驹 Young horse
+ju 矩 Principle
+ju 拘 Detain
+ju 菊 Chrysanthemum
+ju 咀 Masticate
+jue 攫 Grasp
+jun 军 Military force
+jun 骏 Horse
+jun 竣 Conclude
+kai 忾 Fury
+kan 看 View
+kan 坎 Tread
+kan 槛 Boundary
+kang 炕 Warmed
+kao 拷 Interrogate
+ke 刻 Engrave
+ke 课 Lesson
+ke 坷 Lump
+ke 客 Visitor
+ke 颗 Seed
+ke 溘 Abruptly
+ke 磕 Strike
+ke 稞 Grain
+kou 寇 Invader
+ku 苦 Suffering
+ku 裤 Trousers
+ku 酷 Trendy
+ku 窟 Grotto
+ku 骷 Bone
+kua 挎 Haul
+kuai 脍 Fillet
+kui 愧 Culpable
+kui 魁 Huge
+kui 馈 Present
+kui 馗 Spirit
+kui 跬 Pace
+kui 悝 Gloomy
+kui 匮 Lack
+kun 困 Tired
+la 拉 Drag
+lai 徕 Arrive
+lan 览 Browse
+lan 兰 Lany
+lan 榄 Languid
+lan 揽 Languish
+lan 滥 Loose
+lang 浪 Surge
+lang 朗 Bright
+lang 啷 Ring
+lao 捞 Scoop
+lao 落 Drop
+lao 潦 Messy
+lao 唠 chat
+lao 酪 Old
+lei 泪 Liquid
+lei 磊 Heap
+lei 垒 Barrier
+lei 儡 Dummy
+lei 耒 Implement
+li 戾 Savage
+li 理 Logic
+li 俚 Rural
+li 例 Instance
+li 鲡 Fish
+li 郦 Li
+li 罹 Afflict
+li 娌 Relative
+li 枥 Barn
+li 粒 Particle
+li 砾 Pebbles
+li 蠡 Vessel
+li 逦 Meandering
+li 醴 Nectar
+li 鹂 Bird
+li 栎 Oak
+lian 濂 Lian
+lian 练 Practice
+lian 涟 Ripple
+lian 潋 Shimmering
+lian 镰 Sickle
+lian 鲢 Silver carp
+liang 亮 Shiny
+liang 踉 Wobble
+liang 粮 Grain
+liang 谅 Pardon
+liao 镣 Shackles
+liao 料 Material
+liao 廖 Liao
+liao 鹩 Wren
+lin 磷 Phosphorus
+lin 霖 Continuous rain
+lin 粼 Sparkling
+lin 遴 Choose
+lin 赁 Lease
+ling 令 Command
+ling 伶 Performer
+ling 羚 Ungulate
+long 拢 Length
+long 陇 Long
+long 垄 long
+long 砻 lengthy
+lou 搂 Embrace
+lou 篓 Basket
+lou 镂 Engrave
+lu 露 Dew
+lu 鹿 deer
+lu 陆 land
+lu 漉 Strainer
+lu 麓 Base of mountain
+lu 炉 Heater
+lu 掳 Abduct
+lu 栌 Wood
+lu 庐 Shelter
+lu 鹭 Bird
+lu 卤 Pickle
+lu 舻 Vessel
+luo 箩 Basket
+luo 摞 Mound
+lv 闾 Alley
+lv 褛 Ragged
+lv 履 Footwear
+lv 虑 Worry
+lv 氯 Chlorine
+ma 麻 Hemp
+ma 妈 Mom
+ma 抹 Clean
+ma 嬷 Grandmother
+ma 摩 Contact
+mai 迈 Pace
+man 曼 Graceful
+man 埋 Bury
+mang 忙 Occupied
+mang 芒 Point
+mang 茫 Vast
+mang 盲 Unseeing
+mang 氓 Ruffian
+mao 瑁 Shell
+mao 袤 Extent
+mei 莓 Fruit
+meng 朦 Hazy
+meng 孟 Initial
+meng 懵 Confused
+mi 谜 Enigma
+mian 绵 Fluffy
+mian 腼 Timid
+mian 冕 Diadem
+miao 描 Depict
+miao 藐 Contemn
+miao 邈 Remote
+min 民 People
+min 悯 Compassion
+min 闵 Sympathy
+mo 蓦 Suddenly
+mou 牟 Mow
+mu 慕 Admire
+mu 亩 Mu
+mu 拇 Digit
+na 那 That
+nai 乃 As
+nai 鼐 Stand
+ni 逆 Inverse
+ni 霓 Spectrum
+ni 拟 Plan
+ni 呢 Sentence-final particle
+ni 倪 Ni
+ni 怩 Bashful
+ni 旎 Elegant
+nian 粘 Sticky
+nie 聂 Nie
+niu 钮 Button
+nong 脓 Discharge
+ou 讴 Praise
+pa 葩 Bloom
+pa 趴 Prone
+pa 耙 Rake
+pa 扒 Peel
+pan 潘 Pan
+pan 磐 Bedrock
+pang 庞 Massive
+pei 赔 Compensate
+peng 捧 Support
+pi 琵 Pipa
+pi 郫 Pixian
+pi 譬 Liken
+pi 媲 Rival
+pi 狉 Untamed
+pi 啤 Ale
+pi 坯 Raw
+pi 僻 Isolated
+pi 睥 Gaze down
+pian 骈 Coupled
+pian 骗 To cheat
+piao 漂 Drift
+piao 朴 Unadorned
+ping 萍 Aquatic
+po 魄 Essence
+po 泼 Pour
+po 珀 Resin
+po 朴 Surname
+pu 葡 Vine
+pu 圃 Nursery
+pu 仆 Attendant
+pu 菩 Compassionate
+pu 溥 Extensive
+qi 葺 Mend
+qi 气 Breath
+qi 弃 Desert
+qi 契 Pact
+qi 祁 Qi
+qi 颀 Slender
+qi 脐 Umbilicus
+qi 泣 Cry
+qi 歧 Junction
+qi 岐 Branch
+qi 畦 Plot
+qi 砌 Construct
+qi 琦 Gemstone
+qi 迄 Until
+qi 祇 Deity
+qi 碛 Sandbed
+qian 钱 Money
+qian 掮 Money
+qian 签 Mark
+qian 遣 Dispatch
+qian 纤 Delicate
+qian 钤 Emblem
+qian 歉 Apologetic
+qian 谦 Humble
+qian 迁 Relocate
+qian 愆 Fault
+qian 骞 Ascend
+qiang 呛 Gasp
+qiang 锵 Clang
+qiang 嫱 Maiden
+qiao 壳 Cover
+qiao 橇 Toboggan
+qiao 桥 Crossing
+qiao 雀 Avian
+qiao 翘 Angle
+qiao 跷 Lift
+qiao 撬 Award
+qiao 樵 Woodcutter
+qie 且 Moreover
+qie 切 Slice
+qie 惬 Content
+qin 寝 Repose
+qin 沁 Permeate
+qing 倾 Spill
+qing 晴 Clear
+qing 苘 Mallow
+qing 氰 Cyanide
+qiu 秋 Autumn
+qu 去 Depart
+qu 取 Obtain
+qu 区 Area
+qu 衢 Thoroughfare
+qu 曲 Curve
+qu 躯 Physique
+qu 渠 Canal
+qu 祛 Remove
+qu 蛆 Maggot
+qu 龋 Caries
+quan 圈 Circle
+quan 蜷 Bend
+que 阙 Gate
+ran 冉 Slowly rising
+ran 髯 Facial hair
+rang 攘 Wrest
+ren 认 Recognize
+ren 荏 Delicate
+rong 溶 Dissolve
+rong 熔 Fusion
+rong 茸 Fluffy
+rong 嵘 Lofty
+rou 糅 Blend
+ru 褥 Bedding
+ru 濡 Dampen
+rui 瑞 Auspicious
+rui 蕤 Lush
+rui 蕊 Pollen
+rui 芮 Tiny
+sao 臊 Bashful
+se 铯 Element
+sha 霎 Instant
+sha 杉 Evergreen
+shan 单 Alone
+shan 膳 Food
+shang 汤 Broth
+shao 烧 Roast
+shao 韶 Graceful
+shao 邵 Shao
+shao 勺 Ladle
+she 畲 She
+she 摄 Capture
+she 奢 Opulent
+sheng 生 Living
+sheng 剩 Remainder
+shi 试 Test
+shi 史 History
+shi 式 Style
+shi 拾 Ten
+shi 豉 Black beans
+shi 拭 Blot
+shi 什 Miscellaneous
+shi 始 Commence
+shi 士 Academic
+shi 侍 Attendant
+shi 驶 Cruise
+shi 轼 Bracket
+shi 鲥 Shad
+shi 饰 Ornament
+shi 蚀 Wane
+shi 噬 Devour
+shi 逝 Pass
+shi 矢 Arrow
+shi 筮 Oracle
+shou 寿 Longevity
+shu 术 Method
+shu 述 Describe
+shu 殊 Unique
+shu 署 Department
+shu 倏 Rapid
+shu 薯 Yam
+shu 舒 Easy
+shu 抒 Express
+shu 漱 Gargle
+shu 赎 Buy back
+shu 纾 Ease
+shu 蔬 Vegetables
+shu 恕 Excuse
+shu 塾 Academy
+shu 戍 Guard
+shuan 栓 Fastener
+shuan 闩 Latch
+shun 舜 Shun
+shuo 数 Count
+si 死 Perish
+si 司 Bureau
+si 蛳 Gastropod
+si 耜 Implement
+si 嗣 Descendant
+song 嵩 Mount Song
+song 淞 River Song
+su 诉 complain
+su 肃 solemn
+su 愫 genuine
+su 缩 contract
+su 簌 Flutter
+su 谡 Deferential
+su 僳 Lisu
+su 酥 Flaky
+su 稣 Revive
+sui 绥 Pacify
+sui 睢 Gaze
+sui 祟 Calamity
+sui 隧 Passage
+suo 索 Cord
+suo 嗦 Echo
+suo 琐 Trivial
+suo 蓑 Garment
+suo 唢 Instrument
+suo 桫 Plant
+ta 遢 Messy
+ta 塔 Spire
+ta 踏 Step
+ta 榻 Sofa
+ta 蹋 Tread
+ta 獭 Mustelid
+tai 态 Condition
+tai 泰 Tranquil
+tan 谈 Discuss
+tan 谭 Tan
+tan 郯 Tan (surname)
+tang 瑭 Dynasty
+tang 堂 Chamber
+tang 膛 Barrel
+tao 饕 Devourer
+ti 提 Lift
+ti 啼 Wail
+ti 剃 Shave
+ti 涕 Mucus
+ti 屉 Drawer
+tian 天 Heaven
+tian 腆 Bashful
+tian 田 Field
+tian 填 Complete
+tian 恬 Tranquil
+ting 汀 Beach
+ting 庭 Patio
+ting 町 Plain
+tong 同 Identical
+tong 佟 Clan Name
+tu 涂 Apply
+tu 堍 Incline
+tu 途 Path
+tu 兔 Bunny
+tu 秃 Hairless
+tu 荼 Astringent plant
+tuan 抟 Coil
+tuo 拓 Expand
+tuo 托 Support
+wa 哇 Exclamation
+wa 佤 Tribe
+wan 菀 Verdant
+wan 宛 Wan
+wang 往 Towards
+wang 汪 Vast
+wang 罔 Deceive
+wang 枉 Crooked
+wei 为 Do
+wei 娓 Chatty
+wei 嵬 Lofty
+wei 围 Encircle
+wei 谓 Utter
+wei 诿 Shirk
+wei 维 Preserve
+wei 尉 Officer
+wei 委 Committee
+wei 唯 Sole
+wei 惟 Merely
+wei 帷 Drape
+wei 畏 Dread
+wei 伪 Pseudo
+wei 萎 Wei
+wo 龌 Filthy
+wo 蜗 Gastropod
+wo 渥 Humid
+wo 斡 Intercede
+wu 勿 Not
+wu 毋 Must not
+wu 舞 Dance
+wu 晤 Encounter
+wu 务 Obligation
+wu 污 Soiled
+wu 误 Mistake
+wu 恶 Wicked
+wu 妩 Graceful
+wu 鹉 Mimic
+wu 骛 Strive
+xi 奚 Xi
+xi 禧 Bliss
+xi 系 Tie
+xi 细 Fine
+xi 锡 Metal Tin
+xi 息 Rest
+xi 稀 Sparse
+xi 习 Practice
+xi 蜥 Lizard
+xi 吸 Intake
+xi 析 Dissect
+xi 烯 Olefin
+xi 昔 Former
+xi 蹊 Trail
+xi 淅 Drip
+xi 檄 Manifesto
+xi 栖 Roost
+xi 徙 Relocate
+xi 鼷 Small mouse
+xi 膝 Joint
+xi 嘻 Heh
+xi 隙 Gap
+xi 腊 Cured meat
+xi 兮 Interjection
+xi 蟋 Insect
+xi 浠 xi
+xia 下 Under
+xia 匣 Casket
+xia 吓 Scare
+xia 黠 Wily
+xia 罅 Fissure
+xia 辖 Jurisdiction
+xian 仙 Immortal
+xian 闲 Spare
+xian 弦 String
+xian 线 Boundary
+xian 限 Restriction
+xian 掀 Hoist
+xian 宪 Constitution
+xian 鲜 Fresh
+xian 暹 Siam
+xian 娴 Accomplished
+xian 痫 Disorder
+xiang 向 Aim
+xiang 像 Like
+xiang 象 Elephant
+xiang 祥 Auspicious
+xiang 香 Fragrant
+xiang 厢 Compartment
+xiang 镶 Inlay
+xiang 庠 Academy
+xiao 肖 Xiao
+xiao 潇 Unrestrained
+xiao 逍 Liberated
+xiao 箫 Flute
+xie 鞋 Footwear
+xie 蝎 Scorpion
+xie 械 Apparatus
+xie 携 Carry
+xie 偕 Jointly
+xie 邪 Unorthodox
+xie 谐 Comical
+xie 挟 Grip
+xie 燮 Balance
+xie 撷 Gather
+xing 醒 Awake
+xing 邢 Xing
+xing 型 Model
+xing 刑 Punishment
+xing 猩 Simian
+xiong 匈 Bosom
+xiu 修 Mend
+xiu 休 Leisure
+xiu 嗅 Odor
+xiu 臭 Foul
+xu 许 Permit
+xu 虚 Void
+xu 戌 Dog
+xu 需 Require
+xu 叙 Tell
+xu 蓄 Accumulate
+xu 顼 Xu
+xu 绪 Hint
+xu 胥 Functionary
+xu 酗 Excess
+xuan 选 Select
+xuan 眩 Vertiginous
+xuan 炫 Blinding
+xuan 暄 Temper
+xuan 渲 Dilute
+xue 雪 Flake
+xun 寻 Seek
+xun 迅 Swift
+xun 循 Trace
+xun 薰 Perfume
+xun 汛 Inundate
+xun 徇 Yield
+xun 旬 Ten days
+xun 荀 Xun
+xun 醺 Intoxicated
+ya 呀 Oh
+ya 崖 Precipice
+yan 延 Prolong
+yan 沿 Border
+yan 雁 Goose
+yan 研 Research
+yan 咽 Throat
+yan 衍 Derive
+yan 俨 Imposing
+yan 腌 Preserved
+yan 谚 Adage
+yan 郾 Yan
+yan 验 Examination
+yan 厌 Weary
+yan 彦 Gifted
+yan 砚 Writing tablet
+yan 晏 Calm
+yan 焰 Blaze
+yan 宴 Banquet
+yan 掩 Conceal
+yan 艳 Beautiful
+yan 阎 Portal
+yan 蜒 Anile lizard
+yan 岩 Crag
+yan 胭 Tint
+yan 嫣 Yan
+yan 妍 Yan
+yan 湮 Sink
+yan 偃 Lie down
+yang 养 Nurture
+yang 扬 Spread
+yang 漾 Undulate
+yang 样 Example
+yang 炀 Blaze
+yang 疡 Ulcer
+yang 恙 Ailment
+yang 怏 Unhappy
+yao 要 Need
+yao 腰 Midsection
+yao 摇 Tremble
+yao 姚 Yao
+yao 夭 Fragile
+yao 肴 Cuisine
+yao 繇 Oracle
+yao 吆 Shout
+yao 徭 Labor
+yao 窑 Oven
+yao 鳐 Skate
+ye 也 Also
+ye 业 Trade
+ye 椰 Nut
+ye 液 Liquid
+ye 掖 Aid
+ye 咽 Throat
+yi 衣 Apparel
+yi 仪 Rite
+yi 颐 Jowl
+yi 弈 Game
+yi 饴 Sweetmeat
+yi 刈 Mow
+yi 亿 A hundred million
+yi 缢 Suspend
+yi 易 Change
+yi 逸 Leisure
+yi 依 Depend
+yi 抑 Curb
+yi 漪 Wave
+yi 宜 Appropriate
+yi 乙 Following
+yi 绎 Arrange
+yi 揖 Bow
+yi 呓 Talk in sleep
+yi 医 Heal
+yi 亦 Also
+yi 尾 Appendage
+yi 遗 Remnant
+yi 溢 Overflow
+yi 奕 Splendid
+yi 猗 Graceful
+yi 矣 Marker
+yi 疫 Epidemic
+yi 毅 Determined
+yi 夷 Level
+yi 谊 Amity
+yi 彝 Yi (ethnic group)
+yin 吟 Chant
+yin 音 Tone
+yin 银 Metal
+yin 阴 Shadow
+yin 隐 Conceal
+yin 瘾 Addiction
+yin 淫 Lewdness
+yin 喑 Speechless
+ying 应 Respond
+ying 颖 Clever
+ying 硬 Tough
+ying 鹰 Bird of Prey
+ying 膺 Breast
+ying 媵 Mistress
+ying 赢 Victory
+ying 萦 Lingering
+ying 楹 Column
+yong 永 Eternal
+yong 邕 Yong
+you 诱 Tempt
+you 忧 Anxiety
+you 莠 Grasses
+you 鼬 Mustelid
+you 悠 Remote
+you 黝 Black
+you 攸 Remote
+yu 与 With
+yu 域 Sphere
+yu 御 Regal
+yu 寓 Suggest
+yu 谕 Command
+yu 语 Language
+yu 愚 Foolish
+yu 俞 Yu
+yu 迂 Obstinate
+yu 鬻 Vend
+yu 余 Leftover
+yu 雩 Ceremony
+yu 狱 Prison
+yu 瑜 Gem
+yu 遇 Encounter
+yu 愈 Better
+yu 尉 Officer
+yu 欲 Desire
+yu 浴 Bath
+yu 鱼 Aquatic
+yu 誉 Reputation
+yu 渔 Netting
+yu 谀 Praise
+yu 圄 Jail
+yu 峪 Gorge
+yu 揄 Tease
+yu 愉 Joyful
+yu 禺 Yu (a state)
+yu 煜 Luminous
+yu 聿 Writing implement
+yu 舆 Vehicle
+yu 渝 Alteration
+yu 阈 Limit
+yuan 原 Origin
+yuan 源 Root
+yuan 远 Distant
+yuan 元 Origin
+yuan 缘 Connection
+yuan 鸳 Mandarin duck
+yuan 冤 Grievance
+yuan 垣 Barrier
+yue 曰 Utter
+yun 云 Cloud
+yun 恽 Yun (Surname)
+yun 郧 Yun (Surname)
+yun 纭 Doubtful
+yun 韵 Rhythm
+yun 芸 Herb
+za 砸 Strike
+zai 再 Once more
+zai 栽 Plant
+zai 仔 Juvenile
+zai 崽 Offspring
+zang 赃 Stolen goods
+zao 噪 Noise
+zao 枣 Fruit
+zha 榨 Squeeze
+zha 栅 Barrier
+zha 喳 Prattle
+zha 咤 Cry
+zhai 寨 Fortress
+zhai 斋 Temple
+zhan 詹 Zhan
+zhan 盏 Vessel
+zhan 沾 Adhere
+zhan 蘸 Immerse
+zhan 湛 Profound
+zhang 章 Chapter
+zhang 涨 Increase
+zhang 嶂 Summit
+zhang 樟 Camphor
+zhang 仗 Fight
+zhang 障 Obstacle
+zhang 账 Account
+zhang 杖 Staff
+zhao 照 Illuminate
+zhao 钊 Zhao
+zhao 爪 Talon
+zhao 昭 Bright
+zhe 鹧 Gamebird
+zhe 哲 Sagacious
+zhe 遮 Cover
+zhe 辙 Track
+zhe 蜇 Prick
+zhen 镇 City
+zhen 祯 Favorable
+zhen 臻 Perfect
+zhen 箴 Caution
+zhen 砧 Block
+zhen 震 Tremble
+zhen 振 Vibrate
+zhen 甄 Discern
+zhen 珍 Precious
+zhen 赈 Aid
+zhen 侦 Investigate
+zhen 缜 Close
+zhen 圳 Trench
+zheng 诤 Protest
+zheng 政 Governance
+zheng 证 Verify
+zheng 症 Indication
+zhi 识 Know
+zhi 至 Until
+zhi 之 of
+zhi 置 place
+zhi 痣 Spot
+zhi 支 Aid
+zhi 止 Halt
+zhi 峙 Maintain
+zhi 挚 Genuine
+zhi 蜘 Arachnid
+zhi 跖 Bottom
+zhi 氏 Family name
+zhi 治 Remedy
+zhi 掷 Hurl
+zhi 祉 Grace
+zhi 豸 Creature
+zhi 帙 Volume
+zhi 芷 Herb
+zhi 脂 Lipid
+zhi 帜 Banner
+zhi 桎 Shackle
+zhi 炙 Grill
+zhi 踯 Hesitate
+zhong 仲 Second
+zhong 衷 Heart
+zhou 妯 Relative
+zhou 咒 Hex
+zhou 帚 Sweeper
+zhu 住 Reside
+zhu 躅 Dawdle
+zhu 猪 Swine
+zhu 柱 Column
+zhu 瞩 Observe
+zhu 烛 Taper
+zhu 舳 Stern
+zhu 铢 Minute
+zhu 诛 Execute
+zhu 贮 Reserve
+zhu 拄 Staff
+zhuan 砖 Brick
+zhuan 篆 Ancient script
+zhuang 妆 Makeup
+zhui 锥 Piercer
+zhuo 酌 Consume
+zhuo 着 Grammatical marker
+zhuo 擢 Elevate
+zhuo 捉 Seize
+zhuo 拙 Awkward
+zhuo 灼 Incinerate
+zi 锱 Minute
+zi 咨 Consult
+zi 恣 Unrestrained
+zi 孜 Industrious
+zong 踪 Vestige
+zong 宗 Lineage
+zong 综 Review
+zu 租 Lease
+zuo 作 Make

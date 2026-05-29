@@ -1,0 +1,734 @@
+an 犴 Prison
+an 垵 Pit
+ao 奡 Arrogant
+ao 嶅 Ao Mountain
+ba 岜 Ba Mountain
+ba 鲃 Barbel
+ba 鲌 Bream
+ba 朳 Wood
+ba 妭 Witch
+bang 棓 Stick
+bang 塝 Slope
+bei 萆 Plant
+bei 椑 Pear
+bei 棓 Stick
+bei 鞁 Saddle
+bi 狴 Prison
+bi 萆 Plant
+bi 鲾 Ponyfish
+bi 椑 Pear
+bi 祕 Secret
+bi 仳 Separate
+bi 舭 Ship's side
+bi 佖 Secret
+bi 肸 Spirit
+bi 鞁 Saddle
+bi 芘 Buttercup
+bi 沘 Bi River
+bi 诐 Biased
+bi 邲 Bi (state)
+bi 苾 Fragrant
+bi 咇 Fragrant
+bi 觱 Flute
+bi 馝 Fragrant
+bi 坒 Firm
+bian 昪 Bright
+bian 邲 Bi (state)
+bian 萹 Bindweed
+biao 瘭 Boil
+biao 藨 Blackberry
+biao 脿 Buttock
+biao 熛 Flame
+biao 蔈 Flower
+bie 苾 Fragrant
+bie 咇 Fragrant
+bo 磻 Arrow
+bo 艴 Angry
+bo 踣 Fall
+bo 馞 Fragrant
+bo 镈 Bell
+bo 砵 Bowl
+bo 鲌 Bream
+bo 嶓 Bo Mountain
+bo 欂 Bamboo
+cha 檫 Sassafras
+cha 侘 Sad
+cha 蹅 Step
+chan 冁 Laugh
+chan 刬 Level
+chan 啴 Loud
+chan 梴 Long
+chan 蒇 Store
+chan 韂 Saddle pad
+chan 旵 Sun
+chan 浐 Chan River
+chan 瀍 Chan River
+cheng 铖 Cheng (surname)
+cheng 澂 Clear
+cheng 憕 Calm
+cheng 珵 Jade
+cheng 珹 Jade
+cheng 偁 Praise
+cheng 牚 Prop
+cheng 庱 Peng (place)
+chi 摛 Spread
+chi 漦 Saliva
+chi 佁 Still
+chi 痓 Spasm
+chi 摴 Dice
+chi 泜 Di River
+chong 橦 Paulownia
+chong 摏 Pound
+chou 犨 Chou (surname)
+chou 帱 Cover
+chou 侴 Chou (surname)
+chu 斶 Chu (surname)
+chu 濋 Chu River
+cuo 脞 Trivial
+cuo 棤 Tree
+cuo 玼 Jade
+cuo 瑳 Jade
+da 炟 Bright
+da 鿎 Bird
+dai 叇 Cloudy
+dai 轪 Cart
+dan 惔 Calm
+dan 憺 Calm
+di 鞮 Shoe
+di 禘 Sacrifice
+di 疐 Stumble
+di 蹢 Step
+di 茋 Stilbene
+di 菂 Lotus seed
+di 玓 Luster
+dian 阽 Dangerous
+dian 扂 Door bolt
+diao 窎 Distant
+diao 汈 Diao Lake
+die 咥 Laugh
+die 楪 Leaf
+die 瓞 Melon
+die 绖 Mourning band
+dou 钭 Dou (surname)
+dou 剅 Drain
+e 砵 Bowl
+e 姶 Beautiful
+er 陑 En (place)
+er 咡 Ear
+feng 唪 Recite
+feng 浲 River
+fu 绋 Rope
+fu 簠 Ritual vessel
+fu 韨 Ritual skirt
+fu 玞 Jade
+fu 砆 Jade
+fu 琈 Jade
+gai 戤 Rely
+gai 荄 Root
+gang 筻 Gang (place)
+gang 堽 Gang (place)
+gou 遘 Meet
+gou 姤 Meet
+gu 羖 Black sheep
+gu 嘏 Blessing
+gu 堌 Gu (place)
+gu 瀔 Gu River
+guan 筦 Tube
+guan 爟 Torch
+guan 蒄 Crown
+guan 鳤 Carp
+guang 桄 Bamboo
+guang 洸 Bright
+gui 姽 Gentle
+gui 邽 Gui (place)
+gui 宄 Traitor
+gui 鬶 Tripod
+guo 呙 Guo (surname)
+guo 崞 Guo (place)
+han 扞 Defend
+han 暵 Dry
+han 蔊 Mustard
+han 虷 Mosquito larva
+han 崡 Mountain pass
+he 郃 He (surname)
+he 龢 Harmony
+he 熇 Hot
+he 龁 Bite
+he 隺 Bird
+hong 荭 Smartweed
+hong 黉 School
+hong 硔 Stone
+hong 翃 Fly
+hong 洚 Flood
+hou 垕 Hou (surname)
+hou 郈 Hou (surname)
+hu 岵 Hill
+hu 鄠 Hu (place)
+hu 轷 Hu (surname)
+hu 欻 Sudden
+hu 鹱 Shearwater
+hu 冱 Freeze
+hu 濩 Flood
+hu 姱 Beautiful
+hu 嫭 Beautiful
+hu 隺 Bird
+hu 昒 Dawn
+hu 洿 Dirty
+hu 鳠 Catfish
+hu 昈 Clear
+hua 砉 Crack
+hua 劐 Cut
+huan 嬛 Beautiful
+huan 貆 Badger
+huan 擐 Put on
+huan 荁 Plant
+huan 澴 Huan River
+huan 峘 High
+huang 洸 Bright
+huang 锽 Bell
+huang 癀 Jaundice
+huang 瑝 Jade
+hui 晖 Sunshine
+hui 蒐 Search
+hui 硊 Stone
+hui 翙 Fly
+hui 橞 Flower
+hui 廆 Hui (surname)
+hui 烠 Hot
+hun 湣 Sad
+hun 碈 Stone
+huo 砉 Crack
+huo 锪 Counterbore
+huo 劐 Cut
+huo 钬 Holmium
+huo 漷 Huo (place)
+ji 跂 Stand on tiptoe
+ji 谿 Stream
+ji 蹐 Step carefully
+ji 徛 Stand
+ji 堲 Sacrifice
+ji 芰 Water lily
+ji 鹡 Wagtail
+ji 漈 Waterfall
+ji 伋 Ji (surname)
+ji 姞 Ji (surname)
+ji 瀱 Ji River
+ji 垍 Hard
+ji 惎 Hate
+ji 穄 Broomcorn
+ji 枅 Beam
+ji 耤 Farm
+ji 鱾 Fish
+jia 槚 Tea
+jia 瘕 Tumor
+jia 骱 Joint
+jia 泇 Jia River
+jian 翦 Cut
+jian 趼 Callus
+jian 茛 Buttercup
+jian 楗 Bolt
+jian 暕 Bright
+jian 戋 Small
+jian 谫 Shallow
+jian 鹣 Lovebird
+jian 靬 Leather
+jiang 茳 River
+jiang 蔃 Root
+jiao 僬 Busy
+jiao 燋 Burn
+jiao 皦 Bright
+jiao 皛 Bright
+jiao 峧 Jiao Mountain
+jiao 鄗 Jiao (place)
+jiao 璬 Jade
+jiao 漖 Jiao River
+jie 鲒 Barnacle
+jie 蜐 Barnacle
+jie 岊 Cliff
+jie 悈 Cruel
+jin 瑨 Jade
+jin 琎 Jade
+jin 溍 Jin River
+jin 珒 Jade
+jin 廑 Diligent
+jin 殣 Die of hunger
+jing 璥 Jade
+jing 汫 Jing River
+jing 麖 Deer
+jing 猄 Deer
+ju 钜 Huge
+ju 弆 Hide
+ju 筥 Basket
+ju 秬 Black millet
+ju 娵 Ju (surname)
+ju 崌 Ju Mountain
+ju 珇 Jade
+ju 泃 Ju River
+ju 岠 Distance
+ju 腒 Dried meat
+ju 砠 Stone
+ju 岨 Steep
+ju 坥 Soil
+juan 桊 Ring
+juan 婘 Relative
+jue 劂 Carve
+jue 叕 Connect
+jue 燋 Burn
+jue 矞 Beautiful
+jun 焌 Burn
+jun 焞 Bright
+kai 锎 Californium
+kai 蒈 Carene
+kan 莰 Camphene
+kan 磡 Cliff
+kan 嵁 Crag
+ke 匼 Helmet
+ke 炣 Hot
+kui 蒉 Basket
+kui 煃 Bright
+lang 烺 Bright
+lang 桹 Bamboo
+lang 筤 Bamboo
+lang 崀 Lang (place)
+lang 塱 Lang (place)
+lang 蓢 Lane
+lei 礌 Stone
+lei 癗 Skin disease
+lei 罍 Vase
+lei 藟 Vine
+li 轹 Crush
+li 叕 Connect
+li 凓 Cold
+li 醨 Thin wine
+li 朸 Tree
+lian 瞵 Stare
+lian 磏 Stone
+liao 嫽 Beautiful
+liao 髎 Bone
+liao 簝 Bamboo screen
+liao 漻 Clear
+liao 憭 Clear
+ling 鸰 Swallow
+ling 坽 Steep
+ling 舲 Boat
+ling 昤 Bright
+ling 姈 Beautiful
+liu 瑬 Jade
+liu 珋 Jade
+liu 罶 Fish trap
+liu 疁 Field
+lu 甪 Lu (place)
+lu 镥 Lutetium
+lu 稑 Late rice
+luo 脶 Fingerprint
+luo 蓏 Fruit
+mang 牻 Mottled ox
+mang 杧 Mango
+mei 浼 Beg
+mei 媄 Beautiful
+men 钔 Mendelevium
+men 惛 Muddled
+meng 尨 Shaggy
+meng 礞 Stone
+mi 芈 Mi (surname)
+mi 蘼 Mint
+mi 洣 Mi River
+mi 苾 Fragrant
+mi 醾 Flower
+min 愍 Pity
+min 苠 Plant
+min 湣 Sad
+min 盷 Stare
+min 碈 Stone
+na 肭 Fat
+na 乸 Female
+nen 枘 Tenon
+nen 媆 Tender
+ni 猊 Lion
+ni 薿 Luxuriant
+nie 糵 Sprout
+nie 嵲 Steep
+nv 狃 Accustomed
+nv 恧 Ashamed
+pai 蒎 Pinene
+pai 椑 Pear
+pang 厖 Big
+pang 鳑 Bitterling
+peng 泙 Ping River
+peng 荓 Plant
+peng 洴 Splash
+peng 淜 Surge
+peng 弸 Bow
+peng 搒 Beat
+pi 伾 Pi (surname)
+pi 萆 Plant
+pi 椑 Pear
+pi 苉 Plant
+pi 芘 Buttercup
+pi 甓 Brick
+pi 鲏 Bitterling
+pi 狉 Wild
+pi 澼 Wash
+ping 泙 Ping River
+ping 荓 Plant
+ping 洴 Splash
+ping 淜 Surge
+ping 帡 Canopy
+ping 蚲 Cricket
+ping 涄 Cool
+po 馞 Fragrant
+po 酦 Ferment
+pu 镨 Praseodymium
+pu 镤 Protactinium
+pu 穙 Plant
+qi 跂 Stand on tiptoe
+qi 欹 Slanting
+qi 愭 Sad
+qi 呇 Star
+qi 玘 Jade
+qi 忮 Jealous
+qi 郪 Qi (place)
+qi 碶 Qi (place)
+qi 踦 Lame
+qi 洓 Leak
+qian 汧 Qian River
+qian 岍 Qian Mountain
+qian 肷 Flank
+qian 杄 Fir
+qian 伣 Spy
+qian 磏 Stone
+qiao 燋 Burn
+qiao 硚 Bridge
+qin 锓 Carve
+qin 慬 Cautious
+qin 嵚 Steep
+qin 墐 Seal
+qing 碃 Stone
+qing 庼 Storey
+qu 诎 Bend
+qu 焌 Burn
+qu 胠 Steal
+qu 鼩 Shrew
+qu 竘 Skillful
+qu 岨 Steep
+qu 坥 Soil
+quan 桊 Ring
+quan 婘 Relative
+quan 棬 Wooden bowl
+quan 辁 Wooden wheel
+ruo 婼 Ruo (surname)
+ruo 鄀 Ruo (state)
+sa 檫 Sassafras
+sa 潵 Sprinkle
+sa 霅 Sudden
+shan 钐 Samarium
+shan 掞 Shine
+shan 嶦 Shan Mountain
+shan 晱 Bright
+shan 烻 Bright
+shen 珅 Jade
+shen 鲹 Jackfish
+shen 棽 Luxuriant
+shen 甡 Lush
+sheng 昇 Rise
+sheng 陞 Rise
+shi 畤 Shrine
+shi 祏 Shrine
+shi 邿 Shi (state)
+shi 浉 Shi River
+shi 襫 Straw coat
+shi 栻 Compass
+shi 鸤 Cuckoo
+shu 翛 Swift
+shu 鄃 Shu (place)
+shuang 鹴 Swan
+shuang 礵 Stone
+si 涘 Bank
+si 飔 Breeze
+si 偲 Think
+si 虒 Tiger
+si 菥 Shepherd's purse
+si 佁 Still
+song 崧 Song Mountain
+song 娀 Song (state)
+su 鹔 Swan
+su 蹜 Squat
+ta 鞳 Bang
+ta 鿎 Bird
+tai 釐 Lucky
+tai 咍 Laugh
+tan 锬 Long spear
+tan 啴 Loud
+ti 趯 Jump
+ti 瑅 Jade
+ti 遆 Ti (surname)
+ti 虒 Tiger
+tian 蚺 Boa
+tian 晪 Bright
+tian 掭 Stir
+tian 盷 Stare
+tiao 鲦 Minnow
+tiao 朓 Moon
+ting 珽 Jade
+ting 珵 Jade
+ting 渟 Still
+ting 侹 Straight
+tong 仝 Same
+tong 哃 Same
+tong 曈 Pupil
+tong 橦 Paulownia
+tong 穜 Plant
+wan 妧 Beautiful
+wan 椀 Bowl
+wei 溦 Drizzle
+wei 亹 Diligent
+wei 艉 Stern
+wei 鳂 Squirrelfish
+wei 硊 Stone
+wei 隹 Bird
+wei 鳚 Blenny
+wei 煟 Bright
+wei 廆 Hui (surname)
+wei 觿 Hairpin
+wei 薳 Wei (surname)
+wei 峗 Wei Mountain
+wei 洈 Wei River
+wen 阌 Wen (place)
+wen 煴 Warm
+wen 鳁 Whale
+wu 鹀 Bunting
+wu 屼 Barren hill
+wu 郚 Wu (place)
+wu 峿 Wu Mountain
+wu 珷 Jade
+wu 珸 Jade
+xi 爔 Flame
+xi 蓰 Five times
+xi 鳛 Fish
+xi 釐 Lucky
+xi 咥 Laugh
+xi 穸 Tomb
+xi 虒 Tiger
+xi 嶲 Xi (place)
+xi 酅 Xi (place)
+xi 嶍 Xi Mountain
+xi 裼 Strip
+xi 舾 Ship's gear
+xi 谿 Stream
+xi 菥 Shepherd's purse
+xi 肸 Spirit
+xi 鼷 Mouse
+xi 饻 Military rations
+xi 憙 Happy
+xi 枲 Hemp
+xi 睎 Hope
+xi 觿 Hairpin
+xi 俙 Hope
+xi 暿 Bright
+xi 熻 Bright
+xia 叚 False
+xia 翈 Feather
+xian 崄 Dangerous
+xian 伭 Dark
+xian 缐 Thread
+xian 孅 Thin
+xiao 猇 Tiger
+xiao 敩 Teach
+xiao 翛 Swift
+xiao 蟏 Spider
+xiao 滧 Stream
+xiao 洨 Xiao River
+xiao 涍 Xiao River
+xiao 熇 Hot
+xiao 恔 Happy
+xie 絜 Pure
+xie 薢 Plant
+xing 婞 Stubborn
+xing 煋 Star
+xu 砉 Crack
+xu 馘 Cut off head
+xu 湑 Clear
+xu 谞 Wisdom
+xu 醑 Wine
+xu 昫 Warm
+xu 糈 Sacrificial grain
+xu 欻 Sudden
+xuan 嬛 Beautiful
+xuan 晅 Bright
+xuan 暅 Bright
+xuan 暶 Bright
+xuan 儇 Clever
+xuan 咺 Cry
+xuan 玹 Jade
+xuan 琄 Jade
+xuan 澴 Huan River
+xuan 痃 Hernia
+xuan 愃 Happy
+xuan 昡 Dazzle
+xuan 夐 Distant
+ya 桠 Branch
+ya 姶 Beautiful
+ya 猰 Monster
+ya 堐 Mound
+yan 闫 Yan (surname)
+yan 沇 Yan River
+yan 觃 Yan (place)
+yan 漹 Yan River
+yan 弇 Cover
+yan 趼 Callus
+yan 黡 Mole
+yan 埏 Mold
+yan 阽 Dangerous
+yan 棪 Date
+yan 扊 Door bolt
+yan 掞 Shine
+yan 甗 Steamer
+yan 戭 Spear
+yan 嬿 Beautiful
+yan 烻 Bright
+yang 飏 Fly
+yang 垟 Field
+yang 卬 Raise
+yang 咉 Reflect
+yao 瀹 Boil
+yao 媱 Beautiful
+yao 猺 Yao (ethnic)
+yao 隃 Yu (place)
+ye 晔 Bright
+ye 馌 Bring food
+ye 焆 Bright
+yi 镱 Ytterbium
+yi 廙 Yi (surname)
+yi 洢 Yi River
+yi 潩 Yi River
+yi 欹 Slanting
+yi 扆 Screen
+yi 簃 Study
+yi 杙 Stake
+yi 霅 Sudden
+yi 佁 Still
+yi 昳 Beauty
+yi 瘗 Bury
+yi 硪 Rammer
+yi 宧 Room
+yi 掎 Pull
+yi 鹝 Pheasant
+yi 酏 Thin porridge
+yi 勚 Toil
+yi 枍 Tree
+yi 椸 Clothes rack
+yi 叕 Connect
+yin 禋 Sacrifice
+yin 嚚 Stubborn
+yin 骃 Horse
+yin 崟 High
+yin 溵 Yin River
+yin 歅 Yu (surname)
+ying 潆 Spiral
+ying 溁 Surge
+ying 桯 Beam
+ying 媖 Beautiful
+yong 澭 Yong River
+yong 鄘 Yong (state)
+yong 埇 Yong (place)
+you 麀 Female deer
+you 浟 Flow
+you 槱 Firewood
+you 鲉 Scorpionfish
+you 戭 Spear
+yu 於 Yu (surname)
+yu 淯 Yu River
+yu 蓣 Yam
+yu 邘 Yu (state)
+yu 鄅 Yu (place)
+yu 隃 Yu (place)
+yu 瑀 Jade
+yu 琟 Jade
+yu 瘀 Bruise
+yu 燏 Bright
+yu 褕 Beautiful
+yu 矞 Beautiful
+yu 艅 Boat
+yu 舁 Carry
+yu 窬 Climb
+yu 遹 Go
+yu 潏 Gush
+yu 隩 Warm
+yu 郚 Wu (place)
+yu 峿 Wu Mountain
+yu 薁 Mulberry
+yu 敔 Musical instrument
+yu 圫 Mound
+yuan 蜎 Wriggle
+yuan 薳 Wei (surname)
+yuan 涴 Stain
+yuan 羱 Sheep
+yuan 妧 Beautiful
+yuan 焆 Bright
+yue 瀹 Boil
+yue 爚 Bright
+yue 焆 Bright
+yun 妘 Yun (surname)
+yun 涢 Yun River
+yun 缊 Wrapped
+yun 煴 Warm
+zeng 鬷 Zong (surname)
+zeng 鄫 Zeng (state)
+zha 吒 Shout
+zha 挓 Spread
+zha 蹅 Step
+zha 霅 Sudden
+zha 鲝 Salted fish
+zhan 栴 Sandalwood
+zhan 鳣 Sturgeon
+zhan 嶦 Shan Mountain
+zhen 瑧 Jade
+zhen 瑱 Jade
+zhen 鬒 Black hair
+zhen 昣 Bright
+zhi 跂 Stand on tiptoe
+zhi 畤 Shrine
+zhi 铚 Sickle
+zhi 疐 Stumble
+zhi 跱 Stand
+zhi 蹢 Step
+zhi 庤 Store
+zhi 茋 Stilbene
+zhi 禔 Bless
+zhi 晢 Bright
+zhi 晊 Bright
+zhi 絷 Tie
+zhi 虒 Tiger
+zhi 梽 Tree
+zhi 轵 Axle
+zhi 锧 Axe
+zhi 黹 Embroidery
+zhi 稙 Early rice
+zhi 擿 Pick
+zhi 榰 Prop
+zhong 橦 Paulownia
+zhong 穜 Plant
+zhou 舳 Ship's stern
+zhou 辀 Shaft
+zhou 鸼 Bird
+zhou 婤 Beautiful
+zhu 舳 Ship's stern
+zhu 橥 Stake
+zhu 纻 Ramie
+zhu 苧 Ramie
+zhuo 燋 Burn
+zhuo 椓 Beat
+zhuo 晫 Bright
+zi 笫 Mat
+zi 粢 Millet
+zi 泚 Clear
+zi 虸 Caterpillar
+zi 茈 Purple
+zi 镃 Plow
+zi 耔 Seedling
+zi 鼒 Small tripod
+zong 倧 Zong (surname)
+zong 鬷 Zong (surname)
+zu 崒 Steep
+zu 砠 Stone
+zu 岨 Steep

@@ -2,3945 +2,4608 @@
   "donata": [
     {
       "char": "どなた",
-      "en": "who"
+      "en": "who",
+      "weight": 88
     }
   ],
   "otokonoko": [
     {
       "char": "男の子",
-      "en": "Boy"
+      "en": "Boy",
+      "weight": 87
     }
   ],
   "nana": [
     {
       "char": "七",
-      "en": "Seven"
+      "en": "Seven",
+      "weight": 69
     }
   ],
   "bangou": [
     {
       "char": "番号",
-      "en": "number"
+      "en": "number",
+      "weight": 65
     }
   ],
   "docchi": [
     {
       "char": "どっち",
-      "en": "which"
+      "en": "which",
+      "weight": 84
     }
   ],
   "shio": [
     {
       "char": "塩",
-      "en": "Salt"
+      "en": "Salt",
+      "weight": 80
     }
   ],
   "nado": [
     {
       "char": "など",
-      "en": "et cetera"
+      "en": "et cetera",
+      "weight": 54
     }
   ],
   "furui": [
     {
       "char": "古い",
-      "en": "old (not used for people)"
+      "en": "old (not used for people)",
+      "weight": 81
     }
   ],
   "resutoran": [
     {
       "char": "レストラン",
-      "en": "restaurant"
+      "en": "restaurant",
+      "weight": 77
     }
   ],
   "sukunai": [
     {
       "char": "少ない",
-      "en": "few"
+      "en": "few",
+      "weight": 78
     }
   ],
   "tsuyoi": [
     {
       "char": "強い",
-      "en": "powerful"
+      "en": "powerful",
+      "weight": 77
     }
   ],
   "yobu": [
     {
       "char": "呼ぶ",
-      "en": "to call out"
+      "en": "to call out",
+      "weight": 87
     }
   ],
   "kakekakaru": [
     {
       "char": "掛かかる",
-      "en": "to take time or money"
+      "en": "to take time or money",
+      "weight": 0
     }
   ],
   "kouban": [
     {
       "char": "交番",
-      "en": "police box"
+      "en": "police box",
+      "weight": 102
     }
   ],
   "atama": [
     {
       "char": "頭",
-      "en": "head"
+      "en": "head",
+      "weight": 71
     }
   ],
   "doko": [
     {
       "char": "どこ",
-      "en": "where"
+      "en": "where",
+      "weight": 72
     }
   ],
   "jisho": [
     {
       "char": "辞書",
-      "en": "Dictionary"
+      "en": "Dictionary",
+      "weight": 78
     }
   ],
   "ookina": [
     {
       "char": "大きな",
-      "en": "big"
+      "en": "big",
+      "weight": 73
     }
   ],
   "maitsuki": [
     {
       "char": "毎月",
-      "en": "every month"
+      "en": "every month",
+      "weight": 84
     }
   ],
   "taisei": [
     {
       "char": "大勢",
-      "en": "great number of people"
+      "en": "great number of people",
+      "weight": 92
     }
   ],
   "marui/marui": [
     {
       "char": "丸い",
-      "en": "round"
+      "en": "round",
+      "weight": 100
     }
   ],
   "kaku": [
     {
       "char": "角",
-      "en": "a corner"
+      "en": "a corner",
+      "weight": 76
     },
     {
       "char": "書く",
-      "en": "to write"
+      "en": "to write",
+      "weight": 68
     }
   ],
   "daisuki": [
     {
       "char": "大好き",
-      "en": "to be very likeable"
+      "en": "to be very likeable",
+      "weight": 75
     }
   ],
   "takusan": [
     {
       "char": "たくさん",
-      "en": "many"
+      "en": "many",
+      "weight": 74
     }
   ],
   "watashi": [
     {
       "char": "私",
-      "en": "(humble) I"
+      "en": "(humble) I",
+      "weight": 56
     }
   ],
   "mono": [
     {
       "char": "物",
-      "en": "thing"
+      "en": "thing",
+      "weight": 64
     }
   ],
   "yama": [
     {
       "char": "山",
-      "en": "mountain"
+      "en": "mountain",
+      "weight": 66
     }
   ],
   "tori": [
     {
       "char": "鳥",
-      "en": "bird"
+      "en": "bird",
+      "weight": 79
     }
   ],
   "ageru": [
     {
       "char": "上げる",
-      "en": "to give"
+      "en": "to give",
+      "weight": 88
     }
   ],
   "taihen": [
     {
       "char": "大変",
-      "en": "difficult situation"
+      "en": "difficult situation",
+      "weight": 73
     },
     {
       "char": "たいへん",
-      "en": "very"
+      "en": "very",
+      "weight": 93
     }
   ],
   "oishii": [
     {
       "char": "おいしい",
-      "en": "delicious"
+      "en": "delicious",
+      "weight": 78
     }
   ],
   "gaikoku": [
     {
       "char": "外国",
-      "en": "foreign country"
+      "en": "foreign country",
+      "weight": 75
     }
   ],
   "kaze": [
     {
       "char": "風邪",
-      "en": "a cold"
+      "en": "a cold",
+      "weight": 82
     },
     {
       "char": "風",
-      "en": "Wind"
+      "en": "Wind",
+      "weight": 69
     }
   ],
   "onnanoko": [
     {
       "char": "女の子",
-      "en": "Girl"
+      "en": "Girl",
+      "weight": 79
     }
   ],
   "oriru": [
     {
       "char": "降りる",
-      "en": "to get off"
+      "en": "to get off",
+      "weight": 99
     }
   ],
   "ushiro": [
     {
       "char": "後ろ",
-      "en": "behind"
+      "en": "behind",
+      "weight": 84
     }
   ],
   "tanomu": [
     {
       "char": "頼む",
-      "en": "to ask"
+      "en": "to ask",
+      "weight": 94
     }
   ],
   "atsui": [
     {
       "char": "熱い",
-      "en": "hot to the touch"
+      "en": "hot to the touch",
+      "weight": 87
     },
     {
       "char": "暑い",
-      "en": "hot"
+      "en": "hot",
+      "weight": 88
     },
     {
       "char": "厚い",
-      "en": "kind"
+      "en": "kind",
+      "weight": 100
     }
   ],
   "okiru": [
     {
       "char": "起きる",
-      "en": "to get up"
+      "en": "to get up",
+      "weight": 92
     }
   ],
   "depaato": [
     {
       "char": "デパート",
-      "en": "department store"
+      "en": "department store",
+      "weight": 89
     }
   ],
   "nananichi": [
     {
       "char": "七日",
-      "en": "seven days"
+      "en": "seven days",
+      "weight": 92
     }
   ],
   "kiru": [
     {
       "char": "切る",
-      "en": "to cut"
+      "en": "to cut",
+      "weight": 89
     },
     {
       "char": "着る",
-      "en": "to put on from the shoulders down"
+      "en": "to put on from the shoulders down",
+      "weight": 97
     }
   ],
   "minami": [
     {
       "char": "南",
-      "en": "south"
+      "en": "south",
+      "weight": 67
     }
   ],
   "hashi": [
     {
       "char": "箸",
-      "en": "chopsticks"
+      "en": "chopsticks",
+      "weight": 91
     },
     {
       "char": "橋",
-      "en": "bridge"
+      "en": "bridge",
+      "weight": 79
     }
   ],
   "takushii": [
     {
       "char": "タクシー",
-      "en": "taxi"
+      "en": "taxi",
+      "weight": 85
     }
   ],
   "yuubinkyoku": [
     {
       "char": "郵便局",
-      "en": "post office"
+      "en": "post office",
+      "weight": 86
     }
   ],
   "kami": [
     {
       "char": "紙",
-      "en": "paper"
+      "en": "paper",
+      "weight": 75
     }
   ],
   "tsutomeru": [
     {
       "char": "勤める",
-      "en": "to work for someone"
+      "en": "to work for someone",
+      "weight": 105
     }
   ],
   "hashiru": [
     {
       "char": "走る",
-      "en": "to run"
+      "en": "to run",
+      "weight": 85
     }
   ],
   "teepu": [
     {
       "char": "テープ",
-      "en": "tape"
+      "en": "tape",
+      "weight": 84
     }
   ],
   "uwagi": [
     {
       "char": "上着",
-      "en": "jacket"
+      "en": "jacket",
+      "weight": 103
     }
   ],
   "miseru": [
     {
       "char": "見せる",
-      "en": "to show"
+      "en": "to show",
+      "weight": 90
     }
   ],
   "watasu": [
     {
       "char": "渡す",
-      "en": "to hand over"
+      "en": "to hand over",
+      "weight": 96
     }
   ],
   "zenbu": [
     {
       "char": "全部",
-      "en": "All"
+      "en": "All",
+      "weight": 65
     }
   ],
   "ototoi": [
     {
       "char": "一昨日",
-      "en": "day before yesterday"
+      "en": "day before yesterday",
+      "weight": 98
     }
   ],
   "osara": [
     {
       "char": "お皿",
-      "en": "plate"
+      "en": "plate",
+      "weight": 0
     }
   ],
   "maiasa": [
     {
       "char": "毎朝",
-      "en": "every morning"
+      "en": "every morning",
+      "weight": 98
     }
   ],
   "asatte": [
     {
       "char": "あさって",
-      "en": "day after tomorrow"
+      "en": "day after tomorrow",
+      "weight": 103
     }
   ],
   "kagi": [
     {
       "char": "鍵",
-      "en": "Key"
+      "en": "Key",
+      "weight": 83
     }
   ],
   "ojunmawarisan": [
     {
       "char": "お巡まわりさん",
-      "en": "friendly term for policeman"
+      "en": "friendly term for policeman",
+      "weight": 0
     }
   ],
   "jitensha": [
     {
       "char": "自転車",
-      "en": "Bicycle"
+      "en": "Bicycle",
+      "weight": 79
     }
   ],
   "kumori": [
     {
       "char": "曇り",
-      "en": "cloudy weather"
+      "en": "cloudy weather",
+      "weight": 0
     }
   ],
   "kawaii": [
     {
       "char": "可愛い",
-      "en": "Cute"
+      "en": "Cute",
+      "weight": 80
     }
   ],
   "sore": [
     {
       "char": "それ",
-      "en": "that"
+      "en": "that",
+      "weight": 61
     }
   ],
   "kyoushitsu": [
     {
       "char": "教室",
-      "en": "Classroom"
+      "en": "Classroom",
+      "weight": 73
     }
   ],
   "puuru": [
     {
       "char": "プール",
-      "en": "swimming pool"
+      "en": "swimming pool",
+      "weight": 84
     }
   ],
   "mimi": [
     {
       "char": "耳",
-      "en": "ear"
+      "en": "ear",
+      "weight": 77
     }
   ],
   "dasu": [
     {
       "char": "出す",
-      "en": "to put out"
+      "en": "to put out",
+      "weight": 81
     }
   ],
   "konna": [
     {
       "char": "こんな",
-      "en": "Such"
+      "en": "Such",
+      "weight": 68
     }
   ],
   "hanbun": [
     {
       "char": "半分",
-      "en": "half"
+      "en": "half",
+      "weight": 83
     }
   ],
   "futoi": [
     {
       "char": "太い",
-      "en": "fat"
+      "en": "fat",
+      "weight": 99
     }
   ],
   "mokuyoubi": [
     {
       "char": "木曜日",
-      "en": "Thursday"
+      "en": "Thursday",
+      "weight": 89
     }
   ],
   "ryuugakusei": [
     {
       "char": "留学生",
-      "en": "overseas student"
+      "en": "overseas student",
+      "weight": 84
     }
   ],
   "suiyoubi": [
     {
       "char": "水曜日",
-      "en": "Wednesday"
+      "en": "Wednesday",
+      "weight": 88
     }
   ],
   "tsukuru": [
     {
       "char": "作る",
-      "en": "to make"
+      "en": "to make",
+      "weight": 76
     }
   ],
   "bataa": [
     {
       "char": "バター",
-      "en": "butter"
+      "en": "butter",
+      "weight": 77
     }
   ],
   "hagaki": [
     {
       "char": "葉書",
-      "en": "postcard"
+      "en": "postcard",
+      "weight": 102
     }
   ],
   "ichinichi": [
     {
       "char": "一日",
-      "en": "first of the month"
+      "en": "first of the month",
+      "weight": 76
     }
   ],
   "fouku": [
     {
       "char": "フォーク",
-      "en": "fork"
+      "en": "fork",
+      "weight": 92
     }
   ],
   "toru": [
     {
       "char": "取る",
-      "en": "to take something"
+      "en": "to take something",
+      "weight": 85
     },
     {
       "char": "撮る",
-      "en": "to take a photo or record a film"
+      "en": "to take a photo or record a film",
+      "weight": 92
     }
   ],
   "saa": [
     {
       "char": "さあ",
-      "en": "well…"
+      "en": "well…",
+      "weight": 89
     }
   ],
   "niku": [
     {
       "char": "肉",
-      "en": "meat"
+      "en": "meat",
+      "weight": 75
     }
   ],
   "toshokan": [
     {
       "char": "図書館",
-      "en": "library"
+      "en": "library",
+      "weight": 77
     }
   ],
   "nichiyoubi": [
     {
       "char": "日曜日",
-      "en": "Sunday"
+      "en": "Sunday",
+      "weight": 83
     }
   ],
   "shita": [
     {
       "char": "下",
-      "en": "Below"
+      "en": "Below",
+      "weight": 53
     }
   ],
   "heta": [
     {
       "char": "下手",
-      "en": "unskillful"
+      "en": "unskillful",
+      "weight": 88
     }
   ],
   "usui": [
     {
       "char": "薄い",
-      "en": "thin"
+      "en": "thin",
+      "weight": 90
     }
   ],
   "kocchi": [
     {
       "char": "こっち",
-      "en": "this person or way"
+      "en": "this person or way",
+      "weight": 82
     }
   ],
   "sasu": [
     {
       "char": "差す",
-      "en": "to stretch out hands"
+      "en": "to stretch out hands",
+      "weight": 109
     }
   ],
   "tamago": [
     {
       "char": "卵",
-      "en": "egg"
+      "en": "egg",
+      "weight": 81
     }
   ],
   "choudo": [
     {
       "char": "ちょうど",
-      "en": "exactly"
+      "en": "exactly",
+      "weight": 85
     }
   ],
   "yuuhan": [
     {
       "char": "夕飯",
-      "en": "dinner"
+      "en": "dinner",
+      "weight": 96
     }
   ],
   "shitsumon": [
     {
       "char": "質問",
-      "en": "Question"
+      "en": "Question",
+      "weight": 66
     }
   ],
   "achira": [
     {
       "char": "あちら",
-      "en": "there"
+      "en": "there",
+      "weight": 99
     }
   ],
   "ue": [
     {
       "char": "上",
-      "en": "on top of"
+      "en": "on top of",
+      "weight": 50
     }
   ],
   "dekakeru": [
     {
       "char": "出かける",
-      "en": "to go out"
+      "en": "to go out",
+      "weight": 95
     }
   ],
   "rainen": [
     {
       "char": "来年",
-      "en": "next year"
+      "en": "next year",
+      "weight": 81
     }
   ],
   "naku": [
     {
       "char": "鳴く",
-      "en": "animal noise. to chirp"
+      "en": "animal noise. to chirp",
+      "weight": 105
     }
   ],
   "naifu": [
     {
       "char": "ナイフ",
-      "en": "knife"
+      "en": "knife",
+      "weight": 91
     }
   ],
   "yaru": [
     {
       "char": "やる",
-      "en": "to do"
+      "en": "to do",
+      "weight": 77
     }
   ],
   "sekken": [
     {
       "char": "せっけん",
-      "en": "soap"
+      "en": "soap",
+      "weight": 102
     }
   ],
   "iro": [
     {
       "char": "色",
-      "en": "colour"
+      "en": "colour",
+      "weight": 58
     }
   ],
   "nyuusu": [
     {
       "char": "ニュース",
-      "en": "news"
+      "en": "news",
+      "weight": 64
     }
   ],
   "iya": [
     {
       "char": "嫌",
-      "en": "unpleasant"
+      "en": "unpleasant",
+      "weight": 80
     }
   ],
   "benkyou": [
     {
       "char": "勉強",
-      "en": "to study"
+      "en": "to study",
+      "weight": 74
     }
   ],
   "doubutsu": [
     {
       "char": "動物",
-      "en": "animal"
+      "en": "animal",
+      "weight": 76
     }
   ],
   "wasureru": [
     {
       "char": "忘れる",
-      "en": "to forget"
+      "en": "to forget",
+      "weight": 96
     }
   ],
   "chigau": [
     {
       "char": "違う",
-      "en": "to differ"
+      "en": "to differ",
+      "weight": 73
     }
   ],
   "koe": [
     {
       "char": "声",
-      "en": "Voice"
+      "en": "Voice",
+      "weight": 67
     }
   ],
   "higashi": [
     {
       "char": "東",
-      "en": "east"
+      "en": "east",
+      "weight": 68
     }
   ],
   "chizu": [
     {
       "char": "地図",
-      "en": "map"
+      "en": "map",
+      "weight": 69
     }
   ],
   "hako": [
     {
       "char": "箱",
-      "en": "box"
+      "en": "box",
+      "weight": 72
     }
   ],
   "mouichido": [
     {
       "char": "もう一度",
-      "en": "again"
+      "en": "again",
+      "weight": 85
     }
   ],
   "ashita": [
     {
       "char": "明日",
-      "en": "tomorrow"
+      "en": "tomorrow",
+      "weight": 72
     }
   ],
   "ikaga": [
     {
       "char": "いかが",
-      "en": "how"
+      "en": "how",
+      "weight": 82
     }
   ],
   "maitoshi": [
     {
       "char": "毎年",
-      "en": "every year"
+      "en": "every year",
+      "weight": 82
     }
   ],
   "tabako": [
     {
       "char": "煙草",
-      "en": "tobacco"
+      "en": "tobacco",
+      "weight": 96
     }
   ],
   "kabin": [
     {
       "char": "花瓶",
-      "en": "a vase"
+      "en": "a vase",
+      "weight": 96
     }
   ],
   "hana": [
     {
       "char": "鼻",
-      "en": "nose"
+      "en": "nose",
+      "weight": 82
     },
     {
       "char": "花",
-      "en": "flower"
+      "en": "flower",
+      "weight": 64
     }
   ],
   "tsugi": [
     {
       "char": "次",
-      "en": "next"
+      "en": "next",
+      "weight": 53
     }
   ],
   "daijoubu": [
     {
       "char": "大丈夫",
-      "en": "all right"
+      "en": "all right",
+      "weight": 78
     }
   ],
   "ban": [
     {
       "char": "晩",
-      "en": "evening"
+      "en": "evening",
+      "weight": 88
     },
     {
       "char": "万",
-      "en": "ten thousand"
+      "en": "ten thousand",
+      "weight": 56
     }
   ],
   "eigo": [
     {
       "char": "英語",
-      "en": "English language"
+      "en": "English language",
+      "weight": 68
     }
   ],
   "oru": [
     {
       "char": "居る",
-      "en": "to be"
+      "en": "to be",
+      "weight": 89
     }
   ],
   "ki": [
     {
       "char": "木",
-      "en": "tree"
+      "en": "tree",
+      "weight": 62
     }
   ],
   "kiro/kiroguramu": [
     {
       "char": "キロ",
-      "en": "Kilogram"
+      "en": "Kilogram",
+      "weight": 83
     }
   ],
   "motsu": [
     {
       "char": "持つ",
-      "en": "to hold"
+      "en": "to hold",
+      "weight": 76
     }
   ],
   "nukui": [
     {
       "char": "温い",
-      "en": "lukewarm"
+      "en": "lukewarm",
+      "weight": 241
     }
   ],
   "miru/miru": [
     {
       "char": "見る",
-      "en": "to see"
+      "en": "to see",
+      "weight": 62
     }
   ],
   "kiiroi": [
     {
       "char": "黄色い",
-      "en": "yellow"
+      "en": "yellow",
+      "weight": 95
     }
   ],
   "denki": [
     {
       "char": "電気",
-      "en": "electricity"
+      "en": "electricity",
+      "weight": 74
     }
   ],
   "acchi": [
     {
       "char": "あっち",
-      "en": "over there"
+      "en": "over there",
+      "weight": 95
     }
   ],
   "kesa": [
     {
       "char": "今朝",
-      "en": "this morning"
+      "en": "this morning",
+      "weight": 87
     }
   ],
   "haru": [
     {
       "char": "春",
-      "en": "spring"
+      "en": "spring",
+      "weight": 68
     },
     {
       "char": "貼る",
-      "en": "to stick"
+      "en": "to stick",
+      "weight": 96
     }
   ],
   "natsu": [
     {
       "char": "夏",
-      "en": "summer"
+      "en": "summer",
+      "weight": 69
     }
   ],
   "hontou": [
     {
       "char": "本当",
-      "en": "truth"
+      "en": "truth",
+      "weight": 82
     }
   ],
   "ichi": [
     {
       "char": "一",
-      "en": "one"
+      "en": "one",
+      "weight": 54
     }
   ],
   "denwa": [
     {
       "char": "電話",
-      "en": "telephone"
+      "en": "telephone",
+      "weight": 62
     }
   ],
   "amai": [
     {
       "char": "甘い",
-      "en": "sweet"
+      "en": "sweet",
+      "weight": 86
     }
   ],
   "mado": [
     {
       "char": "窓",
-      "en": "window"
+      "en": "window",
+      "weight": 80
     }
   ],
   "abunai": [
     {
       "char": "危ない",
-      "en": "dangerous"
+      "en": "dangerous",
+      "weight": 93
     }
   ],
   "ja/jaa": [
     {
       "char": "じゃ",
-      "en": "well then…"
+      "en": "well then…",
+      "weight": 66
     }
   ],
   "fuku": [
     {
       "char": "吹く",
-      "en": "to blow"
+      "en": "to blow",
+      "weight": 97
     },
     {
       "char": "服",
-      "en": "clothes"
+      "en": "clothes",
+      "weight": 69
     }
   ],
   "reizouko": [
     {
       "char": "冷蔵庫",
-      "en": "refrigerator"
+      "en": "refrigerator",
+      "weight": 86
     }
   ],
   "jikan": [
     {
       "char": "時間",
-      "en": "Time"
+      "en": "Time",
+      "weight": 57
     }
   ],
   "byouin": [
     {
       "char": "病院",
-      "en": "hospital"
+      "en": "hospital",
+      "weight": 71
     }
   ],
   "fuyu": [
     {
       "char": "冬",
-      "en": "winter"
+      "en": "winter",
+      "weight": 72
     }
   ],
   "kopiisuru": [
     {
       "char": "コピーする",
-      "en": "to copy"
+      "en": "to copy",
+      "weight": 0
     }
   ],
   "rajio": [
     {
       "char": "ラジオ",
-      "en": "radio"
+      "en": "radio",
+      "weight": 79
     }
   ],
   "akai": [
     {
       "char": "明い",
-      "en": "bright"
+      "en": "bright",
+      "weight": 251
     },
     {
       "char": "赤い",
-      "en": "red"
+      "en": "red",
+      "weight": 85
     }
   ],
   "mise": [
     {
       "char": "店",
-      "en": "shop"
+      "en": "shop",
+      "weight": 58
     }
   ],
   "gaikokujin": [
     {
       "char": "外国人",
-      "en": "Foreigner"
+      "en": "Foreigner",
+      "weight": 0
     }
   ],
   "hidari": [
     {
       "char": "左",
-      "en": "left hand side"
+      "en": "left hand side",
+      "weight": 72
     }
   ],
   "hankachi": [
     {
       "char": "ハンカチ",
-      "en": "handkerchief"
+      "en": "handkerchief",
+      "weight": 100
     }
   ],
   "karendaa": [
     {
       "char": "カレンダー",
-      "en": "calendar"
+      "en": "calendar",
+      "weight": 75
     }
   ],
   "mukou": [
     {
       "char": "向こう",
-      "en": "over there"
+      "en": "over there",
+      "weight": 88
     }
   ],
   "yuki": [
     {
       "char": "雪",
-      "en": "snow"
+      "en": "snow",
+      "weight": 68
     }
   ],
   "shigoto": [
     {
       "char": "仕事",
-      "en": "Job"
+      "en": "Job",
+      "weight": 65
     }
   ],
   "okane": [
     {
       "char": "お金",
-      "en": "money"
+      "en": "money",
+      "weight": 78
     }
   ],
   "waishatsu": [
     {
       "char": "ワイシャツ",
-      "en": "business shirt"
+      "en": "business shirt",
+      "weight": 108
     }
   ],
   "chiisai": [
     {
       "char": "小さい",
-      "en": "little"
+      "en": "little",
+      "weight": 81
     }
   ],
   "toriniku": [
     {
       "char": "とり肉",
-      "en": "chicken meat"
+      "en": "chicken meat",
+      "weight": 0
     }
   ],
   "gogo": [
     {
       "char": "午後",
-      "en": "afternoon"
+      "en": "afternoon",
+      "weight": 72
     }
   ],
   "hare": [
     {
       "char": "晴れ",
-      "en": "clear weather"
+      "en": "clear weather",
+      "weight": 84
     }
   ],
   "ikura": [
     {
       "char": "いくら",
-      "en": "how much?"
+      "en": "how much?",
+      "weight": 84
     }
   ],
   "paatii": [
     {
       "char": "パーティー",
-      "en": "party"
+      "en": "party",
+      "weight": 84
     }
   ],
   "tanoshii": [
     {
       "char": "楽しい",
-      "en": "enjoyable"
+      "en": "enjoyable",
+      "weight": 75
     }
   ],
   "nouto": [
     {
       "char": "ノート",
-      "en": "notebook"
+      "en": "notebook",
+      "weight": 76
     }
   ],
   "aka": [
     {
       "char": "赤",
-      "en": "red"
+      "en": "red",
+      "weight": 74
     }
   ],
   "hajimaru": [
     {
       "char": "始まる",
-      "en": "to begin"
+      "en": "to begin",
+      "weight": 84
     }
   ],
   "yasumi": [
     {
       "char": "休み",
-      "en": "rest"
+      "en": "rest",
+      "weight": 78
     }
   ],
   "dochira": [
     {
       "char": "どちら",
-      "en": "which of two"
+      "en": "which of two",
+      "weight": 78
     }
   ],
   "hiraku": [
     {
       "char": "開く",
-      "en": "to open"
+      "en": "to open",
+      "weight": 80
     }
   ],
   "ie": [
     {
       "char": "家",
-      "en": "house"
+      "en": "house",
+      "weight": 57
     }
   ],
   "neko": [
     {
       "char": "猫",
-      "en": "cat"
+      "en": "cat",
+      "weight": 70
     }
   ],
   "hayai": [
     {
       "char": "早い",
-      "en": "early"
+      "en": "early",
+      "weight": 81
     },
     {
       "char": "速い",
-      "en": "quick"
+      "en": "quick",
+      "weight": 92
     }
   ],
   "mina": [
     {
       "char": "皆",
-      "en": "everyone"
+      "en": "everyone",
+      "weight": 76
     }
   ],
   "migaku": [
     {
       "char": "磨く",
-      "en": "to brush teeth"
+      "en": "to brush teeth",
+      "weight": 99
     }
   ],
   "oniisan": [
     {
       "char": "お兄さん",
-      "en": "(honorable) older brother"
+      "en": "(honorable) older brother",
+      "weight": 200
     }
   ],
   "suguni": [
     {
       "char": "すぐに",
-      "en": "Instantly"
+      "en": "Instantly",
+      "weight": 0
     }
   ],
   "bangohan": [
     {
       "char": "晩御飯",
-      "en": "evening meal"
+      "en": "evening meal",
+      "weight": 0
     }
   ],
   "asagohan": [
     {
       "char": "朝御飯",
-      "en": "breakfast"
+      "en": "breakfast",
+      "weight": 0
     }
   ],
   "tesuto": [
     {
       "char": "テスト",
-      "en": "test"
+      "en": "test",
+      "weight": 76
     }
   ],
   "nani": [
     {
       "char": "何",
-      "en": "what"
+      "en": "what",
+      "weight": 60
     }
   ],
   "totemo": [
     {
       "char": "とても",
-      "en": "very"
+      "en": "very",
+      "weight": 71
     }
   ],
   "ao": [
     {
       "char": "青",
-      "en": "blue"
+      "en": "blue",
+      "weight": 71
     }
   ],
   "oyogu": [
     {
       "char": "泳ぐ",
-      "en": "to swim"
+      "en": "to swim",
+      "weight": 100
     }
   ],
   "issho": [
     {
       "char": "一緒",
-      "en": "together"
+      "en": "together",
+      "weight": 72
     }
   ],
   "naraberu": [
     {
       "char": "並べる",
-      "en": "to line up"
+      "en": "to line up",
+      "weight": 100
     }
   ],
   "sebiro": [
     {
       "char": "背広",
-      "en": "business suit"
+      "en": "business suit",
+      "weight": 112
     }
   ],
   "hai": [
     {
       "char": "はい",
-      "en": "yes"
+      "en": "yes",
+      "weight": 74
     }
   ],
   "koucha": [
     {
       "char": "紅茶",
-      "en": "black tea"
+      "en": "black tea",
+      "weight": 87
     }
   ],
   "ane": [
     {
       "char": "姉",
-      "en": "(humble) older sister"
+      "en": "(humble) older sister",
+      "weight": 86
     }
   ],
   "satou": [
     {
       "char": "砂糖",
-      "en": "Sugar"
+      "en": "Sugar",
+      "weight": 89
     }
   ],
   "shiro": [
     {
       "char": "白",
-      "en": "White"
+      "en": "White",
+      "weight": 67
     }
   ],
   "soushite/soshite": [
     {
       "char": "そうして",
-      "en": "And"
+      "en": "And",
+      "weight": 96
     }
   ],
   "wakaru": [
     {
       "char": "分かる",
-      "en": "to be understood"
+      "en": "to be understood",
+      "weight": 83
     }
   ],
   "haku": [
     {
       "char": "はく",
-      "en": "to wear"
+      "en": "to wear",
+      "weight": 247
     }
   ],
   "ryoushin": [
     {
       "char": "両親",
-      "en": "both parents"
+      "en": "both parents",
+      "weight": 88
     }
   ],
   "asa": [
     {
       "char": "朝",
-      "en": "morning"
+      "en": "morning",
+      "weight": 69
     }
   ],
   "doa": [
     {
       "char": "ドア",
-      "en": "Western style door"
+      "en": "Western style door",
+      "weight": 75
     }
   ],
   "sensei": [
     {
       "char": "先生",
-      "en": "teacher"
+      "en": "teacher",
+      "weight": 64
     }
   ],
   "ookii": [
     {
       "char": "大きい",
-      "en": "big"
+      "en": "big",
+      "weight": 79
     }
   ],
   "gitaa": [
     {
       "char": "ギター",
-      "en": "Guitar"
+      "en": "Guitar",
+      "weight": 82
     }
   ],
   "shouyu": [
     {
       "char": "醤油",
-      "en": "soy sauce"
+      "en": "soy sauce",
+      "weight": 87
     }
   ],
   "koppu": [
     {
       "char": "コップ",
-      "en": "cup"
+      "en": "cup",
+      "weight": 95
     }
   ],
   "keikan": [
     {
       "char": "警官",
-      "en": "policeman"
+      "en": "policeman",
+      "weight": 94
     }
   ],
   "kyuu": [
     {
       "char": "九",
-      "en": "Nine"
+      "en": "Nine",
+      "weight": 72
     }
   ],
   "kau": [
     {
       "char": "買う",
-      "en": "to buy"
+      "en": "to buy",
+      "weight": 77
     }
   ],
   "macchi": [
     {
       "char": "マッチ",
-      "en": "match"
+      "en": "match",
+      "weight": 86
     }
   ],
   "deru": [
     {
       "char": "出る",
-      "en": "to appear"
+      "en": "to appear",
+      "weight": 76
     }
   ],
   "narabu": [
     {
       "char": "並ぶ",
-      "en": "to line up"
+      "en": "to line up",
+      "weight": 93
     }
   ],
   "souji": [
     {
       "char": "掃除",
-      "en": "to clean"
+      "en": "to clean",
+      "weight": 83
     }
   ],
   "ongaku": [
     {
       "char": "音楽",
-      "en": "Music"
+      "en": "Music",
+      "weight": 65
     }
   ],
   "rajikase / rajiokasetto": [
     {
       "char": "ラジカセ ",
-      "en": "radio cassette player"
+      "en": "radio cassette player",
+      "weight": 0
     }
   ],
   "nomimono": [
     {
       "char": "飲み物",
-      "en": "a drink"
+      "en": "a drink",
+      "weight": 91
     }
   ],
   "itsumo": [
     {
       "char": "いつも",
-      "en": "always"
+      "en": "always",
+      "weight": 71
     }
   ],
   "ike": [
     {
       "char": "池",
-      "en": "pond"
+      "en": "pond",
+      "weight": 80
     }
   ],
   "kaimono": [
     {
       "char": "買い物",
-      "en": "Shopping"
+      "en": "Shopping",
+      "weight": 71
     }
   ],
   "youfuku": [
     {
       "char": "洋服",
-      "en": "western-style clothes"
+      "en": "western-style clothes",
+      "weight": 89
     }
   ],
   "soko": [
     {
       "char": "そこ",
-      "en": "that place"
+      "en": "that place",
+      "weight": 72
     }
   ],
   "sutoubu": [
     {
       "char": "ストーブ",
-      "en": "Heater"
+      "en": "Heater",
+      "weight": 94
     }
   ],
   "sakuya": [
     {
       "char": "昨夜",
-      "en": "last night"
+      "en": "last night",
+      "weight": 89
     }
   ],
   "raigetsu": [
     {
       "char": "来月",
-      "en": "next month"
+      "en": "next month",
+      "weight": 96
     }
   ],
   "umi": [
     {
       "char": "海",
-      "en": "sea"
+      "en": "sea",
+      "weight": 64
     }
   ],
   "kippu": [
     {
       "char": "切符",
-      "en": "Ticket"
+      "en": "Ticket",
+      "weight": 98
     }
   ],
   "yonnichi": [
     {
       "char": "四日",
-      "en": "four days"
+      "en": "four days",
+      "weight": 99
     }
   ],
   "tooi": [
     {
       "char": "遠い",
-      "en": "far"
+      "en": "far",
+      "weight": 88
     }
   ],
   "sono": [
     {
       "char": "その",
-      "en": "That"
+      "en": "That",
+      "weight": 55
     }
   ],
   "getsuyoubi": [
     {
       "char": "月曜日",
-      "en": "Monday"
+      "en": "Monday",
+      "weight": 86
     }
   ],
   "sanpo": [
     {
       "char": "散歩",
-      "en": "to stroll"
+      "en": "to stroll",
+      "weight": 83
     }
   ],
   "chikatetsu": [
     {
       "char": "地下鉄",
-      "en": "underground train"
+      "en": "underground train",
+      "weight": 82
     }
   ],
   "oji/oji": [
     {
       "char": "伯父",
-      "en": "uncle"
+      "en": "uncle",
+      "weight": 105
     }
   ],
   "itai": [
     {
       "char": "痛い",
-      "en": "painful"
+      "en": "painful",
+      "weight": 85
     }
   ],
   "isu": [
     {
       "char": "いす",
-      "en": "chair"
+      "en": "chair",
+      "weight": 100
     }
   ],
   "tobu": [
     {
       "char": "飛ぶ",
-      "en": "to fly"
+      "en": "to fly",
+      "weight": 91
     }
   ],
   "hachinichi": [
     {
       "char": "八日",
-      "en": "eight days"
+      "en": "eight days",
+      "weight": 99
     }
   ],
   "jibun": [
     {
       "char": "自分",
-      "en": "Oneself"
+      "en": "Oneself",
+      "weight": 61
     }
   ],
   "narau": [
     {
       "char": "習う",
-      "en": "to learn"
+      "en": "to learn",
+      "weight": 105
     }
   ],
   "sen": [
     {
       "char": "千",
-      "en": "Thousand"
+      "en": "Thousand",
+      "weight": 71
     }
   ],
   "samui": [
     {
       "char": "寒い",
-      "en": "Cold"
+      "en": "Cold",
+      "weight": 81
     }
   ],
   "ii/yoi": [
     {
       "char": "いい",
-      "en": "good"
+      "en": "good",
+      "weight": 60
     }
   ],
   "tokei": [
     {
       "char": "時計",
-      "en": "watch"
+      "en": "watch",
+      "weight": 79
     }
   ],
   "kouto": [
     {
       "char": "コート",
-      "en": "coat"
+      "en": "coat",
+      "weight": 81
     }
   ],
   "ryokou": [
     {
       "char": "旅行",
-      "en": "travel"
+      "en": "travel",
+      "weight": 64
     }
   ],
   "konban": [
     {
       "char": "今晩",
-      "en": "this evening"
+      "en": "this evening",
+      "weight": 97
     }
   ],
   "hareru": [
     {
       "char": "晴れる",
-      "en": "to be sunny"
+      "en": "to be sunny",
+      "weight": 107
     }
   ],
   "petto": [
     {
       "char": "ペット",
-      "en": "pet"
+      "en": "pet",
+      "weight": 72
     }
   ],
   "renshuu": [
     {
       "char": "練習",
-      "en": "to practice"
+      "en": "to practice",
+      "weight": 74
     }
   ],
   "sorekara": [
     {
       "char": "それから",
-      "en": "after that"
+      "en": "after that",
+      "weight": 80
     }
   ],
   "oshieru": [
     {
       "char": "教える",
-      "en": "to teach"
+      "en": "to teach",
+      "weight": 85
     }
   ],
   "tokidoki": [
     {
       "char": "時々",
-      "en": "sometimes"
+      "en": "sometimes",
+      "weight": 84
     }
   ],
   "poketto": [
     {
       "char": "ポケット",
-      "en": "pocket"
+      "en": "pocket",
+      "weight": 83
     }
   ],
   "koko": [
     {
       "char": "ここ",
-      "en": "Here"
+      "en": "Here",
+      "weight": 64
     }
   ],
   "kiro/kiromeetoru": [
     {
       "char": "キロ",
-      "en": "Kilometer"
+      "en": "Kilometer",
+      "weight": 83
     }
   ],
   "kongetsu": [
     {
       "char": "今月",
-      "en": "this month"
+      "en": "this month",
+      "weight": 80
     }
   ],
   "hiku": [
     {
       "char": "弾く",
-      "en": "to play an instrument with strings"
+      "en": "to play an instrument with strings",
+      "weight": 100
     },
     {
       "char": "引く",
-      "en": "to pull"
+      "en": "to pull",
+      "weight": 94
     }
   ],
   "hon": [
     {
       "char": "本",
-      "en": "book"
+      "en": "book",
+      "weight": 51
     }
   ],
   "me": [
     {
       "char": "目",
-      "en": "eye"
+      "en": "eye",
+      "weight": 61
     }
   ],
   "ikutsu": [
     {
       "char": "いくつ",
-      "en": "how many?"
+      "en": "how many?",
+      "weight": 91
     }
   ],
   "yukkurito": [
     {
       "char": "ゆっくりと",
-      "en": "slowly"
+      "en": "slowly",
+      "weight": 90
     }
   ],
   "ichigatsu": [
     {
       "char": "一月",
-      "en": "January"
+      "en": "January",
+      "weight": 83
     }
   ],
   "kyonen": [
     {
       "char": "去年",
-      "en": "last year"
+      "en": "last year",
+      "weight": 73
     }
   ],
   "tate": [
     {
       "char": "たて",
-      "en": "length"
+      "en": "length",
+      "weight": 247
     }
   ],
   "kappu": [
     {
       "char": "カップ",
-      "en": "Cup"
+      "en": "Cup",
+      "weight": 79
     }
   ],
   "kochira": [
     {
       "char": "こちら",
-      "en": "this person or way"
+      "en": "this person or way",
+      "weight": 61
     }
   ],
   "natsuyasumi": [
     {
       "char": "夏休み",
-      "en": "summer holiday"
+      "en": "summer holiday",
+      "weight": 87
     }
   ],
   "iroiro": [
     {
       "char": "いろいろ",
-      "en": "various"
+      "en": "various",
+      "weight": 72
     }
   ],
   "kuru": [
     {
       "char": "来る",
-      "en": "to come"
+      "en": "to come",
+      "weight": 78
     }
   ],
   "sannichi": [
     {
       "char": "三日",
-      "en": "three days"
+      "en": "three days",
+      "weight": 93
     }
   ],
   "osoi": [
     {
       "char": "遅い",
-      "en": "late"
+      "en": "late",
+      "weight": 87
     }
   ],
   "owaru": [
     {
       "char": "終る",
-      "en": "to finish"
+      "en": "to finish",
+      "weight": 110
     }
   ],
   "shawaa": [
     {
       "char": "シャワー",
-      "en": "Shower"
+      "en": "Shower",
+      "weight": 87
     }
   ],
   "ooi": [
     {
       "char": "多い",
-      "en": "many"
+      "en": "many",
+      "weight": 69
     }
   ],
   "otousan": [
     {
       "char": "お父さん",
-      "en": "(honorable) father"
+      "en": "(honorable) father",
+      "weight": 89
     }
   ],
   "seito": [
     {
       "char": "生徒",
-      "en": "Pupil"
+      "en": "Pupil",
+      "weight": 78
     }
   ],
   "kariru": [
     {
       "char": "借りる",
-      "en": "to borrow"
+      "en": "to borrow",
+      "weight": 95
     }
   ],
   "daigaku": [
     {
       "char": "大学",
-      "en": "university"
+      "en": "university",
+      "weight": 58
     }
   ],
   "doyoubi": [
     {
       "char": "土曜日",
-      "en": "Saturday"
+      "en": "Saturday",
+      "weight": 82
     }
   ],
   "nishi": [
     {
       "char": "西",
-      "en": "west"
+      "en": "west",
+      "weight": 67
     }
   ],
   "kayoubi": [
     {
       "char": "火曜日",
-      "en": "Tuesday"
+      "en": "Tuesday",
+      "weight": 88
     }
   ],
   "joubu": [
     {
       "char": "丈夫",
-      "en": "strong"
+      "en": "strong",
+      "weight": 81
     }
   ],
   "doumo": [
     {
       "char": "どうも",
-      "en": "thanks"
+      "en": "thanks",
+      "weight": 80
     }
   ],
   "yasai": [
     {
       "char": "野菜",
-      "en": "vegetable"
+      "en": "vegetable",
+      "weight": 78
     }
   ],
   "otearai": [
     {
       "char": "お手洗い",
-      "en": "bathroom"
+      "en": "bathroom",
+      "weight": 200
     }
   ],
   "kanji": [
     {
       "char": "漢字",
-      "en": "Chinese character"
+      "en": "Chinese character",
+      "weight": 83
     }
   ],
   "nigiyaka": [
     {
       "char": "賑やか",
-      "en": "bustling"
+      "en": "bustling",
+      "weight": 100
     }
   ],
   "otoko": [
     {
       "char": "男",
-      "en": "Man"
+      "en": "Man",
+      "weight": 64
     }
   ],
   "ryouri": [
     {
       "char": "料理",
-      "en": "cuisine"
+      "en": "cuisine",
+      "weight": 67
     }
   ],
   "shimaru": [
     {
       "char": "閉まる",
-      "en": "to close"
+      "en": "to close",
+      "weight": 113
     }
   ],
   "muttsu": [
     {
       "char": "六つ",
-      "en": "six"
+      "en": "six",
+      "weight": 112
     }
   ],
   "furo": [
     {
       "char": "ふろ",
-      "en": "bath"
+      "en": "bath",
+      "weight": 101
     }
   ],
   "rippa": [
     {
       "char": "立派",
-      "en": "splendid"
+      "en": "splendid",
+      "weight": 90
     }
   ],
   "karui": [
     {
       "char": "軽い",
-      "en": "Light"
+      "en": "Light",
+      "weight": 88
     }
   ],
   "toire": [
     {
       "char": "トイレ",
-      "en": "toilet"
+      "en": "toilet",
+      "weight": 80
     }
   ],
   "hyaku": [
     {
       "char": "百",
-      "en": "hundred"
+      "en": "hundred",
+      "weight": 69
     }
   ],
   "hou": [
     {
       "char": "方",
-      "en": "person"
+      "en": "person",
+      "weight": 54
     }
   ],
   "kutsu": [
     {
       "char": "靴",
-      "en": "Shoes"
+      "en": "Shoes",
+      "weight": 81
     }
   ],
   "shizuka": [
     {
       "char": "静か",
-      "en": "Quiet"
+      "en": "Quiet",
+      "weight": 85
     }
   ],
   "shatsu": [
     {
       "char": "シャツ",
-      "en": "Shirt"
+      "en": "Shirt",
+      "weight": 77
     }
   ],
   "kusuri": [
     {
       "char": "薬",
-      "en": "medicine"
+      "en": "medicine",
+      "weight": 76
     }
   ],
   "omoshiroi": [
     {
       "char": "面白い",
-      "en": "Interesting"
+      "en": "Interesting",
+      "weight": 77
     }
   ],
   "itsu": [
     {
       "char": "いつ",
-      "en": "when"
+      "en": "when",
+      "weight": 75
     }
   ],
   "komaru": [
     {
       "char": "困る",
-      "en": "to be worried"
+      "en": "to be worried",
+      "weight": 90
     }
   ],
   "osake": [
     {
       "char": "お酒",
-      "en": "alcohol"
+      "en": "alcohol",
+      "weight": 0
     }
   ],
   "okashi": [
     {
       "char": "お菓子",
-      "en": "sweets"
+      "en": "sweets",
+      "weight": 84
     }
   ],
   "kurai": [
     {
       "char": "暗い",
-      "en": "gloomy"
+      "en": "gloomy",
+      "weight": 91
     }
   ],
   "tenki": [
     {
       "char": "天気",
-      "en": "weather"
+      "en": "weather",
+      "weight": 73
     }
   ],
   "tsukue": [
     {
       "char": "机",
-      "en": "desk"
+      "en": "desk",
+      "weight": 61
     }
   ],
   "surippa": [
     {
       "char": "スリッパ",
-      "en": "slippers"
+      "en": "slippers",
+      "weight": 97
     }
   ],
   "utau": [
     {
       "char": "歌う",
-      "en": "to sing"
+      "en": "to sing",
+      "weight": 90
     }
   ],
   "hanasu": [
     {
       "char": "話す",
-      "en": "to speak"
+      "en": "to speak",
+      "weight": 87
     }
   ],
   "e": [
     {
       "char": "絵",
-      "en": "picture"
+      "en": "picture",
+      "weight": 75
     }
   ],
   "ee": [
     {
       "char": "ええ",
-      "en": "yes"
+      "en": "yes",
+      "weight": 84
     }
   ],
   "yattsu": [
     {
       "char": "八つ",
-      "en": "eight"
+      "en": "eight",
+      "weight": 106
     }
   ],
   "mazui": [
     {
       "char": "不味い",
-      "en": "unpleasant"
+      "en": "unpleasant",
+      "weight": 109
     }
   ],
   "boushi": [
     {
       "char": "帽子",
-      "en": "hat"
+      "en": "hat",
+      "weight": 84
     }
   ],
   "noboru": [
     {
       "char": "登る",
-      "en": "to climb"
+      "en": "to climb",
+      "weight": 97
     }
   ],
   "roku": [
     {
       "char": "六",
-      "en": "six"
+      "en": "six",
+      "weight": 69
     }
   ],
   "ni": [
     {
       "char": "二",
-      "en": "two"
+      "en": "two",
+      "weight": 60
     }
   ],
   "chikaku": [
     {
       "char": "近く",
-      "en": "near"
+      "en": "near",
+      "weight": 75
     }
   ],
   "kuni": [
     {
       "char": "国",
-      "en": "Country"
+      "en": "Country",
+      "weight": 63
     }
   ],
   "kirei": [
     {
       "char": "綺麗",
-      "en": "pretty"
+      "en": "pretty",
+      "weight": 81
     }
   ],
   "teepurekoudaa": [
     {
       "char": "テープレコーダー",
-      "en": "tape recorder"
+      "en": "tape recorder",
+      "weight": 116
     }
   ],
   "hoteru": [
     {
       "char": "ホテル",
-      "en": "hotel"
+      "en": "hotel",
+      "weight": 65
     }
   ],
   "atatakai": [
     {
       "char": "暖かい",
-      "en": "warm"
+      "en": "warm",
+      "weight": 90
     }
   ],
   "soredeha": [
     {
       "char": "それでは",
-      "en": "in that situation"
+      "en": "in that situation",
+      "weight": 85
     }
   ],
   "osu": [
     {
       "char": "押す",
-      "en": "to push"
+      "en": "to push",
+      "weight": 86
     }
   ],
   "shokudou": [
     {
       "char": "食堂",
-      "en": "dining hall"
+      "en": "dining hall",
+      "weight": 87
     }
   ],
   "kiiro": [
     {
       "char": "黄色",
-      "en": "yellow"
+      "en": "yellow",
+      "weight": 82
     }
   ],
   "kiku": [
     {
       "char": "聞く",
-      "en": "to hear"
+      "en": "to hear",
+      "weight": 80
     }
   ],
   "suki": [
     {
       "char": "好き",
-      "en": "like"
+      "en": "like",
+      "weight": 66
     }
   ],
   "gonichi": [
     {
       "char": "五日",
-      "en": "five days"
+      "en": "five days",
+      "weight": 92
     }
   ],
   "saku": [
     {
       "char": "咲く",
-      "en": "to bloom"
+      "en": "to bloom",
+      "weight": 93
     }
   ],
   "kesu": [
     {
       "char": "消す",
-      "en": "to erase"
+      "en": "to erase",
+      "weight": 97
     }
   ],
   "nimotsu": [
     {
       "char": "荷物",
-      "en": "luggage"
+      "en": "luggage",
+      "weight": 87
     }
   ],
   "mainichi": [
     {
       "char": "毎日",
-      "en": "every day"
+      "en": "every day",
+      "weight": 70
     }
   ],
   "isha": [
     {
       "char": "医者",
-      "en": "medical doctor"
+      "en": "medical doctor",
+      "weight": 88
     }
   ],
   "nagai": [
     {
       "char": "長い",
-      "en": "long"
+      "en": "long",
+      "weight": 79
     }
   ],
   "gyuunyuu": [
     {
       "char": "牛乳",
-      "en": "Milk"
+      "en": "Milk",
+      "weight": 88
     }
   ],
   "ocha": [
     {
       "char": "お茶",
-      "en": "green tea"
+      "en": "green tea",
+      "weight": 82
     }
   ],
   "takai": [
     {
       "char": "高い",
-      "en": "tall"
+      "en": "tall",
+      "weight": 70
     }
   ],
   "issakunen": [
     {
       "char": "一昨年",
-      "en": "year before last"
+      "en": "year before last",
+      "weight": 99
     }
   ],
   "shukudai": [
     {
       "char": "宿題",
-      "en": "homework"
+      "en": "homework",
+      "weight": 94
     }
   ],
   "aru": [
     {
       "char": "ある",
-      "en": "to be"
+      "en": "to be",
+      "weight": 50
     }
   ],
   "ideguchi": [
     {
       "char": "出口",
-      "en": "exit"
+      "en": "exit",
+      "weight": 73
     }
   ],
   "saki": [
     {
       "char": "先",
-      "en": "the future"
+      "en": "the future",
+      "weight": 62
     }
   ],
   "ame": [
     {
       "char": "雨",
-      "en": "rain"
+      "en": "rain",
+      "weight": 71
     },
     {
       "char": "飴",
-      "en": "candy"
+      "en": "candy",
+      "weight": 93
     }
   ],
   "noru": [
     {
       "char": "乗る",
-      "en": "to get on"
+      "en": "to get on",
+      "weight": 89
     }
   ],
   "byouki": [
     {
       "char": "病気",
-      "en": "illness"
+      "en": "illness",
+      "weight": 79
     }
   ],
   "tokoro": [
     {
       "char": "所",
-      "en": "place"
+      "en": "place",
+      "weight": 57
     }
   ],
   "aruku": [
     {
       "char": "歩く",
-      "en": "to walk"
+      "en": "to walk",
+      "weight": 86
     }
   ],
   "tsumetai": [
     {
       "char": "冷たい",
-      "en": "cold to the touch"
+      "en": "cold to the touch",
+      "weight": 91
     }
   ],
   "kitanai": [
     {
       "char": "汚い",
-      "en": "Dirty"
+      "en": "Dirty",
+      "weight": 97
     }
   ],
   "kouen": [
     {
       "char": "公園",
-      "en": "Park"
+      "en": "Park",
+      "weight": 74
     }
   ],
   "kumoru": [
     {
       "char": "曇る",
-      "en": "to become cloudy"
+      "en": "to become cloudy",
+      "weight": 121
     }
   ],
   "shiru": [
     {
       "char": "知る",
-      "en": "to know"
+      "en": "to know",
+      "weight": 82
     }
   ],
   "ha": [
     {
       "char": "歯",
-      "en": "tooth"
+      "en": "tooth",
+      "weight": 82
     }
   ],
   "onna": [
     {
       "char": "女",
-      "en": "Woman"
+      "en": "Woman",
+      "weight": 62
     }
   ],
   "taishikan": [
     {
       "char": "大使館",
-      "en": "embassy"
+      "en": "embassy",
+      "weight": 94
     }
   ],
   "supuun": [
     {
       "char": "スプーン",
-      "en": "Spoon"
+      "en": "Spoon",
+      "weight": 94
     }
   ],
   "hondana": [
     {
       "char": "本棚",
-      "en": "bookshelves"
+      "en": "bookshelves",
+      "weight": 88
     }
   ],
   "zero": [
     {
       "char": "ゼロ",
-      "en": "Zero"
+      "en": "Zero",
+      "weight": 0
     }
   ],
   "terebi": [
     {
       "char": "テレビ",
-      "en": "television"
+      "en": "television",
+      "weight": 67
     }
   ],
   "warui": [
     {
       "char": "悪い",
-      "en": "bad"
+      "en": "bad",
+      "weight": 75
     }
   ],
   "tsukeru": [
     {
       "char": "つける",
-      "en": "to turn on"
+      "en": "to turn on",
+      "weight": 84
     }
   ],
   "isogashii": [
     {
       "char": "忙しい",
-      "en": "busy"
+      "en": "busy",
+      "weight": 86
     }
   ],
   "anata": [
     {
       "char": "あなた",
-      "en": "you"
+      "en": "you",
+      "weight": 66
     }
   ],
   "to": [
     {
       "char": "戸",
-      "en": "Japanese style door"
+      "en": "Japanese style door",
+      "weight": 84
     }
   ],
   "doushite": [
     {
       "char": "どうして",
-      "en": "for what reason"
+      "en": "for what reason",
+      "weight": 83
     }
   ],
   "okaasan": [
     {
       "char": "お母さん",
-      "en": "(honorable) mother"
+      "en": "(honorable) mother",
+      "weight": 85
     }
   ],
   "kamera": [
     {
       "char": "カメラ",
-      "en": "camera"
+      "en": "camera",
+      "weight": 72
     }
   ],
   "kodomo": [
     {
       "char": "子供",
-      "en": "Child"
+      "en": "Child",
+      "weight": 69
     }
   ],
   "sora": [
     {
       "char": "空",
-      "en": "Sky"
+      "en": "Sky",
+      "weight": 69
     }
   ],
   "tegami": [
     {
       "char": "手紙",
-      "en": "letter"
+      "en": "letter",
+      "weight": 86
     }
   ],
   "uta": [
     {
       "char": "歌",
-      "en": "song"
+      "en": "song",
+      "weight": 69
     }
   ],
   "kekkon": [
     {
       "char": "結婚",
-      "en": "Marriage"
+      "en": "Marriage",
+      "weight": 74
     }
   ],
   "kirai": [
     {
       "char": "嫌い",
-      "en": "Hate"
+      "en": "Hate",
+      "weight": 83
     }
   ],
   "mou": [
     {
       "char": "もう",
-      "en": "already"
+      "en": "already",
+      "weight": 65
     }
   ],
   "rekoudo": [
     {
       "char": "レコード",
-      "en": "record"
+      "en": "record",
+      "weight": 84
     }
   ],
   "taberu": [
     {
       "char": "食べる",
-      "en": "to eat"
+      "en": "to eat",
+      "weight": 79
     }
   ],
   "dare": [
     {
       "char": "誰",
-      "en": "somebody"
+      "en": "somebody",
+      "weight": 71
     }
   ],
   "kaeru": [
     {
       "char": "帰る",
-      "en": "to go back"
+      "en": "to go back",
+      "weight": 86
     }
   ],
   "kaisha": [
     {
       "char": "会社",
-      "en": "Company"
+      "en": "Company",
+      "weight": 61
     }
   ],
   "chotto": [
     {
       "char": "ちょっと",
-      "en": "somewhat"
+      "en": "somewhat",
+      "weight": 67
     }
   ],
   "yuugata": [
     {
       "char": "夕方",
-      "en": "evening"
+      "en": "evening",
+      "weight": 84
     }
   ],
   "are": [
     {
       "char": "あれ",
-      "en": "that"
+      "en": "that",
+      "weight": 69
     }
   ],
   "nugu": [
     {
       "char": "脱ぐ",
-      "en": "to take off clothes"
+      "en": "to take off clothes",
+      "weight": 104
     }
   ],
   "hikouki": [
     {
       "char": "飛行機",
-      "en": "aeroplane"
+      "en": "aeroplane",
+      "weight": 86
     }
   ],
   "wakai": [
     {
       "char": "若い",
-      "en": "young"
+      "en": "young",
+      "weight": 82
     }
   ],
   "hosoi": [
     {
       "char": "細い",
-      "en": "thin"
+      "en": "thin",
+      "weight": 94
     }
   ],
   "sukaato": [
     {
       "char": "スカート",
-      "en": "Skirt"
+      "en": "Skirt",
+      "weight": 87
     }
   ],
   "yottsu": [
     {
       "char": "四つ",
-      "en": "four"
+      "en": "four",
+      "weight": 100
     }
   ],
   "hataraku": [
     {
       "char": "働く",
-      "en": "to work"
+      "en": "to work",
+      "weight": 84
     }
   ],
   "kawa/kawa": [
     {
       "char": "川",
-      "en": "River"
+      "en": "River",
+      "weight": 73
     }
   ],
   "guramu": [
     {
       "char": "グラム",
-      "en": "Gram"
+      "en": "Gram",
+      "weight": 91
     }
   ],
   "hikui": [
     {
       "char": "低い",
-      "en": "short"
+      "en": "short",
+      "weight": 82
     }
   ],
   "kaidan": [
     {
       "char": "階段",
-      "en": "Stairs"
+      "en": "Stairs",
+      "weight": 83
     }
   ],
   "atari": [
     {
       "char": "辺",
-      "en": "area"
+      "en": "area",
+      "weight": 86
     }
   ],
   "mon": [
     {
       "char": "門",
-      "en": "gate"
+      "en": "gate",
+      "weight": 79
     }
   ],
   "kinyoubi": [
     {
       "char": "金曜日",
-      "en": "Friday"
+      "en": "Friday",
+      "weight": 85
     }
   ],
   "basu": [
     {
       "char": "バス",
-      "en": "bus"
+      "en": "bus",
+      "weight": 70
     }
   ],
   "jibiki": [
     {
       "char": "字引",
-      "en": "Dictionary"
+      "en": "Dictionary",
+      "weight": 132
     }
   ],
   "hachi": [
     {
       "char": "八",
-      "en": "eight"
+      "en": "eight",
+      "weight": 71
     }
   ],
   "tatemono": [
     {
       "char": "建物",
-      "en": "building"
+      "en": "building",
+      "weight": 78
     }
   ],
   "obasan/obasan": [
     {
       "char": "伯母さん",
-      "en": "Aunt"
+      "en": "Aunt",
+      "weight": 0
     }
   ],
   "jugyou": [
     {
       "char": "授業",
-      "en": "lesson"
+      "en": "lesson",
+      "weight": 74
     }
   ],
   "oku": [
     {
       "char": "置く",
-      "en": "to put"
+      "en": "to put",
+      "weight": 88
     }
   ],
   "eki": [
     {
       "char": "駅",
-      "en": "station"
+      "en": "station",
+      "weight": 65
     }
   ],
   "ginkou": [
     {
       "char": "銀行",
-      "en": "Bank"
+      "en": "Bank",
+      "weight": 69
     }
   ],
   "kyuunichi": [
     {
       "char": "九日",
-      "en": "nine days"
+      "en": "nine days",
+      "weight": 98
     }
   ],
   "magaru": [
     {
       "char": "曲る",
-      "en": "to turn"
+      "en": "to turn",
+      "weight": 248
     }
   ],
   "yoko": [
     {
       "char": "横",
-      "en": "beside"
+      "en": "beside",
+      "weight": 75
     }
   ],
   "bunshou": [
     {
       "char": "文章",
-      "en": "sentence"
+      "en": "sentence",
+      "weight": 59
     }
   ],
   "beddo": [
     {
       "char": "ベッド",
-      "en": "bed"
+      "en": "bed",
+      "weight": 80
     }
   ],
   "kita": [
     {
       "char": "北",
-      "en": "North"
+      "en": "North",
+      "weight": 69
     }
   ],
   "kakeru": [
     {
       "char": "かける",
-      "en": "to call by phone"
+      "en": "to call by phone",
+      "weight": 85
     }
   ],
   "suwaru": [
     {
       "char": "座る",
-      "en": "to sit"
+      "en": "to sit",
+      "weight": 98
     }
   ],
   "ninichi": [
     {
       "char": "二日",
-      "en": "two days"
+      "en": "two days",
+      "weight": 91
     }
   ],
   "gohan": [
     {
       "char": "御飯",
-      "en": "cooked rice"
+      "en": "cooked rice",
+      "weight": 97
     }
   ],
   "obentou": [
     {
       "char": "お弁当",
-      "en": "boxed lunch"
+      "en": "boxed lunch",
+      "weight": 0
     }
   ],
   "kuruma": [
     {
       "char": "車",
-      "en": "car"
+      "en": "car",
+      "weight": 65
     }
   ],
   "yori,hou": [
     {
       "char": "より、ほう",
-      "en": "Used for comparison."
+      "en": "Used for comparison.",
+      "weight": 0
     }
   ],
   "maiban": [
     {
       "char": "毎晩",
-      "en": "every night"
+      "en": "every night",
+      "weight": 102
     }
   ],
   "tsuku": [
     {
       "char": "着く",
-      "en": "to arrive at"
+      "en": "to arrive at",
+      "weight": 95
     }
   ],
   "wataru": [
     {
       "char": "渡る",
-      "en": "to go across"
+      "en": "to go across",
+      "weight": 95
     }
   ],
   "sakubun": [
     {
       "char": "作文",
-      "en": "composition"
+      "en": "composition",
+      "weight": 85
     }
   ],
   "chikai": [
     {
       "char": "近い",
-      "en": "near"
+      "en": "near",
+      "weight": 79
     }
   ],
   "michi": [
     {
       "char": "道",
-      "en": "street"
+      "en": "street",
+      "weight": 62
     }
   ],
   "itsutsu": [
     {
       "char": "五つ",
-      "en": "five"
+      "en": "five",
+      "weight": 103
     }
   ],
   "dore": [
     {
       "char": "どれ",
-      "en": "which (of three or more)"
+      "en": "which (of three or more)",
+      "weight": 79
     }
   ],
   "genkan": [
     {
       "char": "玄関",
-      "en": "entry hall"
+      "en": "entry hall",
+      "weight": 86
     }
   ],
   "kieru": [
     {
       "char": "消える",
-      "en": "to disappear"
+      "en": "to disappear",
+      "weight": 95
     }
   ],
   "daidokoro": [
     {
       "char": "台所",
-      "en": "kitchen"
+      "en": "kitchen",
+      "weight": 94
     }
   ],
   "massugu": [
     {
       "char": "真っ直ぐ",
-      "en": "straight ahead"
+      "en": "straight ahead",
+      "weight": 103
     }
   ],
   "jidousha": [
     {
       "char": "自動車",
-      "en": "Automobile"
+      "en": "Automobile",
+      "weight": 72
     }
   ],
   "peeji": [
     {
       "char": "ページ",
-      "en": "page"
+      "en": "page",
+      "weight": 56
     }
   ],
   "raishuu": [
     {
       "char": "来週",
-      "en": "next week"
+      "en": "next week",
+      "weight": 87
     }
   ],
   "te": [
     {
       "char": "手",
-      "en": "hand"
+      "en": "hand",
+      "weight": 62
     }
   ],
   "hirugohan": [
     {
       "char": "昼御飯",
-      "en": "midday meal"
+      "en": "midday meal",
+      "weight": 0
     }
   ],
   "suru": [
     {
       "char": "する",
-      "en": "to do"
+      "en": "to do",
+      "weight": 46
     }
   ],
   "rouka": [
     {
       "char": "廊下",
-      "en": "corridor"
+      "en": "corridor",
+      "weight": 95
     }
   ],
   "kuro": [
     {
       "char": "黒",
-      "en": "Black"
+      "en": "Black",
+      "weight": 74
     }
   ],
   "ima": [
     {
       "char": "今",
-      "en": "now"
+      "en": "now",
+      "weight": 61
     }
   ],
   "sochira": [
     {
       "char": "そちら",
-      "en": "over there"
+      "en": "over there",
+      "weight": 90
     }
   ],
   "mata": [
     {
       "char": "また",
-      "en": "again"
+      "en": "again",
+      "weight": 60
     }
   ],
   "dou": [
     {
       "char": "どう",
-      "en": "how"
+      "en": "how",
+      "weight": 66
     }
   ],
   "botan": [
     {
       "char": "ボタン",
-      "en": "button"
+      "en": "button",
+      "weight": 73
     }
   ],
   "gakusei": [
     {
       "char": "学生",
-      "en": "Student"
+      "en": "Student",
+      "weight": 63
     }
   ],
   "kurasu": [
     {
       "char": "クラス",
-      "en": "Class"
+      "en": "Class",
+      "weight": 75
     }
   ],
   "shikashi": [
     {
       "char": "しかし",
-      "en": "However"
+      "en": "However",
+      "weight": 67
     }
   ],
   "yoku": [
     {
       "char": "よく",
-      "en": "often"
+      "en": "often",
+      "weight": 65
     }
   ],
   "ofuro": [
     {
       "char": "お風呂",
-      "en": "Bath"
+      "en": "Bath",
+      "weight": 0
     }
   ],
   "nakusu": [
     {
       "char": "無くす",
-      "en": "to lose something"
+      "en": "to lose something",
+      "weight": 110
     }
   ],
   "asobu": [
     {
       "char": "遊ぶ",
-      "en": "to play"
+      "en": "to play",
+      "weight": 86
     }
   ],
   "yuumei": [
     {
       "char": "有名",
-      "en": "famous"
+      "en": "famous",
+      "weight": 77
     }
   ],
   "hito": [
     {
       "char": "人",
-      "en": "person"
+      "en": "person",
+      "weight": 46
     }
   ],
   "kutsushita": [
     {
       "char": "靴下",
-      "en": "Socks"
+      "en": "Socks",
+      "weight": 96
     }
   ],
   "iie": [
     {
       "char": "いいえ",
-      "en": "no"
+      "en": "no",
+      "weight": 87
     }
   ],
   "genki": [
     {
       "char": "元気",
-      "en": "health"
+      "en": "health",
+      "weight": 75
     }
   ],
   "hitotsu": [
     {
       "char": "一つ",
-      "en": "one"
+      "en": "one",
+      "weight": 73
     }
   ],
   "katei": [
     {
       "char": "家庭",
-      "en": "Household"
+      "en": "Household",
+      "weight": 67
     }
   ],
   "mittsu": [
     {
       "char": "三つ",
-      "en": "three"
+      "en": "three",
+      "weight": 92
     }
   ],
   "yasumu": [
     {
       "char": "休む",
-      "en": "to rest"
+      "en": "to rest",
+      "weight": 99
     }
   ],
   "kuchi": [
     {
       "char": "口",
-      "en": "mouth"
+      "en": "mouth",
+      "weight": 69
     }
   ],
   "benri": [
     {
       "char": "便利",
-      "en": "useful"
+      "en": "useful",
+      "weight": 72
     }
   ],
   "kotoba": [
     {
       "char": "言葉",
-      "en": "word"
+      "en": "word",
+      "weight": 71
     }
   ],
   "chawan": [
     {
       "char": "茶碗",
-      "en": "rice bowl"
+      "en": "rice bowl",
+      "weight": 99
     }
   ],
   "toshi": [
     {
       "char": "年",
-      "en": "year"
+      "en": "year",
+      "weight": 42
     }
   ],
   "hairu": [
     {
       "char": "入る",
-      "en": "to enter"
+      "en": "to enter",
+      "weight": 78
     }
   ],
   "kasu": [
     {
       "char": "貸す",
-      "en": "to lend"
+      "en": "to lend",
+      "weight": 108
     }
   ],
   "juunichi": [
     {
       "char": "十日",
-      "en": "ten days"
+      "en": "ten days",
+      "weight": 97
     }
   ],
   "shimeru": [
     {
       "char": "閉める",
-      "en": "to close something"
+      "en": "to close something",
+      "weight": 109
     },
     {
       "char": "締める",
-      "en": "to tie"
+      "en": "to tie",
+      "weight": 110
     }
   ],
   "hajimete": [
     {
       "char": "初めて",
-      "en": "for the first time"
+      "en": "for the first time",
+      "weight": 71
     }
   ],
   "futatsu": [
     {
       "char": "二つ",
-      "en": "two"
+      "en": "two",
+      "weight": 84
     }
   ],
   "okusan": [
     {
       "char": "奥さん",
-      "en": "(honorable) wife"
+      "en": "(honorable) wife",
+      "weight": 90
     }
   ],
   "rokunichi": [
     {
       "char": "六日",
-      "en": "six days"
+      "en": "six days",
+      "weight": 97
     }
   ],
   "kousaten": [
     {
       "char": "交差点",
-      "en": "intersection"
+      "en": "intersection",
+      "weight": 91
     }
   ],
   "inu": [
     {
       "char": "犬",
-      "en": "dog"
+      "en": "dog",
+      "weight": 73
     }
   ],
   "kinou": [
     {
       "char": "昨日",
-      "en": "Yesterday"
+      "en": "Yesterday",
+      "weight": 70
     }
   ],
   "yaoya": [
     {
       "char": "八百屋",
-      "en": "greengrocer"
+      "en": "greengrocer",
+      "weight": 109
     }
   ],
   "dandan": [
     {
       "char": "だんだん",
-      "en": "gradually"
+      "en": "gradually",
+      "weight": 91
     }
   ],
   "hiru": [
     {
       "char": "昼",
-      "en": "noon"
+      "en": "noon",
+      "weight": 82
     }
   ],
   "amari": [
     {
       "char": "あまり",
-      "en": "not very"
+      "en": "not very",
+      "weight": 74
     }
   ],
   "omoi": [
     {
       "char": "重い",
-      "en": "Heavy"
+      "en": "Heavy",
+      "weight": 87
     }
   ],
   "taisetsu": [
     {
       "char": "大切",
-      "en": "important"
+      "en": "important",
+      "weight": 75
     }
   ],
   "naka": [
     {
       "char": "中",
-      "en": "middle"
+      "en": "middle",
+      "weight": 47
     }
   ],
   "iku": [
     {
       "char": "行く",
-      "en": "to go"
+      "en": "to go",
+      "weight": 71
     }
   ],
   "migi": [
     {
       "char": "右",
-      "en": "right side"
+      "en": "right side",
+      "weight": 72
     }
   ],
   "pan": [
     {
       "char": "パン",
-      "en": "bread"
+      "en": "bread",
+      "weight": 74
     }
   ],
   "ani": [
     {
       "char": "兄",
-      "en": "(humble) older brother"
+      "en": "(humble) older brother",
+      "weight": 82
     }
   ],
   "asoko": [
     {
       "char": "あそこ",
-      "en": "over there"
+      "en": "over there",
+      "weight": 92
     }
   ],
   "suu": [
     {
       "char": "吸う",
-      "en": "to smoke"
+      "en": "to smoke",
+      "weight": 100
     }
   ],
   "mijikai": [
     {
       "char": "短い",
-      "en": "short"
+      "en": "short",
+      "weight": 87
     }
   ],
   "nomu": [
     {
       "char": "飲む",
-      "en": "to drink"
+      "en": "to drink",
+      "weight": 85
     }
   ],
   "imouto": [
     {
       "char": "妹",
-      "en": "(humble) younger sister"
+      "en": "(humble) younger sister",
+      "weight": 78
     }
   ],
   "hiroi": [
     {
       "char": "広い",
-      "en": "spacious"
+      "en": "spacious",
+      "weight": 85
     }
   ],
   "yowai": [
     {
       "char": "弱い",
-      "en": "weak"
+      "en": "weak",
+      "weight": 86
     }
   ],
   "hoshii": [
     {
       "char": "欲しい",
-      "en": "want"
+      "en": "want",
+      "weight": 74
     }
   ],
   "tonari": [
     {
       "char": "隣",
-      "en": "next door to"
+      "en": "next door to",
+      "weight": 83
     }
   ],
   "naru": [
     {
       "char": "なる",
-      "en": "to become"
+      "en": "to become",
+      "weight": 58
     }
   ],
   "arau": [
     {
       "char": "洗う",
-      "en": "to wash"
+      "en": "to wash",
+      "weight": 97
     }
   ],
   "rei": [
     {
       "char": "零",
-      "en": "zero"
+      "en": "zero",
+      "weight": 78
     }
   ],
   "kaban": [
     {
       "char": "鞄",
-      "en": "bag"
+      "en": "bag",
+      "weight": 96
     }
   ],
   "erebeetaa": [
     {
       "char": "エレベーター",
-      "en": "elevator"
+      "en": "elevator",
+      "weight": 94
     }
   ],
   "gozen": [
     {
       "char": "午前",
-      "en": "morning"
+      "en": "morning",
+      "weight": 74
     }
   ],
   "uru": [
     {
       "char": "売る",
-      "en": "to sell"
+      "en": "to sell",
+      "weight": 90
     }
   ],
   "seetaa": [
     {
       "char": "セーター",
-      "en": "sweater"
+      "en": "sweater",
+      "weight": 94
     }
   ],
   "hanashi": [
     {
       "char": "話",
-      "en": "talk"
+      "en": "talk",
+      "weight": 62
     }
   ],
   "aki": [
     {
       "char": "秋",
-      "en": "autumn"
+      "en": "autumn",
+      "weight": 72
     }
   ],
   "senshuu": [
     {
       "char": "先週",
-      "en": "last week"
+      "en": "last week",
+      "weight": 86
     }
   ],
   "akeru": [
     {
       "char": "開ける",
-      "en": "to open"
+      "en": "to open",
+      "weight": 94
     }
   ],
   "ano": [
     {
       "char": "あの",
-      "en": "that over there"
+      "en": "that over there",
+      "weight": 72
     }
   ],
   "se": [
     {
       "char": "背",
-      "en": "height"
+      "en": "height",
+      "weight": 78
     }
   ],
   "furu": [
     {
       "char": "降る",
-      "en": "to fall"
+      "en": "to fall",
+      "weight": 93
     }
   ],
   "muzukashii": [
     {
       "char": "難しい",
-      "en": "difficult"
+      "en": "difficult",
+      "weight": 78
     }
   ],
   "otona": [
     {
       "char": "大人",
-      "en": "Adult"
+      "en": "Adult",
+      "weight": 73
     }
   ],
   "machi": [
     {
       "char": "町",
-      "en": "town"
+      "en": "town",
+      "weight": 60
     }
   ],
   "kuroi": [
     {
       "char": "黒い",
-      "en": "black"
+      "en": "black",
+      "weight": 89
     }
   ],
   "minasan": [
     {
       "char": "皆さん",
-      "en": "everyone"
+      "en": "everyone",
+      "weight": 75
     }
   ],
   "san": [
     {
       "char": "三",
-      "en": "Three"
+      "en": "Three",
+      "weight": 59
     }
   ],
   "kore": [
     {
       "char": "これ",
-      "en": "This"
+      "en": "This",
+      "weight": 59
     }
   ],
   "kotaeru": [
     {
       "char": "答える",
-      "en": "to answer"
+      "en": "to answer",
+      "weight": 92
     }
   ],
   "kissaten": [
     {
       "char": "喫茶店",
-      "en": "coffee lounge"
+      "en": "coffee lounge",
+      "weight": 93
     }
   ],
   "sukoshi": [
     {
       "char": "少し",
-      "en": "Few"
+      "en": "Few",
+      "weight": 70
     }
   ],
   "soba": [
     {
       "char": "そば",
-      "en": "near"
+      "en": "near",
+      "weight": 80
     }
   ],
   "mannenhitsu": [
     {
       "char": "万年筆",
-      "en": "fountain pen"
+      "en": "fountain pen",
+      "weight": 101
     }
   ],
   "onaka": [
     {
       "char": "おなか",
-      "en": "stomach"
+      "en": "stomach",
+      "weight": 93
     }
   ],
   "eigakan": [
     {
       "char": "映画館",
-      "en": "cinema"
+      "en": "cinema",
+      "weight": 87
     }
   ],
   "kyoudai": [
     {
       "char": "兄弟",
-      "en": "(humble) siblings"
+      "en": "(humble) siblings",
+      "weight": 78
     }
   ],
   "ireru": [
     {
       "char": "入れる",
-      "en": "to put in"
+      "en": "to put in",
+      "weight": 75
     }
   ],
   "mada": [
     {
       "char": "まだ",
-      "en": "yet"
+      "en": "yet",
+      "weight": 69
     }
   ],
   "densha": [
     {
       "char": "電車",
-      "en": "electric train"
+      "en": "electric train",
+      "weight": 78
     }
   ],
   "tatsu": [
     {
       "char": "立つ",
-      "en": "to stand"
+      "en": "to stand",
+      "weight": 90
     }
   ],
   "posuto": [
     {
       "char": "ポスト",
-      "en": "post"
+      "en": "post",
+      "weight": 83
     }
   ],
   "naze": [
     {
       "char": "なぜ",
-      "en": "why"
+      "en": "why",
+      "weight": 78
     }
   ],
   "dekiru": [
     {
       "char": "できる",
-      "en": "to be able to"
+      "en": "to be able to",
+      "weight": 60
     }
   ],
   "zubon": [
     {
       "char": "ズボン",
-      "en": "Trousers"
+      "en": "Trousers",
+      "weight": 95
     }
   ],
   "nekutai": [
     {
       "char": "ネクタイ",
-      "en": "tie"
+      "en": "tie",
+      "weight": 93
     }
   ],
   "sakana": [
     {
       "char": "魚",
-      "en": "Fish"
+      "en": "Fish",
+      "weight": 77
     }
   ],
   "teeburu": [
     {
       "char": "テーブル",
-      "en": "table"
+      "en": "table",
+      "weight": 78
     }
   ],
   "kokonotsu": [
     {
       "char": "九つ",
-      "en": "Nine"
+      "en": "Nine",
+      "weight": 119
     }
   ],
   "kasa": [
     {
       "char": "傘",
-      "en": "Umbrella"
+      "en": "Umbrella",
+      "weight": 89
     }
   ],
   "maishuu": [
     {
       "char": "毎週",
-      "en": "every week"
+      "en": "every week",
+      "weight": 82
     }
   ],
   "yasui": [
     {
       "char": "安い",
-      "en": "cheap"
+      "en": "cheap",
+      "weight": 79
     }
   ],
   "megane": [
     {
       "char": "眼鏡",
-      "en": "glasses"
+      "en": "glasses",
+      "weight": 90
     }
   ],
   "shiroi": [
     {
       "char": "白い",
-      "en": "White"
+      "en": "White",
+      "weight": 83
     }
   ],
   "enpitsu": [
     {
       "char": "鉛筆",
-      "en": "pencil"
+      "en": "pencil",
+      "weight": 94
     }
   ],
   "kaesu": [
     {
       "char": "返す",
-      "en": "to return something"
+      "en": "to return something",
+      "weight": 94
     }
   ],
   "soto": [
     {
       "char": "外",
-      "en": "Outside"
+      "en": "Outside",
+      "weight": 62
     }
   ],
   "hajime/hajime": [
     {
       "char": "初め",
-      "en": "beginning"
+      "en": "beginning",
+      "weight": 82
     }
   ],
   "tabemono": [
     {
       "char": "食べ物",
-      "en": "food"
+      "en": "food",
+      "weight": 84
     }
   ],
   "douzo": [
     {
       "char": "どうぞ",
-      "en": "please"
+      "en": "please",
+      "weight": 74
     }
   ],
   "aoi": [
     {
       "char": "青い",
-      "en": "blue"
+      "en": "blue",
+      "weight": 88
     }
   ],
   "kono": [
     {
       "char": "この",
-      "en": "This"
+      "en": "This",
+      "weight": 50
     }
   ],
   "nijuunichi": [
     {
       "char": "二十日",
-      "en": "twenty days"
+      "en": "twenty days",
+      "weight": 0
     }
   ],
   "saifu": [
     {
       "char": "財布",
-      "en": "Wallet"
+      "en": "Wallet",
+      "weight": 83
     }
   ],
   "gakkou": [
     {
       "char": "学校",
-      "en": "School"
+      "en": "School",
+      "weight": 62
     }
   ],
   "tsukareru": [
     {
       "char": "疲れる",
-      "en": "to get tired"
+      "en": "to get tired",
+      "weight": 98
     }
   ],
   "sengetsu": [
     {
       "char": "先月",
-      "en": "last month"
+      "en": "last month",
+      "weight": 95
     }
   ],
   "bourupen": [
     {
       "char": "ボールペン",
-      "en": "ball-point pen"
+      "en": "ball-point pen",
+      "weight": 96
     }
   ],
   "oneesan": [
     {
       "char": "お姉さん",
-      "en": "(honorable) older sister"
+      "en": "(honorable) older sister",
+      "weight": 200
     }
   ],
   "suzushii": [
     {
       "char": "涼しい",
-      "en": "Refreshing"
+      "en": "Refreshing",
+      "weight": 99
     }
   ],
   "atarashii": [
     {
       "char": "新しい",
-      "en": "new"
+      "en": "new",
+      "weight": 70
     }
   ],
   "meetoru": [
     {
       "char": "メートル",
-      "en": "metre"
+      "en": "metre",
+      "weight": 86
     }
   ],
   "kouhii": [
     {
       "char": "コーヒー",
-      "en": "Coffee"
+      "en": "Coffee",
+      "weight": 78
     }
   ],
   "yon": [
     {
       "char": "四",
-      "en": "Four"
+      "en": "Four",
+      "weight": 64
     }
   ],
   "hima": [
     {
       "char": "暇",
-      "en": "free time"
+      "en": "free time",
+      "weight": 84
     }
   ],
   "demo": [
     {
       "char": "でも",
-      "en": "but"
+      "en": "but",
+      "weight": 56
     }
   ],
   "ichinin": [
     {
       "char": "一人",
-      "en": "one person"
+      "en": "one person",
+      "weight": 71
     }
   ],
   "yomu": [
     {
       "char": "読む",
-      "en": "to read"
+      "en": "to read",
+      "weight": 71
     }
   ],
   "apaato": [
     {
       "char": "アパート",
-      "en": "apartment"
+      "en": "apartment",
+      "weight": 80
     }
   ],
   "iu": [
     {
       "char": "言う",
-      "en": "to say"
+      "en": "to say",
+      "weight": 68
     }
   ],
   "mae": [
     {
       "char": "前",
-      "en": "before"
+      "en": "before",
+      "weight": 55
     }
   ],
   "butaniku": [
     {
       "char": "豚肉",
-      "en": "pork"
+      "en": "pork",
+      "weight": 94
     }
   ],
   "kudasai": [
     {
       "char": "ください",
-      "en": "Please"
+      "en": "Please",
+      "weight": 0
     }
   ],
   "sentaku": [
     {
       "char": "洗濯",
-      "en": "Washing"
+      "en": "Washing",
+      "weight": 82
     }
   ],
   "niwa": [
     {
       "char": "庭",
-      "en": "garden"
+      "en": "garden",
+      "weight": 78
     }
   ],
   "sumu": [
     {
       "char": "住む",
-      "en": "to live in"
+      "en": "to live in",
+      "weight": 88
     }
   ],
   "imi": [
     {
       "char": "意味",
-      "en": "meaning"
+      "en": "meaning",
+      "weight": 70
     }
   ],
   "hoka": [
     {
       "char": "ほか",
-      "en": "other"
+      "en": "other",
+      "weight": 74
     }
   ],
   "semai": [
     {
       "char": "狭い",
-      "en": "Narrow"
+      "en": "Narrow",
+      "weight": 89
     }
   ],
   "kyou": [
     {
       "char": "今日",
-      "en": "Today"
+      "en": "Today",
+      "weight": 60
     }
   ],
   "matsu": [
     {
       "char": "待つ",
-      "en": "to wait"
+      "en": "to wait",
+      "weight": 88
     }
   ],
   "namae": [
     {
       "char": "名前",
-      "en": "name"
+      "en": "name",
+      "weight": 59
     }
   ],
   "go": [
     {
       "char": "五",
-      "en": "Five"
+      "en": "Five",
+      "weight": 66
     }
   ],
   "deha": [
     {
       "char": "では",
-      "en": "with that..."
+      "en": "with that...",
+      "weight": 54
     }
   ],
   "konshuu": [
     {
       "char": "今週",
-      "en": "this week"
+      "en": "this week",
+      "weight": 77
     }
   ],
   "tabun": [
     {
       "char": "多分",
-      "en": "probably"
+      "en": "probably",
+      "weight": 83
     }
   ],
   "tomaru": [
     {
       "char": "止まる",
-      "en": "to come to a halt"
+      "en": "to come to a halt",
+      "weight": 97
     }
   ],
   "sarainen": [
     {
       "char": "さ来年",
-      "en": "year after next"
+      "en": "year after next",
+      "weight": 0
     }
   ],
   "supoutsu": [
     {
       "char": "スポーツ",
-      "en": "Sport"
+      "en": "Sport",
+      "weight": 66
     }
   ],
   "mizu": [
     {
       "char": "水",
-      "en": "water"
+      "en": "water",
+      "weight": 58
     }
   ],
   "han": [
     {
       "char": "半",
-      "en": "half"
+      "en": "half",
+      "weight": 73
     }
   ],
   "tanjoubi": [
     {
       "char": "誕生日",
-      "en": "birthday"
+      "en": "birthday",
+      "weight": 0
     }
   ],
   "karee": [
     {
       "char": "カレー",
-      "en": "Curry"
+      "en": "Curry",
+      "weight": 80
     }
   ],
   "firumu": [
     {
       "char": "フィルム",
-      "en": "roll of film"
+      "en": "roll of film",
+      "weight": 83
     }
   ],
   "tsukau": [
     {
       "char": "使う",
-      "en": "to use"
+      "en": "to use",
+      "weight": 74
     }
   ],
   "pen": [
     {
       "char": "ペン",
-      "en": "pen"
+      "en": "pen",
+      "weight": 82
     }
   ],
   "heya": [
     {
       "char": "部屋",
-      "en": "room"
+      "en": "room",
+      "weight": 72
     }
   ],
   "juu": [
     {
       "char": "十",
-      "en": "Ten"
+      "en": "Ten",
+      "weight": 72
     }
   ],
   "otouto": [
     {
       "char": "弟",
-      "en": "younger brother"
+      "en": "younger brother",
+      "weight": 84
     }
   ],
   "iriguchi": [
     {
       "char": "入口",
-      "en": "entrance"
+      "en": "entrance",
+      "weight": 82
     }
   ],
   "socchi": [
     {
       "char": "そっち",
-      "en": "over there"
+      "en": "over there",
+      "weight": 94
     }
   ],
   "gyuuniku": [
     {
       "char": "牛肉",
-      "en": "Beef"
+      "en": "Beef",
+      "weight": 86
     }
   ],
   "jouzu": [
     {
       "char": "上手",
-      "en": "Skillful"
+      "en": "Skillful",
+      "weight": 80
     }
   ],
   "kekkou": [
     {
       "char": "結構",
-      "en": "splendid"
+      "en": "splendid",
+      "weight": 73
     }
   ],
   "oboeru": [
     {
       "char": "覚える",
-      "en": "to remember"
+      "en": "to remember",
+      "weight": 92
     }
   ],
   "chiisana": [
     {
       "char": "小さな",
-      "en": "little"
+      "en": "little",
+      "weight": 78
     }
   ],
   "umareru": [
     {
       "char": "生まれる",
-      "en": "to be born"
+      "en": "to be born",
+      "weight": 91
     }
   ],
   "karada": [
     {
       "char": "体",
-      "en": "Body"
+      "en": "Body",
+      "weight": 66
     }
   ],
   "dono": [
     {
       "char": "どの",
-      "en": "which"
+      "en": "which",
+      "weight": 72
     }
   ],
   "mondai": [
     {
       "char": "問題",
-      "en": "problem"
+      "en": "problem",
+      "weight": 61
     }
   ],
   "ninin": [
     {
       "char": "二人",
-      "en": "two people"
+      "en": "two people",
+      "weight": 75
     }
   ],
   "tomodachi": [
     {
       "char": "友達",
-      "en": "friend"
+      "en": "friend",
+      "weight": 70
     }
   ],
   "kazoku": [
     {
       "char": "家族",
-      "en": "Family"
+      "en": "Family",
+      "weight": 70
     }
   ],
   "yoru": [
     {
       "char": "夜",
-      "en": "evening"
+      "en": "evening",
+      "weight": 69
     }
   ],
   "ashi": [
     {
       "char": "足",
-      "en": "foot"
+      "en": "foot",
+      "weight": 68
     }
   ],
   "kudamono": [
     {
       "char": "果物",
-      "en": "Fruit"
+      "en": "Fruit",
+      "weight": 92
     }
   ],
   "kitte": [
     {
       "char": "切手",
-      "en": "postage stamp"
+      "en": "postage stamp",
+      "weight": 92
     }
   ],
   "fuutou": [
     {
       "char": "封筒",
-      "en": "envelope"
+      "en": "envelope",
+      "weight": 94
     }
   ],
   "ichiban": [
     {
       "char": "いちばん",
-      "en": "best"
+      "en": "best",
+      "weight": 92
     }
   ],
   "najiranai": [
     {
       "char": "詰らない",
-      "en": "boring"
+      "en": "boring",
+      "weight": 0
     }
   ],
   "shinu": [
     {
       "char": "死ぬ",
-      "en": "to die"
+      "en": "to die",
+      "weight": 88
     }
   ],
   "nochi": [
     {
       "char": "後",
-      "en": "afterwards"
+      "en": "afterwards",
+      "weight": 61
     }
   ],
   "chairo": [
     {
       "char": "茶色",
-      "en": "brown"
+      "en": "brown",
+      "weight": 94
     }
   ],
   "nanatsu": [
     {
       "char": "七つ",
-      "en": "seven"
+      "en": "seven",
+      "weight": 107
     }
   ],
   "shinbun": [
     {
       "char": "新聞",
-      "en": "newspaper"
+      "en": "newspaper",
+      "weight": 64
     }
   ],
   "yasashii": [
     {
       "char": "易しい",
-      "en": "easy"
+      "en": "easy",
+      "weight": 113
     }
   ],
   "eiga": [
     {
       "char": "映画",
-      "en": "movie"
+      "en": "movie",
+      "weight": 65
     }
   ],
   "urusai": [
     {
       "char": "煩い",
-      "en": "noisy"
+      "en": "noisy",
+      "weight": 120
     }
   ],
   "mura": [
     {
       "char": "村",
-      "en": "village"
+      "en": "village",
+      "weight": 66
     }
   ],
   "abiru": [
     {
       "char": "あびる",
-      "en": "to bathe"
+      "en": "to bathe",
+      "weight": 110
     }
   ],
   "tsurai": [
     {
       "char": "辛い",
-      "en": "painful"
+      "en": "painful",
+      "weight": 87
     }
   ],
   "obaasan": [
     {
       "char": "おばあさん",
-      "en": "grandmother"
+      "en": "grandmother",
+      "weight": 102
     }
   ],
   "onaji": [
     {
       "char": "同じ",
-      "en": "same"
+      "en": "same",
+      "weight": 67
     }
   ],
   "neru": [
     {
       "char": "寝る",
-      "en": "to go to bed"
+      "en": "to go to bed",
+      "weight": 87
     }
   ],
   "motto": [
     {
       "char": "もっと",
-      "en": "more"
+      "en": "more",
+      "weight": 71
     }
   ],
   "zasshi": [
     {
       "char": "雑誌",
-      "en": "Magazine"
+      "en": "Magazine",
+      "weight": 70
     }
   ],
   "au": [
     {
       "char": "会う",
-      "en": "to meet"
+      "en": "to meet",
+      "weight": 91
     }
   ],
   "iru": [
     {
       "char": "要る",
-      "en": "to need"
+      "en": "to need",
+      "weight": 110
     }
   ],
   "midori": [
     {
       "char": "緑",
-      "en": "green"
+      "en": "green",
+      "weight": 79
     }
   ],
   "shashin": [
     {
       "char": "写真",
-      "en": "photograph"
+      "en": "photograph",
+      "weight": 61
     }
   ],
   "kotoshi": [
     {
       "char": "今年",
-      "en": "this year"
+      "en": "this year",
+      "weight": 64
     }
   ],
   "haizara": [
     {
       "char": "灰皿",
-      "en": "ashtray"
+      "en": "ashtray",
+      "weight": 101
     }
   ],
   "nijuusai": [
     {
       "char": "二十歳",
-      "en": "20 years old"
+      "en": "20 years old",
+      "weight": 105
     }
   ]
 }
