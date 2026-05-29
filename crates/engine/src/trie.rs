@@ -900,6 +900,103 @@ mod tests {
     }
 
     #[test]
+    fn test_rerank_da_da_10_times() {
+        use arc_swap::ArcSwap;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_auto_reorder = true;
+        config.input.enable_fixed_first_candidate = false;
+
+        let mut trie_paths = std::collections::HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: std::collections::HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        let usage_history: Arc<ArcSwap<std::collections::HashMap<String, std::collections::HashMap<String, Vec<(String, u32)>>>>> =
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::new())));
+
+        let engine = crate::pipeline::SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(std::collections::HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            usage_history.clone(),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            {
+                let mut m: std::collections::HashMap<String, Box<dyn crate::scheme::InputScheme>> = std::collections::HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &crate::pipeline::SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &std::collections::HashSet<String>) -> Vec<String> {
+            let query = crate::pipeline::SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+        }
+
+        // 初始状态
+        let r1 = search(&engine, &config, "da", &syllables);
+        println!("da (no history) top5: {:?}", &r1[..5.min(r1.len())]);
+        let da_pos_init = r1.iter().position(|w| w == "打").unwrap_or(usize::MAX);
+        println!("da '打' initial position: {}", da_pos_init);
+
+        // 模拟选中 "打" 10 次
+        let mut usage: std::collections::HashMap<String, std::collections::HashMap<String, Vec<(String, u32)>>> = std::collections::HashMap::new();
+        let mut da_entries: std::collections::HashMap<String, Vec<(String, u32)>> = std::collections::HashMap::new();
+        da_entries.insert("da".to_string(), vec![("打".to_string(), 10)]);
+        usage.insert("chinese".to_string(), da_entries);
+        usage_history.store(Arc::new(usage));
+
+        // 验证 usage 已正确记录
+        let stored = usage_history.load();
+        let count = stored.get("chinese")
+            .and_then(|p| p.get("da"))
+            .and_then(|e| e.first())
+            .map(|(_, c)| *c)
+            .unwrap_or(0);
+        assert_eq!(count, 10, "da/打 should have usage count 10, got {}", count);
+
+        // 重新搜索 — "打" 应该上升排名
+        let r2 = search(&engine, &config, "da", &syllables);
+        println!("da (打x10) top5: {:?}", &r2[..5.min(r2.len())]);
+        let da_pos_after = r2.iter().position(|w| w == "打").unwrap_or(usize::MAX);
+        println!("da '打' position after 10 uses: {}", da_pos_after);
+
+        assert!(da_pos_after < da_pos_init,
+            "打 should improve rank after 10 uses. Initial: {}, After: {}",
+            da_pos_init, da_pos_after);
+
+        // 清理
+        usage_history.store(Arc::new(std::collections::HashMap::new()));
+    }
+
+    #[test]
     fn test_zho_completion() {
         use crate::pipeline::{SearchEngine, SearchQuery};
         use crate::scheme::InputScheme;
