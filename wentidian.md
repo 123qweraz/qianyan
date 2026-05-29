@@ -27,3 +27,8 @@ slint 候选框 候选词与辅助码， 请用一样的样式，不然我看不
 还有上午就是这个用户词典就是是哪本词典，我不太清楚，我看~/config/qianyan-ime/usrdata/chinese
 you sange json wenjian learned.json  ngrams.json  usage.json
 buzhidao naben zhidei shi yonghu cidian, 这个用户词典的功能怎么设计的
+
+slint emoji不会显示成彩色的，而是黑白的
+
+pipeline能不能重构能那种多个功能的，拼音分词功能是一个函数
+:

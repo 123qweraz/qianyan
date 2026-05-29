@@ -43,7 +43,7 @@
   "enable_english_filter": true,
   "enable_error_sound": true,
   "enable_fixed_first_candidate": false,
-  "enable_fuzzy_pinyin": true,
+  "enable_fuzzy_pinyin": false,
   "enable_keyboard_voice": false,
   "enable_long_press": false,
   "enable_number_selection": true,
@@ -54,10 +54,7 @@
   "enable_traditional": false,
   "enable_word_discovery": true,
   "enabled_profiles": [
-    "chinese",
-    "english",
-    "japanese",
-    "stroke"
+    "chinese"
   ],
   "english_aux_mode": "Prefix",
   "filter_proper_nouns_by_case": true,
