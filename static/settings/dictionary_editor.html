@@ -215,10 +215,15 @@
                         <div style="font-size:12px; color:var(--apple-secondary);">用户词典</div>
                         <label class="switch" style="transform:scale(0.75);"><input type="checkbox" id="enable_user_dict"><span class="slider"></span></label>
                     </div>
-                    <button class="btn" onclick="clearUserDict()" style="font-size:11px; padding:2px 8px; margin-top:4px; width:100%; color:var(--apple-red);">清空用户词库</button>
+                    <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                        <button class="btn" onclick="selectUserDict()" style="font-size:11px; padding:2px 8px; flex:1; background:var(--apple-accent);color:#fff;border:none;">查看</button>
+                        <button class="btn" onclick="clearUserDict()" style="font-size:11px; padding:2px 8px; flex:1; color:var(--apple-red);">清空</button>
+                        <button class="btn" onclick="exportUserDict()" style="font-size:11px; padding:2px 8px; flex:1;">导出</button>
+                    </div>
                 </div>
                 <div class="sidebar-actions">
-                    <button class="btn" onclick="createDict()" style="background:var(--apple-accent);color:#fff;border:none;">+ 新建</button>
+                    <button class="btn" onclick="openDictsDir()" style="background:var(--apple-accent);color:#fff;border:none;">📂 打开词典目录</button>
+                    <button class="btn" onclick="createDict()">+ 新建</button>
                     <button class="btn" onclick="compileDict()">编译</button>
                     <button class="btn" onclick="refresh()">刷新</button>
                 </div>
@@ -227,6 +232,31 @@
             <div class="editor-main">
                 <div id="no-file-selected" style="display:none; text-align:center; padding:60px 20px; color:var(--apple-secondary);">
                     请在左侧选择一个词典文件
+                </div>
+
+                <div id="user-dict-view" style="display:none;">
+                    <div class="editor-toolbar">
+                        <span class="file-label" style="font-size:14px;">📖 用户词典</span>
+                        <span class="stats" id="user-dict-stats"></span>
+                        <div style="display:flex; gap:4px; margin-left:auto;">
+                            <button class="btn" onclick="exportUserDict()" style="font-size:11px;">导出备份</button>
+                            <button class="btn" onclick="clearUserDict()" style="font-size:11px; color:var(--apple-red);">清空</button>
+                        </div>
+                    </div>
+                    <div class="dict-table-wrap">
+                        <table class="dict-table" id="user-dict-table">
+                            <thead>
+                                <tr>
+                                    <th class="left">方案</th>
+                                    <th class="left">拼音</th>
+                                    <th class="left">词汇</th>
+                                    <th class="center">权重</th>
+                                    <th class="center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-dict-body"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div id="editor-content">
@@ -686,6 +716,117 @@
             const r = await fetch('/api/dicts/compile', { method: 'POST' });
             showToast(r.ok ? '编译完成' : '编译失败', r.ok ? 'success' : 'error');
         }
+
+        // --- 用户词典 ---
+        let userDictEntries = [];
+        let showUserDict = false;
+
+        function selectUserDict() {
+            showUserDict = true;
+            document.getElementById('no-file-selected').style.display = 'none';
+            document.getElementById('editor-content').style.display = 'none';
+            document.getElementById('user-dict-view').style.display = 'block';
+            document.getElementById('current-file-label').textContent = '用户词典';
+            document.querySelectorAll('.dict-sidebar-item').forEach(el => el.classList.remove('active'));
+            loadUserDict();
+        }
+
+        async function loadUserDict() {
+            const r = await fetch('/api/dict/user/browse');
+            if (!r.ok) {
+                document.getElementById('user-dict-body').innerHTML = '<tr><td colspan="5" class="no-data">无法加载用户词典</td></tr>';
+                return;
+            }
+            userDictEntries = await r.json();
+            renderUserDict(userDictEntries);
+            document.getElementById('user-dict-stats').textContent = userDictEntries.length + ' 条';
+        }
+
+        function renderUserDict(entries) {
+            const tbody = document.getElementById('user-dict-body');
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">用户词典为空</td></tr>';
+                return;
+            }
+            tbody.innerHTML = entries.map((e, idx) => {
+                const uid = `${e.profile}|${e.pinyin}|${e.word}`;
+                return `<tr data-uid="${escAttr(uid)}">
+                    <td class="left">${esc(e.profile)}</td>
+                    <td class="left cell-pinyin">${esc(e.pinyin)}</td>
+                    <td class="left cell-word">${esc(e.word)}</td>
+                    <td class="center">${e.weight}</td>
+                    <td class="center">
+                        <button class="btn-delete" onclick="deleteUserDictEntry(${idx})" title="删除">✕</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function deleteUserDictEntry(idx) {
+            const entry = userDictEntries[idx];
+            if (!entry) return;
+            if (!confirm(`确定要从用户词典中删除 "${entry.word}" (${entry.pinyin}) 吗？`)) return;
+            const r = await fetch('/api/dict/user/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile: entry.profile, pinyin: entry.pinyin, word: entry.word })
+            });
+            if (r.ok) {
+                showToast(`已删除 "${entry.word}"`, 'success');
+                loadUserDict();
+            } else {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        async function openDictsDir() {
+            const r = await fetch('/api/dicts/open', { method: 'POST' });
+            showToast(r.ok ? '已打开词典目录' : '打开失败', r.ok ? 'success' : 'error');
+        }
+
+        async function exportUserDict() {
+            const entries = userDictEntries;
+            if (entries.length === 0) {
+                showToast('用户词典为空，无需导出', 'error');
+                return;
+            }
+            // 按 profile 分组
+            const groups = {};
+            for (const e of entries) {
+                if (!groups[e.profile]) groups[e.profile] = {};
+                if (!groups[e.profile][e.pinyin]) groups[e.profile][e.pinyin] = [];
+                groups[e.profile][e.pinyin].push({ word: e.word, weight: e.weight });
+            }
+            const data = JSON.stringify({ version: '1.0', updated_at: new Date().toISOString(), data: groups }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'user_dict_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('导出完成', 'success');
+        }
+
+        // 覆写 selectFile 以关闭用户词典视图
+        function selectFile(path) {
+            showUserDict = false;
+            const el = document.getElementById('user-dict-view');
+            if (el) el.style.display = 'none';
+            // 原始 selectFile 逻辑
+            currentFile = path;
+            localStorage.setItem('dict_editor_last_file', path);
+            document.getElementById('no-file-selected').style.display = 'none';
+            document.getElementById('editor-content').style.display = 'block';
+            document.getElementById('current-file-label').textContent = getDictName(path);
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-type').value = 'all';
+            currentSearch = '';
+            currentPage = 1;
+            renderSidebar(dictsCache);
+            loadPage(1);
+        }
+        ;
 
         function esc(s) { if (!s) return '-'; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         function escAttr(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

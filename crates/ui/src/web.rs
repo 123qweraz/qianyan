@@ -59,6 +59,9 @@ impl WebServer {
             .route("/api/dicts/reload", post(reload_dicts))
             .route("/api/dicts/toggle", post(toggle_dict))
             .route("/api/dicts/create", post(create_dict_handler))
+            .route("/api/dicts/open", post(open_dicts_dir))
+            .route("/api/dict/user/browse", get(browse_user_dict))
+            .route("/api/dict/user/delete", post(delete_user_dict_entry))
             .route("/api/dictionary/chars", get(get_chars_dict))
             .route("/api/dict/search", get(search_dict))
             .route("/api/dict/browse", get(browse_dict))
@@ -951,6 +954,173 @@ async fn clear_user_dict(State((_, _, tray_tx)): State<WebState>) -> StatusCode 
     // 通知主线程清空内存中的用户词典
     let _ = tray_tx.send(TrayEvent::ClearUserDict);
     StatusCode::OK
+}
+
+#[derive(Serialize)]
+struct UserDictEntryView {
+    profile: String,
+    pinyin: String,
+    word: String,
+    weight: u32,
+}
+
+/// 获取用户词典根目录（兼容新旧路径）
+fn user_dict_root() -> std::path::PathBuf {
+    if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
+        std::path::PathBuf::from(config_home)
+            .join("qianyan-ime")
+            .join("user_data")
+    } else if let Ok(home) = std::env::var("HOME") {
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("qianyan-ime")
+            .join("user_data")
+    } else {
+        std::path::PathBuf::from("data").join("user_data")
+    }
+}
+
+/// 读取所有 profile 下的 learned.json，返回扁平化的用户词列表
+async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
+    let mut results = Vec::new();
+    let root = user_dict_root();
+    if let Ok(entries) = std::fs::read_dir(&root) {
+        for profile_entry in entries.flatten() {
+            if !profile_entry.path().is_dir() {
+                continue;
+            }
+            let profile = profile_entry.file_name().to_string_lossy().to_string();
+            let learned_path = profile_entry.path().join("learned.json");
+            if !learned_path.exists() {
+                // 也尝试旧路径
+                let legacy = std::path::Path::new("data/learned_words.json");
+                if legacy.exists() {
+                    if let Ok(content) = std::fs::read_to_string(legacy) {
+                        if let Ok(data) = serde_json::from_str::<HashMap<String, Vec<(String, u32)>>>(&content) {
+                            for (pinyin, words) in data {
+                                for (word, weight) in words {
+                                    results.push(UserDictEntryView {
+                                        profile: profile.clone(),
+                                        pinyin: pinyin.clone(),
+                                        word,
+                                        weight,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
+            if let Ok(content) = std::fs::read_to_string(&learned_path) {
+                // 新版格式带 version/data 字段
+                if let Ok(data_file) = serde_json::from_str::<HashMap<String, serde_json::Value>>(&content) {
+                    if let Some(data) = data_file.get("data") {
+                        if let Some(map) = data.as_object() {
+                            for (pinyin, arr) in map {
+                                if let Some(entries) = arr.as_array() {
+                                    for entry in entries {
+                                        if let Some(arr) = entry.as_array() {
+                                            if arr.len() >= 2 {
+                                                let word = arr[0].as_str().unwrap_or("").to_string();
+                                                let weight = arr[1].as_u64().unwrap_or(0) as u32;
+                                                results.push(UserDictEntryView {
+                                                    profile: profile.clone(),
+                                                    pinyin: pinyin.clone(),
+                                                    word,
+                                                    weight,
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Json(results)
+}
+
+#[derive(serde::Deserialize)]
+struct DeleteUserDictRequest {
+    profile: String,
+    pinyin: String,
+    word: String,
+}
+
+/// 删除用户词典中的一条记录
+async fn delete_user_dict_entry(
+    State((_, _, tray_tx)): State<WebState>,
+    Json(req): Json<DeleteUserDictRequest>,
+) -> StatusCode {
+    let root = user_dict_root();
+    let profile_dir = root.join(&req.profile);
+    let learned_path = profile_dir.join("learned.json");
+    if !learned_path.exists() {
+        return StatusCode::NOT_FOUND;
+    }
+    let content = match std::fs::read_to_string(&learned_path) {
+        Ok(c) => c,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    let mut data: serde_json::Value = match serde_json::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    let mut found = false;
+    if let Some(obj) = data.as_object_mut() {
+        if let Some(data_obj) = obj.get_mut("data").and_then(|d| d.as_object_mut()) {
+            if let Some(entries) = data_obj.get_mut(&req.pinyin).and_then(|a| a.as_array_mut()) {
+                entries.retain(|entry| {
+                    if entry.as_array().map(|a| a.get(0).and_then(|v| v.as_str())) == Some(Some(&req.word)) {
+                        found = true;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if entries.is_empty() {
+                    data_obj.remove(&req.pinyin);
+                }
+            }
+        }
+    }
+    if !found {
+        return StatusCode::NOT_FOUND;
+    }
+    if std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default()).is_ok() {
+        let _ = tray_tx.send(TrayEvent::ClearUserDict); // 触发内存重载
+        StatusCode::OK
+    } else {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
+
+/// 在文件管理器中打开词典目录
+async fn open_dicts_dir() -> StatusCode {
+    let path = std::fs::canonicalize("dicts").unwrap_or_else(|_| std::path::PathBuf::from("dicts"));
+    if cfg!(target_os = "linux") {
+        match std::process::Command::new("xdg-open")
+            .arg(path.to_string_lossy().as_ref())
+            .spawn()
+        {
+            Ok(_) => StatusCode::OK,
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    } else if cfg!(target_os = "windows") {
+        match std::process::Command::new("explorer")
+            .arg(path.to_string_lossy().as_ref())
+            .spawn()
+        {
+            Ok(_) => StatusCode::OK,
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    } else {
+        StatusCode::NOT_IMPLEMENTED
+    }
 }
 
 async fn list_fonts() -> Json<Vec<crate::platform::fonts::FontInfo>> {

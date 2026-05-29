@@ -572,8 +572,8 @@ impl WaylandLayerDisplay {
         let status_bar = StatusBar::new().ok()?;
 
         // Set initial sizes for the layer surfaces before any content arrives.
-        // Candidate window: fixed 600px wide, height auto.
-        candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(600, 100)));
+        // Width adapts to content; use a reasonable initial size.
+        candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(100, 100)));
         // Status bar: will be sized by its binding.
         status_bar.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(60, 28)));
         slint::platform::update_timers_and_animations();

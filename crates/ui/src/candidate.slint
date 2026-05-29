@@ -57,8 +57,8 @@ component CandidateItem inherits Rectangle {
         
         if show_stroke_aux && stroke_aux != "" : Text {
             text: stroke_aux;
-            color: selected ? aux_highlight_color : aux_text_color;
-            font-size: font_size * 0.7;
+            color: selected ? highlight_text_color : text_color;
+            font-size: font_size;
             font-family: font_family;
             vertical-alignment: center;
         }
@@ -66,8 +66,8 @@ component CandidateItem inherits Rectangle {
         // 只要开启了显示翻译或者辅助码开关，且内容不为空，就显示
         if (show_english_aux || show_translation) && english_aux != "" : Text {
             text: english_aux;
-            color: selected ? aux_highlight_color : aux_text_color;
-            font-size: font_size * 0.7;
+            color: selected ? highlight_text_color : text_color;
+            font-size: font_size;
             font-family: font_family;
             vertical-alignment: center;
         }
@@ -107,8 +107,8 @@ export component CandidateWindow inherits Window {
     background: transparent;
     always-on-top: true;
 
-    // Fixed width to accommodate candidates with English hints
-    width: 600px;
+    // Width adapts to content, minimum 200px for readability
+    width: max(main_rect.preferred-width, 200px);
     // Height adapts to content, minimum 100px for readability
     height: max(main_rect.preferred-height, 100px);
 
