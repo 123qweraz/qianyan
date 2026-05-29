@@ -43,24 +43,12 @@
         <h2>输入与转换</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形</div></div>
-                <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
                 <div class="info"><div class="title">智能辅码过滤</div><div class="desc">输入完整拼音后直接追加字母可触发辅码过滤</div></div>
                 <label class="switch"><input type="checkbox" id="enable_smart_aux"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
                 <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
-                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">显示系统托盘</div><div class="desc">在系统托盘中显示千言输入法图标</div></div>
-                <label class="switch"><input type="checkbox" id="show_tray"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info"><div class="title">自动造词</div><div class="desc">记录连续输入的新词组（超过一个字）</div></div>
@@ -80,6 +68,18 @@
                     <option value="single">词模式</option>
                     <option value="double">句模式</option>
                 </select>
+            </div>
+        </div>
+
+        <h2>繁体输入功能</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形</div></div>
+                <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）。按住第一个键再按第二个键触发，如 CapsLock+F</div></div>
+                <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
             </div>
         </div>
 
@@ -174,7 +174,7 @@
                 <input type="text" id="word_to_char_input" style="width: 250px; text-align: right;" placeholder="例如: 6,7,8,9">
             </div>
             <div class="setting-item">
-                <div class="info"><div class="title">以词定字（Shift + 键）</div><div class="desc">按 Shift + 指定键快速输入首个候选词中的第 N 个字，使用逗号分隔</div></div>
+                <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按 Tab + 指定键快速输入首个候选词中的第 N 个字，使用逗号分隔</div></div>
                 <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2,3,4">
             </div>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--apple-border);">
@@ -182,19 +182,6 @@
                 <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
                 <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
             </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按住第一个键再按第二个键触发，如 CapsLock+F</div></div>
-                <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
-            </div>
-        </div>
-
-        <h2>模糊音与双拼</h2>
-        <div class="card">
-            <div style="display:flex; gap:16px; flex-wrap:wrap;">
-                <a href="fuzzy.html" class="btn" style="flex:1; text-align:center; padding:12px;">☁️ 模糊音设置 →</a>
-                <a href="doublepinyin.html" class="btn" style="flex:1; text-align:center; padding:12px;">🧬 双拼方案 →</a>
-            </div>
-            <p class="desc" style="margin-top:12px; text-align:center;">模糊音和双拼设置内容较多，请在独立页面中配置</p>
         </div>
     </div>
 
@@ -216,7 +203,7 @@
         const DEFAULT_FINALS = {
             u: 'uang', i: 'ing', o: 'ong', p: 'iong',
             h: 'ang', j: 'eng', k: 'uai', l: 'iang',
-            n: 'iao', m: 'ian', r: 'uan'
+            n: 'iao', m: 'ian', y: 'uan'
         };
         let currentKey = '';
 
@@ -298,8 +285,6 @@
             bindInput('enable_traditional', 'input');
             bindInput('enable_smart_aux', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
-            bindInput('show_candidates', 'appearance');
-            bindInput('show_tray', 'appearance');
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_auto_reorder', 'input');
             bindInput('segmentation_delimiters', 'input');

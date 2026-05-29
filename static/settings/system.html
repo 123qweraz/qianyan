@@ -36,6 +36,18 @@
             </div>
         </div>
 
+        <h2>窗口与托盘</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
+                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">显示系统托盘</div><div class="desc">在系统托盘中显示千言输入法图标</div></div>
+                <label class="switch"><input type="checkbox" id="show_tray"><span class="slider"></span></label>
+            </div>
+        </div>
+
         <h2>路径设置</h2>
         <div class="card">
             <div class="setting-item">
@@ -113,6 +125,8 @@
             `).join('');
 
             bindInput('autostart', 'input');
+            bindInput('show_candidates', 'appearance');
+            bindInput('show_tray', 'appearance');
             bindInput('files_data_dir', 'files', 'data_dir');
 
             bindInput('linux_show_slint_window', 'linux', 'show_slint_window');
