@@ -332,9 +332,9 @@ impl ProvidesRegistryState for WlState {
 }
 
 enum WlCmd {
-    ShowCandidate { x: i32, y: i32, w: u32, h: u32, pixels: Vec<u8> },
+    ShowCandidate { x: i32, y: i32, w: u32, h: u32, anchor: Anchor, pixels: Vec<u8> },
     HideCandidate,
-    ShowStatus { x: i32, y: i32, w: u32, h: u32, pixels: Vec<u8> },
+    ShowStatus { x: i32, y: i32, w: u32, h: u32, anchor: Anchor, pixels: Vec<u8> },
     HideStatus,
     Exit,
 }
@@ -444,14 +444,22 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
     loop {
         while let Ok(cmd) = rx.try_recv() {
             match cmd {
-                WlCmd::ShowCandidate { x, y, w, h, pixels } => {
-                    eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} pixels={}", x, y, w, h, pixels.len());
+                WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
+                    eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
                     if let Some(ref layer) = state.candidate_layer {
-                        layer.set_anchor(Anchor::BOTTOM | Anchor::LEFT);
+                        layer.set_anchor(anchor);
                         layer.set_size(w.max(1), h.max(1));
-                        // When cursor y is available, place window above the cursor.
-                        // When y=0 (no cursor info), window sits at bottom-left.
-                        layer.set_margin(0, 0, y.max(0) as i32, x.max(0) as i32);
+                        // Set margins based on anchor orientation
+                        let has_top = anchor.contains(Anchor::TOP);
+                        let has_bottom = anchor.contains(Anchor::BOTTOM);
+                        let has_left = anchor.contains(Anchor::LEFT);
+                        let has_right = anchor.contains(Anchor::RIGHT);
+                        layer.set_margin(
+                            if has_top { y.max(0) as i32 } else { 0 },
+                            if has_right { x.max(0) as i32 } else { 0 },
+                            if has_bottom { y.max(0) as i32 } else { 0 },
+                            if has_left { x.max(0) as i32 } else { 0 },
+                        );
                         if let Some(ref mut pool) = state.candidate_pool {
                             submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
                         }
@@ -474,11 +482,20 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                         }
                     }
                 }
-                WlCmd::ShowStatus { x, y, w, h, pixels } => {
+                WlCmd::ShowStatus { x, y, w, h, anchor, pixels } => {
                     if let Some(ref layer) = state.status_layer {
-                        layer.set_anchor(Anchor::BOTTOM | Anchor::LEFT);
+                        layer.set_anchor(anchor);
                         layer.set_size(w.max(1), h.max(1));
-                        layer.set_margin(0, 0, (y + 28).max(0) as i32, x.max(0) as i32);
+                        let has_top = anchor.contains(Anchor::TOP);
+                        let has_bottom = anchor.contains(Anchor::BOTTOM);
+                        let has_left = anchor.contains(Anchor::LEFT);
+                        let has_right = anchor.contains(Anchor::RIGHT);
+                        layer.set_margin(
+                            if has_top { y.max(0) as i32 } else { 0 },
+                            if has_right { x.max(0) as i32 } else { 0 },
+                            if has_bottom { y.max(0) as i32 } else { 0 },
+                            if has_left { x.max(0) as i32 } else { 0 },
+                        );
                         if let Some(ref mut pool) = state.status_pool {
                             submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
                         }
@@ -622,13 +639,27 @@ impl WaylandLayerDisplay {
         if self.window_visible && self.wl.is_some() {
             let window = self.candidate_window.window();
             let pixels = render_window_to_buffer(window, w, h, self.renderer());
-            let _ = self.wl.as_ref().unwrap().cmd_tx.send(WlCmd::ShowCandidate {
-                x: self.last_x,
-                y: self.last_y + 20,
-                w,
-                h,
-                pixels,
-            });
+
+            let (anchor, margin_a, margin_b) = if self.config.linux.fixed_position {
+                match self.config.linux.corner.as_str() {
+                    "top-right" => (Anchor::TOP | Anchor::RIGHT, self.config.linux.fixed_y, self.config.linux.fixed_x),
+                    "bottom-left" => (Anchor::BOTTOM | Anchor::LEFT, self.config.linux.fixed_y, self.config.linux.fixed_x),
+                    "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, self.config.linux.fixed_y, self.config.linux.fixed_x),
+                    _ => (Anchor::TOP | Anchor::LEFT, self.config.linux.fixed_y, self.config.linux.fixed_x),
+                }
+            } else {
+                (Anchor::TOP | Anchor::LEFT, self.last_y + 20, self.last_x)
+            };
+
+            let cmd = match anchor {
+                a if a == (Anchor::TOP | Anchor::RIGHT) || a == (Anchor::BOTTOM | Anchor::RIGHT) => {
+                    WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels }
+                }
+                _ => {
+                    WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels }
+                }
+            };
+            let _ = self.wl.as_ref().unwrap().cmd_tx.send(cmd);
         } else if let Some(ref wl) = self.wl {
             let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
         }
@@ -639,12 +670,29 @@ impl WaylandLayerDisplay {
             if let Some(ref wl) = self.wl {
                 let window = self.status_bar.window();
                 let pixels = render_window_to_buffer(window, 60, 28, self.renderer());
+                let anchor = if self.config.linux.fixed_position {
+                    match self.config.linux.corner.as_str() {
+                        "top-right" => Anchor::TOP | Anchor::RIGHT,
+                        "bottom-left" => Anchor::BOTTOM | Anchor::LEFT,
+                        "bottom-right" => Anchor::BOTTOM | Anchor::RIGHT,
+                        _ => Anchor::TOP | Anchor::LEFT,
+                    }
+                } else {
+                    Anchor::TOP | Anchor::LEFT
+                };
+                let margin_y = if self.config.linux.fixed_position {
+                    self.config.linux.fixed_y
+                } else {
+                    self.last_y
+                };
+                let margin_x = if self.config.linux.fixed_position {
+                    self.config.linux.fixed_x
+                } else {
+                    self.last_x
+                };
                 let _ = wl.cmd_tx.send(WlCmd::ShowStatus {
-                    x: self.last_x,
-                    y: self.last_y,
-                    w: 60,
-                    h: 28,
-                    pixels,
+                    x: margin_x, y: margin_y, anchor,
+                    w: 60, h: 28, pixels,
                 });
             }
         } else if let Some(ref wl) = self.wl {
