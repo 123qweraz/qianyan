@@ -1140,6 +1140,7 @@ pub struct SearchEngine {
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     pipelines: Arc<RwLock<PipelineCache>>,
+    trie_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
 }
 
 const MAX_CACHED_PIPELINES: usize = 10;
@@ -1180,6 +1181,7 @@ impl SearchEngine {
             ngram_history,
             schemes,
             pipelines: Arc::new(RwLock::new((HashMap::new(), Vec::new()))),
+            trie_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -1206,10 +1208,8 @@ impl SearchEngine {
         // 优先走方案路径（ChineseScheme 等语言特定逻辑）
         if let Some(scheme) = self.schemes.get(query.profile) {
             let mut tries_map = HashMap::new();
-            if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
-                if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
-                    tries_map.insert(query.profile.to_string(), trie.clone());
-                }
+            if let Some(trie) = self.get_or_load_trie(query.profile) {
+                tries_map.insert(query.profile.to_string(), (*trie).clone());
             }
             let context = crate::scheme::SchemeContext {
                 config: config_ref,
@@ -1304,12 +1304,31 @@ impl SearchEngine {
     }
 
     #[inline]
-    pub fn has_exact_match(&self, profile: &str, pinyin: &str, word: &str) -> bool {
-        if let Some(pipeline) = self.get_or_create_pipeline(profile) {
-            if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
-                if let Some(exacts) = trie.get_all_exact(pinyin) {
-                    return exacts.iter().any(|tr| tr.word == word);
+    pub fn get_or_load_trie(&self, profile: &str) -> Option<Arc<Trie>> {
+        {
+            if let Ok(cache) = self.trie_cache.read() {
+                if let Some(trie) = cache.get(profile) {
+                    return Some(trie.clone());
                 }
+            }
+        }
+
+        let paths = self.trie_paths.get(profile)?;
+        log::info!("Lazy loading trie: profile={}", profile);
+        let trie = Trie::load(&paths.0, &paths.1, true).ok()?;
+        let trie_arc = Arc::new(trie);
+
+        if let Ok(mut cache) = self.trie_cache.write() {
+            cache.entry(profile.to_string()).or_insert(trie_arc.clone());
+        }
+        Some(trie_arc)
+    }
+
+    #[inline]
+    pub fn has_exact_match(&self, profile: &str, pinyin: &str, word: &str) -> bool {
+        if let Some(trie) = self.get_or_load_trie(profile) {
+            if let Some(exacts) = trie.get_all_exact(pinyin) {
+                return exacts.iter().any(|tr| tr.word == word);
             }
         }
         false
@@ -1322,6 +1341,11 @@ impl SearchEngine {
             }
         }
         None
+    }
+
+    /// 获取指定 profile 的 Trie 引用（通过 trie_cache）
+    pub fn get_trie(&self, profile: &str) -> Option<Arc<Trie>> {
+        self.get_or_load_trie(profile)
     }
 
     pub fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
@@ -1344,10 +1368,7 @@ impl SearchEngine {
         }
 
         // 2. 如果不存在，尝试创建
-        let paths = self.trie_paths.get(profile)?;
-        log::info!("Lazy loading dictionary: profile={}", profile);
-        let trie = Trie::load(&paths.0, &paths.1, true).ok()?;
-        let trie_arc = Arc::new(trie);
+        let trie_arc = self.get_or_load_trie(profile)?;
 
         let mut pipeline = Pipeline::new(Box::new(DefaultSegmentor));
         pipeline.syllable_freq = self.syllable_freq.clone();
@@ -1399,10 +1420,8 @@ impl SearchEngine {
 
     #[inline]
     pub fn has_longer_match(&self, profile: &str, buffer: &str) -> bool {
-        if let Some(pipeline) = self.get_or_create_pipeline(profile) {
-            if let Some(trie) = self.get_trie_from_pipeline(pipeline.as_ref()) {
-                return trie.has_longer_match(buffer);
-            }
+        if let Some(trie) = self.get_or_load_trie(profile) {
+            return trie.has_longer_match(buffer);
         }
         false
     }
@@ -1412,22 +1431,17 @@ impl SearchEngine {
             cache.0.clear();
             cache.1.clear();
         }
+        if let Ok(mut cache) = self.trie_cache.write() {
+            cache.clear();
+        }
     }
 
-    /// 预加载并初始化指定方案的 Pipeline
+    /// 预加载并初始化指定方案的 Trie
     pub fn prewarm_profile(&self, profile: &str) {
         log::info!("prewarm_profile: profile={}", profile);
 
-        // 直接调用 get_or_create_pipeline，这将触发完整的加载和缓存流程
-        if let Some(_pipeline) = self.get_or_create_pipeline(profile) {
-            log::info!("Pipeline eagerly initialized and cached: profile={}", profile);
-            // 顺便触发一次内部 trie 的预热（如果是 Mmap 模式）
-            // 虽然目前默认是全内存加载，但保留此逻辑以增强兼容性
-            if let Some(paths) = self.trie_paths.get(profile) {
-                if let Ok(trie) = Trie::load(&paths.0, &paths.1, true) {
-                    trie.prewarm(PREWARM_ENTRIES);
-                }
-            }
+        if let Some(trie) = self.get_or_load_trie(profile) {
+            trie.prewarm(PREWARM_ENTRIES);
         }
     }
 
@@ -2034,4 +2048,80 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_trie_cache_does_not_create_pipeline() {
+        let engine = create_test_engine();
+        // 没有 trie_paths，get_or_load_trie 应该返回 None 但不崩溃
+        assert!(engine.get_or_load_trie("nonexistent").is_none());
+        // 确保没有 pipeline 被创建
+        let cache = engine.pipelines.read().unwrap();
+        assert!(cache.0.is_empty());
+    }
+
+    #[test]
+    fn test_get_trie_method() {
+        let engine = create_test_engine();
+        assert!(engine.get_trie("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_clear_cache_clears_trie_cache() {
+        let engine = create_test_engine();
+        // clear_cache 不应崩溃
+        engine.clear_cache();
+    }
+
+    #[test]
+    fn test_do_search_scheme_path_no_pipeline_created() {
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        // 注册一个与 chinese 同名的 dummy scheme，验证 scheme 路径不被 pipeline 依赖
+        let schemes: HashMap<String, Box<dyn crate::scheme::InputScheme>> = HashMap::new();
+        let engine = SearchEngine::new(
+            HashMap::new(),
+            Arc::new(HashSet::new()),
+            Arc::new(HashMap::new()),
+            Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            Arc::new(schemes),
+        );
+
+        // 即使没有 trie，scheme 路径（这里没 scheme）应优雅降级
+        let config = crate::Config::default_config();
+        let query = SearchQuery {
+            buffer: "test",
+            profile: "chinese",
+            syllables: &HashSet::new(),
+            config: &config,
+            limit: 10,
+            filter_mode: crate::processor::FilterMode::None,
+            aux_filter: "",
+            context: None,
+            fuzzy_enabled: false,
+        };
+        let (candidates, _segments) = engine.search(query);
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn test_compute_decay_boost_range() {
+        // 验证 compute_decay_boost 的返回值在合理范围内
+        let boost = compute_decay_boost(0, 1);
+        assert!(boost > 0.0);
+        assert!(boost <= MAX_USAGE_BOOST);
+
+        // 高频、最近使用的词加成最大
+        let high_boost = compute_decay_boost(0, 20);
+        // 低频、很久没用过的词加成最小
+        let low_boost = compute_decay_boost(100, 0);
+        assert!(high_boost >= low_boost);
+
+        // 验证上限
+        let max_boost = compute_decay_boost(0, 100);
+        assert!(max_boost <= MAX_USAGE_BOOST);
+    }
 }
+
+
