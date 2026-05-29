@@ -212,7 +212,7 @@ impl ConfigManager {
 
     pub fn quick_finals(&self) -> HashMap<String, String> {
         let mut m = HashMap::new();
-        for qf in &self.master_config.input.quick_finals {
+        for qf in &self.master_config.quick_finals {
             m.insert(qf.key.to_lowercase(), qf.final_text.clone());
         }
         m

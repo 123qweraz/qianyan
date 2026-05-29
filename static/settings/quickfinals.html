@@ -66,7 +66,7 @@
 
     <div class="sticky-footer">
         <button class="btn" onclick="resetDefaults()">恢复默认</button>
-        <button class="btn btn-danger" onclick="resetAll()">重置全部拼音设置</button>
+        <button class="btn btn-danger" onclick="resetAll()">重置长韵母默认</button>
         <button class="btn" onclick="save()">保存更改</button>
     </div>
 
@@ -89,14 +89,14 @@
 
         function getFinalsMap() {
             const map = {};
-            (config.input.quick_finals || []).forEach(qf => {
+            (config.quick_finals || []).forEach(qf => {
                 if (qf.key && qf.final_text) map[qf.key.toLowerCase()] = qf.final_text;
             });
             return map;
         }
 
         function setFinal(key, finalText) {
-            const finals = config.input.quick_finals || [];
+            const finals = config.quick_finals || [];
             const idx = finals.findIndex(qf => qf.key.toLowerCase() === key.toLowerCase());
             if (finalText) {
                 if (idx >= 0) finals[idx].final_text = finalText;
@@ -104,7 +104,7 @@
             } else {
                 if (idx >= 0) finals.splice(idx, 1);
             }
-            config.input.quick_finals = finals;
+            config.quick_finals = finals;
         }
 
         function renderKeyboard() {
@@ -147,19 +147,19 @@
             for (const [key, final_text] of Object.entries(DEFAULT_FINALS)) {
                 finals.push({ key, final_text });
             }
-            config.input.quick_finals = finals;
+            config.quick_finals = finals;
             renderKeyboard();
             showToast('已载入默认设置，请点击保存');
         }
 
         async function resetAll() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
-            await fetch('/api/config/reset/input,hotkeys', { method: 'POST' });
+            await fetch('/api/config/reset/input,hotkeys,quickfinals', { method: 'POST' });
             location.reload();
         }
 
         async function initForm() {
-            bindInput('enable_quick_finals', 'input');
+            bindInput('enable_quick_finals', null);
             renderKeyboard();
         }
 

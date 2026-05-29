@@ -298,6 +298,10 @@ async fn reset_config_section(
             "appearance" => w.appearance = default_conf.appearance.clone(),
             "hotkeys" => w.hotkeys = default_conf.hotkeys.clone(),
             "input" => w.input = default_conf.input.clone(),
+            "quickfinals" => {
+                w.enable_quick_finals = default_conf.enable_quick_finals;
+                w.quick_finals = default_conf.quick_finals.clone();
+            },
             "linux" => w.linux = default_conf.linux.clone(),
             "files" => w.files = default_conf.files.clone(),
             _ => return StatusCode::BAD_REQUEST,

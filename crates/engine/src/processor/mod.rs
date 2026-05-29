@@ -202,7 +202,7 @@ impl Processor {
             if is_press
                 && self.ctx.session_state.capslock_down
                 && is_letter(key)
-                && self.ctx.config.master_config.input.enable_quick_finals
+                && self.ctx.config.master_config.enable_quick_finals
             {
                 if let Some(c) = key_to_char(key, false, false) {
                     let finals = self.ctx.config.quick_finals();

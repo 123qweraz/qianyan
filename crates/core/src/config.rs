@@ -7,6 +7,8 @@ pub struct Config {
     pub appearance: Appearance,
     pub input: Input,
     pub hotkeys: Hotkeys,
+    pub enable_quick_finals: bool,
+    pub quick_finals: Vec<QuickFinal>,
     #[cfg(target_os = "linux")]
     pub linux: LinuxConfig,
 }
@@ -203,10 +205,6 @@ pub struct Input {
     #[serde(default)]
     pub layouts: std::collections::HashMap<String, ProfileLayout>,
     pub enable_smart_backspace: bool,
-    #[serde(default)]
-    pub enable_quick_finals: bool,
-    #[serde(default)]
-    pub quick_finals: Vec<QuickFinal>,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
     pub enable_fuzzy_pinyin: bool,
@@ -285,6 +283,12 @@ pub struct ProfileKey {
 pub struct QuickFinal {
     pub key: String,
     pub final_text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct QuickFinalsFile {
+    pub enable_quick_finals: bool,
+    pub quick_finals: Vec<QuickFinal>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -531,6 +535,13 @@ impl Config {
             }
         }
 
+        if let Some(v) = load_file("quickfinals") {
+            if let Ok(qf) = serde_json::from_value::<QuickFinalsFile>(v) {
+                conf.enable_quick_finals = qf.enable_quick_finals;
+                conf.quick_finals = qf.quick_finals;
+            }
+        }
+
         conf
     }
 
@@ -573,6 +584,15 @@ impl Config {
             let p = config_dir.join("linux.json");
             let f = std::fs::File::create(&p)?;
             serde_json::to_writer_pretty(f, &self.linux)?;
+        }
+
+        {
+            let p = config_dir.join("quickfinals.json");
+            let f = std::fs::File::create(&p)?;
+            serde_json::to_writer_pretty(f, &QuickFinalsFile {
+                enable_quick_finals: self.enable_quick_finals,
+                quick_finals: self.quick_finals.clone(),
+            })?;
         }
 
         Ok(())
@@ -719,20 +739,6 @@ impl Config {
                 enable_fixed_first_candidate: false,
                 layouts: default_profile_layouts(),
                 enable_smart_backspace: false,
-                enable_quick_finals: false,
-                quick_finals: vec![
-                    QuickFinal { key: "u".into(), final_text: "uang".into() },
-                    QuickFinal { key: "i".into(), final_text: "ing".into() },
-                    QuickFinal { key: "o".into(), final_text: "ong".into() },
-                    QuickFinal { key: "p".into(), final_text: "iong".into() },
-                    QuickFinal { key: "h".into(), final_text: "ang".into() },
-                    QuickFinal { key: "j".into(), final_text: "eng".into() },
-                    QuickFinal { key: "k".into(), final_text: "uai".into() },
-                    QuickFinal { key: "l".into(), final_text: "iang".into() },
-                    QuickFinal { key: "n".into(), final_text: "iao".into() },
-                    QuickFinal { key: "m".into(), final_text: "ian".into() },
-                    QuickFinal { key: "y".into(), final_text: "uan".into() },
-                ],
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {
                     name: "小鹤双拼".to_string(),
@@ -833,6 +839,20 @@ impl Config {
                     "4".into(),
                 ],
             },
+            enable_quick_finals: false,
+            quick_finals: vec![
+                QuickFinal { key: "u".into(), final_text: "uang".into() },
+                QuickFinal { key: "i".into(), final_text: "ing".into() },
+                QuickFinal { key: "o".into(), final_text: "ong".into() },
+                QuickFinal { key: "p".into(), final_text: "iong".into() },
+                QuickFinal { key: "h".into(), final_text: "ang".into() },
+                QuickFinal { key: "j".into(), final_text: "eng".into() },
+                QuickFinal { key: "k".into(), final_text: "uai".into() },
+                QuickFinal { key: "l".into(), final_text: "iang".into() },
+                QuickFinal { key: "n".into(), final_text: "iao".into() },
+                QuickFinal { key: "m".into(), final_text: "ian".into() },
+                QuickFinal { key: "y".into(), final_text: "uan".into() },
+            ],
             #[cfg(target_os = "linux")]
             linux: LinuxConfig {
                 device_path: "/dev/input/event4".to_string(),
