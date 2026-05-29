@@ -731,7 +731,7 @@ impl Config {
                     QuickFinal { key: "l".into(), final_text: "iang".into() },
                     QuickFinal { key: "n".into(), final_text: "iao".into() },
                     QuickFinal { key: "m".into(), final_text: "ian".into() },
-                    QuickFinal { key: "r".into(), final_text: "uan".into() },
+                    QuickFinal { key: "y".into(), final_text: "uan".into() },
                 ],
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {

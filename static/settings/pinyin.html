@@ -274,11 +274,8 @@
 
         async function resetPinyin() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
-            const defaultConf = await (await fetch('/api/config')).json();
-            Object.assign(config.input, defaultConf.input);
-            Object.assign(config.hotkeys, defaultConf.hotkeys);
-            await initForm();
-            showToast('已重置，请点击保存');
+            await fetch('/api/config/reset/input,hotkeys', { method: 'POST' });
+            location.reload();
         }
 
         async function initForm() {
