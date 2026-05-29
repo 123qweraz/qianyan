@@ -129,6 +129,23 @@ impl Trie {
         false
     }
 
+    /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
+    pub fn has_word_in_dict(&self, word: &str) -> bool {
+        let mut stream = self.index.stream();
+        while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
+            let mut found = false;
+            self.read_block(offset as usize, |tr| {
+                if tr.word == word {
+                    found = true;
+                }
+            });
+            if found {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {
         self.search_bfs_with_level_filter(prefix, limit, None)
     }
@@ -687,6 +704,21 @@ mod tests {
         let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
         println!("'li' exact trie entries: {}", trie_count);
         assert_eq!(trie_count, 95, "Expected exactly 95 entries in trie for 'li'!");
+    }
+
+    #[test]
+    fn test_has_word_in_dict() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+        // "我们" is a known system dictionary word → should return true
+        assert!(trie.has_word_in_dict("我们"));
+        // a random nonsense word should not exist
+        assert!(!trie.has_word_in_dict("qqqnotexist"));
     }
 
     #[test]

@@ -464,8 +464,7 @@ impl InputScheme for ChineseScheme {
         {
             let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
             let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_only, context.syllables);
-            let init_count = abbr_segs.iter().filter(|(_, is_init)| *is_init).count();
-            if abbr_segs.len() > 1 && init_count > 0 {
+            if abbr_segs.len() > 1 {
                 if let Some(d) = context.tries.get("chinese") {
                     let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, context.syllables, 200);
                     abbr_results.sort_by(|a, b| b.weight.cmp(&a.weight));

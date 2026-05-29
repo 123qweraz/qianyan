@@ -1334,6 +1334,15 @@ impl SearchEngine {
         false
     }
 
+    /// 检查系统词典中是否存在该词（不限拼音），用于防止系统词被重复加入用户词典
+    #[inline]
+    pub fn has_word_in_dict(&self, profile: &str, word: &str) -> bool {
+        if let Some(trie) = self.get_or_load_trie(profile) {
+            return trie.has_word_in_dict(word);
+        }
+        false
+    }
+
     pub fn get_trie_from_pipeline<'a>(&self, pipeline: &'a Pipeline) -> Option<&'a Trie> {
         for t in &pipeline.translators {
             if let Some(table) = t.as_any().downcast_ref::<TableTranslator>() {
