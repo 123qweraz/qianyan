@@ -9,6 +9,11 @@ pub struct Config {
     pub hotkeys: Hotkeys,
     pub enable_quick_finals: bool,
     pub quick_finals: Vec<QuickFinal>,
+    pub punctuations: std::collections::HashMap<
+        String,
+        std::collections::HashMap<String, Vec<PunctuationEntry>>,
+    >,
+    pub layouts: std::collections::HashMap<String, ProfileLayout>,
     #[cfg(target_os = "linux")]
     pub linux: LinuxConfig,
 }
@@ -18,6 +23,7 @@ pub struct Config {
 pub struct LinuxConfig {
     pub device_path: String,
     pub paste_method: String,
+    pub clipboard_delay_ms: u64,
     #[serde(default = "default_true")]
     pub show_slint_window: bool,
     #[serde(default)]
@@ -168,7 +174,6 @@ pub struct Input {
     pub commit_mode: String,
     pub default_profile: String,
     pub phantom_type: PhantomType,
-    pub clipboard_delay_ms: u64,
     pub anti_typo_mode: AntiTypoMode,
     pub enable_double_tap: bool,
     pub double_tap_timeout_ms: u64,
@@ -178,10 +183,6 @@ pub struct Input {
     pub long_press_mappings: Vec<LongPressMapping>,
     pub enable_punctuation_long_press: bool,
     pub punctuation_long_press_mappings: std::collections::HashMap<String, String>,
-    pub punctuations: std::collections::HashMap<
-        String,
-        std::collections::HashMap<String, Vec<PunctuationEntry>>,
-    >,
     pub keyboard_layouts:
         std::collections::HashMap<String, std::collections::HashMap<String, String>>,
     pub auto_commit_unique_en_fuzhuma: bool,
@@ -202,8 +203,6 @@ pub struct Input {
     pub enable_word_discovery: bool,
     pub enable_auto_reorder: bool,
     pub enable_fixed_first_candidate: bool,
-    #[serde(default)]
-    pub layouts: std::collections::HashMap<String, ProfileLayout>,
     pub enable_smart_backspace: bool,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
@@ -576,6 +575,59 @@ impl Config {
             }
         }
 
+        // 加载 punctuations.json，否则从旧 input.json 迁移
+        if let Some(v) = load_file("punctuations") {
+            if let Ok(p) = serde_json::from_value(v) {
+                conf.punctuations = p;
+            }
+        } else if let Some(v) = load_file("input") {
+            if let Some(p) = v.get("punctuations") {
+                conf.punctuations = serde_json::from_value(p.clone()).unwrap_or_default();
+                if let Some(obj) = v.as_object() {
+                    let mut cleaned = obj.clone();
+                    cleaned.remove("punctuations");
+                    let p = config_dir.join("input.json");
+                    if let Ok(f) = std::fs::File::create(&p) {
+                        let _ = serde_json::to_writer_pretty(f, &cleaned);
+                    }
+                }
+            }
+        }
+
+        // 加载 layouts.json，否则从旧 input.json 迁移
+        if let Some(v) = load_file("layouts") {
+            if let Ok(l) = serde_json::from_value(v) {
+                conf.layouts = l;
+            }
+        } else if let Some(v) = load_file("input") {
+            if let Some(l) = v.get("layouts") {
+                conf.layouts = serde_json::from_value(l.clone()).unwrap_or_default();
+                if let Some(obj) = v.as_object() {
+                    let mut cleaned = obj.clone();
+                    cleaned.remove("layouts");
+                    let p = config_dir.join("input.json");
+                    if let Ok(f) = std::fs::File::create(&p) {
+                        let _ = serde_json::to_writer_pretty(f, &cleaned);
+                    }
+                }
+            }
+        }
+
+        // 清理旧版 input.json 中迁移走的过期字段
+        if let Some(v) = load_file("input") {
+            if let Some(obj) = v.as_object() {
+                let stale = ["clipboard_delay_ms", "punctuation_long_press_mappings", "profile_keys"];
+                if stale.iter().any(|k| obj.contains_key(*k)) {
+                    let mut cleaned = obj.clone();
+                    for k in &stale { cleaned.remove(*k); }
+                    let p = config_dir.join("input.json");
+                    if let Ok(f) = std::fs::File::create(&p) {
+                        let _ = serde_json::to_writer_pretty(f, &cleaned);
+                    }
+                }
+            }
+        }
+
         conf
     }
 
@@ -627,6 +679,18 @@ impl Config {
                 enable_quick_finals: self.enable_quick_finals,
                 quick_finals: self.quick_finals.clone(),
             })?;
+        }
+
+        {
+            let p = config_dir.join("punctuations.json");
+            let f = std::fs::File::create(&p)?;
+            serde_json::to_writer_pretty(f, &self.punctuations)?;
+        }
+
+        {
+            let p = config_dir.join("layouts.json");
+            let f = std::fs::File::create(&p)?;
+            serde_json::to_writer_pretty(f, &self.layouts)?;
         }
 
         Ok(())
@@ -716,7 +780,6 @@ impl Config {
                 commit_mode: "single".to_string(),
                 default_profile: "chinese".to_string(),
                 phantom_type: PhantomType::Pinyin,
-                clipboard_delay_ms: 50,
                 anti_typo_mode: AntiTypoMode::None,
                 enable_double_tap: false,
                 double_tap_timeout_ms: 250,
@@ -726,7 +789,6 @@ impl Config {
                 long_press_mappings: vec![],
                 enable_punctuation_long_press: true,
                 punctuation_long_press_mappings: std::collections::HashMap::new(),
-                punctuations: std::collections::HashMap::new(),
                 keyboard_layouts: std::collections::HashMap::new(),
                 auto_commit_unique_en_fuzhuma: false,
                 auto_commit_unique_full_match: false,
@@ -771,7 +833,6 @@ impl Config {
                 enable_word_discovery: true,
                 enable_auto_reorder: true,
                 enable_fixed_first_candidate: false,
-                layouts: default_profile_layouts(),
                 enable_smart_backspace: false,
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {
@@ -887,10 +948,13 @@ impl Config {
                 QuickFinal { key: "m".into(), final_text: "ian".into() },
                 QuickFinal { key: "y".into(), final_text: "uan".into() },
             ],
+            punctuations: std::collections::HashMap::new(),
+            layouts: default_profile_layouts(),
             #[cfg(target_os = "linux")]
             linux: LinuxConfig {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
+                clipboard_delay_ms: 50,
                 show_slint_window: true,
                 show_notification: false,
                 fixed_position: true,

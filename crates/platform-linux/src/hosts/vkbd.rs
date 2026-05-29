@@ -315,7 +315,7 @@ impl Vkbd {
 
     pub fn apply_config(&mut self, config: &qianyan_ime_core::Config) {
         if let Ok(mut delay) = self.clipboard_delay_ms.lock() {
-            *delay = config.input.clipboard_delay_ms;
+            *delay = config.linux.clipboard_delay_ms;
         }
         if let Ok(mut mode) = self.paste_mode.lock() {
             *mode = match config.linux.paste_method.as_str() {

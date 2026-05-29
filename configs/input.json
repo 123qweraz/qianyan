@@ -1,601 +1,95 @@
 {
+  "anti_typo_mode": "None",
+  "auto_commit_stroke": true,
+  "auto_commit_unique_en_fuzhuma": false,
+  "auto_commit_unique_full_match": false,
   "autostart": true,
   "commit_mode": "single",
   "default_profile": "chinese",
-  "phantom_type": "Pinyin",
-  "clipboard_delay_ms": 50,
-  "anti_typo_mode": "None",
-  "enable_double_tap": false,
-  "double_tap_timeout_ms": 250,
-  "double_taps": [],
-  "enable_long_press": false,
-  "long_press_timeout_ms": 400,
-  "long_press_mappings": [],
-  "enable_punctuation_long_press": true,
-  "punctuation_long_press_mappings": {
-    "{": "{",
-    "]": "]",
-    "$": "$",
-    "%": "%",
-    ".": ".",
-    "[": "[",
-    "#": "#",
-    "!": "!",
-    ",": ",",
-    "`": "`",
-    "+": "+",
-    ";": ";",
-    ">": ">",
-    "@": "@",
-    "&": "&",
-    ":": ":",
-    "\"": "\"",
-    "_": "_",
-    "=": "=",
-    "(": "(",
-    "/": "/",
-    "^": "^",
-    "}": "}",
-    "\\": "\\",
-    ")": ")",
-    "'": "'",
-    "*": "*",
-    "~": "~",
-    "-": "-",
-    "?": "?",
-    "<": "<"
-  },
-  "punctuations": {
-    "chinese": {
-      " ": [
-        {
-          "char": " ",
-          "desc": "空格"
-        }
-      ],
-      "]": [
-        {
-          "char": "】",
-          "desc": "右方括号"
-        },
-        {
-          "char": "]",
-          "desc": "英文右方括号"
-        }
-      ],
-      "{": [
-        {
-          "char": "｛",
-          "desc": "左大括号"
-        },
-        {
-          "char": "{",
-          "desc": "英文左大括号"
-        }
-      ],
-      "\n": [
-        {
-          "char": "\n",
-          "desc": "换行"
-        }
-      ],
-      "&": [
-        {
-          "char": "&",
-          "desc": "和符"
-        },
-        {
-          "char": "&",
-          "desc": "英文和符"
-        }
-      ],
-      "[": [
-        {
-          "char": "【",
-          "desc": "左方括号"
-        },
-        {
-          "char": "[",
-          "desc": "英文左方括号"
-        }
-      ],
-      "=": [
-        {
-          "char": "=",
-          "desc": "英文等号"
-        },
-        {
-          "char": "＝",
-          "desc": "等号"
-        }
-      ],
-      "@": [
-        {
-          "char": "@",
-          "desc": "艾特符"
-        },
-        {
-          "char": "@",
-          "desc": "英文艾特符"
-        }
-      ],
-      "~": [
-        {
-          "char": "～",
-          "desc": "波浪线"
-        },
-        {
-          "char": "~",
-          "desc": "英文波浪线"
-        }
-      ],
-      "\t": [
-        {
-          "char": "\t",
-          "desc": "制表符"
-        }
-      ],
-      "-": [
-        {
-          "char": "-",
-          "desc": "连字符"
-        },
-        {
-          "char": "—",
-          "desc": "破折号"
-        }
-      ],
-      "^": [
-        {
-          "char": "……",
-          "desc": "省略号"
-        },
-        {
-          "char": "^",
-          "desc": "英文幂"
-        }
-      ],
-      "/": [
-        {
-          "char": "/",
-          "desc": "斜线"
-        },
-        {
-          "char": "/",
-          "desc": "英文斜线"
-        }
-      ],
-      "*": [
-        {
-          "char": "×",
-          "desc": "乘号"
-        },
-        {
-          "char": "*",
-          "desc": "星号"
-        }
-      ],
-      "$": [
-        {
-          "char": "￥",
-          "desc": "人民币符号"
-        },
-        {
-          "char": "$",
-          "desc": "美元符号"
-        }
-      ],
-      "\"": [
-        {
-          "char": "“",
-          "desc": "左引号"
-        },
-        {
-          "char": "”",
-          "desc": "右引号"
-        },
-        {
-          "char": "\"",
-          "desc": "英文引号"
-        }
-      ],
-      ";": [
-        {
-          "char": "；",
-          "desc": "分号"
-        },
-        {
-          "char": ";",
-          "desc": "英文分号"
-        }
-      ],
-      ">": [
-        {
-          "char": "》",
-          "desc": "书名号"
-        },
-        {
-          "char": ">",
-          "desc": "英文大于号"
-        }
-      ],
-      "<": [
-        {
-          "char": "《",
-          "desc": "书名号"
-        },
-        {
-          "char": "<",
-          "desc": "英文小于号"
-        }
-      ],
-      "!": [
-        {
-          "char": "！",
-          "desc": "叹号"
-        },
-        {
-          "char": "!",
-          "desc": "英文叹号"
-        }
-      ],
-      "#": [
-        {
-          "char": "#",
-          "desc": "井号"
-        },
-        {
-          "char": "#",
-          "desc": "英文井号"
-        }
-      ],
-      ":": [
-        {
-          "char": "：",
-          "desc": "冒号"
-        },
-        {
-          "char": ":",
-          "desc": "英文冒号"
-        }
-      ],
-      "_": [
-        {
-          "char": "_",
-          "desc": "英文下划线"
-        },
-        {
-          "char": "——",
-          "desc": "长破折号"
-        },
-        {
-          "char": "—",
-          "desc": "破折号"
-        }
-      ],
-      "\\": [
-        {
-          "char": "、",
-          "desc": "顿号"
-        },
-        {
-          "char": "\\\\",
-          "desc": "英文反斜线"
-        }
-      ],
-      ")": [
-        {
-          "char": "）",
-          "desc": "右括号"
-        },
-        {
-          "char": ")",
-          "desc": "英文右括号"
-        }
-      ],
-      "}": [
-        {
-          "char": "｝",
-          "desc": "右大括号"
-        },
-        {
-          "char": "}",
-          "desc": "英文右大括号"
-        }
-      ],
-      "'": [
-        {
-          "char": "‘",
-          "desc": "左单引号"
-        },
-        {
-          "char": "’",
-          "desc": "右单引号"
-        },
-        {
-          "char": "'",
-          "desc": "英文单引号"
-        }
-      ],
-      "|": [
-        {
-          "char": "丨",
-          "desc": "竖线"
-        },
-        {
-          "char": "|",
-          "desc": "英文竖线"
-        }
-      ],
-      ".": [
-        {
-          "char": "。",
-          "desc": "句号"
-        },
-        {
-          "char": ".",
-          "desc": "英文句号"
-        }
-      ],
-      "%": [
-        {
-          "char": "%",
-          "desc": "百分号"
-        },
-        {
-          "char": "%",
-          "desc": "英文百分号"
-        }
-      ],
-      "?": [
-        {
-          "char": "？",
-          "desc": "问号"
-        },
-        {
-          "char": "?",
-          "desc": "英文问号"
-        }
-      ],
-      "+": [
-        {
-          "char": "+",
-          "desc": "英文加号"
-        },
-        {
-          "char": "＋",
-          "desc": "加号"
-        }
-      ],
-      "(": [
-        {
-          "char": "（",
-          "desc": "左括号"
-        },
-        {
-          "char": "(",
-          "desc": "英文左括号"
-        }
-      ],
-      "`": [
-        {
-          "char": "`",
-          "desc": "反引号"
-        },
-        {
-          "char": "`",
-          "desc": "英文反引号"
-        }
-      ],
-      ",": [
-        {
-          "char": "，",
-          "desc": "逗号"
-        },
-        {
-          "char": ",",
-          "desc": "英文逗号"
-        }
-      ]
+  "double_pinyin_scheme": {
+    "initials": {
+      "i": "ch",
+      "u": "sh",
+      "v": "zh"
+    },
+    "name": "小鹤双拼",
+    "rimes": {
+      "b": "in",
+      "c": "ao",
+      "d": "ai",
+      "f": "en",
+      "j": "an",
+      "k": "ao",
+      "l": "iang",
+      "m": "ian",
+      "p": "ie",
+      "q": "iu",
+      "r": "uan",
+      "s": "ong",
+      "t": "ue",
+      "w": "ei",
+      "x": "ia",
+      "y": "un",
+      "z": "ou"
     }
   },
-  "keyboard_layouts": {},
-  "auto_commit_unique_en_fuzhuma": false,
-  "auto_commit_unique_full_match": false,
-  "auto_commit_stroke": true,
-  "enable_prefix_matching": true,
-  "prefix_matching_limit": 20,
+  "double_tap_timeout_ms": 250,
+  "double_taps": [],
   "enable_abbreviation_matching": true,
-  "filter_proper_nouns_by_case": true,
+  "enable_auto_reorder": true,
+  "enable_caps_selection": true,
+  "enable_double_pinyin": false,
+  "enable_double_tap": false,
+  "enable_english_filter": true,
+  "enable_error_sound": true,
+  "enable_fixed_first_candidate": false,
+  "enable_fuzzy_pinyin": true,
+  "enable_keyboard_voice": false,
+  "enable_long_press": false,
+  "enable_number_selection": true,
+  "enable_prefix_matching": true,
+  "enable_punctuation_long_press": true,
+  "enable_smart_aux": false,
+  "enable_smart_backspace": false,
+  "enable_traditional": false,
+  "enable_word_discovery": true,
   "enabled_profiles": [
     "chinese",
     "english",
     "japanese",
     "stroke"
   ],
-  "profile_keys": [
-    {
-      "key": "c",
-      "profile": "chinese"
-    },
-    {
-      "key": "e",
-      "profile": "english"
-    },
-    {
-      "key": "j",
-      "profile": "japanese"
-    },
-    {
-      "key": "b",
-      "profile": "stroke"
-    },
-    {
-      "key": "m",
-      "profile": "chinese,english,japanese"
-    },
-    {
-      "key": "s",
-      "profile": "shengpizi"
-    }
-  ],
-  "swap_arrow_keys": false,
-  "enable_error_sound": true,
-  "enable_keyboard_voice": false,
-  "enable_english_filter": true,
-  "enable_caps_selection": true,
-  "enable_number_selection": true,
-  "enable_word_discovery": true,
-  "enable_auto_reorder": true,
-  "enable_fixed_first_candidate": false,
-  "layouts": {
-    "stroke": {
-      "name": "笔画默认布局",
-      "mappings": {}
-    },
-    "chinese": {
-      "name": "中文默认布局",
-      "mappings": {
-        ",": {
-          "tap": "，",
-          "shift": "《",
-          "long_press": "、",
-          "description": "中文逗号"
-        },
-        ".": {
-          "tap": "。",
-          "shift": "》",
-          "double_tap": "...",
-          "long_press": "·",
-          "description": "中文句号"
-        },
-        "?": {
-          "tap": "？",
-          "shift": "?",
-          "description": "中文问号"
-        },
-        "!": {
-          "tap": "！",
-          "shift": "!",
-          "description": "中文叹号"
-        },
-        ";": {
-          "tap": "；",
-          "shift": "：",
-          "double_tap": ";",
-          "long_press": "……",
-          "description": "中文分号"
-        }
-      }
-    },
-    "japanese": {
-      "name": "日本語デフォルト配列",
-      "mappings": {
-        ".": {
-          "tap": "。",
-          "shift": ">",
-          "long_press": "・",
-          "description": "日文句号"
-        },
-        ",": {
-          "tap": "、",
-          "shift": "<",
-          "description": "日文顿号"
-        },
-        "[": {
-          "tap": "「",
-          "shift": "{",
-          "description": "日文左引号"
-        },
-        "]": {
-          "tap": "」",
-          "shift": "}",
-          "description": "日文右引号"
-        },
-        "/": {
-          "tap": "・",
-          "shift": "?",
-          "description": "日文中点"
-        }
-      }
-    },
-    "english": {
-      "name": "English Default Layout",
-      "mappings": {
-        ",": {
-          "tap": ",",
-          "shift": "<",
-          "description": "英文逗号"
-        },
-        ".": {
-          "tap": ".",
-          "shift": ">",
-          "description": "英文句号"
-        },
-        ";": {
-          "tap": ";",
-          "shift": ":",
-          "description": "英文分号"
-        }
-      }
-    }
-  },
-  "enable_smart_backspace": false,
-  "enable_double_pinyin": false,
-  "double_pinyin_scheme": {
-    "name": "小鹤双拼",
-    "initials": {
-      "i": "ch",
-      "u": "sh",
-      "v": "zh"
-    },
-    "rimes": {
-      "s": "ong",
-      "y": "un",
-      "p": "ie",
-      "x": "ia",
-      "m": "ian",
-      "q": "iu",
-      "d": "ai",
-      "r": "uan",
-      "f": "en",
-      "z": "ou",
-      "t": "ue",
-      "c": "ao",
-      "k": "ao",
-      "l": "iang",
-      "w": "ei",
-      "j": "an",
-      "b": "in"
-    }
-  },
-  "enable_fuzzy_pinyin": true,
+  "english_aux_mode": "Prefix",
+  "filter_proper_nouns_by_case": true,
+  "firefox_space_interrupt": false,
   "fuzzy_config": {
-    "z_zh": true,
+    "an_ang": false,
     "c_ch": true,
-    "s_sh": true,
+    "custom_mappings": [],
+    "en_eng": false,
+    "f_h": false,
+    "fuzzy_page_threshold": 5,
+    "ian_iang": false,
+    "in_ing": false,
     "n_l": false,
     "r_l": false,
-    "f_h": false,
-    "an_ang": false,
-    "en_eng": false,
-    "in_ing": false,
-    "ian_iang": false,
-    "uan_uang": false,
+    "s_sh": true,
     "u_v": false,
-    "custom_mappings": [],
-    "fuzzy_page_threshold": 5
+    "uan_uang": false,
+    "z_zh": true
   },
-  "enable_traditional": false,
-  "enable_smart_aux": false,
-  "smart_aux_mode": "Greedy",
-  "english_aux_mode": "Prefix",
+  "keyboard_layouts": {},
+  "long_press_mappings": [],
+  "long_press_timeout_ms": 400,
+  "phantom_type": "Pinyin",
+  "prefix_matching_limit": 20,
   "ranking": {
-    "length_penalty": 50000.0,
-    "user_dict_bonus": 10000000.0,
     "exact_match_bonus": 10000000.0,
-    "single_char_bonus": 1000000.0
+    "length_penalty": 50000.0,
+    "single_char_bonus": 1000000.0,
+    "user_dict_bonus": 10000000.0
   },
-  "firefox_space_interrupt": false,
-  "segmentation_delimiters": "'"
+  "segmentation_delimiters": "'",
+  "smart_aux_mode": "Greedy",
+  "swap_arrow_keys": false
 }

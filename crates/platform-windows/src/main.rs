@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        current_config.input.punctuations = punctuations;
+        current_config.punctuations = punctuations;
     }
 
     let config = Arc::new(RwLock::new(current_config));

@@ -1,7 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::user_data::UserDataManager;
 use arc_swap::ArcSwap;
-use qianyan_ime_core::config::{AntiTypoMode, Config, PhantomType, PunctuationEntry};
+use qianyan_ime_core::config::{AntiTypoMode, Config, PhantomType, ProfileLayout, PunctuationEntry};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -301,15 +301,15 @@ impl ConfigManager {
     }
 
     pub fn punctuations(&self) -> &HashMap<String, HashMap<String, Vec<PunctuationEntry>>> {
-        &self.master_config.input.punctuations
+        &self.master_config.punctuations
+    }
+
+    pub fn layouts(&self) -> &HashMap<String, ProfileLayout> {
+        &self.master_config.layouts
     }
 
     pub fn keyboard_layouts(&self) -> &HashMap<String, HashMap<String, String>> {
         &self.master_config.input.keyboard_layouts
-    }
-
-    pub fn layouts(&self) -> &HashMap<String, qianyan_ime_core::config::ProfileLayout> {
-        &self.master_config.input.layouts
     }
 
     pub fn phantom_type(&self) -> PhantomType {

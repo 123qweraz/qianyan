@@ -302,6 +302,12 @@ async fn reset_config_section(
                 w.enable_quick_finals = default_conf.enable_quick_finals;
                 w.quick_finals = default_conf.quick_finals.clone();
             },
+            "punctuations" => {
+                w.punctuations = default_conf.punctuations.clone();
+            },
+            "layouts" => {
+                w.layouts = default_conf.layouts.clone();
+            },
             "linux" => w.linux = default_conf.linux.clone(),
             "files" => w.files = default_conf.files.clone(),
             _ => return StatusCode::BAD_REQUEST,
