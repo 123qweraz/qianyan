@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>拼音设置 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .kb-key { height: 76px; min-width: 64px; cursor: pointer; }
+        .kb-key-sub { font-size: 12px; color: var(--apple-secondary); margin-top: 2px; line-height: 1.2; }
+        .kb-key.active .kb-key-main { color: var(--apple-accent); }
+        .kb-key.active { border-color: var(--apple-accent); background: rgba(9,105,218,0.06); }
+        .kb-key.selected { border-color: var(--apple-accent); box-shadow: 0 0 0 2px rgba(9,105,218,0.25); }
+        .mapping-editor {
+            display: none;
+            margin-top: 20px;
+            padding: 24px;
+            background: var(--apple-card);
+            border-radius: 20px;
+            border: 1px solid var(--apple-border);
+        }
+        .note {
+            padding: 16px 20px;
+            background: rgba(9, 105, 218, 0.08);
+            border-radius: 12px;
+            border-left: 4px solid var(--apple-accent);
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--apple-text);
+        }
+        .section-desc { font-size: 13px; color: var(--apple-secondary); margin-bottom: 20px; }
+        .sub-link { font-size: 13px; color: var(--apple-accent); text-decoration: none; margin-left: 8px; }
+        .sub-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>拼音设置</h1>
+        </header>
+
+        <h2>输入与转换</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形</div></div>
+                <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">智能辅码过滤</div><div class="desc">输入完整拼音后直接追加字母可触发辅码过滤</div></div>
+                <label class="switch"><input type="checkbox" id="enable_smart_aux"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
+                <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
+                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">显示系统托盘</div><div class="desc">在系统托盘中显示千言输入法图标</div></div>
+                <label class="switch"><input type="checkbox" id="show_tray"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">自动造词</div><div class="desc">记录连续输入的新词组（超过一个字）</div></div>
+                <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">自动调频</div><div class="desc">根据输入频率调整候选词顺序</div></div>
+                <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">分词分隔符</div><div class="desc">用于强制分割拼音音节的字符，如输入 "xi'an" 分为 "xi" 和 "an"</div></div>
+                <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">上屏模式</div><div class="desc">词模式：空格直接上屏；句模式：支持连续输入整句</div></div>
+                <select id="commit_mode">
+                    <option value="single">词模式</option>
+                    <option value="double">句模式</option>
+                </select>
+            </div>
+        </div>
+
+        <h2>搜索与匹配逻辑</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
+                <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
+                <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配（如 zm → 怎么）</div></div>
+                <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">防呆模式</div><div class="desc">容忍常见拼写错误，智能模式自动纠错，严格模式要求精准输入</div></div>
+                <select id="anti_typo_mode" class="select-input">
+                    <option value="None">关闭</option>
+                    <option value="Strict">严格模式</option>
+                    <option value="Smart">智能模式</option>
+                </select>
+            </div>
+            <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
+            <div style="text-align:right; font-size:13px; color:var(--apple-secondary);">
+                编辑器预览模式已移至
+                <a href="system.html" style="color:var(--apple-accent);text-decoration:none;">系统设置 → Linux 专属设置</a>
+            </div>
+        </div>
+
+        <h2>按键功能开关</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
+                <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">键盘发音</div><div class="desc">打字时发出对应字母的声音</div></div>
+                <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
+                <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <h2>长韵母快速输入</h2>
+        <div class="card">
+            <div class="note">
+                <strong>使用说明：</strong>按住 <kbd>CapsLock</kbd> 的同时按下字母键即可快速输入对应的长韵母。<br>
+                例如：设置 <kbd>L</kbd> → <code>iang</code>，则输入 "x" 后按 <kbd>CapsLock + L</kbd> 得到 "xiang"。<br>
+                按住 <kbd>CapsLock</kbd> 时按 <kbd>Backspace</kbd> 可删除整个音节。
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用长韵母快速输入</div><div class="desc">开启后，按住 CapsLock 再按字母键即可输入配置的长韵母</div></div>
+                <label class="switch"><input type="checkbox" id="enable_quick_finals"><span class="slider"></span></label>
+            </div>
+            <h3>韵母映射</h3>
+            <p class="desc" style="margin-bottom: 20px;">点击下方按键配置对应的韵母。高亮的按键表示已绑定，带有 👍 标记的为推荐右手键位。</p>
+            <div class="keyboard" id="kb-quickfinals"></div>
+            <div id="editor" class="mapping-editor">
+                <h3 id="edit-title">编辑按键: -</h3>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                    <div class="info"><div class="title">韵母输出</div><div class="desc">按下 CapsLock + 此键时插入的韵母拼音（留空则不绑定）</div></div>
+                    <input type="text" id="input-final" placeholder="例如: iang" style="width: 100%; margin-top: 8px; font-size: 18px; font-family: monospace;">
+                </div>
+            </div>
+        </div>
+
+        <h2>快捷键</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">翻到上一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
+                <input type="text" id="page_up_input" style="width: 250px; text-align: right;" placeholder="例如: Up,PageUp,-">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">翻到下一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
+                <input type="text" id="page_down_input" style="width: 250px; text-align: right;" placeholder="例如: Down,PageDown,=">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">选择上一词</div><div class="desc">触发选择上一个候选词的按键列表</div></div>
+                <input type="text" id="prev_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Left">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">选择下一词</div><div class="desc">触发选择下一个候选词的按键列表</div></div>
+                <input type="text" id="next_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Right">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，使用逗号分隔</div></div>
+                <input type="text" id="word_to_char_input" style="width: 250px; text-align: right;" placeholder="例如: 6,7,8,9">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">以词定字（Shift + 键）</div><div class="desc">按 Shift + 指定键快速输入首个候选词中的第 N 个字，使用逗号分隔</div></div>
+                <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2,3,4">
+            </div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--apple-border);">
+            <div class="setting-item">
+                <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
+                <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按住第一个键再按第二个键触发，如 CapsLock+F</div></div>
+                <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
+            </div>
+        </div>
+
+        <h2>模糊音与双拼</h2>
+        <div class="card">
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <a href="fuzzy.html" class="btn" style="flex:1; text-align:center; padding:12px;">☁️ 模糊音设置 →</a>
+                <a href="doublepinyin.html" class="btn" style="flex:1; text-align:center; padding:12px;">🧬 双拼方案 →</a>
+            </div>
+            <p class="desc" style="margin-top:12px; text-align:center;">模糊音和双拼设置内容较多，请在独立页面中配置</p>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetPinyin()">重置拼音默认</button>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        const KB_LAYOUT = [
+            ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+            ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+            ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+        ];
+        const RIGHT_HAND = ['y', 'u', 'i', 'o', 'p', 'h', 'j', 'k', 'l', 'n', 'm'];
+        const DEFAULT_FINALS = {
+            u: 'uang', i: 'ing', o: 'ong', p: 'iong',
+            h: 'ang', j: 'eng', k: 'uai', l: 'iang',
+            n: 'iao', m: 'ian', r: 'uan'
+        };
+        let currentKey = '';
+
+        function getFinalsMap() {
+            const map = {};
+            (config.input.quick_finals || []).forEach(qf => {
+                if (qf.key && qf.final_text) map[qf.key.toLowerCase()] = qf.final_text;
+            });
+            return map;
+        }
+
+        function setFinal(key, finalText) {
+            const finals = config.input.quick_finals || [];
+            const idx = finals.findIndex(qf => qf.key.toLowerCase() === key.toLowerCase());
+            if (finalText) {
+                if (idx >= 0) finals[idx].final_text = finalText;
+                else finals.push({ key: key.toLowerCase(), final_text: finalText });
+            } else {
+                if (idx >= 0) finals.splice(idx, 1);
+            }
+            config.input.quick_finals = finals;
+        }
+
+        function renderKeyboard() {
+            const container = document.getElementById('kb-quickfinals');
+            const map = getFinalsMap();
+            container.innerHTML = KB_LAYOUT.map(row => `
+                <div class="keyboard-row">
+                    ${row.map(k => {
+                        const final = map[k] || "";
+                        const isRight = RIGHT_HAND.includes(k);
+                        const sub = final ? `${final}${isRight ? ' 👍' : ''}` : '';
+                        return `<div class="kb-key ${final ? 'active' : ''} ${currentKey === k ? 'selected' : ''}" onclick="editKey('${k}')">
+                            <div class="kb-key-main">${k.toUpperCase()}</div>
+                            <div class="kb-key-sub">${sub}</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+
+        function editKey(key) {
+            currentKey = key;
+            const map = getFinalsMap();
+            document.getElementById('editor').style.display = 'block';
+            document.getElementById('edit-title').innerText = '编辑按键: ' + key.toUpperCase();
+            const input = document.getElementById('input-final');
+            input.value = map[key] || '';
+            input.oninput = () => {
+                const v = input.value.trim();
+                setFinal(key, v);
+                renderKeyboard();
+            };
+            renderKeyboard();
+            document.getElementById('editor').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetDefaults() {
+            if (!confirm('确定要恢复长韵母设置为默认值吗？')) return;
+            const finals = [];
+            for (const [key, final_text] of Object.entries(DEFAULT_FINALS)) {
+                finals.push({ key, final_text });
+            }
+            config.input.quick_finals = finals;
+            renderKeyboard();
+            showToast('已载入默认设置，请点击保存');
+        }
+
+        async function resetPinyin() {
+            if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
+            const defaultConf = await (await fetch('/api/config')).json();
+            Object.assign(config.input, defaultConf.input);
+            Object.assign(config.hotkeys, defaultConf.hotkeys);
+            await initForm();
+            showToast('已重置，请点击保存');
+        }
+
+        async function initForm() {
+            bindInput('enable_traditional', 'input');
+            bindInput('enable_smart_aux', 'input');
+            bindInput('enable_fixed_first_candidate', 'input');
+            bindInput('show_candidates', 'appearance');
+            bindInput('show_tray', 'appearance');
+            bindInput('enable_word_discovery', 'input');
+            bindInput('enable_auto_reorder', 'input');
+            bindInput('segmentation_delimiters', 'input');
+            bindInput('commit_mode', 'input');
+            bindInput('auto_commit_unique_full_match', 'input');
+            bindInput('enable_prefix_matching', 'input');
+            bindInput('enable_abbreviation_matching', 'input');
+            bindInput('anti_typo_mode', 'input');
+            bindInput('enable_english_filter', 'input');
+            bindInput('enable_keyboard_voice', 'input');
+            bindInput('enable_number_selection', 'input');
+            bindInput('enable_quick_finals', 'input');
+            bindInput('enable_ctrl_space_toggle', 'hotkeys');
+
+            document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
+            document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
+            document.getElementById('prev_candidate_input').value = (config.hotkeys.prev_candidate || []).join(', ');
+            document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
+            document.getElementById('word_to_char_input').value = (config.hotkeys.word_to_char || []).join(', ');
+            document.getElementById('word_to_char_shift_input').value = (config.hotkeys.word_to_char_shift || []).join(', ');
+            document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
+
+            renderKeyboard();
+        }
+
+        async function init() {
+            await loadConfig();
+            await initForm();
+        }
+
+        async function save() {
+            config.hotkeys.page_up = document.getElementById('page_up_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.page_down = document.getElementById('page_down_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.prev_candidate = document.getElementById('prev_candidate_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.next_candidate = document.getElementById('next_candidate_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.word_to_char = document.getElementById('word_to_char_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.word_to_char_shift = document.getElementById('word_to_char_shift_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'CapsLock+F';
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

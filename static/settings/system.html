@@ -12,6 +12,11 @@
             <h1>系统设置</h1>
         </header>
 
+        <div class="note" style="padding:12px 16px; background:rgba(9,105,218,0.06); border-left:4px solid var(--apple-accent); border-radius:8px; margin-bottom:20px; font-size:13px; color:var(--apple-secondary);">
+            ⚡ 拼音输入相关的设置（输入与转换、搜索匹配逻辑、快捷键、长韵母、按键功能开关）已移至
+            <a href="pinyin.html" style="color:var(--apple-accent);text-decoration:none;font-weight:600;">拼音设置</a>
+        </div>
+
         <div class="card">
             <h2>输入法方案</h2>
             <div class="setting-item" style="display: block;">
@@ -23,134 +28,11 @@
             </div>
         </div>
 
-        <h2>输入与转换</h2>
+        <h2>通用</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">繁体输出</div>
-                    <div class="desc">开启后输出的中文为繁体字形</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">智能辅码过滤</div>
-                    <div class="desc">输入完整拼音后直接追加字母可触发辅码过滤（如 ji+c 自动显示 ji 下辅码 C 开头的候选词）。需要词库包含英语辅码数据。</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="enable_smart_aux"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">首词固定</div>
-                    <div class="desc">首位候选词位置固定，不随使用频率变化</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">显示候选窗口</div>
-                    <div class="desc">控制拼写时是否出现选词框</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">显示系统托盘</div>
-                    <div class="desc">在系统托盘中显示千言输入法图标</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="show_tray"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">自动造词</div>
-                    <div class="desc">记录连续输入的新词组（超过一个字）</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">自动调频</div>
-                    <div class="desc">根据输入频率调整候选词顺序</div>
-                </div>
-                <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">分词分隔符</div>
-                    <div class="desc">设置用于强制分割拼音音节的字符。输入时遇到分隔符将强制在此处分段，例如设置 ' 后，输入 "xi'an" 将分为 "xi" 和 "an"。</div>
-                </div>
-                <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">上屏模式</div>
-                    <div class="desc">词模式：空格直接上屏；句模式：支持连续输入整句</div>
-                </div>
-                <select id="commit_mode">
-                    <option value="single">词模式</option>
-                    <option value="double">句模式</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">开机自启</div>
-                    <div class="desc">系统启动时自动运行输入法</div>
-                </div>
+                <div class="info"><div class="title">开机自启</div><div class="desc">系统启动时自动运行输入法</div></div>
                 <label class="switch"><input type="checkbox" id="autostart"><span class="slider"></span></label>
-            </div>
-        </div>
-
-        <h2>搜索与匹配逻辑</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
-                <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
-                <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配 (如 zshang -> 早上)</div></div>
-                <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">防呆模式 (Anti-Typo)</div>
-                    <div class="desc">容忍常见的拼写错误，智能模式自动纠错，严格模式要求精准输入</div>
-                </div>
-                <select id="anti_typo_mode" class="select-input">
-                    <option value="None">关闭</option>
-                    <option value="Strict">严格模式</option>
-                    <option value="Smart">智能模式</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">编辑器预览模式</div>
-                    <div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div>
-                </div>
-                <select id="phantom_type" class="select-input">
-                    <option value="None">无预览 (None)</option>
-                    <option value="Hanzi">汉字预览 (Hanzi)</option>
-                    <option value="Pinyin">拼音预览 (Pinyin)</option>
-                </select>
-            </div>
-        </div>
-
-        <h2>按键功能开关</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
-                <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">键盘发音 (字母报声)</div><div class="desc">打字时发出对应字母的声音</div></div>
-                <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
-                <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
             </div>
         </div>
 
@@ -158,7 +40,7 @@
         <div class="card">
             <div class="setting-item">
                 <div class="info">
-                    <div class="title">数据目录 (Data Directory)</div>
+                    <div class="title">数据目录</div>
                     <div class="desc">词库、图标等资源的根目录。留空则使用程序自动探测的路径。</div>
                 </div>
                 <input type="text" id="files_data_dir" placeholder="例如: /usr/share/qianyan-ime">
@@ -168,31 +50,27 @@
         <h2>Linux 专属设置</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">内置候选栏</div>
-                    <div class="desc">在光标附近显示候选词窗口</div>
-                </div>
+                <div class="info"><div class="title">内置候选栏</div><div class="desc">在光标附近显示候选词窗口</div></div>
                 <label class="switch"><input type="checkbox" id="linux_show_slint_window"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">桌面通知</div>
-                    <div class="desc">通过系统通知显示候选词（可与内置候选栏同时开启）</div>
-                </div>
+                <div class="info"><div class="title">桌面通知</div><div class="desc">通过系统通知显示候选词（可与内置候选栏同时开启）</div></div>
                 <label class="switch"><input type="checkbox" id="linux_show_notification"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">内置候选栏固定位置</div>
-                    <div class="desc">开启后将候选栏固定在屏幕角落，解决某些桌面环境下无法跟随光标的问题</div>
-                </div>
+                <div class="info"><div class="title">编辑器预览模式</div><div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div></div>
+                <select id="phantom_type" class="select-input">
+                    <option value="None">无预览</option>
+                    <option value="Hanzi">汉字预览</option>
+                    <option value="Pinyin">拼音预览</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">内置候选栏固定位置</div><div class="desc">开启后将候选栏固定在屏幕角落，解决某些桌面环境下无法跟随光标的问题</div></div>
                 <label class="switch"><input type="checkbox" id="linux_fixed_position"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">固定显示角落</div>
-                    <div class="desc">选择内置候选栏固定显示时的方位</div>
-                </div>
+                <div class="info"><div class="title">固定显示角落</div><div class="desc">选择内置候选栏固定显示时的方位</div></div>
                 <select id="linux_corner">
                     <option value="top-left">左上角</option>
                     <option value="top-right">右上角</option>
@@ -201,21 +79,15 @@
                 </select>
             </div>
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">粘贴上屏方式</div>
-                    <div class="desc">选择将选中的文字发送到目标窗口的方式</div>
-                </div>
+                <div class="info"><div class="title">粘贴上屏方式</div><div class="desc">选择将选中的文字发送到目标窗口的方式</div></div>
                 <select id="linux_paste_method">
-                    <option value="shift_insert">Shift + Insert (传统兼容性好)</option>
-                    <option value="ctrl_v">Ctrl + V (通用)</option>
-                    <option value="ctrl_shift_v">Ctrl + Shift + V (终端常用)</option>
+                    <option value="shift_insert">Shift + Insert</option>
+                    <option value="ctrl_v">Ctrl + V</option>
+                    <option value="ctrl_shift_v">Ctrl + Shift + V</option>
                 </select>
             </div>
             <div class="setting-item">
-                <div class="info">
-                    <div class="title">键盘输入设备</div>
-                    <div class="desc">底层拦截所需的键盘设备路径，如 /dev/input/event4</div>
-                </div>
+                <div class="info"><div class="title">键盘输入设备</div><div class="desc">底层拦截所需的键盘设备路径，如 /dev/input/event4</div></div>
                 <input type="text" id="linux_device_path" placeholder="/dev/input/eventX">
             </div>
         </div>
@@ -226,14 +98,13 @@
         <button class="btn btn-danger" onclick="resetConfig('input,linux,files')">重置默认</button>
     </div>
 
-    <div id="toast" class="status-toast">已保存并应用</div>
+    <div id="toast" class="status-toast"></div>
 
     <script src="/static/js/settings.js"></script>
     <script>
         async function init() {
             await loadConfig();
-            
-            // 方案选择
+
             const pc = document.getElementById('enabled_profiles_container');
             pc.innerHTML = config.files.profiles.map(p => `
                 <div class="profile-chip ${config.input.enabled_profiles.includes(p.name)?'active':''}" onclick="toggleProfile('${p.name}', this)">
@@ -241,35 +112,12 @@
                 </div>
             `).join('');
 
-            bindInput('enable_traditional', 'input');
-            bindInput('enable_smart_aux', 'input');
-            bindInput('enable_fixed_first_candidate', 'input');
-            bindInput('show_candidates', 'appearance');
-            bindInput('show_tray', 'appearance');
-            bindInput('enable_word_discovery', 'input');
-            bindInput('enable_auto_reorder', 'input');
-            bindInput('segmentation_delimiters', 'input');
-            bindInput('commit_mode', 'input');
             bindInput('autostart', 'input');
-
-            // 搜索与匹配逻辑
-            bindInput('auto_commit_unique_full_match', 'input');
-            bindInput('enable_prefix_matching', 'input');
-            bindInput('enable_abbreviation_matching', 'input');
-            bindInput('anti_typo_mode', 'input');
-            bindInput('phantom_type', 'input');
-
-            // 按键功能开关
-            bindInput('enable_english_filter', 'input');
-            bindInput('enable_keyboard_voice', 'input');
-            bindInput('enable_number_selection', 'input');
-
-            // 路径设置
             bindInput('files_data_dir', 'files', 'data_dir');
-            
-            // Linux 专属
+
             bindInput('linux_show_slint_window', 'linux', 'show_slint_window');
             bindInput('linux_show_notification', 'linux', 'show_notification');
+            bindInput('phantom_type', 'input');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');
             bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');
@@ -282,7 +130,6 @@
                 config.input.enabled_profiles.push(name);
                 el.classList.add('active');
             } else {
-                // 至少保留一个启用的方案
                 if (config.input.enabled_profiles.length > 1) {
                     config.input.enabled_profiles.splice(idx, 1);
                     el.classList.remove('active');

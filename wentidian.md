@@ -18,4 +18,12 @@ slint 候选框 候选词与辅助码， 请用一样的样式，不然我看不
 
 
 
+网页设置优化，把关于拼音的设置，移动到一个网页里，现在的长韵母快速输入，搜索的与匹配逻辑的功能开关，
+除了这个编辑器预览模式，都放在拼音设置里，这个编辑器预览模式，放在linux专属设置里，还有这个输入与转换也是，
+除了开机自启，都要放在拼音设置里，然后是这个快捷键，也是应该放在拼音设置里
 
+这个控制中心， 可以分为三部分，设置部分，学习部分，额外功能部分：
+
+还有上午就是这个用户词典就是是哪本词典，我不太清楚，我看~/config/qianyan-ime/usrdata/chinese
+you sange json wenjian learned.json  ngrams.json  usage.json
+buzhidao naben zhidei shi yonghu cidian, 这个用户词典的功能怎么设计的
