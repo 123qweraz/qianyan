@@ -540,6 +540,27 @@ impl Config {
                 conf.enable_quick_finals = qf.enable_quick_finals;
                 conf.quick_finals = qf.quick_finals;
             }
+        } else {
+            // 向后兼容: 从旧的 input.json 迁移 quick_finals 字段
+            if let Some(v) = load_file("input") {
+                if let Some(arr) = v.get("quick_finals").and_then(|x| x.as_array()) {
+                    let mut qf = Vec::new();
+                    for item in arr {
+                        if let (Some(key), Some(ft)) = (
+                            item.get("key").and_then(|k| k.as_str()),
+                            item.get("final_text").and_then(|f| f.as_str()),
+                        ) {
+                            qf.push(QuickFinal { key: key.to_string(), final_text: ft.to_string() });
+                        }
+                    }
+                    if !qf.is_empty() {
+                        conf.quick_finals = qf;
+                        conf.enable_quick_finals = v.get("enable_quick_finals")
+                            .and_then(|x| x.as_bool())
+                            .unwrap_or(false);
+                    }
+                }
+            }
         }
 
         conf
