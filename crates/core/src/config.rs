@@ -541,23 +541,36 @@ impl Config {
                 conf.quick_finals = qf.quick_finals;
             }
         } else {
-            // 向后兼容: 从旧的 input.json 迁移 quick_finals 字段
-            if let Some(v) = load_file("input") {
-                if let Some(arr) = v.get("quick_finals").and_then(|x| x.as_array()) {
-                    let mut qf = Vec::new();
-                    for item in arr {
-                        if let (Some(key), Some(ft)) = (
-                            item.get("key").and_then(|k| k.as_str()),
-                            item.get("final_text").and_then(|f| f.as_str()),
-                        ) {
-                            qf.push(QuickFinal { key: key.to_string(), final_text: ft.to_string() });
+            // 向后兼容: 从旧的 input.json 迁移 quick_finals 字段并清理
+            if let Some(mut v) = load_file("input") {
+                if v.get("quick_finals").is_some() || v.get("enable_quick_finals").is_some() {
+                    if let Some(arr) = v.get("quick_finals").and_then(|x| x.as_array()) {
+                        let mut qf = Vec::new();
+                        for item in arr {
+                            if let (Some(key), Some(ft)) = (
+                                item.get("key").and_then(|k| k.as_str()),
+                                item.get("final_text").and_then(|f| f.as_str()),
+                            ) {
+                                qf.push(QuickFinal { key: key.to_string(), final_text: ft.to_string() });
+                            }
+                        }
+                        if !qf.is_empty() {
+                            conf.quick_finals = qf;
+                            conf.enable_quick_finals = v.get("enable_quick_finals")
+                                .and_then(|x| x.as_bool())
+                                .unwrap_or(false);
                         }
                     }
-                    if !qf.is_empty() {
-                        conf.quick_finals = qf;
-                        conf.enable_quick_finals = v.get("enable_quick_finals")
-                            .and_then(|x| x.as_bool())
-                            .unwrap_or(false);
+                    // 清理 input.json 中的过期字段
+                    if let Some(obj) = v.as_object_mut() {
+                        let had_old = obj.remove("quick_finals").is_some();
+                        let had_enable = obj.remove("enable_quick_finals").is_some();
+                        if had_old || had_enable {
+                            let p = config_dir.join("input.json");
+                            if let Ok(f) = std::fs::File::create(&p) {
+                                let _ = serde_json::to_writer_pretty(f, &v);
+                            }
+                        }
                     }
                 }
             }

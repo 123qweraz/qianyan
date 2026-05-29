@@ -1,0 +1,49 @@
+{
+  "enable_quick_finals": true,
+  "quick_finals": [
+    {
+      "key": "u",
+      "final_text": "uang"
+    },
+    {
+      "key": "i",
+      "final_text": "ing"
+    },
+    {
+      "key": "o",
+      "final_text": "ong"
+    },
+    {
+      "key": "p",
+      "final_text": "iong"
+    },
+    {
+      "key": "h",
+      "final_text": "ang"
+    },
+    {
+      "key": "j",
+      "final_text": "eng"
+    },
+    {
+      "key": "k",
+      "final_text": "uai"
+    },
+    {
+      "key": "l",
+      "final_text": "iang"
+    },
+    {
+      "key": "n",
+      "final_text": "iao"
+    },
+    {
+      "key": "m",
+      "final_text": "ian"
+    },
+    {
+      "key": "y",
+      "final_text": "uan"
+    }
+  ]
+}
