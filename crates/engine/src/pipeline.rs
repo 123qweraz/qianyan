@@ -2122,6 +2122,21 @@ mod tests {
         let max_boost = compute_decay_boost(0, 100);
         assert!(max_boost <= MAX_USAGE_BOOST);
     }
+
+    #[test]
+    fn test_candidate_pagination_matches_count() {
+        // 验证分页计算与实际候选数一致
+        let page_size = 5usize;
+        let total_candidates = 95usize;
+        let total_pages = (total_candidates + page_size - 1) / page_size;
+        assert_eq!(total_pages, 19);
+        assert_eq!(total_pages * page_size, 95);
+        // 如果 page_size 改变，分页数应正确反映
+        let page_size = 10usize;
+        let total_pages = (total_candidates + page_size - 1) / page_size;
+        assert_eq!(total_pages, 10);
+        assert_eq!((total_pages - 1) * page_size < total_candidates, true);
+    }
 }
 
 

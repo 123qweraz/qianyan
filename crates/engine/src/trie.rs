@@ -673,9 +673,10 @@ mod tests {
         }
 
         // There should be WAY more than 20 — at least 50+ characters for common pinyin "li"
-        assert!(count > 40,
-            "Only {} candidates for 'li' — expected >40! The result limit is still too aggressive.",
-            count);
+        // Note: source dicts have 121 total entries for "li" across chars/level2/level3,
+        // but the compiler deduplicates by word (same word in multiple levels), yielding 95 unique.
+        assert_eq!(count, 95,
+            "Expected exactly 95 unique candidates for 'li' (121 total across dict files - 26 duplicates)");
 
         // Also verify the trie itself has 80+ entries for "li"
         let trie = Trie::load(
@@ -685,7 +686,7 @@ mod tests {
         ).expect("Failed to load trie");
         let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
         println!("'li' exact trie entries: {}", trie_count);
-        assert!(trie_count > 50, "Only {} entries in trie for 'li'!", trie_count);
+        assert_eq!(trie_count, 95, "Expected exactly 95 entries in trie for 'li'!");
     }
 
     #[test]
