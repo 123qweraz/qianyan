@@ -303,6 +303,7 @@ pub struct Hotkeys {
     pub next_candidate: Vec<String>,
     pub enable_tab_toggle: bool,
     pub enable_ctrl_space_toggle: bool,
+    pub enable_ctrl_capslock_commit: bool,
     #[serde(default = "default_toggle_traditional")]
     pub toggle_traditional: Hotkey,
     #[serde(default = "default_word_to_char")]
@@ -917,6 +918,7 @@ impl Config {
                 next_candidate: vec!["Right".into()],
                 enable_tab_toggle: false,
                 enable_ctrl_space_toggle: false,
+                enable_ctrl_capslock_commit: true,
                 toggle_traditional: Hotkey {
                     key: "CapsLock+F".to_string(),
                     description: "繁简体切换".to_string(),

@@ -1,6 +1,7 @@
 use super::vkbd::Vkbd;
 use evdev::{Device, InputEventKind, Key};
 use qianyan_ime_core::{InputMethodHost, Rect};
+use qianyan_ime_engine::compositor::Compositor;
 use qianyan_ime_engine::keys::VirtualKey;
 use qianyan_ime_engine::pipeline::MAX_LOOKUP_LIMIT;
 use qianyan_ime_engine::processor::Action;
@@ -288,7 +289,7 @@ impl EvdevHost {
                         }
                         p.ctx.session.update_state();
 
-                        if let Some(commit_action) = p.check_auto_commit() {
+                        if let Some(commit_action) = Compositor::check_auto_commit(&mut p.ctx) {
                             drop(p);
                             if let Ok(vkbd) = v_bg.lock() {
                                 execute_action(&vkbd, &g_bg, commit_action, None);

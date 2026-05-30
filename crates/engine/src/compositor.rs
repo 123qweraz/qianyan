@@ -153,8 +153,8 @@ impl Compositor {
             && !ctx.session.candidates.is_empty()
             && ctx.session.candidates[0].match_level == 3
         {
-            let is_unique_exact =
-                ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
+            let is_unique_exact = ctx.session.candidates.len() == 1
+                || ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
             if is_unique_exact {
                 let word = ctx.session.candidates[0].text.clone();
                 return Some(commit_candidate(ctx, word, 0));
@@ -165,8 +165,8 @@ impl Compositor {
             && !ctx.session.candidates.is_empty()
             && ctx.session.candidates[0].match_level == 3
         {
-            let is_unique_exact =
-                ctx.session.candidates.len() == 1 || ctx.session.candidates[1].match_level != 3;
+            let is_unique_exact = ctx.session.candidates.len() == 1
+                || ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
             if is_unique_exact {
                 let word = ctx.session.candidates[0].text.clone();
                 return Some(commit_candidate(ctx, word, 0));

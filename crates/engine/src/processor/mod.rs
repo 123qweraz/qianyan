@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use crate::compositor::Compositor;
 use crate::keys::VirtualKey;
 use crate::{Command, EngineContext, InputEvent};
 use qianyan_ime_core::config::Config;
@@ -641,7 +642,7 @@ impl Processor {
                 });
         }
         self.ctx.session.update_state();
-        self.check_auto_commit()
+        Compositor::check_auto_commit(&mut self.ctx)
     }
 
     pub fn reset(&mut self) {
@@ -678,57 +679,6 @@ impl Processor {
         "Mixed".to_string()
     }
 
-    pub fn check_auto_commit(&mut self) -> Option<Action> {
-        if self.ctx.session.candidates.is_empty() || !self.ctx.session.has_dict_match {
-            return None;
-        }
-
-        let raw_input = &self.ctx.session.buffer;
-
-        if self.ctx.config.auto_commit_stroke()
-            && self.ctx.session_state.is_stroke_mode()
-            && !self.ctx.session.candidates.is_empty()
-            && self.ctx.session.candidates[0].match_level == 3
-        {
-            let is_unique_exact = self.ctx.session.candidates.len() == 1
-                || self.ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
-            if is_unique_exact {
-                let word = self.ctx.session.candidates[0].text.clone();
-                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-            }
-        }
-
-        if raw_input.contains(';')
-            && !self.ctx.session.candidates.is_empty()
-            && self.ctx.session.candidates[0].match_level == 3
-        {
-            let is_unique_exact = self.ctx.session.candidates.len() == 1
-                || self.ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
-            if is_unique_exact {
-                let word = self.ctx.session.candidates[0].text.clone();
-                return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-            }
-        }
-
-        if !self.ctx.config.auto_commit_unique_full_match()
-            || self.ctx.session.candidates.len() != 1
-        {
-            return None;
-        }
-
-        let has_longer = self
-            .ctx
-            .session_state
-            .active_profiles
-            .iter()
-            .any(|p| self.ctx.engine.has_longer_match(p, raw_input));
-        if !has_longer {
-            let word = self.ctx.session.candidates[0].text.clone();
-            return Some(commands::commit_candidate(&mut self.ctx, word, 0));
-        }
-        None
-    }
-
     fn handle_global_hotkey(
         &mut self,
         key: VirtualKey,
@@ -745,6 +695,24 @@ impl Processor {
                 .enable_ctrl_space_toggle
         {
             self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            self.ctx.session.clear_composing();
+            return Some(Action::Consume);
+        }
+
+        if key == VirtualKey::CapsLock
+            && ctrl_pressed
+            && self
+                .ctx
+                .config
+                .master_config
+                .hotkeys
+                .enable_ctrl_capslock_commit
+        {
+            self.ctx.session_state.chinese_enabled = false;
+            if !self.ctx.session.buffer.is_empty() {
+                let out = Arc::from(self.ctx.session.buffer.as_str());
+                return Some(commands::commit_candidate(&mut self.ctx, out, 99));
+            }
             return Some(Action::Consume);
         }
 

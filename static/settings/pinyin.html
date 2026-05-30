@@ -150,6 +150,10 @@
                 <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
                 <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
             </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用 Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式（和 Ctrl+Space 不同，会直接提交内容）</div></div>
+                <label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label>
+            </div>
         </div>
     </div>
 
@@ -184,6 +188,7 @@
             bindInput('enable_keyboard_voice', 'input');
             bindInput('enable_number_selection', 'input');
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
+            bindInput('enable_ctrl_capslock_commit', 'hotkeys');
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');

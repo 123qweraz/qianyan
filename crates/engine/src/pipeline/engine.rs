@@ -426,9 +426,7 @@ impl SearchEngine {
             cache.0.clear();
             cache.1.clear();
         }
-        if let Ok(mut cache) = self.trie_cache.write() {
-            cache.clear();
-        }
+        // 注意：不清除 trie_cache。词库文件是只读的，运行时不改变，不需要重新加载。
     }
 
     pub fn prewarm_profile(&self, profile: &str) {

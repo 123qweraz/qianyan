@@ -1,8 +1,9 @@
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 
@@ -35,6 +36,7 @@ impl AsRef<[u8]> for TrieData {
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
+    word_index: Arc<OnceLock<HashSet<Arc<str>>>>,
 }
 
 impl Trie {
@@ -61,6 +63,7 @@ impl Trie {
         Ok(Self {
             index,
             data: data_data,
+            word_index: Arc::new(OnceLock::new()),
         })
     }
 
@@ -130,20 +133,22 @@ impl Trie {
     }
 
     /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
+    /// 使用 word_index 实现 O(1) 查找（首次调用时惰性构建索引，之后 O(1)）
     pub fn has_word_in_dict(&self, word: &str) -> bool {
+        let index = self.word_index.get_or_init(|| self.build_word_index());
+        index.contains(word)
+    }
+
+    /// 构建 word_index：遍历整个 FST，将每个数据块中的 word 收集到 HashSet 中
+    fn build_word_index(&self) -> HashSet<Arc<str>> {
+        let mut words = HashSet::new();
         let mut stream = self.index.stream();
         while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
-            let mut found = false;
             self.read_block(offset as usize, |tr| {
-                if tr.word == word {
-                    found = true;
-                }
+                words.insert(Arc::from(tr.word));
             });
-            if found {
-                return true;
-            }
         }
-        false
+        words
     }
 
     pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {
