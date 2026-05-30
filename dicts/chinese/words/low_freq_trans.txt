@@ -2448,3 +2448,8 @@
 搬出来: Move out
 搬出去: Move away
 班船: Ferry
+板床: cot
+颁赐: confer
+半大: semi-large
+半打: half dozen
+办大学: establish a university
