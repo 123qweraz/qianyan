@@ -1,0 +1,94 @@
+{
+  "layouts": {
+    "chinese": {
+      "mappings": {
+        "!": {
+          "description": "中文叹号",
+          "shift": "!",
+          "tap": "！"
+        },
+        ",": {
+          "description": "中文逗号",
+          "long_press": "、",
+          "shift": "《",
+          "tap": "，"
+        },
+        ".": {
+          "description": "中文句号",
+          "double_tap": "...",
+          "long_press": "·",
+          "shift": "》",
+          "tap": "。"
+        },
+        ";": {
+          "description": "中文分号",
+          "double_tap": ";",
+          "long_press": "……",
+          "shift": "：",
+          "tap": "；"
+        },
+        "?": {
+          "description": "中文问号",
+          "shift": "?",
+          "tap": "？"
+        }
+      },
+      "name": "中文默认布局"
+    },
+    "english": {
+      "mappings": {
+        ",": {
+          "description": "英文逗号",
+          "shift": "<",
+          "tap": ","
+        },
+        ".": {
+          "description": "英文句号",
+          "shift": ">",
+          "tap": "."
+        },
+        ";": {
+          "description": "英文分号",
+          "shift": ":",
+          "tap": ";"
+        }
+      },
+      "name": "English Default Layout"
+    },
+    "japanese": {
+      "mappings": {
+        ",": {
+          "description": "日文顿号",
+          "shift": "<",
+          "tap": "、"
+        },
+        ".": {
+          "description": "日文句号",
+          "long_press": "・",
+          "shift": ">",
+          "tap": "。"
+        },
+        "/": {
+          "description": "日文中点",
+          "shift": "?",
+          "tap": "・"
+        },
+        "[": {
+          "description": "日文左引号",
+          "shift": "{",
+          "tap": "「"
+        },
+        "]": {
+          "description": "日文右引号",
+          "shift": "}",
+          "tap": "」"
+        }
+      },
+      "name": "日本語デフォルト配列"
+    },
+    "stroke": {
+      "mappings": {},
+      "name": "笔画默认布局"
+    }
+  }
+}

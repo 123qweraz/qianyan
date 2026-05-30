@@ -1,0 +1,21 @@
+{
+  "input": {
+    "enable_fuzzy_pinyin": false,
+    "fuzzy_config": {
+      "an_ang": false,
+      "c_ch": true,
+      "custom_mappings": [],
+      "en_eng": false,
+      "f_h": false,
+      "fuzzy_page_threshold": 5,
+      "ian_iang": false,
+      "in_ing": false,
+      "n_l": false,
+      "r_l": false,
+      "s_sh": true,
+      "u_v": false,
+      "uan_uang": false,
+      "z_zh": true
+    }
+  }
+}

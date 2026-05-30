@@ -1,49 +1,49 @@
 {
-  "enable_quick_finals": true,
+  "enable_quick_finals": false,
   "quick_finals": [
     {
-      "key": "u",
-      "final_text": "uang"
+      "final_text": "uang",
+      "key": "u"
     },
     {
-      "key": "i",
-      "final_text": "ing"
+      "final_text": "ing",
+      "key": "i"
     },
     {
-      "key": "o",
-      "final_text": "ong"
+      "final_text": "ong",
+      "key": "o"
     },
     {
-      "key": "p",
-      "final_text": "iong"
+      "final_text": "iong",
+      "key": "p"
     },
     {
-      "key": "h",
-      "final_text": "ang"
+      "final_text": "ang",
+      "key": "h"
     },
     {
-      "key": "j",
-      "final_text": "eng"
+      "final_text": "eng",
+      "key": "j"
     },
     {
-      "key": "k",
-      "final_text": "uai"
+      "final_text": "uai",
+      "key": "k"
     },
     {
-      "key": "l",
-      "final_text": "iang"
+      "final_text": "iang",
+      "key": "l"
     },
     {
-      "key": "n",
-      "final_text": "iao"
+      "final_text": "iao",
+      "key": "n"
     },
     {
-      "key": "m",
-      "final_text": "ian"
+      "final_text": "ian",
+      "key": "m"
     },
     {
-      "key": "y",
-      "final_text": "uan"
+      "final_text": "uan",
+      "key": "y"
     }
   ]
 }

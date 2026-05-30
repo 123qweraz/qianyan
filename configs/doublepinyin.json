@@ -1,0 +1,32 @@
+{
+  "input": {
+    "double_pinyin_scheme": {
+      "initials": {
+        "i": "ch",
+        "u": "sh",
+        "v": "zh"
+      },
+      "name": "小鹤双拼",
+      "rimes": {
+        "b": "in",
+        "c": "ao",
+        "d": "ai",
+        "f": "en",
+        "j": "an",
+        "k": "ao",
+        "l": "iang",
+        "m": "ian",
+        "p": "ie",
+        "q": "iu",
+        "r": "uan",
+        "s": "ong",
+        "t": "ue",
+        "w": "ei",
+        "x": "ia",
+        "y": "un",
+        "z": "ou"
+      }
+    },
+    "enable_double_pinyin": false
+  }
+}

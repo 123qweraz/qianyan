@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::sync::OnceLock;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -480,145 +481,177 @@ impl Config {
         root.join("configs")
     }
 
+    // ─── Page-based JSON file helpers ───
+
+    /// 定义每个页面 JSON 文件归属哪些顶级字段和 input/appearance 子字段。
+    /// (文件名, 顶级字段, input子字段, appearance子字段)
+    const PAGE_FILES: &'static [(
+        &'static str,
+        &'static [&'static str],
+        &'static [&'static str],
+        &'static [&'static str],
+    )] = &[
+        ("system", &["files", "linux"], &["autostart", "enabled_profiles", "phantom_type"], &["show_candidates", "show_tray"]),
+        ("fuzzy", &[], &["enable_fuzzy_pinyin", "fuzzy_config"], &[]),
+        ("doublepinyin", &[], &["enable_double_pinyin", "double_pinyin_scheme"], &[]),
+        ("punctuation", &["punctuations"], &["enable_punctuation_long_press", "punctuation_long_press_mappings"], &[]),
+    ];
+
+    /// 深合并：将 patch 合并到 base 中（递归合并对象）
+    fn deep_merge(base: &mut Value, patch: Value) {
+        match (base, patch) {
+            (Value::Object(base_map), Value::Object(patch_map)) => {
+                for (k, v) in patch_map {
+                    if let Some(existing) = base_map.get_mut(&k) {
+                        if existing.is_object() && v.is_object() {
+                            Self::deep_merge(existing, v);
+                        } else {
+                            base_map.insert(k, v);
+                        }
+                    } else {
+                        base_map.insert(k, v);
+                    }
+                }
+            }
+            (base, patch) => *base = patch,
+        }
+    }
+
+    /// 从 Value 中提取指定键的子集（用于 save 时拆分）
+    fn pick_keys(value: &Value, keys: &[&str]) -> Value {
+        match value {
+            Value::Object(map) => {
+                let mut out = serde_json::Map::new();
+                for k in keys {
+                    if let Some(v) = map.get(*k) {
+                        out.insert(k.to_string(), v.clone());
+                    }
+                }
+                Value::Object(out)
+            }
+            _ => Value::Null,
+        }
+    }
+
+    /// 从 Value 中删除指定键
+    fn remove_keys(value: &mut Value, keys: &[&str]) {
+        if let Value::Object(map) = value {
+            for k in keys {
+                map.remove(*k);
+            }
+        }
+    }
+
+    /// 加载单个 JSON 文件到 Value
+    fn load_json(path: &std::path::Path) -> Option<Value> {
+        std::fs::File::open(path).ok()
+            .and_then(|f| serde_json::from_reader(std::io::BufReader::new(f)).ok())
+    }
+
+    /// 保存单个 JSON 文件
+    fn save_json(path: &std::path::Path, value: &Value) -> Result<(), Box<dyn std::error::Error>> {
+        let f = std::fs::File::create(path)?;
+        serde_json::to_writer_pretty(f, value)?;
+        Ok(())
+    }
+
     pub fn load() -> Self {
         let config_dir = Self::get_config_dir();
         if !config_dir.exists() {
             let _ = std::fs::create_dir_all(&config_dir);
         }
 
-        let mut conf = Self::default_config();
+        // 从默认值开始，然后被页面文件覆盖
+        let mut merged = serde_json::to_value(Self::default_config())
+            .unwrap_or_else(|_| Value::Null);
 
-        let load_file = |name: &str| -> Option<serde_json::Value> {
-            let p = config_dir.join(format!("{}.json", name));
-            if let Ok(f) = std::fs::File::open(p) {
-                serde_json::from_reader(std::io::BufReader::new(f)).ok()
-            } else {
-                None
-            }
-        };
-
-        if let Some(v) = load_file("appearance") {
-            if let Ok(a) = serde_json::from_value(v) {
-                conf.appearance = a;
-            }
-        }
-        if let Some(v) = load_file("input") {
-            if let Ok(i) = serde_json::from_value(v) {
-                conf.input = i;
-            }
-        }
-        if let Some(v) = load_file("hotkeys") {
-            if let Ok(h) = serde_json::from_value(v) {
-                conf.hotkeys = h;
-            }
-        }
-        if let Some(v) = load_file("files") {
-            if let Ok(f) = serde_json::from_value(v) {
-                conf.files = f;
-            }
-        }
-        #[cfg(target_os = "linux")]
-        if let Some(v) = load_file("linux") {
-            if let Ok(l) = serde_json::from_value(v) {
-                conf.linux = l;
+        // 加载新格式页面文件
+        // PAGE_FILES 中的子字段归属是 save 方向用的；load 时全文件合并即可
+        for &(file, ..) in Self::PAGE_FILES {
+            let path = config_dir.join(format!("{}.json", file));
+            if let Some(page_val) = Self::load_json(&path) {
+                Self::deep_merge(&mut merged, page_val);
             }
         }
 
-        if let Some(v) = load_file("quickfinals") {
-            if let Ok(qf) = serde_json::from_value::<QuickFinalsFile>(v) {
-                conf.enable_quick_finals = qf.enable_quick_finals;
-                conf.quick_finals = qf.quick_finals;
+        // pinyin.json —— 包含 hotkeys + input（减去其他页的子字段）
+        {
+            let path = config_dir.join("pinyin.json");
+            if let Some(val) = Self::load_json(&path) {
+                Self::deep_merge(&mut merged, val);
             }
-        } else {
-            // 向后兼容: 从旧的 input.json 迁移 quick_finals 字段并清理
-            if let Some(mut v) = load_file("input") {
-                if v.get("quick_finals").is_some() || v.get("enable_quick_finals").is_some() {
-                    if let Some(arr) = v.get("quick_finals").and_then(|x| x.as_array()) {
-                        let mut qf = Vec::new();
-                        for item in arr {
-                            if let (Some(key), Some(ft)) = (
-                                item.get("key").and_then(|k| k.as_str()),
-                                item.get("final_text").and_then(|f| f.as_str()),
-                            ) {
-                                qf.push(QuickFinal { key: key.to_string(), final_text: ft.to_string() });
-                            }
-                        }
-                        if !qf.is_empty() {
-                            conf.quick_finals = qf;
-                            conf.enable_quick_finals = v.get("enable_quick_finals")
-                                .and_then(|x| x.as_bool())
-                                .unwrap_or(false);
-                        }
-                    }
-                    // 清理 input.json 中的过期字段
-                    if let Some(obj) = v.as_object_mut() {
-                        let had_old = obj.remove("quick_finals").is_some();
-                        let had_enable = obj.remove("enable_quick_finals").is_some();
-                        if had_old || had_enable {
-                            let p = config_dir.join("input.json");
-                            if let Ok(f) = std::fs::File::create(&p) {
-                                let _ = serde_json::to_writer_pretty(f, &v);
-                            }
-                        }
+        }
+
+        // appearance.json —— 包含 appearance（减去 system 页的子字段）
+        {
+            let path = config_dir.join("appearance.json");
+            if let Some(val) = Self::load_json(&path) {
+                Self::deep_merge(&mut merged, val);
+            }
+        }
+
+        // quickfinals.json —— 包装格式 { enable_quick_finals, quick_finals }
+        {
+            let path = config_dir.join("quickfinals.json");
+            if let Some(val) = Self::load_json(&path) {
+                if let Ok(qf) = serde_json::from_value::<QuickFinalsFile>(val) {
+                    if let Value::Object(ref mut map) = merged {
+                        map.insert("enable_quick_finals".into(), Value::Bool(qf.enable_quick_finals));
+                        map.insert("quick_finals".into(), serde_json::to_value(qf.quick_finals).unwrap_or_default());
                     }
                 }
             }
         }
 
-        // 加载 punctuations.json，否则从旧 input.json 迁移
-        if let Some(v) = load_file("punctuations") {
-            if let Ok(p) = serde_json::from_value(v) {
-                conf.punctuations = p;
+        // layout.json —— 包含 layouts
+        {
+            let path = config_dir.join("layout.json");
+            if let Some(val) = Self::load_json(&path) {
+                Self::deep_merge(&mut merged, val);
             }
-        } else if let Some(v) = load_file("input") {
-            if let Some(p) = v.get("punctuations") {
-                conf.punctuations = serde_json::from_value(p.clone()).unwrap_or_default();
-                if let Some(obj) = v.as_object() {
-                    let mut cleaned = obj.clone();
-                    cleaned.remove("punctuations");
-                    let p = config_dir.join("input.json");
-                    if let Ok(f) = std::fs::File::create(&p) {
-                        let _ = serde_json::to_writer_pretty(f, &cleaned);
-                    }
+        }
+
+        // ── 向后兼容：尝试加载旧格式文件 ──
+        for old in &["input.json"] {
+            let path = config_dir.join(old);
+            if path.exists() {
+                if let Some(val) = Self::load_json(&path) {
+                    Self::deep_merge(&mut merged, val);
+                }
+            }
+        }
+        // 旧文件 system 相关（已合并进 system.json）
+        for old in &["files.json", "linux.json"] {
+            let path = config_dir.join(old);
+            if path.exists() {
+                if let Some(val) = Self::load_json(&path) {
+                    Self::deep_merge(&mut merged, val);
+                }
+            }
+        }
+        // 旧 layouts.json（已更名为 layout.json）
+        {
+            let path = config_dir.join("layouts.json");
+            if path.exists() {
+                if let Some(val) = Self::load_json(&path) {
+                    Self::deep_merge(&mut merged, val);
+                }
+            }
+        }
+        // 旧 hotkeys.json
+        {
+            let path = config_dir.join("hotkeys.json");
+            if path.exists() {
+                if let Some(val) = Self::load_json(&path) {
+                    Self::deep_merge(&mut merged, val);
                 }
             }
         }
 
-        // 加载 layouts.json，否则从旧 input.json 迁移
-        if let Some(v) = load_file("layouts") {
-            if let Ok(l) = serde_json::from_value(v) {
-                conf.layouts = l;
-            }
-        } else if let Some(v) = load_file("input") {
-            if let Some(l) = v.get("layouts") {
-                conf.layouts = serde_json::from_value(l.clone()).unwrap_or_default();
-                if let Some(obj) = v.as_object() {
-                    let mut cleaned = obj.clone();
-                    cleaned.remove("layouts");
-                    let p = config_dir.join("input.json");
-                    if let Ok(f) = std::fs::File::create(&p) {
-                        let _ = serde_json::to_writer_pretty(f, &cleaned);
-                    }
-                }
-            }
-        }
-
-        // 清理旧版 input.json 中迁移走的过期字段
-        if let Some(v) = load_file("input") {
-            if let Some(obj) = v.as_object() {
-                let stale = ["clipboard_delay_ms", "punctuation_long_press_mappings", "profile_keys"];
-                if stale.iter().any(|k| obj.contains_key(*k)) {
-                    let mut cleaned = obj.clone();
-                    for k in &stale { cleaned.remove(*k); }
-                    let p = config_dir.join("input.json");
-                    if let Ok(f) = std::fs::File::create(&p) {
-                        let _ = serde_json::to_writer_pretty(f, &cleaned);
-                    }
-                }
-            }
-        }
-
-        conf
+        serde_json::from_value(merged).unwrap_or_else(|e| {
+            log::warn!("Config::load: 配置合并反序列化失败: {:?}，使用默认配置", e);
+            Self::default_config()
+        })
     }
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -631,56 +664,96 @@ impl Config {
             std::fs::create_dir_all(&config_dir)?;
         }
 
-        {
-            let p = config_dir.join("appearance.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.appearance)?;
+        let full = serde_json::to_value(self)?;
+
+        // 保存各页面文件
+        for &(file, top_keys, input_keys, appear_keys) in Self::PAGE_FILES {
+            let mut page = Value::Object(serde_json::Map::new());
+
+            // 顶级键
+            for k in top_keys {
+                if let Some(v) = full.get(*k) {
+                    page.as_object_mut().unwrap().insert(k.to_string(), v.clone());
+                }
+            }
+
+            // input 子字段
+            if !input_keys.is_empty() {
+                if let Some(input_val) = full.get("input") {
+                    let picked = Self::pick_keys(input_val, input_keys);
+                    if picked != Value::Object(serde_json::Map::new()) {
+                        page.as_object_mut().unwrap().insert("input".into(), picked);
+                    }
+                }
+            }
+
+            // appearance 子字段
+            if !appear_keys.is_empty() {
+                if let Some(appear_val) = full.get("appearance") {
+                    let picked = Self::pick_keys(appear_val, appear_keys);
+                    if picked != Value::Object(serde_json::Map::new()) {
+                        page.as_object_mut().unwrap().insert("appearance".into(), picked);
+                    }
+                }
+            }
+
+            Self::save_json(&config_dir.join(format!("{}.json", file)), &page)?;
         }
 
+        // pinyin.json: hotkeys + input（减去其他页拥有字段）
         {
-            let p = config_dir.join("input.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.input)?;
+            let mut page = Value::Object(serde_json::Map::new());
+            if let Some(hotkeys) = full.get("hotkeys") {
+                page.as_object_mut().unwrap().insert("hotkeys".into(), hotkeys.clone());
+            }
+            if let Some(input_val) = full.get("input") {
+                let mut input_owned = input_val.clone();
+                // 移除其他页拥有的 input 子字段
+                for &(_, _, input_keys, _) in Self::PAGE_FILES {
+                    Self::remove_keys(&mut input_owned, input_keys);
+                }
+                page.as_object_mut().unwrap().insert("input".into(), input_owned);
+            }
+            Self::save_json(&config_dir.join("pinyin.json"), &page)?;
         }
 
+        // appearance.json: appearance（减去 system 页拥有字段）
         {
-            let p = config_dir.join("hotkeys.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.hotkeys)?;
+            let mut page = Value::Object(serde_json::Map::new());
+            if let Some(appear_val) = full.get("appearance") {
+                let mut appear_owned = appear_val.clone();
+                for &(_, _, _, appear_keys) in Self::PAGE_FILES {
+                    Self::remove_keys(&mut appear_owned, appear_keys);
+                }
+                page.as_object_mut().unwrap().insert("appearance".into(), appear_owned);
+            }
+            Self::save_json(&config_dir.join("appearance.json"), &page)?;
         }
 
+        // quickfinals.json: 包装格式
         {
-            let p = config_dir.join("files.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.files)?;
-        }
-
-        #[cfg(target_os = "linux")]
-        {
-            let p = config_dir.join("linux.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.linux)?;
-        }
-
-        {
-            let p = config_dir.join("quickfinals.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &QuickFinalsFile {
+            let qf = QuickFinalsFile {
                 enable_quick_finals: self.enable_quick_finals,
                 quick_finals: self.quick_finals.clone(),
-            })?;
+            };
+            Self::save_json(&config_dir.join("quickfinals.json"), &serde_json::to_value(&qf)?)?;
         }
 
+        // layout.json: 只包含 layouts
         {
-            let p = config_dir.join("punctuations.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.punctuations)?;
+            let mut page = Value::Object(serde_json::Map::new());
+            if let Some(layouts) = full.get("layouts") {
+                page.as_object_mut().unwrap().insert("layouts".into(), layouts.clone());
+            }
+            Self::save_json(&config_dir.join("layout.json"), &page)?;
         }
 
-        {
-            let p = config_dir.join("layouts.json");
-            let f = std::fs::File::create(&p)?;
-            serde_json::to_writer_pretty(f, &self.layouts)?;
+        // ── 清理旧格式文件，避免混淆 ──
+        for old in &["input.json", "files.json", "linux.json", "hotkeys.json", "layouts.json", "punctuations.json"] {
+            let path = config_dir.join(old);
+            if path.exists() {
+                let _ = std::fs::remove_file(&path);
+            }
         }
 
         Ok(())

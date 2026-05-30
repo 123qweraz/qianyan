@@ -1,0 +1,46 @@
+{
+  "appearance": {
+    "show_candidates": true,
+    "show_tray": true
+  },
+  "files": {
+    "data_dir": null,
+    "profiles": [
+      {
+        "name": "chinese",
+        "path": "data/chinese/trie"
+      },
+      {
+        "name": "english",
+        "path": "data/english/trie"
+      },
+      {
+        "name": "japanese",
+        "path": "data/japanese/trie"
+      },
+      {
+        "name": "stroke",
+        "path": "data/stroke/trie"
+      }
+    ],
+    "punctuation_file": "dicts/chinese/punctuation.json"
+  },
+  "input": {
+    "autostart": true,
+    "enabled_profiles": [
+      "chinese"
+    ],
+    "phantom_type": "Pinyin"
+  },
+  "linux": {
+    "clipboard_delay_ms": 50,
+    "corner": "bottom-right",
+    "device_path": "/dev/input/event4",
+    "fixed_position": true,
+    "fixed_x": 40,
+    "fixed_y": 40,
+    "paste_method": "shift_insert",
+    "show_notification": false,
+    "show_slint_window": true
+  }
+}
