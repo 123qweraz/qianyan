@@ -30,10 +30,6 @@
         <h2>输入与转换</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">智能辅码过滤</div><div class="desc">输入完整拼音后直接追加字母可触发辅码过滤</div></div>
-                <label class="switch"><input type="checkbox" id="enable_smart_aux"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
                 <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
                 <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
             </div>
@@ -174,7 +170,6 @@
 
         async function initForm() {
             bindInput('enable_traditional', 'input');
-            bindInput('enable_smart_aux', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_auto_reorder', 'input');

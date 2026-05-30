@@ -54,37 +54,6 @@ mod tests {
     use std::sync::Arc;
 
     #[test]
-    fn test_detect_smart_aux_logic() {
-        let syllables: HashSet<String> = ["ni", "hao", "wo", "hen"].iter().map(|s| s.to_string()).collect();
-        let mode = qianyan_ime_core::config::SmartAuxMode::Greedy;
-        
-        // 单个音节 + 辅码
-        assert_eq!(detect_smart_aux("nih", &syllables, mode), Some(("ni".to_string(), "h".to_string())));
-        
-        // 多个音节 + 辅码
-        assert_eq!(detect_smart_aux("nihaoh", &syllables, mode), Some(("nihao".to_string(), "h".to_string())));
-        
-        // 整体是音节，不应触发
-        assert_eq!(detect_smart_aux("nihao", &syllables, mode), None);
-        
-        // 无效音节序列
-        assert_eq!(detect_smart_aux("xyz", &syllables, mode), None);
-    }
-
-    #[test]
-    fn test_detect_smart_aux_modes() {
-        let syllables: HashSet<String> = ["na", "nan", "hai", "nanhai", "ha"].iter().map(|s| s.to_string()).collect();
-        
-        // Greedy 模式：取最长拼音
-        let greedy = qianyan_ime_core::config::SmartAuxMode::Greedy;
-        assert_eq!(detect_smart_aux("nanhaix", &syllables, greedy), Some(("nanhai".to_string(), "x".to_string())));
-        
-        // Minimal 模式：取最短拼音
-        let minimal = qianyan_ime_core::config::SmartAuxMode::Minimal;
-        assert_eq!(detect_smart_aux("nanhaix", &syllables, minimal), Some(("na".to_string(), "nhaix".to_string())));
-    }
-
-    #[test]
     fn test_default_segmentor_basic() {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao", "zhong", "guo"]

@@ -592,41 +592,6 @@ impl Processor {
             self.ctx.session.has_dict_match = !self.ctx.session.candidates.is_empty();
         }
 
-        // 智能辅码：输入完整拼音后直接追加字母自动触发辅码过滤
-        if self.ctx.config.master_config.input.enable_smart_aux
-            && self.ctx.session.filter_mode == FilterMode::None
-        {
-            let buffer = &self.ctx.session.buffer;
-            if let Some((pinyin_base, aux_chars)) = crate::pipeline::detect_smart_aux(
-                buffer,
-                &self.ctx.syllables,
-                self.ctx.config.master_config.input.smart_aux_mode,
-            ) {
-                let aux_query = crate::pipeline::SearchQuery {
-                    buffer: &pinyin_base,
-                    profile: &current_profile,
-                    syllables: &self.ctx.syllables,
-                    config: &self.ctx.config.master_config,
-                    limit,
-                    filter_mode: FilterMode::Global,
-                    aux_filter: &aux_chars,
-                    context: last_word,
-                    fuzzy_enabled: self.ctx.session.fuzzy_activated,
-                };
-                let (aux_results, _) = self.ctx.engine.search(aux_query);
-                if !aux_results.is_empty() {
-                    let mut merged = aux_results;
-                    for c in &self.ctx.session.candidates {
-                        if !merged.iter().any(|r| r.text == c.text) {
-                            merged.push(c.clone());
-                        }
-                    }
-                    self.ctx.session.candidates = merged;
-                    self.ctx.session.has_dict_match = true;
-                }
-            }
-        }
-
         if self.ctx.session.candidates.len() == 1
             && self.ctx.session.filter_mode == FilterMode::Global
         {
