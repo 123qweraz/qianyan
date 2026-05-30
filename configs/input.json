@@ -49,7 +49,7 @@
   "enable_number_selection": true,
   "enable_prefix_matching": true,
   "enable_punctuation_long_press": true,
-  "enable_smart_aux": false,
+  "enable_smart_aux": true,
   "enable_smart_backspace": false,
   "enable_traditional": false,
   "enable_word_discovery": true,

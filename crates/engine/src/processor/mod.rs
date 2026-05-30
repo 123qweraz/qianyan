@@ -194,6 +194,16 @@ impl Processor {
             return Action::Notify(mode.into(), format!("切換至 {} 模式", mode));
         }
 
+        // 跟踪 Tab 键状态，用于以词定字（Tab + 键）
+        if key == VirtualKey::Tab {
+            if is_press {
+                self.ctx.session_state.tab_down = true;
+            }
+            if is_release {
+                self.ctx.session_state.tab_down = false;
+            }
+        }
+
         if is_press {
             if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, shift_pressed) {
                 return action;

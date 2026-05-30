@@ -11,6 +11,8 @@ pub struct SessionState {
     pub caps_lock_enabled: bool,
     pub capslock_down: bool,
     pub capslock_combo_active: bool,
+    /// Tab 键是否被按下，用于以词定字（Tab + 键）
+    pub tab_down: bool,
     /// 最后一次上屏的 (拼音, 词)，用于打错检测（同拼音换词则衰减旧词）
     last_committed: Option<(String, String)>,
     last_committed_time: Instant,
@@ -28,6 +30,7 @@ impl SessionState {
             caps_lock_enabled: false,
             capslock_down: false,
             capslock_combo_active: false,
+            tab_down: false,
             last_committed: None,
             last_committed_time: Instant::now(),
         }

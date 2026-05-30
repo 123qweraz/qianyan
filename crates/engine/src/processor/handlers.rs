@@ -281,7 +281,7 @@ pub fn handle_composing(
     }
 
     if has_cand && ctx.session.has_dict_match {
-        if shift_pressed {
+        if ctx.session_state.tab_down {
             for (vk, pos) in ctx.config.word_to_char_shift_keys() {
                 if vk == key {
                     return commands::execute_command(ctx, Command::SelectChar(pos));
