@@ -1,7 +1,6 @@
 {
   "appearance": {
     "auto_pronounce": true,
-    "aux_mode": "English",
     "candidate_anchor": "bottom",
     "candidate_layout": "horizontal",
     "candidate_text": {
@@ -37,13 +36,9 @@
       "font_weight": 400
     },
     "row_spacing": 8.0,
-    "show_english_aux": true,
-    "show_english_translation": false,
     "show_learning_english_hint": true,
     "show_learning_stroke_hint": true,
     "show_status_bar": false,
-    "show_stroke_aux": true,
-    "show_tone_hint": true,
     "theme_mode": "auto",
     "window_bg_color": "#ffffff",
     "window_border_color": "rgba(0, 0, 0, 0.1)",

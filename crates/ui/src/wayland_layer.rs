@@ -734,12 +734,6 @@ impl WaylandLayerDisplay {
         };
 
         self.candidate_window
-            .set_show_english_aux(config.appearance.show_english_aux);
-        self.candidate_window
-            .set_show_stroke_aux(config.appearance.show_stroke_aux);
-        self.candidate_window
-            .set_show_translation(config.appearance.show_english_translation);
-        self.candidate_window
             .set_is_horizontal(config.appearance.candidate_layout == "horizontal");
 
         self.candidate_window

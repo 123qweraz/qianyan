@@ -12,9 +12,6 @@ component CandidateItem inherits Rectangle {
     in property <string> english_aux;
     in property <string> stroke_aux;
     in property <bool> selected;
-    in property <bool> show_english_aux;
-    in property <bool> show_stroke_aux;
-    in property <bool> show_translation;
     in property <bool> is_horizontal;
     
     in property <color> accent_color;
@@ -55,16 +52,8 @@ component CandidateItem inherits Rectangle {
             font-weight: is_fuzzy ? 400 : font_weight;
         }
         
-        if show_stroke_aux && stroke_aux != "" : Text {
-            text: stroke_aux;
-            color: selected ? highlight_text_color : text_color;
-            font-size: font_size;
-            font-family: font_family;
-            vertical-alignment: center;
-        }
-
-        // 只要开启了显示翻译或者辅助码开关，且内容不为空，就显示
-        if (show_english_aux || show_translation) && english_aux != "" : Text {
+        // 辅助码/音调内容由引擎根据 display_mode 生成，不为空即显示
+        if english_aux != "" : Text {
             text: english_aux;
             color: selected ? highlight_text_color : text_color;
             font-size: font_size;
@@ -83,9 +72,6 @@ export component CandidateWindow inherits Window {
     in property <int> total_pages: 0;
     in property <bool> is_visible: false;
     in property <bool> is_horizontal: true;
-    in property <bool> show_english_aux: true;
-    in property <bool> show_stroke_aux: true;
-    in property <bool> show_translation: true; // 新增
     
     in property <length> pinyin_font_size: 14px;
     in property <string> pinyin_font_family: "";
@@ -161,9 +147,6 @@ export component CandidateWindow inherits Window {
                     stroke_aux: cand.stroke_aux;
                     selected: i == selected_index;
                     is_horizontal: true;
-                    show_english_aux: show_english_aux;
-                    show_stroke_aux: show_stroke_aux;
-                    show_translation: show_translation;
                     is_fuzzy: cand.is_fuzzy;
                     accent_color: accent_color;
                     text_color: text_color;
@@ -185,9 +168,6 @@ export component CandidateWindow inherits Window {
                     stroke_aux: cand.stroke_aux;
                     selected: i == selected_index;
                     is_horizontal: false;
-                    show_english_aux: show_english_aux;
-                    show_stroke_aux: show_stroke_aux;
-                    show_translation: show_translation;
                     is_fuzzy: cand.is_fuzzy;
                     accent_color: accent_color;
                     text_color: text_color;

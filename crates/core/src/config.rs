@@ -62,10 +62,22 @@ pub struct Profile {
     pub path: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
-pub enum AuxMode {
-    None,
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DisplayMode {
+    #[default]
+    CharacterWithEnglish,
+    CharacterOnly,
+    CharacterWithStroke,
+    CharacterWithTone,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AuxFilterMode {
+    #[default]
     English,
+    None,
     Stroke,
 }
 
@@ -74,7 +86,6 @@ pub struct Appearance {
     pub show_candidates: bool,
     pub show_status_bar: bool,
     pub page_size: usize,
-    pub aux_mode: AuxMode,
     pub candidate_anchor: String,
     pub candidate_layout: String,
     pub corner_radius: f32,
@@ -91,11 +102,7 @@ pub struct Appearance {
     pub candidate_text: TextStyle,
     pub hint_text: TextStyle,
     pub comment_text: TextStyle,
-    pub show_english_aux: bool,
-    pub show_english_translation: bool,
     pub enable_random_highlight: bool,
-    pub show_stroke_aux: bool,
-    pub show_tone_hint: bool,
     pub show_learning_stroke_hint: bool,
     pub show_learning_english_hint: bool,
     pub auto_pronounce: bool,
@@ -204,6 +211,8 @@ pub struct Input {
     pub enable_traditional: bool,
     #[serde(default = "default_english_aux_mode")]
     pub english_aux_mode: EnglishAuxMode,
+    #[serde(default)]
+    pub display_mode: DisplayMode,
     pub ranking: RankingConfig,
     pub firefox_space_interrupt: bool,
     #[serde(default = "default_segmentation_delimiters")]
@@ -787,7 +796,6 @@ impl Config {
                 show_candidates: true,
                 show_status_bar: false,
                 page_size: 5,
-                aux_mode: AuxMode::English,
                 candidate_anchor: "bottom".to_string(),
                 candidate_layout: "horizontal".to_string(),
                 corner_radius: 10.0,
@@ -828,11 +836,7 @@ impl Config {
                     color: "#0969da".to_string(),
                     alpha: 0.7,
                 },
-                show_english_aux: true,
-                show_english_translation: false,
                 enable_random_highlight: false,
-                show_stroke_aux: false,
-                show_tone_hint: true,
                 show_learning_stroke_hint: true,
                 show_learning_english_hint: true,
                 auto_pronounce: true,
@@ -946,6 +950,7 @@ impl Config {
                 },
                 enable_traditional: false,
                 english_aux_mode: EnglishAuxMode::Prefix,
+                display_mode: DisplayMode::CharacterWithEnglish,
                 ranking: RankingConfig {
                     length_penalty: 50000.0,
                     user_dict_bonus: 10000000.0,

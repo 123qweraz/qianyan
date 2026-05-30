@@ -211,23 +211,24 @@ impl SearchEngine {
 
             let mut results = Vec::new();
             for sc in scheme_candidates {
-                let hint = {
-                    let mut h = String::new();
-                    if config_ref.appearance.show_english_aux && !sc.english.is_empty() {
-                        h.push_str(&sc.english);
-                    }
-                    if config_ref.appearance.show_stroke_aux && !sc.stroke_aux.is_empty() {
-                        if !h.is_empty() {
-                            h.push(' ');
+                let hint = Arc::from(match config_ref.input.display_mode {
+                    crate::DisplayMode::CharacterOnly => String::new(),
+                    crate::DisplayMode::CharacterWithEnglish => {
+                        if sc.english.is_empty() {
+                            String::new()
+                        } else {
+                            sc.english.clone()
                         }
-                        h.push_str(&sc.stroke_aux);
                     }
-                    if h.is_empty() {
-                        Arc::from(sc.tone.as_str())
-                    } else {
-                        Arc::from(h)
+                    crate::DisplayMode::CharacterWithStroke => {
+                        if sc.stroke_aux.is_empty() {
+                            String::new()
+                        } else {
+                            sc.stroke_aux.clone()
+                        }
                     }
-                };
+                    crate::DisplayMode::CharacterWithTone => sc.tone.clone(),
+                });
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {
                         Arc::from(sc.traditional.as_str())

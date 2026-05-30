@@ -158,21 +158,16 @@ impl Translator for TableTranslator {
         let mut seen = HashSet::new();
 
         let build_hint = |tr: &TrieResult| -> Arc<str> {
-            let mut hint = String::new();
-            if config.appearance.show_english_aux && !tr.en.is_empty() {
-                hint.push_str(tr.en);
-            }
-            if config.appearance.show_stroke_aux && !tr.stroke_aux.is_empty() {
-                if !hint.is_empty() {
-                    hint.push(' ');
+            Arc::from(match config.input.display_mode {
+                crate::DisplayMode::CharacterOnly => String::new(),
+                crate::DisplayMode::CharacterWithEnglish => {
+                    if tr.en.is_empty() { String::new() } else { tr.en.to_string() }
                 }
-                hint.push_str(tr.stroke_aux);
-            }
-            if hint.is_empty() {
-                Arc::from(tr.tone)
-            } else {
-                Arc::from(hint.as_str())
-            }
+                crate::DisplayMode::CharacterWithStroke => {
+                    if tr.stroke_aux.is_empty() { String::new() } else { tr.stroke_aux.to_string() }
+                }
+                crate::DisplayMode::CharacterWithTone => tr.tone.to_string(),
+            })
         };
 
         if let Some(exact_results) = self.trie.get_all_exact(&query) {

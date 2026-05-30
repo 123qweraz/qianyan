@@ -54,6 +54,23 @@
             </div>
         </div>
 
+        <h2>候选显示模式</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">显示模式</div><div class="desc">选择候选词旁显示何种辅助信息</div></div>
+                <select id="display_mode">
+                    <option value="character_with_english">汉字 + 英语辅助码</option>
+                    <option value="character_with_stroke">汉字 + 笔画辅助码</option>
+                    <option value="character_with_tone">汉字 + 音调</option>
+                    <option value="character_only">仅汉字（不显示辅助信息）</option>
+                </select>
+            </div>
+            <div class="note" style="margin:0;">
+                开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模式不变。<br>
+                例如 "汉字 + 英语辅助码" 搭配繁体输出 → "繁體漢字 + 英語輔助碼"
+            </div>
+        </div>
+
         <h2>繁体输入功能</h2>
         <div class="card">
             <div class="setting-item">
@@ -184,6 +201,7 @@
             bindInput('enable_number_selection', 'input');
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
             bindInput('enable_ctrl_capslock_commit', 'hotkeys');
+            bindInput('display_mode', 'input');
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');

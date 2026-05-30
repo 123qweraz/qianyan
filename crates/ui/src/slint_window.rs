@@ -223,12 +223,6 @@ impl SlintDisplay {
         };
 
         self.window
-            .set_show_english_aux(config.appearance.show_english_aux);
-        self.window
-            .set_show_stroke_aux(config.appearance.show_stroke_aux);
-        self.window
-            .set_show_translation(config.appearance.show_english_translation);
-        self.window
             .set_is_horizontal(config.appearance.candidate_layout == "horizontal");
 
         self.window
