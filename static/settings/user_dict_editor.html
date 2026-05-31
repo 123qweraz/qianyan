@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户词典 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .dict-table-wrap { overflow-x: auto; border: 1px solid var(--apple-border); border-radius: 10px; }
+        .dict-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 400px; }
+        .dict-table th { position: sticky; top: 0; background: var(--apple-bg); padding: 8px 6px; font-weight: 600; border-bottom: 2px solid var(--apple-border); user-select: none; white-space: nowrap; z-index: 1; font-size: 12px; }
+        .dict-table td { padding: 6px 6px; border-bottom: 1px solid var(--apple-border); vertical-align: middle; }
+        .dict-table tr:hover td { background: var(--apple-hover); }
+        .cell-pinyin { font-family: monospace; font-size: 11px; }
+        .cell-word { font-weight: 600; }
+        .no-data { text-align: center; padding: 40px 20px; color: var(--apple-secondary); }
+        .stats-bar { font-size: 12px; color: var(--apple-secondary); }
+        .btn-delete { background: transparent; color: var(--apple-red); border: none; cursor: pointer; font-size: 14px; padding: 3px 8px; border-radius: 4px; }
+        .btn-delete:hover { background: rgba(255,59,48,0.1); }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; color: #fff; }
+        .toast.error { background: var(--apple-red); color: #fff; }
+        .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--apple-border); border-radius: 10px; background: var(--apple-card-bg); margin-bottom: 12px; }
+        .note { margin-bottom: 12px; padding: 12px 16px; font-size: 12px; line-height: 1.6; background: rgba(9,105,218,0.04); border-left: 3px solid var(--apple-accent); border-radius: 6px; }
+        .note code { background: rgba(0,0,0,0.05); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+        .actions { display: flex; gap: 8px; }
+        .actions .btn { font-size: 13px; padding: 6px 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>用户词典</h1>
+        </header>
+
+        <div class="note">
+            <strong>💡 说明</strong><br>
+            用户词典保存在 <code>~/.config/qianyan-ime/user_data/&lt;方案名&gt;/</code> 目录下，共三个文件：<br>
+            • <code>learned.json</code> — <strong>用户词典</strong>（自动造词记录的用户新增词组）<br>
+            • <code>usage.json</code> — <strong>使用频率记录</strong>（自动调频数据）<br>
+            • <code>ngrams.json</code> — <strong>上下文联想记录</strong>（N-Gram 历史）<br>
+            删除某条用户词后，需要重新启动输入法才能完全生效。
+        </div>
+
+        <div class="toolbar">
+            <span style="font-weight:600;">📖 用户词典</span>
+            <span class="stats-bar" id="stats-bar"></span>
+            <div class="actions" style="margin-left:auto;">
+                <button class="btn" onclick="exportUserDict()">📥 导出备份</button>
+                <button class="btn btn-danger" onclick="clearUserDict()" style="color:var(--apple-red);">🗑 清空</button>
+            </div>
+        </div>
+
+        <div class="dict-table-wrap">
+            <table class="dict-table" id="user-dict-table">
+                <thead>
+                    <tr>
+                        <th class="left">方案</th>
+                        <th class="left">拼音</th>
+                        <th class="left">词汇</th>
+                        <th class="center">权重</th>
+                        <th class="center">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="user-dict-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let userDictEntries = [];
+
+        async function init() {
+            await loadUserDict();
+        }
+
+        async function loadUserDict() {
+            const r = await fetch('/api/dict/user/browse');
+            if (!r.ok) {
+                document.getElementById('user-dict-body').innerHTML =
+                    '<tr><td colspan="5" class="no-data">无法加载用户词典</td></tr>';
+                return;
+            }
+            userDictEntries = await r.json();
+            renderUserDict(userDictEntries);
+            document.getElementById('stats-bar').textContent = userDictEntries.length + ' 条';
+        }
+
+        function renderUserDict(entries) {
+            const tbody = document.getElementById('user-dict-body');
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">用户词典为空</td></tr>';
+                return;
+            }
+            tbody.innerHTML = entries.map((e, idx) =>
+                `<tr>
+                    <td class="left">${esc(e.profile)}</td>
+                    <td class="left cell-pinyin">${esc(e.pinyin)}</td>
+                    <td class="left cell-word">${esc(e.word)}</td>
+                    <td class="center">${e.weight}</td>
+                    <td class="center">
+                        <button class="btn-delete" onclick="deleteEntry(${idx})" title="删除">✕</button>
+                    </td>
+                </tr>`
+            ).join('');
+        }
+
+        async function deleteEntry(idx) {
+            const entry = userDictEntries[idx];
+            if (!entry) return;
+            if (!confirm(`确定要从用户词典中删除 "${entry.word}" (${entry.pinyin}) 吗？`)) return;
+            const r = await fetch('/api/dict/user/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile: entry.profile, pinyin: entry.pinyin, word: entry.word })
+            });
+            if (r.ok) {
+                showToast(`已删除 "${entry.word}"`, 'success');
+                loadUserDict();
+            } else {
+                showToast('删除失败', 'error');
+            }
+        }
+
+        async function clearUserDict() {
+            if (!confirm('确定要清空所有用户词库数据吗？此操作无法撤销。')) return;
+            const res = await fetch('/api/dict/clear_user', { method: 'POST' });
+            showToast(res.ok ? '用户词典已清空' : '清空失败', res.ok ? 'success' : 'error');
+            if (res.ok) loadUserDict();
+        }
+
+        async function exportUserDict() {
+            const entries = userDictEntries;
+            if (entries.length === 0) {
+                showToast('用户词典为空，无需导出', 'error');
+                return;
+            }
+            const groups = {};
+            for (const e of entries) {
+                if (!groups[e.profile]) groups[e.profile] = {};
+                if (!groups[e.profile][e.pinyin]) groups[e.profile][e.pinyin] = [];
+                groups[e.profile][e.pinyin].push({ word: e.word, weight: e.weight });
+            }
+            const data = JSON.stringify({ version: '1.0', updated_at: new Date().toISOString(), data: groups }, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'user_dict_backup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('导出完成', 'success');
+        }
+
+        function esc(s) { if (!s) return '-'; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast ' + type + ' show';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+        }
+
+        init();
+    </script>
+</body>
+</html>
