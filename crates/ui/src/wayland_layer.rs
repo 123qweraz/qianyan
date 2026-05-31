@@ -670,12 +670,13 @@ impl WaylandLayerDisplay {
                 let (sw, sh) = Self::screen_size();
                 let w32 = w as i32;
                 let h32 = h as i32;
-                let use_bottom = cursor_y + 20 + h32 > sh;
+                let offset = 20i32;
+                let use_bottom = cursor_y + offset + h32 > sh;
                 let use_right = cursor_x + w32 > sw;
                 let anchor_v = if use_bottom { Anchor::BOTTOM } else { Anchor::TOP };
                 let anchor_h = if use_right { Anchor::RIGHT } else { Anchor::LEFT };
                 let anchor = anchor_v | anchor_h;
-                let margin_a = if use_bottom { sh - cursor_y } else { cursor_y + 20 };
+                let margin_a = if use_bottom { sh - cursor_y } else { cursor_y + offset };
                 let margin_b = if use_right { sw - cursor_x } else { cursor_x };
                 (anchor, margin_a, margin_b)
             };
@@ -809,11 +810,11 @@ impl CandidateDisplay for WaylandLayerDisplay {
         self.candidate_window.set_total_pages(total_pages as i32);
 
         let mut cand_models = Vec::new();
-        for c in candidates {
+        for c in &candidates {
             cand_models.push(CandidateData {
-                text: slint::SharedString::from(c.text),
-                label: slint::SharedString::from(c.label),
-                english_aux: slint::SharedString::from(c.hint),
+                text: slint::SharedString::from(c.text.clone()),
+                label: slint::SharedString::from(c.label.clone()),
+                english_aux: slint::SharedString::from(c.hint.clone()),
                 stroke_aux: slint::SharedString::from(""),
                 is_fuzzy: c.is_fuzzy,
             });
@@ -822,18 +823,23 @@ impl CandidateDisplay for WaylandLayerDisplay {
             std::rc::Rc::new(slint::VecModel::from(cand_models)),
         ));
 
-        // Let Slint compute the preferred size from content, twice to ensure
-        // the binding evaluation propagates through to adapter set_size.
-        slint::platform::update_timers_and_animations();
-        slint::platform::update_timers_and_animations();
-        let size = self.candidate_window.window().size();
-        eprintln!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
-
-        // Always render content regardless of visibility state.
         if !self.window_visible {
             self.window_visible = true;
             self.candidate_window.set_is_visible(true);
         }
+
+        // Offscreen window doesn't auto-resize via Slint's layout bindings,
+        // so set a generous width to fit all candidates horizontally.
+        let per_cand_w = (self.config.appearance.candidate_text.font_size as u32 * 6).max(80);
+        let total_w = (candidates.len() as u32 * per_cand_w + 80).min(1600).max(200);
+        let total_h = 200u32;
+        self.candidate_window.window().set_size(slint::WindowSize::Physical(
+            slint::PhysicalSize::new(total_w, total_h),
+        ));
+        slint::platform::update_timers_and_animations();
+        let size = self.candidate_window.window().size();
+        eprintln!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
+
         self.render_and_send_candidate(size.width.max(1), size.height.max(1));
     }
 
