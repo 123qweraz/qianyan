@@ -237,7 +237,7 @@ impl SlintDisplay {
             .set_highlight_text_color(parse_color(&config.appearance.window_highlight_text_color));
 
         let font_stack = format!(
-            "{}, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
+            "{}, Noto Color Emoji, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
             config.appearance.candidate_text.font_family
         );
         self.window

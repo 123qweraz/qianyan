@@ -3,7 +3,7 @@ use qianyan_ime_core::Config;
 use slint::ComponentHandle;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
 
 use smithay_client_toolkit::output::{OutputHandler, OutputState};
@@ -511,11 +511,15 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                         }
                     }
                 }
-                WlCmd::Exit => return,
+                WlCmd::Exit => {
+                eprintln!("[WL_DEBUG] Wayland thread received Exit, terminating");
+                return;
+            }
             }
         }
 
         if state.exit.load(Ordering::SeqCst) {
+            eprintln!("[WL_DEBUG] Wayland thread exit flag set, terminating");
             break;
         }
 
@@ -529,6 +533,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
         }
         std::thread::sleep(std::time::Duration::from_millis(4));
     }
+    eprintln!("[WL_DEBUG] Wayland thread main loop exited");
 }
 
 fn submit_to_layer(
@@ -561,7 +566,7 @@ fn submit_to_layer(
 // ---- WaylandLayerDisplay ----
 
 struct WlThread {
-    cmd_tx: Sender<WlCmd>,
+    cmd_tx: mpsc::SyncSender<WlCmd>,
 }
 
 pub struct WaylandLayerDisplay {
@@ -610,7 +615,7 @@ impl WaylandLayerDisplay {
         };
         let renderer_ptr = ow.software_renderer() as *const slint::platform::software_renderer::SoftwareRenderer;
 
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::sync_channel(1);
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
             .spawn(move || wl_thread_main(rx));
@@ -685,9 +690,13 @@ impl WaylandLayerDisplay {
             };
 
             let cmd = WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels };
-            let _ = self.wl.as_ref().unwrap().cmd_tx.send(cmd);
+            if let Err(e) = self.wl.as_ref().unwrap().cmd_tx.try_send(cmd) {
+                if !matches!(&e, mpsc::TrySendError::Full(_)) {
+                    log::error!("Wayland channel send error: {e:?}");
+                }
+            }
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
+            let _ = wl.cmd_tx.try_send(WlCmd::HideCandidate);
         }
     }
 
@@ -716,13 +725,18 @@ impl WaylandLayerDisplay {
                 } else {
                     self.last_x
                 };
-                let _ = wl.cmd_tx.send(WlCmd::ShowStatus {
+                let cmd = WlCmd::ShowStatus {
                     x: margin_x, y: margin_y, anchor,
                     w: 60, h: 28, pixels,
-                });
+                };
+                if let Err(e) = wl.cmd_tx.try_send(cmd) {
+                    if !matches!(&e, mpsc::TrySendError::Full(_)) {
+                        log::error!("Wayland channel send error: {e:?}");
+                    }
+                }
             }
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.send(WlCmd::HideStatus);
+            let _ = wl.cmd_tx.try_send(WlCmd::HideStatus);
         }
     }
 
@@ -774,7 +788,7 @@ impl WaylandLayerDisplay {
             .set_highlight_text_color(parse_color(&config.appearance.window_highlight_text_color));
 
         let font_stack = format!(
-            "{}, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
+            "{}, Noto Color Emoji, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
             config.appearance.candidate_text.font_family
         );
         self.candidate_window
@@ -885,7 +899,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
             let size = self.candidate_window.window().size();
             self.render_and_send_candidate(size.width.max(1), size.height.max(1));
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
+            let _ = wl.cmd_tx.try_send(WlCmd::HideCandidate);
         }
     }
 
@@ -902,7 +916,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
     fn close(&mut self) {
         self.window_visible = false;
         if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.send(WlCmd::Exit);
+            let _ = wl.cmd_tx.try_send(WlCmd::Exit);
         }
     }
 }
