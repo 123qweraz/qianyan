@@ -446,10 +446,9 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
             match cmd {
                 WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
                     eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
-                    if let Some(ref layer) = state.candidate_layer {
+                    if let Some(layer) = state.candidate_layer.clone() {
                         layer.set_anchor(anchor);
                         layer.set_size(w.max(1), h.max(1));
-                        // Set margins based on anchor orientation
                         let has_top = anchor.contains(Anchor::TOP);
                         let has_bottom = anchor.contains(Anchor::BOTTOM);
                         let has_left = anchor.contains(Anchor::LEFT);
@@ -461,17 +460,15 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                             if has_left { x.max(0) as i32 } else { 0 },
                         );
                         if let Some(ref mut pool) = state.candidate_pool {
-                            submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
+                            submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
                         }
                     } else {
                         eprintln!("[WL_DEBUG] candidate_layer is None!");
                     }
                 }
                 WlCmd::HideCandidate => {
-                    // Don't attach None (which unmaps the surface, causing issues on KDE).
-                    // Use a 1x1 transparent buffer instead so the surface stays mapped.
                     if let Some(ref mut pool) = state.candidate_pool {
-                        if let Some(ref layer) = state.candidate_layer {
+                        if let Some(layer) = state.candidate_layer.clone() {
                             if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
                                 canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
                                 if buffer.attach_to(layer.wl_surface()).is_ok() {
@@ -483,7 +480,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                     }
                 }
                 WlCmd::ShowStatus { x, y, w, h, anchor, pixels } => {
-                    if let Some(ref layer) = state.status_layer {
+                    if let Some(layer) = state.status_layer.clone() {
                         layer.set_anchor(anchor);
                         layer.set_size(w.max(1), h.max(1));
                         let has_top = anchor.contains(Anchor::TOP);
@@ -497,13 +494,13 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
                             if has_left { x.max(0) as i32 } else { 0 },
                         );
                         if let Some(ref mut pool) = state.status_pool {
-                            submit_to_layer(pool, layer, &pixels, w.max(1), h.max(1));
+                            submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
                         }
                     }
                 }
                 WlCmd::HideStatus => {
                     if let Some(ref mut pool) = state.status_pool {
-                        if let Some(ref layer) = state.status_layer {
+                        if let Some(layer) = state.status_layer.clone() {
                             if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
                                 canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
                                 if buffer.attach_to(layer.wl_surface()).is_ok() {
@@ -522,8 +519,14 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
             break;
         }
 
-        let _ = event_queue.dispatch_pending(&mut state);
-        let _ = event_queue.flush();
+        if event_queue.dispatch_pending(&mut state).is_err() {
+            log::error!("Wayland dispatch failed, exiting thread");
+            break;
+        }
+        if event_queue.flush().is_err() {
+            log::error!("Wayland flush failed, exiting thread");
+            break;
+        }
         std::thread::sleep(std::time::Duration::from_millis(4));
     }
 }
@@ -830,7 +833,9 @@ impl CandidateDisplay for WaylandLayerDisplay {
 
         // Offscreen window doesn't auto-resize via Slint's layout bindings,
         // so set a generous width to fit all candidates horizontally.
-        let per_cand_w = (self.config.appearance.candidate_text.font_size as u32 * 6).max(80);
+        let fs = self.config.appearance.candidate_text.font_size as u32;
+        let max_chars = candidates.iter().map(|c| c.text.chars().count() + c.label.chars().count() + c.hint.chars().count()).max().unwrap_or(8) as u32;
+        let per_cand_w = ((fs * max_chars) / 2 + 40).max(80);
         let total_w = (candidates.len() as u32 * per_cand_w + 80).min(1600).max(200);
         let total_h = 200u32;
         self.candidate_window.window().set_size(slint::WindowSize::Physical(
