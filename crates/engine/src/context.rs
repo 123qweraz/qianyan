@@ -45,12 +45,12 @@ impl EngineContext {
                     Box::new(crate::schemes::EnglishScheme::new()),
                 );
                 m.insert(
-                    "chinese".to_string(),
-                    Box::new(crate::schemes::ChineseScheme::new()),
-                );
-                m.insert(
                     "japanese".to_string(),
                     Box::new(crate::schemes::JapaneseScheme::new()),
+                );
+                m.insert(
+                    "chinese".to_string(),
+                    Box::new(crate::schemes::ChineseScheme::new()),
                 );
                 Arc::new(m)
             },

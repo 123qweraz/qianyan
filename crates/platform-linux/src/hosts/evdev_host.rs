@@ -561,7 +561,9 @@ impl EvdevHost {
 
 fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
     if let Some(ref tx) = gui_tx {
-        if p.ctx.session.buffer.is_empty() || !p.ctx.session_state.chinese_enabled {
+        let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&p.ctx);
+
+        if pinyin.is_empty() || !p.ctx.session_state.chinese_enabled {
             let _ = tx.send(GuiEvent::Update {
                 pinyin: "".into(),
                 candidates: vec![],
@@ -575,59 +577,44 @@ fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
             return;
         }
 
-        let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&p.ctx);
+        let page_size = p.ctx.config.page_size();
+        let start = p.ctx.session.page.min(p.ctx.session.candidates.len());
+        let end = (start + page_size).min(p.ctx.session.candidates.len());
 
-        if p.ctx.config.show_candidates() {
-            let page_size = p.ctx.config.page_size();
-            let start = p.ctx.session.page.min(p.ctx.session.candidates.len());
-            let end = (start + page_size).min(p.ctx.session.candidates.len());
-
-            let mut display_candidates = Vec::new();
-            for (i, c) in p.ctx.session.candidates[start..end].iter().enumerate() {
-                let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
-                let label = format!("{}.", i + 1);
-                let full_display = if is_fuzzy {
-                    format!("{label}{}(模糊)", c.text)
-                } else if c.hint.is_empty() {
-                    format!("{label}{}", c.text)
-                } else {
-                    format!("{label}{}({})", c.text, c.hint)
-                };
-                display_candidates.push(qianyan_ime_ui::DisplayCandidate {
-                    text: c.text.to_string(),
-                    label,
-                    hint: c.hint.to_string(),
-                    full_display,
-                    is_fuzzy,
-                });
-            }
-
-            let relative_selected = p.ctx.session.selected.saturating_sub(start);
-            let current_page = if page_size > 0 { start / page_size } else { 0 };
-            let total_pages = if page_size > 0 { (p.ctx.session.candidates.len() + page_size - 1) / page_size } else { 0 };
-
-            let _ = tx.send(GuiEvent::Update {
-                pinyin,
-                candidates: display_candidates,
-                selected: relative_selected,
-                page: current_page,
-                total_pages,
-                sentence: p.ctx.session.joined_sentence.clone(),
-                cursor_pos: p.ctx.session.cursor_pos,
-                commit_mode: p.ctx.config.commit_mode().to_string(),
-            });
-        } else {
-            let _ = tx.send(GuiEvent::Update {
-                pinyin: "".into(),
-                candidates: vec![],
-                selected: 0,
-                page: 0,
-                total_pages: 0,
-                sentence: "".into(),
-                cursor_pos: 0,
-                commit_mode: p.ctx.config.commit_mode().to_string(),
+        let mut display_candidates = Vec::new();
+        for (i, c) in p.ctx.session.candidates[start..end].iter().enumerate() {
+            let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
+            let label = format!("{}.", i + 1);
+            let full_display = if is_fuzzy {
+                format!("{label}{}(模糊)", c.text)
+            } else if c.hint.is_empty() {
+                format!("{label}{}", c.text)
+            } else {
+                format!("{label}{}({})", c.text, c.hint)
+            };
+            display_candidates.push(qianyan_ime_ui::DisplayCandidate {
+                text: c.text.to_string(),
+                label,
+                hint: c.hint.to_string(),
+                full_display,
+                is_fuzzy,
             });
         }
+
+        let relative_selected = p.ctx.session.selected.saturating_sub(start);
+        let current_page = if page_size > 0 { start / page_size } else { 0 };
+        let total_pages = if page_size > 0 { (p.ctx.session.candidates.len() + page_size - 1) / page_size } else { 0 };
+
+        let _ = tx.send(GuiEvent::Update {
+            pinyin,
+            candidates: display_candidates,
+            selected: relative_selected,
+            page: current_page,
+            total_pages,
+            sentence: p.ctx.session.joined_sentence.clone(),
+            cursor_pos: p.ctx.session.cursor_pos,
+            commit_mode: p.ctx.config.commit_mode().to_string(),
+        });
     }
 }
 

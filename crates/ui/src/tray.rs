@@ -83,7 +83,7 @@ impl Tray for ImeTray {
             ("japanese", "日文"),
             ("stroke", "笔画"),
             ("shengpizi", "生僻字"),
-            ("mixed", "中日英混"),
+            ("chinese,english,japanese", "中日英混"),
         ];
 
         use ksni::menu::RadioGroup;
@@ -366,7 +366,7 @@ unsafe extern "system" fn tray_wnd_proc(
                             ("japanese", "日文"),
                             ("stroke", "笔画"),
                             ("shengpizi", "生僻字"),
-                            ("mixed", "混合"),
+                            ("chinese,english,japanese", "混合"),
                         ];
 
                         for (i, (id, label)) in profiles.iter().enumerate() {
@@ -435,7 +435,7 @@ unsafe extern "system" fn tray_wnd_proc(
                         let _ = tx.send(TrayEvent::NextProfile);
                     }
                     2000..=2005 => {
-                        let profiles = vec!["chinese", "english", "japanese", "stroke", "shengpizi", "mixed"];
+                        let profiles = vec!["chinese", "english", "japanese", "stroke", "shengpizi", "chinese,english,japanese"];
                         if let Some(profile) = profiles.get(id as usize - 2000) {
                             let _ = tx.send(TrayEvent::SetProfile(profile.to_string()));
                         }

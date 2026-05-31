@@ -218,16 +218,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             state.status_text = if enabled { short } else { "英".into() };
                             state.chinese_enabled = enabled;
                             state.active_profile = p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default();
+                            
+                            // Reset UI state
+                            state.pinyin = "".into();
+                            state.candidates = vec![];
+                            state.selected_index = 0;
+                            state.page = 0;
+                            state.total_pages = 0;
+
                             let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                            let _ = gui_tx_tray.send(GuiEvent::Update {
+                                pinyin: "".into(),
+                                candidates: vec![],
+                                selected: 0,
+                                page: 0,
+                                total_pages: 0,
+                                sentence: "".into(),
+                                cursor_pos: 0,
+                                commit_mode: p.ctx.config.commit_mode().to_string(),
+                            });
                         }
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::SetProfile(profile) => {
                     if let Ok(mut p) = processor_clone.lock() {
-                        if p.ctx.engine.trie_paths.contains_key(&profile) {
-                            p.ctx.session_state.active_profiles = vec![profile.clone()];
+                        let profiles: Vec<String> = profile.split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| p.ctx.engine.trie_paths.contains_key(s))
+                            .collect();
+
+                        if !profiles.is_empty() {
+                            p.ctx.session_state.active_profiles = profiles.clone();
                             
-                            // Persist to config
+                            // Persist to config (save the raw comma-separated string)
                             if let Ok(conf) = p.ctx.config.master_config_write() {
                                 conf.input.default_profile = profile.clone();
                                 let _ = conf.save();
@@ -246,7 +269,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 state.status_text = if enabled { short } else { "英".into() };
                                 state.chinese_enabled = enabled;
                                 state.active_profile = profile;
+                                
+                                // Reset UI state for the new profile
+                                state.pinyin = "".into();
+                                state.candidates = vec![];
+                                state.selected_index = 0;
+                                state.page = 0;
+                                state.total_pages = 0;
+                                
                                 let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                                let _ = gui_tx_tray.send(GuiEvent::Update {
+                                    pinyin: "".into(),
+                                    candidates: vec![],
+                                    selected: 0,
+                                    page: 0,
+                                    total_pages: 0,
+                                    sentence: "".into(),
+                                    cursor_pos: 0,
+                                    commit_mode: p.ctx.config.commit_mode().to_string(),
+                                });
                             }
                         }
                     }

@@ -278,44 +278,57 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 };
 
                 let action = guard.handle_key(vk, 1, false, false, false);
-                let buffer = guard.ctx.session.buffer.clone();
-                let candidates: Vec<qianyan_ime_ui::DisplayCandidate> =
-                    guard.ctx.session.candidates.iter().take(10).enumerate().map(|(i, c)| {
+                
+                let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
+                let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = if pinyin.is_empty() {
+                    vec![]
+                } else {
+                    let page_size = guard.ctx.config.page_size();
+                    let start = guard.ctx.session.page.min(guard.ctx.session.candidates.len());
+                    let end = (start + page_size).min(guard.ctx.session.candidates.len());
+                    guard.ctx.session.candidates[start..end].iter().enumerate().map(|(i, c)| {
                         let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
+                        let label = format!("{}.", i + 1);
                         let full_display = if is_fuzzy {
-                            format!("{}.{}(模糊)", i + 1, c.text)
+                            format!("{label}{}(模糊)", c.text)
+                        } else if c.hint.is_empty() {
+                            format!("{label}{}", c.text)
                         } else {
-                            format!("{}.{}({})", i + 1, c.text, c.hint)
+                            format!("{label}{}({})", c.text, c.hint)
                         };
                         qianyan_ime_ui::DisplayCandidate {
                             text: c.text.to_string(),
-                            label: format!("{}.", i + 1),
+                            label,
                             hint: c.hint.to_string(),
                             full_display,
                             is_fuzzy,
                         }
-                    }).collect();
-                let selected = guard.ctx.session.selected;
+                    }).collect()
+                };
+
                 let page_size = guard.ctx.config.page_size();
                 let total_candidates = guard.ctx.session.candidates.len();
                 let current_page = if page_size > 0 { guard.ctx.session.page / page_size } else { 0 };
                 let total_pages = if page_size > 0 { (total_candidates + page_size - 1) / page_size } else { 0 };
+                let relative_selected = guard.ctx.session.selected.saturating_sub(guard.ctx.session.page);
+
+                let update = GuiEvent::Update {
+                    pinyin,
+                    candidates,
+                    selected: relative_selected,
+                    page: current_page,
+                    total_pages,
+                    sentence: guard.ctx.session.joined_sentence.clone(),
+                    cursor_pos: guard.ctx.session.cursor_pos,
+                    commit_mode: guard.ctx.config.commit_mode().to_string(),
+                };
+                
                 let _preedit = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
                 drop(guard);
 
                 state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
 
-                let _ = state.gui_tx.send(GuiEvent::MoveTo { x: 0, y: 0 });
-                let _ = state.gui_tx.send(GuiEvent::Update {
-                    pinyin: buffer,
-                    candidates,
-                    selected,
-                    page: current_page,
-                    total_pages,
-                    sentence: String::new(),
-                    cursor_pos: 0,
-                    commit_mode: String::new(),
-                });
+                let _ = state.gui_tx.send(update);
 
                 state.send_preedit();
                 let _ = conn.flush();

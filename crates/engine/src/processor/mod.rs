@@ -19,7 +19,7 @@ use qianyan_ime_core::config::Config;
 pub use fsm::ImeState;
 pub use utils::*;
 
-const KEY_BATCH_DELAY_MS: u64 = 30;
+const KEY_BATCH_DELAY_MS: u64 = 0;
 
 pub fn inject_text(ctx: &mut EngineContext, text: &str) -> Action {
     use crate::compositor::Compositor;
