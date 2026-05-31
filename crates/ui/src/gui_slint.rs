@@ -80,6 +80,8 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
     let _ = transport::send_gui_to_main(&mut stream, &GuiToMain::Ready);
 
     let stream_ref = std::sync::Mutex::new(Some(stream));
+    let coalesced_msg = std::sync::Arc::new(std::sync::Mutex::new(None::<MainToGui>));
+    let pending_update = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
 
     std::thread::spawn(move || {
         // Take ownership of the stream for the IPC thread
@@ -137,7 +139,8 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                     break;
                 }
 
-                _ => {
+                MainToGui::ApplyConfig(_) => {
+                    // ApplyConfig should not be coalesced as it may recreate displays
                     let cfg = current_config.clone();
                     let r = slint::invoke_from_event_loop(move || {
                         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
@@ -145,12 +148,37 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                             handle_ipc_event(&msg, &mut *guard);
                         }));
                         if let Err(e) = result {
-                            log::error!("GUI event handler panicked: {:?}", e);
+                            log::error!("GUI ApplyConfig handler panicked: {:?}", e);
                         }
                     });
-                    if r.is_err() {
-                        eprintln!("[GUI IPC] event loop not running");
-                        break;
+                    if r.is_err() { break; }
+                }
+
+                _ => {
+                    // Coalesce frequent updates (SyncState, Update, MoveTo, etc.)
+                    // only the latest one in the queue matters for an IME UI.
+                    *coalesced_msg.lock().unwrap() = Some(msg);
+                    if !pending_update.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                        let cfg = current_config.clone();
+                        let c_msg = coalesced_msg.clone();
+                        let p_upd = pending_update.clone();
+                        let r = slint::invoke_from_event_loop(move || {
+                            p_upd.store(false, std::sync::atomic::Ordering::SeqCst);
+                            let msg_to_process = c_msg.lock().unwrap().take();
+                            if let Some(m) = msg_to_process {
+                                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                                    let mut guard = cfg.lock().unwrap();
+                                    handle_ipc_event(&m, &mut *guard);
+                                }));
+                                if let Err(e) = result {
+                                    log::error!("GUI coalesced event handler panicked: {:?}", e);
+                                }
+                            }
+                        });
+                        if r.is_err() {
+                            eprintln!("[GUI IPC] event loop not running");
+                            break;
+                        }
                     }
                 }
             }

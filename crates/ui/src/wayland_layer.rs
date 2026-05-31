@@ -150,30 +150,35 @@ fn setup_slint_platform() -> Option<()> {
     unsafe { RESULT }
 }
 
-fn render_window_to_buffer(
-    _window: &slint::Window,
-    width: u32,
-    height: u32,
-    renderer: &slint::platform::software_renderer::SoftwareRenderer,
-) -> Vec<u8> {
-    eprintln!("[WL_DEBUG] render_window_to_buffer: {}x{}", width, height);
-
-    let pixel_count = (width * height) as usize;
-    let mut rgba_pixels = vec![0u8; pixel_count * 4];
-
-    let buf: &mut [slint::platform::software_renderer::PremultipliedRgbaColor] =
-        bytemuck::cast_slice_mut(&mut rgba_pixels);
-    renderer.render(buf, width as usize);
-
-    // RGBA -> BGRA for wl_shm Argb8888
-    for pixel in rgba_pixels.chunks_exact_mut(4) {
-        pixel.swap(0, 2);
-    }
-
-    rgba_pixels
-}
 
 // ---- Wayland thread ----
+
+#[derive(Clone)]
+struct PixelPool(Arc<std::sync::Mutex<Vec<Vec<u8>>>>);
+
+impl PixelPool {
+    fn new() -> Self {
+        Self(Arc::new(std::sync::Mutex::new(Vec::with_capacity(4))))
+    }
+    fn get(&self, size: usize) -> Vec<u8> {
+        let mut pool = self.0.lock().unwrap();
+        if let Some(mut v) = pool.pop() {
+            if v.capacity() < size {
+                v.reserve(size - v.capacity());
+            }
+            v.resize(size, 0);
+            v
+        } else {
+            vec![0u8; size]
+        }
+    }
+    fn put(&self, v: Vec<u8>) {
+        let mut pool = self.0.lock().unwrap();
+        if pool.len() < 8 {
+            pool.push(v);
+        }
+    }
+}
 
 struct WlState {
     registry_state: RegistryState,
@@ -187,6 +192,7 @@ struct WlState {
     status_layer: Option<LayerSurface>,
     status_pool: Option<SlotPool>,
     exit: AtomicBool,
+    pixel_pool: PixelPool,
 }
 
 delegate_registry!(WlState);
@@ -339,7 +345,7 @@ enum WlCmd {
     Exit,
 }
 
-fn wl_thread_main(rx: Receiver<WlCmd>) {
+fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
     eprintln!("[WL_DEBUG] Wayland thread started");
     let conn = match Connection::connect_to_env() {
         Ok(c) => c,
@@ -393,6 +399,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
         status_layer: None,
         status_pool: None,
         exit: AtomicBool::new(false),
+        pixel_pool: pixel_pool.clone(),
     };
 
     // Create candidate layer surface
@@ -442,79 +449,90 @@ fn wl_thread_main(rx: Receiver<WlCmd>) {
     eprintln!("[WL_DEBUG] Wayland init done, entering main loop");
 
     loop {
-        while let Ok(cmd) = rx.try_recv() {
-            match cmd {
-                WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
-                    eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
-                    if let Some(layer) = state.candidate_layer.clone() {
-                        layer.set_anchor(anchor);
-                        layer.set_size(w.max(1), h.max(1));
-                        let has_top = anchor.contains(Anchor::TOP);
-                        let has_bottom = anchor.contains(Anchor::BOTTOM);
-                        let has_left = anchor.contains(Anchor::LEFT);
-                        let has_right = anchor.contains(Anchor::RIGHT);
-                        layer.set_margin(
-                            if has_top { y.max(0) as i32 } else { 0 },
-                            if has_right { x.max(0) as i32 } else { 0 },
-                            if has_bottom { y.max(0) as i32 } else { 0 },
-                            if has_left { x.max(0) as i32 } else { 0 },
-                        );
-                        if let Some(ref mut pool) = state.candidate_pool {
-                            submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
-                        }
-                    } else {
-                        eprintln!("[WL_DEBUG] candidate_layer is None!");
-                    }
-                }
-                WlCmd::HideCandidate => {
-                    if let Some(ref mut pool) = state.candidate_pool {
+        loop {
+            match rx.try_recv() {
+                Ok(cmd) => match cmd {
+                    WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
+                        eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
                         if let Some(layer) = state.candidate_layer.clone() {
-                            if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
-                                canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
-                                if buffer.attach_to(layer.wl_surface()).is_ok() {
-                                    layer.wl_surface().damage_buffer(0, 0, 1, 1);
-                                    layer.commit();
+                            layer.set_anchor(anchor);
+                            layer.set_size(w.max(1), h.max(1));
+                            let has_top = anchor.contains(Anchor::TOP);
+                            let has_bottom = anchor.contains(Anchor::BOTTOM);
+                            let has_left = anchor.contains(Anchor::LEFT);
+                            let has_right = anchor.contains(Anchor::RIGHT);
+                            layer.set_margin(
+                                if has_top { y.max(0) as i32 } else { 0 },
+                                if has_right { x.max(0) as i32 } else { 0 },
+                                if has_bottom { y.max(0) as i32 } else { 0 },
+                                if has_left { x.max(0) as i32 } else { 0 },
+                            );
+                            if let Some(ref mut pool) = state.candidate_pool {
+                                submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
+                            }
+                        } else {
+                            eprintln!("[WL_DEBUG] candidate_layer is None!");
+                        }
+                        // Reuse pixel buffer
+                        state.pixel_pool.put(pixels);
+                    }
+                    WlCmd::HideCandidate => {
+                        if let Some(ref mut pool) = state.candidate_pool {
+                            if let Some(layer) = state.candidate_layer.clone() {
+                                if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                                    canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                                    if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                        layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                        layer.commit();
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                WlCmd::ShowStatus { x, y, w, h, anchor, pixels } => {
-                    if let Some(layer) = state.status_layer.clone() {
-                        layer.set_anchor(anchor);
-                        layer.set_size(w.max(1), h.max(1));
-                        let has_top = anchor.contains(Anchor::TOP);
-                        let has_bottom = anchor.contains(Anchor::BOTTOM);
-                        let has_left = anchor.contains(Anchor::LEFT);
-                        let has_right = anchor.contains(Anchor::RIGHT);
-                        layer.set_margin(
-                            if has_top { y.max(0) as i32 } else { 0 },
-                            if has_right { x.max(0) as i32 } else { 0 },
-                            if has_bottom { y.max(0) as i32 } else { 0 },
-                            if has_left { x.max(0) as i32 } else { 0 },
-                        );
-                        if let Some(ref mut pool) = state.status_pool {
-                            submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
-                        }
-                    }
-                }
-                WlCmd::HideStatus => {
-                    if let Some(ref mut pool) = state.status_pool {
+                    WlCmd::ShowStatus { x, y, w, h, anchor, pixels } => {
                         if let Some(layer) = state.status_layer.clone() {
-                            if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
-                                canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
-                                if buffer.attach_to(layer.wl_surface()).is_ok() {
-                                    layer.wl_surface().damage_buffer(0, 0, 1, 1);
-                                    layer.commit();
+                            layer.set_anchor(anchor);
+                            layer.set_size(w.max(1), h.max(1));
+                            let has_top = anchor.contains(Anchor::TOP);
+                            let has_bottom = anchor.contains(Anchor::BOTTOM);
+                            let has_left = anchor.contains(Anchor::LEFT);
+                            let has_right = anchor.contains(Anchor::RIGHT);
+                            layer.set_margin(
+                                if has_top { y.max(0) as i32 } else { 0 },
+                                if has_right { x.max(0) as i32 } else { 0 },
+                                if has_bottom { y.max(0) as i32 } else { 0 },
+                                if has_left { x.max(0) as i32 } else { 0 },
+                            );
+                            if let Some(ref mut pool) = state.status_pool {
+                                submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
+                            }
+                        }
+                        // Reuse pixel buffer
+                        state.pixel_pool.put(pixels);
+                    }
+                    WlCmd::HideStatus => {
+                        if let Some(ref mut pool) = state.status_pool {
+                            if let Some(layer) = state.status_layer.clone() {
+                                if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                                    canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                                    if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                        layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                        layer.commit();
+                                    }
                                 }
                             }
                         }
                     }
+                    WlCmd::Exit => {
+                        eprintln!("[WL_DEBUG] Wayland thread received Exit, terminating");
+                        return;
+                    }
+                },
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    eprintln!("[WL_DEBUG] Wayland thread channel disconnected, terminating");
+                    return;
                 }
-                WlCmd::Exit => {
-                eprintln!("[WL_DEBUG] Wayland thread received Exit, terminating");
-                return;
-            }
             }
         }
 
@@ -584,6 +602,7 @@ pub struct WaylandLayerDisplay {
     last_y: i32,
     status_bar_visible: bool,
     wl: Option<WlThread>,
+    pixel_pool: PixelPool,
 }
 
 impl WaylandLayerDisplay {
@@ -616,10 +635,12 @@ impl WaylandLayerDisplay {
         };
         let renderer_ptr = ow.software_renderer() as *const slint::platform::software_renderer::SoftwareRenderer;
 
+        let pixel_pool = PixelPool::new();
+        let pixel_pool_clone = pixel_pool.clone();
         let (tx, rx) = mpsc::sync_channel(2);
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
-            .spawn(move || wl_thread_main(rx));
+            .spawn(move || wl_thread_main(rx, pixel_pool_clone));
 
         let candidate_enabled = config.linux.show_slint_window;
 
@@ -634,6 +655,7 @@ impl WaylandLayerDisplay {
             last_y: 0,
             status_bar_visible: false,
             wl: join.ok().map(|_| WlThread { cmd_tx: tx }),
+            pixel_pool,
         };
 
         display.apply_style(&config);
@@ -663,8 +685,19 @@ impl WaylandLayerDisplay {
 
     fn render_and_send_candidate(&self, w: u32, h: u32) {
         if self.window_visible && self.wl.is_some() {
-            let window = self.candidate_window.window();
-            let pixels = render_window_to_buffer(window, w, h, self.renderer());
+            let _window = self.candidate_window.window();
+            
+            let pixel_count = (w * h) as usize;
+            let mut pixels = self.pixel_pool.get(pixel_count * 4);
+            
+            let buf: &mut [slint::platform::software_renderer::PremultipliedRgbaColor] =
+                bytemuck::cast_slice_mut(&mut pixels);
+            self.renderer().render(buf, w as usize);
+
+            // RGBA -> BGRA for wl_shm Argb8888
+            for pixel in pixels.chunks_exact_mut(4) {
+                pixel.swap(0, 2);
+            }
 
             let (anchor, margin_a, margin_b) = if self.config.linux.fixed_position {
                 match self.config.linux.corner.as_str() {
@@ -702,8 +735,20 @@ impl WaylandLayerDisplay {
     fn render_and_send_status(&self) {
         if self.status_bar_visible {
             if let Some(ref wl) = self.wl {
-                let window = self.status_bar.window();
-                let pixels = render_window_to_buffer(window, 60, 28, self.renderer());
+                let _window = self.status_bar.window();
+                let w = 60u32;
+                let h = 28u32;
+                let mut pixels = self.pixel_pool.get((w * h * 4) as usize);
+                
+                let buf: &mut [slint::platform::software_renderer::PremultipliedRgbaColor] =
+                    bytemuck::cast_slice_mut(&mut pixels);
+                self.renderer().render(buf, w as usize);
+
+                // RGBA -> BGRA for wl_shm Argb8888
+                for pixel in pixels.chunks_exact_mut(4) {
+                    pixel.swap(0, 2);
+                }
+
                 let anchor = if self.config.linux.fixed_position {
                     match self.config.linux.corner.as_str() {
                         "top-right" => Anchor::TOP | Anchor::RIGHT,
@@ -726,7 +771,7 @@ impl WaylandLayerDisplay {
                 };
                 let cmd = WlCmd::ShowStatus {
                     x: margin_x, y: margin_y, anchor,
-                    w: 60, h: 28, pixels,
+                    w, h, pixels,
                 };
                 if let Err(e) = wl.cmd_tx.send(cmd) {
                     log::error!("Wayland channel disconnected: {e:?}");
@@ -849,9 +894,13 @@ impl CandidateDisplay for WaylandLayerDisplay {
         let per_cand_w = ((fs * max_chars) / 2 + 40).max(80);
         let total_w = (candidates.len() as u32 * per_cand_w + 80).min(1600).max(200);
         let total_h = 200u32;
-        self.candidate_window.window().set_size(slint::WindowSize::Physical(
-            slint::PhysicalSize::new(total_w, total_h),
-        ));
+        
+        let current_size = self.candidate_window.window().size();
+        if current_size.width as u32 != total_w || current_size.height as u32 != total_h {
+            self.candidate_window.window().set_size(slint::WindowSize::Physical(
+                slint::PhysicalSize::new(total_w, total_h),
+            ));
+        }
         slint::platform::update_timers_and_animations();
         let size = self.candidate_window.window().size();
         eprintln!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
