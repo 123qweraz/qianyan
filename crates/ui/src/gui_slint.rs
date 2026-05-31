@@ -235,11 +235,13 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                 if let Ok(new_config) = serde_json::from_str::<Config>(json) {
                     let old_slint = config.linux.show_slint_window;
                     let old_notify = config.linux.show_notification;
+                    let old_toggle_notify = config.linux.show_toggle_notification;
                     let new_slint = new_config.linux.show_slint_window;
                     let new_notify = new_config.linux.show_notification;
+                    let new_toggle_notify = new_config.linux.show_toggle_notification;
                     *config = new_config;
 
-                    if new_slint != old_slint || new_notify != old_notify {
+                    if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
                         for display in displays.iter_mut() {
                             display.close();
                         }
@@ -282,7 +284,7 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     #[cfg(not(target_os = "linux"))]
     displays.push(Box::new(SlintDisplay::new(config.clone())));
 
-    if cfg!(target_os = "linux") && config.linux.show_notification {
+    if cfg!(target_os = "linux") && (config.linux.show_notification || config.linux.show_toggle_notification) {
         eprintln!("[GUI_DEBUG] create_displays: adding LinuxNotifyDisplay");
         displays.push(Box::new(LinuxNotifyDisplay::new(config.clone())));
     }
@@ -327,15 +329,17 @@ fn handle_event(
             let old = config.read().expect("config lock poisoned");
             let old_slint = old.linux.show_slint_window;
             let old_notify = old.linux.show_notification;
+            let old_toggle_notify = old.linux.show_toggle_notification;
             let new = &*new_config;
             let new_slint = new.linux.show_slint_window;
             let new_notify = new.linux.show_notification;
+            let new_toggle_notify = new.linux.show_toggle_notification;
             drop(old);
-            eprintln!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={}) new(slint={},notify={})",
-                old_slint, old_notify, new_slint, new_notify);
+            eprintln!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={},toggle_notify={}) new(slint={},notify={},toggle_notify={})",
+                old_slint, old_notify, old_toggle_notify, new_slint, new_notify, new_toggle_notify);
             *config.write().expect("config lock poisoned") = *new_config;
 
-            if new_slint != old_slint || new_notify != old_notify {
+            if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
                 eprintln!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
                 for d in displays.iter_mut() {
                     d.close();

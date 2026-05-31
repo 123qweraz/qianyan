@@ -29,6 +29,8 @@ pub struct LinuxConfig {
     pub show_slint_window: bool,
     #[serde(default)]
     pub show_notification: bool,
+    #[serde(default)]
+    pub show_toggle_notification: bool,
     pub fixed_position: bool,
     pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
     #[serde(default = "default_fixed_x")]
@@ -1020,6 +1022,7 @@ impl Config {
                 clipboard_delay_ms: 50,
                 show_slint_window: true,
                 show_notification: false,
+                show_toggle_notification: false,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
                 fixed_x: 40,

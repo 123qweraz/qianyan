@@ -27,6 +27,13 @@ impl CandidateDisplay for LinuxNotifyDisplay {
         _page: usize,
         _total_pages: usize,
     ) {
+        #[cfg(target_os = "linux")]
+        let show = self.config.linux.show_notification;
+        #[cfg(not(target_os = "linux"))]
+        let show = false;
+        if !show {
+            return;
+        }
         eprintln!("[NOTIFY_DEBUG] update_candidates: pinyin='{}' candidates={}", pinyin, candidates.len());
         if pinyin.is_empty() {
             if let Some(h) = self.active_notification.take() {
@@ -89,13 +96,17 @@ impl CandidateDisplay for LinuxNotifyDisplay {
         }
     }
 
-    fn update_status(&mut self, text: &str, _chinese_enabled: bool) {
-        if text.is_empty() {
+    fn update_status(&mut self, text: &str, chinese_enabled: bool) {
+        #[cfg(target_os = "linux")]
+        let show = self.config.linux.show_toggle_notification;
+        #[cfg(not(target_os = "linux"))]
+        let show = false;
+        if !show || text.is_empty() {
             return;
         }
         let _ = Notification::new()
-            .summary("Qianyan IME")
-            .body(text)
+            .summary(if chinese_enabled { "中" } else { "英" })
+            .body("")
             .appname("qianyan-ime")
             .hint(Hint::Transient(true))
             .timeout(1500)

@@ -29,6 +29,7 @@ pub fn create_input_host(
             clipboard_delay_ms: 50,
             show_slint_window: true,
             show_notification: false,
+            show_toggle_notification: false,
             fixed_position: true,
             corner: "bottom-right".into(),
             fixed_x: 40,

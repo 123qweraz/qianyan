@@ -1,0 +1,80 @@
+[Test] 进入测试模式 (无 UI)...
+[Test] 配置加载目录: "/home/xiao/Documents/qianyan/configs"
+请输入拼音进行测试 (输入 'exit' 退出):
+> 动作反馈: Emit("a")
+中英文状态: 开启
+大写锁定: 关闭
+原始缓冲区: a
+预编辑: a
+过滤模式: None
+当前选中: 0
+分页: 0/6
+辅助码过滤: 
+切分: []
+候选词 (前 10 条):
+  1. 啊 (hint: mafa, source: Engine)
+  2. 阿 (hint: bffa, source: Engine)
+  3. 吖 (hint: msra, source: Engine)
+  4. 嗄 (hint: mgca, source: Engine)
+  5. 锕 (hint: tgfa, source: Engine)
+  6. 腌 (hint: qgaa, source: Engine)
+> 动作反馈: Consume
+中英文状态: 开启
+大写锁定: 关闭
+原始缓冲区: a
+预编辑: a
+过滤模式: None
+当前选中: 0
+分页: 0/6
+辅助码过滤: 
+切分: []
+候选词 (前 10 条):
+  1. 啊 (hint: mafa, source: Engine)
+  2. 阿 (hint: bffa, source: Engine)
+  3. 吖 (hint: msra, source: Engine)
+  4. 嗄 (hint: mgca, source: Engine)
+  5. 锕 (hint: tgfa, source: Engine)
+  6. 腌 (hint: qgaa, source: Engine)
+> 动作反馈: Emit("j")
+中英文状态: 开启
+大写锁定: 关闭
+原始缓冲区: aj
+预编辑: aj
+过滤模式: None
+当前选中: 0
+分页: 0/89
+辅助码过滤: 
+切分: []
+候选词 (前 10 条):
+  1. 啊 (hint: mafa, source: Engine)
+  2. 按 (hint: fsta, source: Engine)
+  3. 爱 (hint: wica, source: Engine)
+  4. 安 (hint: oxta, source: Engine)
+  5. 暗 (hint: mgga, source: Engine)
+  6. 阿 (hint: bffa, source: Engine)
+  7. 呃 (hint: mgxe, source: Engine)
+  8. 噢 (hint: mdwo, source: Engine)
+  9. 案 (hint: oxwa, source: Engine)
+  10. 艾 (hint: fkwa, source: Engine)
+> 动作反馈: Consume
+中英文状态: 开启
+大写锁定: 关闭
+原始缓冲区: aj
+预编辑: aj
+过滤模式: None
+当前选中: 0
+分页: 0/89
+辅助码过滤: 
+切分: []
+候选词 (前 10 条):
+  1. 啊 (hint: mafa, source: Engine)
+  2. 按 (hint: fsta, source: Engine)
+  3. 爱 (hint: wica, source: Engine)
+  4. 安 (hint: oxta, source: Engine)
+  5. 暗 (hint: mgga, source: Engine)
+  6. 阿 (hint: bffa, source: Engine)
+  7. 呃 (hint: mgxe, source: Engine)
+  8. 噢 (hint: mdwo, source: Engine)
+  9. 案 (hint: oxwa, source: Engine)
+  10. 艾 (hint: fkwa, source: Engine)
+> 

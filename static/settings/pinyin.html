@@ -18,6 +18,21 @@
         .section-desc { font-size: 13px; color: var(--apple-secondary); margin-bottom: 20px; }
         .sub-link { font-size: 13px; color: var(--apple-accent); text-decoration: none; margin-left: 8px; }
         .sub-link:hover { text-decoration: underline; }
+
+        .page-with-sidebar { display: flex; gap: 24px; align-items: flex-start; }
+        .sidebar {
+            flex: 0 0 180px;
+            position: sticky; top: 20px;
+            display: flex; flex-direction: column; gap: 4px;
+            padding: 12px 0;
+        }
+        .sidebar a {
+            display: block; padding: 8px 12px; border-radius: 6px;
+            color: var(--apple-secondary); font-size: 13px; text-decoration: none;
+            transition: background .15s, color .15s;
+        }
+        .sidebar a:hover { background: rgba(9,105,218,0.06); color: var(--apple-accent); }
+        .main-content { flex: 1; min-width: 0; }
     </style>
 </head>
 <body>
@@ -27,145 +42,151 @@
             <h1>拼音设置</h1>
         </header>
 
-        <h2>输入与转换</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
-                <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">自动造词</div><div class="desc">记录连续输入的新词组（超过一个字）</div></div>
-                <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">自动调频</div><div class="desc">根据输入频率调整候选词顺序</div></div>
-                <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">分词分隔符</div><div class="desc">用于强制分割拼音音节的字符，如输入 "xi'an" 分为 "xi" 和 "an"</div></div>
-                <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">上屏模式</div><div class="desc">词模式：空格直接上屏；句模式：支持连续输入整句</div></div>
-                <select id="commit_mode">
-                    <option value="single">词模式</option>
-                    <option value="double">句模式</option>
-                </select>
-            </div>
-        </div>
+        <div class="page-with-sidebar">
+            <nav class="sidebar">
+                <a href="#input-conversion">输入与转换</a>
+                <a href="#display-mode">候选显示模式</a>
+                <a href="#traditional">繁体输入功能</a>
+                <a href="#key-switches">按键功能开关</a>
+                <a href="#hotkeys">快捷键</a>
+            </nav>
 
-        <h2>候选显示模式</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">显示模式</div><div class="desc">选择候选词旁显示何种辅助信息</div></div>
-                <select id="display_mode">
-                    <option value="character_with_english">汉字 + 英语辅助码</option>
-                    <option value="character_with_stroke">汉字 + 笔画辅助码</option>
-                    <option value="character_with_tone">汉字 + 音调</option>
-                    <option value="character_only">仅汉字（不显示辅助信息）</option>
-                </select>
-            </div>
-            <div class="note" style="margin:0;">
-                开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模式不变。<br>
-                例如 "汉字 + 英语辅助码" 搭配繁体输出 → "繁體漢字 + 英語輔助碼"
-            </div>
-        </div>
+            <div class="main-content">
+                <h2 id="input-conversion">输入与转换</h2>
+                <div class="card">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">自动造词</div><div class="desc">记录连续输入的新词组（超过一个字）</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">自动调频</div><div class="desc">根据输入频率调整候选词顺序</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">分词分隔符</div><div class="desc">用于强制分割拼音音节的字符，如输入 "xi'an" 分为 "xi" 和 "an"</div></div>
+                        <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
+                    </div>
+                    <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
+                        <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配（如 zm → 怎么）</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">模糊拼音</div><div class="desc">z/zh、c/ch、s/sh、an/ang 等模糊音匹配</div></div>
+                        <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊音设置 →</a>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">防呆模式</div><div class="desc">容忍常见拼写错误，智能模式自动纠错，严格模式要求精准输入</div></div>
+                        <select id="anti_typo_mode" class="select-input">
+                            <option value="None">关闭</option>
+                            <option value="Strict">严格模式</option>
+                            <option value="Smart">智能模式</option>
+                        </select>
+                    </div>
+                    <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
+                    <div style="text-align:right; font-size:13px; color:var(--apple-secondary);">
+                        编辑器预览模式已移至
+                        <a href="system.html" style="color:var(--apple-accent);text-decoration:none;">系统设置 → Linux 专属设置</a>
+                    </div>
+                </div>
 
-        <h2>繁体输入功能</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形</div></div>
-                <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）。按住第一个键再按第二个键触发，如 CapsLock+F</div></div>
-                <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
-            </div>
-        </div>
+                <h2 id="display-mode">候选显示模式</h2>
+                <div class="card">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">显示模式</div><div class="desc">选择候选词旁显示何种辅助信息</div></div>
+                        <select id="display_mode">
+                            <option value="character_with_english">汉字 + 英语辅助码</option>
+                            <option value="character_with_stroke">汉字 + 笔画辅助码</option>
+                            <option value="character_with_tone">汉字 + 音调</option>
+                            <option value="character_only">仅汉字（不显示辅助信息）</option>
+                        </select>
+                    </div>
+                    <div class="note" style="margin:0;">
+                        开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模式不变。<br>
+                        例如 "汉字 + 英语辅助码" 搭配繁体输出 → "繁體漢字 + 英語輔助碼"
+                    </div>
+                </div>
 
-        <h2>搜索与匹配逻辑</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">精准匹配自动上屏</div><div class="desc">当输入码唯一对应一个词时自动提交</div></div>
-                <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
-                <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配（如 zm → 怎么）</div></div>
-                <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">防呆模式</div><div class="desc">容忍常见拼写错误，智能模式自动纠错，严格模式要求精准输入</div></div>
-                <select id="anti_typo_mode" class="select-input">
-                    <option value="None">关闭</option>
-                    <option value="Strict">严格模式</option>
-                    <option value="Smart">智能模式</option>
-                </select>
-            </div>
-            <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
-            <div style="text-align:right; font-size:13px; color:var(--apple-secondary);">
-                编辑器预览模式已移至
-                <a href="system.html" style="color:var(--apple-accent);text-decoration:none;">系统设置 → Linux 专属设置</a>
-            </div>
-        </div>
+                <h2 id="traditional">繁体输入功能</h2>
+                <div class="card">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）。按住第一个键再按第二个键触发，如 CapsLock+F</div></div>
+                        <input type="text" id="toggle_traditional_input" style="width: 200px; text-align: right;" placeholder="例如: CapsLock+F">
+                    </div>
+                </div>
 
-        <h2>按键功能开关</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
-                <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">键盘发音</div><div class="desc">打字时发出对应字母的声音</div></div>
-                <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
-                <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
-            </div>
-        </div>
+                <h2 id="key-switches">按键功能开关</h2>
+                <div class="card">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">键盘发音</div><div class="desc">打字时发出对应字母的声音</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_number_selection"><span class="slider"></span></label>
+                    </div>
+                </div>
 
-        <h2>快捷键</h2>
-        <div class="card">
-            <div class="note" style="margin:0 0 16px;">
-                <strong>长韵母快速输入</strong> 已移至独立页面 —
-                <a href="quickfinals.html" style="color:var(--apple-accent);">长韵母快速输入设置 →</a>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">翻到上一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
-                <input type="text" id="page_up_input" style="width: 250px; text-align: right;" placeholder="例如: Up,PageUp,-">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">翻到下一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
-                <input type="text" id="page_down_input" style="width: 250px; text-align: right;" placeholder="例如: Down,PageDown,=">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">选择上一词</div><div class="desc">触发选择上一个候选词的按键列表</div></div>
-                <input type="text" id="prev_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Left">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">选择下一词</div><div class="desc">触发选择下一个候选词的按键列表</div></div>
-                <input type="text" id="next_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Right">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，9=第1字，0=第2字</div></div>
-                <input type="text" id="word_to_char_input" style="width: 250px; text-align: right;" placeholder="例如: 9,0">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键快速输入首个候选词中的第 N 个字，1=第1字，2=第2字</div></div>
-                <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2">
-            </div>
-            <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--apple-border);">
-            <div class="setting-item">
-                <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
-                <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">启用 Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式（和 Ctrl+Space 不同，会直接提交内容）</div></div>
-                <label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label>
+                <h2 id="hotkeys">快捷键</h2>
+                <div class="card">
+                    <div class="note" style="margin:0 0 16px;">
+                        <strong>长韵母快速输入</strong> 已移至独立页面 —
+                        <a href="quickfinals.html" style="color:var(--apple-accent);">长韵母快速输入设置 →</a>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">翻到上一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
+                        <input type="text" id="page_up_input" style="width: 250px; text-align: right;" placeholder="例如: Up,PageUp,-">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">翻到下一页</div><div class="desc">触发翻页的按键列表，使用逗号分隔</div></div>
+                        <input type="text" id="page_down_input" style="width: 250px; text-align: right;" placeholder="例如: Down,PageDown,=">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">选择上一词</div><div class="desc">触发选择上一个候选词的按键列表</div></div>
+                        <input type="text" id="prev_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Left">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">选择下一词</div><div class="desc">触发选择下一个候选词的按键列表</div></div>
+                        <input type="text" id="next_candidate_input" style="width: 250px; text-align: right;" placeholder="例如: Right">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，9=第1字，0=第2字</div></div>
+                        <input type="text" id="word_to_char_input" style="width: 250px; text-align: right;" placeholder="例如: 9,0">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键快速输入首个候选词中的第 N 个字，1=第1字，2=第2字</div></div>
+                        <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2">
+                    </div>
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--apple-border);">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">启用 Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式（和 Ctrl+Space 不同，会直接提交内容）</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -191,7 +212,6 @@
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_auto_reorder', 'input');
             bindInput('segmentation_delimiters', 'input');
-            bindInput('commit_mode', 'input');
             bindInput('auto_commit_unique_full_match', 'input');
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');

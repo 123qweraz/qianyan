@@ -39,8 +39,16 @@
         <h2>窗口与托盘</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">显示候选窗口</div><div class="desc">控制拼写时是否出现选词框</div></div>
-                <label class="switch"><input type="checkbox" id="show_candidates"><span class="slider"></span></label>
+                <div class="info">
+                    <div class="title">候选词UI显示模式</div>
+                    <div class="desc">选择候选词的显示方式：使用输入法自带的候选栏、系统桌面通知、两者同时显示或不显示</div>
+                </div>
+                <select id="candidate_display_mode" class="select-input">
+                    <option value="slint">输入法候选栏</option>
+                    <option value="notification">系统桌面通知</option>
+                    <option value="both">同时显示</option>
+                    <option value="none">无</option>
+                </select>
             </div>
             <div class="setting-item">
                 <div class="info"><div class="title">显示系统托盘</div><div class="desc">在系统托盘中显示千言输入法图标</div></div>
@@ -62,12 +70,8 @@
         <h2>Linux 专属设置</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">内置候选栏</div><div class="desc">在光标附近显示候选词窗口</div></div>
-                <label class="switch"><input type="checkbox" id="linux_show_slint_window"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">桌面通知</div><div class="desc">通过系统通知显示候选词（可与内置候选栏同时开启）</div></div>
-                <label class="switch"><input type="checkbox" id="linux_show_notification"><span class="slider"></span></label>
+                <div class="info"><div class="title">中/英文切换通知</div><div class="desc">按 CapsLock 切换中英文时，通过桌面通知短暂显示"中"或"英"（不依赖候选词通知）</div></div>
+                <label class="switch"><input type="checkbox" id="linux_show_toggle_notification"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info"><div class="title">编辑器预览模式</div><div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div></div>
@@ -125,17 +129,61 @@
             `).join('');
 
             bindInput('autostart', 'input');
-            bindInput('show_candidates', 'appearance');
+            loadCandidateDisplayMode();
             bindInput('show_tray', 'appearance');
             bindInput('files_data_dir', 'files', 'data_dir');
 
-            bindInput('linux_show_slint_window', 'linux', 'show_slint_window');
-            bindInput('linux_show_notification', 'linux', 'show_notification');
+            bindInput('linux_show_toggle_notification', 'linux', 'show_toggle_notification');
             bindInput('phantom_type', 'input');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');
             bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');
             bindInput('linux_device_path', 'linux', 'device_path');
+        }
+
+        function loadCandidateDisplayMode() {
+            let showCandidates = config.appearance.show_candidates !== false;
+            let showSlint = config.linux.show_slint_window !== false;
+            let showNotif = config.linux.show_notification === true;
+            let mode;
+            if (!showCandidates) {
+                mode = 'none';
+            } else if (showSlint && showNotif) {
+                mode = 'both';
+            } else if (showSlint) {
+                mode = 'slint';
+            } else if (showNotif) {
+                mode = 'notification';
+            } else {
+                mode = 'none';
+            }
+            document.getElementById('candidate_display_mode').value = mode;
+        }
+
+        function saveCandidateDisplayMode() {
+            const mode = document.getElementById('candidate_display_mode').value;
+            switch (mode) {
+                case 'none':
+                    config.appearance.show_candidates = false;
+                    config.linux.show_slint_window = false;
+                    config.linux.show_notification = false;
+                    break;
+                case 'slint':
+                    config.appearance.show_candidates = true;
+                    config.linux.show_slint_window = true;
+                    config.linux.show_notification = false;
+                    break;
+                case 'notification':
+                    config.appearance.show_candidates = true;
+                    config.linux.show_slint_window = false;
+                    config.linux.show_notification = true;
+                    break;
+                case 'both':
+                    config.appearance.show_candidates = true;
+                    config.linux.show_slint_window = true;
+                    config.linux.show_notification = true;
+                    break;
+            }
         }
 
         function toggleProfile(name, el) {
@@ -152,6 +200,7 @@
         }
 
         async function save() {
+            saveCandidateDisplayMode();
             await saveConfig();
         }
 
