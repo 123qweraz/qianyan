@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>实用工具 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; margin-top: 20px; }
+        .tool-card { background: var(--apple-card); border-radius: 16px; padding: 24px; border: 1px solid var(--apple-border); }
+        .tool-card h2 { margin: 0 0 16px 0; font-size: 18px; font-weight: 600; }
+        .tool-card label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--apple-secondary); }
+        .tool-card input[type="text"], .tool-card input[type="number"] { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--apple-border); border-radius: 8px; font-size: 14px; background: var(--apple-bg); color: var(--apple-text); box-sizing: border-box; margin-bottom: 12px; }
+        .tool-card input:focus { outline: 2px solid var(--apple-accent); outline-offset: -1px; border-color: transparent; }
+        .result-box { padding: 14px; background: var(--apple-bg); border-radius: 8px; border: 1px solid var(--apple-border); font-size: 16px; line-height: 1.6; word-break: break-all; margin-top: 8px; min-height: 24px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .result-box .result-text { flex: 1; }
+        .result-box .copy-btn { background: var(--apple-accent); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        .result-box .copy-btn:hover { opacity: 0.8; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; color: #fff; }
+        .datetime-display { font-size: 32px; font-weight: 700; text-align: center; padding: 20px; font-variant-numeric: tabular-nums; }
+        .datetime-display .date { font-size: 16px; font-weight: 400; color: var(--apple-secondary); margin-top: 4px; }
+        .datetime-formats { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        .datetime-formats .fmt-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--apple-bg); border-radius: 6px; border: 1px solid var(--apple-border); font-size: 13px; }
+        .datetime-formats .fmt-row .copy-btn { font-size: 11px; padding: 2px 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>实用工具</h1>
+        </header>
+
+        <div class="tools-grid">
+            <div class="tool-card">
+                <h2>🔢 数字转大写金额</h2>
+                <label for="amount-input">输入数字金额</label>
+                <input type="text" id="amount-input" placeholder="例如: 12345.67" oninput="convertAmount()">
+                <div class="result-box">
+                    <span class="result-text" id="amount-result">等待输入...</span>
+                    <button class="copy-btn" onclick="copyText('amount-result')">复制</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>📅 日期与时间</h2>
+                <div class="datetime-display">
+                    <div id="time-display">--:--:--</div>
+                    <div class="date" id="date-display">----年--月--日</div>
+                </div>
+                <div class="datetime-formats" id="datetime-formats"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const CN_NUM = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
+        const CN_UNIT = ['','拾','佰','仟'];
+        const CN_BIG_UNIT = ['','万','亿','万亿'];
+
+        function convertAmount() {
+            const input = document.getElementById('amount-input').value.trim();
+            if (!input) { document.getElementById('amount-result').textContent = '等待输入...'; return; }
+            const num = parseFloat(input);
+            if (isNaN(num) || num < 0) { document.getElementById('amount-result').textContent = '请输入有效数字'; return; }
+            if (num > 999999999999.99) { document.getElementById('amount-result').textContent = '数字太大，最大支持 999999999999.99'; return; }
+
+            const parts = num.toFixed(2).split('.');
+            const intPart = parseInt(parts[0]);
+            const decPart = parseInt(parts[1]);
+
+            let result = '';
+            if (intPart === 0) {
+                result = '零元';
+            } else {
+                result = convertInteger(intPart) + '元';
+            }
+
+            if (decPart === 0) {
+                result += '整';
+            } else {
+                const jiao = Math.floor(decPart / 10);
+                const fen = decPart % 10;
+                if (jiao > 0) result += CN_NUM[jiao] + '角';
+                if (fen > 0) result += CN_NUM[fen] + '分';
+            }
+
+            document.getElementById('amount-result').textContent = result;
+        }
+
+        function convertInteger(num) {
+            if (num === 0) return '';
+            let result = '';
+            let zeroFlag = false;
+            let unitIdx = 0;
+
+            while (num > 0) {
+                const section = num % 10000;
+                if (section === 0) {
+                    zeroFlag = true;
+                } else {
+                    if (zeroFlag) {
+                        result = '零' + result;
+                        zeroFlag = false;
+                    }
+                    result = convertSection(section) + CN_BIG_UNIT[unitIdx] + result;
+                }
+                num = Math.floor(num / 10000);
+                unitIdx++;
+            }
+            return result;
+        }
+
+        function convertSection(num) {
+            let result = '';
+            let zeroFlag = false;
+            for (let i = 0; i < 4; i++) {
+                const digit = num % 10;
+                if (digit === 0) {
+                    zeroFlag = true;
+                } else {
+                    if (zeroFlag) {
+                        result = '零' + result;
+                        zeroFlag = false;
+                    }
+                    result = CN_NUM[digit] + CN_UNIT[i] + result;
+                }
+                num = Math.floor(num / 10);
+            }
+            return result;
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            if (!text || text === '等待输入...') return;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('已复制', 'success');
+            }).catch(() => {
+                showToast('复制失败', 'error');
+            });
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('time-display').textContent = h + ':' + m + ':' + s;
+
+            const y = now.getFullYear();
+            const mo = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const weekDays = ['日','一','二','三','四','五','六'];
+            const wd = weekDays[now.getDay()];
+            document.getElementById('date-display').textContent = y + '年' + mo + '月' + d + '日 星期' + wd;
+
+            const formats = [
+                { label: 'YYYY-MM-DD', value: y + '-' + mo + '-' + d },
+                { label: 'YYYY年MM月DD日', value: y + '年' + mo + '月' + d + '日' },
+                { label: 'YYYY-MM-DD HH:mm:ss', value: y + '-' + mo + '-' + d + ' ' + h + ':' + m + ':' + s },
+                { label: 'HH:mm:ss', value: h + ':' + m + ':' + s },
+                { label: 'Unix 时间戳', value: Math.floor(now.getTime() / 1000).toString() },
+            ];
+
+            const container = document.getElementById('datetime-formats');
+            container.innerHTML = formats.map(f =>
+                '<div class="fmt-row">' +
+                '<span>' + f.label + ': <strong>' + f.value + '</strong></span>' +
+                '<button class="copy-btn" onclick="copyStr(\'' + f.value.replace(/'/g, "\\'") + '\')">复制</button>' +
+                '</div>'
+            ).join('');
+        }
+
+        function copyStr(s) {
+            navigator.clipboard.writeText(s).then(() => showToast('已复制', 'success'));
+        }
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast ' + type + ' show';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 2000);
+        }
+
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+    </script>
+</body>
+</html>
