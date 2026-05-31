@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>新词发现器 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .discover-layout { display: flex; gap: 20px; align-items: flex-start; }
+        .input-panel { flex: 1; min-width: 0; }
+        .result-panel { flex: 1; min-width: 0; }
+        textarea { width: 100%; height: 300px; padding: 12px; border: 1px solid var(--apple-border); border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; background: var(--apple-card-bg); color: var(--apple-text); box-sizing: border-box; }
+        textarea:focus { outline: 2px solid var(--apple-accent); outline-offset: -1px; border-color: transparent; }
+        .stats-bar { font-size: 12px; color: var(--apple-secondary); margin: 8px 0; }
+        .dict-table-wrap { overflow-x: auto; border: 1px solid var(--apple-border); border-radius: 10px; max-height: 500px; overflow-y: auto; }
+        .dict-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .dict-table th { position: sticky; top: 0; background: var(--apple-bg); padding: 8px 6px; font-weight: 600; border-bottom: 2px solid var(--apple-border); user-select: none; white-space: nowrap; z-index: 1; font-size: 12px; }
+        .dict-table td { padding: 6px 6px; border-bottom: 1px solid var(--apple-border); vertical-align: middle; }
+        .dict-table tr:hover td { background: var(--apple-hover); }
+        .no-data { text-align: center; padding: 40px 20px; color: var(--apple-secondary); }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .tag-new { background: #ffd60a; color: #1a1a1a; }
+        .tag-known { background: #e1e1e6; color: #666; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #34c759; color: #fff; }
+        .toast.error { background: var(--apple-red); color: #fff; }
+        .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--apple-border); border-radius: 10px; background: var(--apple-card-bg); margin-bottom: 12px; }
+        .cell-pinyin { font-family: monospace; font-size: 11px; color: var(--apple-secondary); }
+        .cell-word { font-weight: 600; }
+        select { height: 34px; padding: 0 8px; border: 1px solid var(--apple-border); border-radius: 6px; font-size: 12px; background: var(--apple-bg); color: var(--apple-text); }
+        .check-col { text-align: center; }
+        .check-col input { transform: scale(1.2); cursor: pointer; }
+        .batch-bar { display: flex; gap: 8px; align-items: center; padding: 10px 0; flex-wrap: wrap; }
+        .note { margin-bottom: 12px; padding: 12px 16px; font-size: 12px; line-height: 1.6; background: rgba(9,105,218,0.04); border-left: 3px solid var(--apple-accent); border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>新词发现器</h1>
+        </header>
+
+        <div class="note">
+            <strong>💡 使用说明</strong><br>
+            粘贴或导入一段文本，系统会自动分词并与词库对比，发现尚未收录的新词。<br>
+            选中想要添加的词，可导出为 <strong>TXT</strong>（拼音对照表）或 <strong>JSON</strong>（字典格式）。
+        </div>
+
+        <div class="discover-layout">
+            <div class="input-panel">
+                <div class="toolbar">
+                    <span style="font-weight:600;">📝 输入文本</span>
+                    <div style="display:flex; gap:4px; margin-left:auto;">
+                        <button class="btn" onclick="loadSample()">示例文本</button>
+                        <button class="btn" onclick="document.getElementById('file-input').click()" style="background:var(--apple-accent);color:#fff;border:none;">📂 导入txt</button>
+                        <input type="file" id="file-input" accept=".txt" style="display:none" onchange="loadFile(event)">
+                        <button class="btn" onclick="discover()" style="background:var(--apple-accent);color:#fff;border:none;">🔍 发现新词</button>
+                    </div>
+                </div>
+                <textarea id="input-text" placeholder="在此粘贴中文文本，然后点击「发现新词」..."></textarea>
+            </div>
+
+            <div class="result-panel">
+                <div class="toolbar">
+                    <span style="font-weight:600;">📊 结果</span>
+                    <span class="stats-bar" id="stats-bar">等待分析</span>
+                    <div style="display:flex; gap:4px; margin-left:auto;">
+                        <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                            <input type="checkbox" id="show-all" checked onchange="filterResults()"> 全部
+                        </label>
+                    </div>
+                </div>
+
+                <div class="batch-bar" id="batch-bar" style="display:none;">
+                    <span style="font-size:13px; font-weight:600;">已选 <span id="selected-count">0</span> 个新词</span>
+                    <select id="export-format">
+                        <option value="json">JSON 字典格式</option>
+                        <option value="txt">TXT 拼音对照</option>
+                    </select>
+                    <button class="btn" onclick="exportSelected()" style="background:var(--apple-accent);color:#fff;border:none;">📥 导出选中</button>
+                </div>
+
+                <div class="dict-table-wrap" id="result-table-wrap" style="display:none;">
+                    <table class="dict-table" id="result-table">
+                        <thead>
+                            <tr>
+                                <th class="check-col"><input type="checkbox" id="select-all" onchange="toggleAll()" checked></th>
+                                <th class="left">词汇</th>
+                                <th class="left">拼音</th>
+                                <th class="center">状态</th>
+                                <th class="center">权重</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-body"></tbody>
+                    </table>
+                </div>
+                <div id="no-results" style="text-align:center; padding:60px 20px; color:var(--apple-secondary);">点击「发现新词」开始分析</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        let discoveredWords = [];
+        let selectedWords = [];
+
+        function loadSample() {
+            document.getElementById('input-text').value =
+                '在数字时代的浪潮中，人工智能技术正在经历前所未有的发展。\n' +
+                '机器学习、深度学习和自然语言处理等技术的突破，\n' +
+                '正在改变着我们生活和工作的方方面面。\n' +
+                '从智能语音助手到自动驾驶汽车，\n' +
+                'AI的应用场景越来越广泛。\n' +
+                '然而，随之而来的也有数据隐私、算法偏见等挑战，\n' +
+                '需要我们在技术创新和伦理规范之间寻找平衡。';
+        }
+
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('input-text').value = e.target.result;
+                showToast('已导入 ' + file.name, 'success');
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        async function discover() {
+            const text = document.getElementById('input-text').value.trim();
+            if (!text) { showToast('请输入文本', 'error'); return; }
+
+            const r = await fetch('/api/tools/discover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (!r.ok) { showToast('分析失败', 'error'); return; }
+
+            discoveredWords = await r.json();
+            renderResults(discoveredWords);
+            document.getElementById('no-results').style.display = 'none';
+            document.getElementById('result-table-wrap').style.display = 'block';
+
+            const total = discoveredWords.length;
+            const newCount = discoveredWords.filter(w => !w.in_dict).length;
+            document.getElementById('stats-bar').textContent =
+                `共 ${total} 个词，其中 🆕 新词 ${newCount} 个`;
+        }
+
+        function renderResults(words) {
+            const showAll = document.getElementById('show-all').checked;
+            const filtered = showAll ? words : words.filter(w => !w.in_dict);
+            const tbody = document.getElementById('result-body');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">没有匹配的结果</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((w, idx) => {
+                const tag = w.in_dict
+                    ? '<span class="tag tag-known">已有</span>'
+                    : '<span class="tag tag-new">新词</span>';
+                return `<tr>
+                    <td class="check-col"><input type="checkbox" class="word-check" data-word="${escAttr(w.word)}" data-pinyin="${escAttr(w.pinyin)}" ${w.in_dict?'':'checked'} onchange="updateSelectCount()"></td>
+                    <td class="cell-word left">${esc(w.word)}</td>
+                    <td class="cell-pinyin left">${esc(w.pinyin)}</td>
+                    <td class="center">${tag}</td>
+                    <td class="center">${w.weight}</td>
+                </tr>`;
+            }).join('');
+
+            updateSelectCount();
+            document.getElementById('batch-bar').style.display = 'block';
+        }
+
+        function filterResults() {
+            renderResults(discoveredWords);
+        }
+
+        function toggleAll() {
+            const checked = document.getElementById('select-all').checked;
+            document.querySelectorAll('.word-check').forEach(cb => cb.checked = checked);
+            updateSelectCount();
+        }
+
+        function updateSelectCount() {
+            const checks = document.querySelectorAll('.word-check:checked');
+            document.getElementById('selected-count').textContent = checks.length;
+        }
+
+        async function exportSelected() {
+            const checks = document.querySelectorAll('.word-check:checked');
+            if (checks.length === 0) { showToast('请先选择要导出的词', 'error'); return; }
+
+            const words = [], pinyins = [];
+            checks.forEach(cb => {
+                words.push(cb.dataset.word);
+                pinyins.push(cb.dataset.pinyin);
+            });
+
+            const format = document.getElementById('export-format').value;
+
+            const r = await fetch('/api/tools/discover/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ words, pinyins, format })
+            });
+            if (!r.ok) { showToast('导出失败', 'error'); return; }
+
+            const blob = await r.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = format === 'json' ? 'discovered_words.json' : 'discovered_words.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`已导出 ${words.length} 个词`, 'success');
+        }
+
+        function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function escAttr(s) { if (!s) return ''; return s.replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'toast ' + type + ' show';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+        }
+    </script>
+</body>
+</html>
