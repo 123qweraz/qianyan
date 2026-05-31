@@ -547,6 +547,7 @@ fn submit_to_layer(
     let needed = (stride * height as i32) as usize;
     if needed > pool.len() {
         let new_size = needed.next_power_of_two().max(1024 * 1024);
+        log::info!("SHM pool resize: {} -> {} (needed={})", pool.len(), new_size, needed);
         if pool.resize(new_size).is_err() {
             log::error!("Failed to resize SHM pool");
             return;
@@ -615,7 +616,7 @@ impl WaylandLayerDisplay {
         };
         let renderer_ptr = ow.software_renderer() as *const slint::platform::software_renderer::SoftwareRenderer;
 
-        let (tx, rx) = mpsc::sync_channel(1);
+        let (tx, rx) = mpsc::sync_channel(2);
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
             .spawn(move || wl_thread_main(rx));
@@ -690,13 +691,11 @@ impl WaylandLayerDisplay {
             };
 
             let cmd = WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels };
-            if let Err(e) = self.wl.as_ref().unwrap().cmd_tx.try_send(cmd) {
-                if !matches!(&e, mpsc::TrySendError::Full(_)) {
-                    log::error!("Wayland channel send error: {e:?}");
-                }
+            if let Err(e) = self.wl.as_ref().unwrap().cmd_tx.send(cmd) {
+                log::error!("Wayland channel disconnected: {e:?}");
             }
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.try_send(WlCmd::HideCandidate);
+            let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
         }
     }
 
@@ -729,14 +728,12 @@ impl WaylandLayerDisplay {
                     x: margin_x, y: margin_y, anchor,
                     w: 60, h: 28, pixels,
                 };
-                if let Err(e) = wl.cmd_tx.try_send(cmd) {
-                    if !matches!(&e, mpsc::TrySendError::Full(_)) {
-                        log::error!("Wayland channel send error: {e:?}");
-                    }
+                if let Err(e) = wl.cmd_tx.send(cmd) {
+                    log::error!("Wayland channel disconnected: {e:?}");
                 }
             }
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.try_send(WlCmd::HideStatus);
+            let _ = wl.cmd_tx.send(WlCmd::HideStatus);
         }
     }
 
@@ -899,7 +896,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
             let size = self.candidate_window.window().size();
             self.render_and_send_candidate(size.width.max(1), size.height.max(1));
         } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.try_send(WlCmd::HideCandidate);
+            let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
         }
     }
 
@@ -916,7 +913,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
     fn close(&mut self) {
         self.window_visible = false;
         if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.try_send(WlCmd::Exit);
+            let _ = wl.cmd_tx.send(WlCmd::Exit);
         }
     }
 }
