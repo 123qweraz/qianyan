@@ -285,6 +285,7 @@ impl Translator for TableTranslator {
 pub struct UserDictTranslator {
     pub user_dict: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
+    pub trie: Option<Arc<Trie>>,
 }
 impl Translator for UserDictTranslator {
     fn translate(
@@ -307,13 +308,32 @@ impl Translator for UserDictTranslator {
                 profile_dict.contains_key(&query));
             if let Some(words) = profile_dict.get(&query) {
                 for (word, weight) in words {
+                    let (trad, en, stroke) = if let Some(ref trie) = self.trie {
+                        if let Some(exacts) = trie.get_all_exact(&query) {
+                            if let Some(tr) = exacts.iter().find(|tr| tr.word == *word) {
+                                let trad = if tr.trad.is_empty() {
+                                    Arc::from(word.as_str())
+                                } else {
+                                    Arc::from(tr.trad)
+                                };
+                                (trad, Arc::from(tr.en), Arc::from(tr.stroke_aux))
+                            } else {
+                                (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
+                            }
+                        } else {
+                            (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
+                        }
+                    } else {
+                        (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
+                    };
+
                     results.push(Candidate {
                         text: Arc::from(word.as_str()),
                         simplified: Arc::from(word.as_str()),
-                        traditional: Arc::from(word.as_str()),
+                        traditional: trad,
                         hint: Arc::from("User"),
-                        english_aux: Arc::from(""),
-                        stroke_aux: Arc::from(""),
+                        english_aux: en,
+                        stroke_aux: stroke,
                         source: Arc::from("User"),
                         weight: *weight as f64,
                         match_level: 3,

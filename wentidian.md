@@ -93,30 +93,50 @@ Emoji 颜色:
 
 1. 核心引擎与逻辑问题 (Engine & Pipeline)
 
-   * 候选项截断 Bug (关键):
+   * 候选项截断 Bug (关键): [已修复]
        * 在 Pipeline::run 中，代码在执行 Filter（如 AdaptiveFilter 调频逻辑）之前，先将候选项截断到了 200 个。
        * 后果： 如果一个词在词典原始排序中排在 200
-         名之后，即使你频繁使用它，调频逻辑也永远无法看到它，导致“排名不上升”。
-       * 修复： 应该在所有 Translator 执行完后保留更多候选（例如 500-1000），待 Filter 处理完权重后再进行最终截断。
+         名之后，即使你频繁使用它，调频逻辑也永远无法看到它，导致"排名不上升"。
+       * 修复： 将 truncate 移到 Filter 循环之后，Filter 前保留所有候选，确保 AdaptiveFilter 能看到所有候选。
 
-   * 用户词典元数据丢失:
-       * UserDictTranslator 目前只存储了简化字文本。当一个词变成“用户词”后，它丢失了繁体、辅助码、音调和简拼信息。
-       * 后果： 导致“原来的简拼没了”或“辅助码不匹配”。
-       * 修复： 重构用户词典存储格式，记录完整的 Candidate 信息或与系统词典建立索引关联。
+   * 用户词典元数据丢失: [已修复]
+       * UserDictTranslator 目前只存储了简化字文本。当一个词变成"用户词"后，它丢失了繁体、辅助码、音调和简拼信息。
+       * 后果： 导致"原来的简拼没了"或"辅助码不匹配"。
+       * 修复： 给 UserDictTranslator 添加 trie 引用，查询时从词典中提取繁体、辅助码、笔画码。
 
    * 调频算法权重不足:
        * 当前的 AdaptiveFilter 使用的 RECENCY_BOOST_BASE (5M) 可能不足以抵消 MatchLevelScoringFilter
          给出的基础权重差距（如精确匹配 vs 模糊匹配的巨大分差）。
        * 改进： 需要根据用户反馈动态调整权重曲线，确保高频词能稳居首位。
 
-   * 107 个候选只显示 95 个的问题:
-       * 这通常是由于 Pipeline 中多处 truncate 或 retain（去重）逻辑不一致导致的。此外，InputSession 的分页逻辑在处理
-         filter_mode 时可能存在偏移错误。
+   * 107 个候选只显示 95 个的问题: [已修复]
+       * 这通常是由于 Pipeline 中多处 truncate 或 retain（去重）逻辑不一致导致的。主要原因是候选项截断Bug，
+         Filter 前截断到 200 导致候选数量减少。放宽 truncate 后此问题应解决。
+
+   * 自动组句和简拼结果不应进入用户词典: [已修复]
+       * record_usage() 没有区分候选来源。ComposeTranslator 的自动组句结果和 TableTranslator 的简拼匹配结果
+         （source="Compose" 和 source="Table (Abbr)"）不应进入 learned_words。
+       * 修复： 在 record_usage() 中增加 source 过滤，只有精确匹配（非自动组句、非简拼）才能进入用户词典。
+
+   * Pipeline::run retain 去重仅用 text 字段，可能丢失高质量匹配:
+       * retain 使用 HashSet<String> 基于 text 去重，如果同一文字来自不同匹配级别（如模糊 vs 精确）或
+         不同来源，后出现的版本被丢弃。当前 translator 顺序（UserDict → Table → Compose）部分缓解了此问题，
+         但仍有边缘情况。
+       * 建议： 改为基于 (text, source) 或 (text, match_level) 去重。
+
+   * Config::save() 全局锁与 RwLock<Config> 不一致:
+       * Config::save() 内部使用 OnceLock<Mutex<()>> 做序列化保护，但 Config 本身已被 RwLock<Config>
+         保护。两层锁机制存在一致性问题，save() 写入时读端可能看到中间状态。
+       * 建议： 统一使用单一锁策略，或确保 save() 在持有写锁时执行。
+
+   * Config::save() 在异步上下文中执行阻塞 I/O:
+       * web.rs 的 API handler 在 tokio 异步上下文中直接调用 Config::save()，这是同步阻塞的文件写入操作，
+         会阻塞 tokio worker 线程。
+       * 建议： 使用 tokio::task::spawn_blocking 包裹 save() 调用。
 
        
 
-
- UI 与交互问题 (Slint & GUI)
+   UI 与交互问题 (Slint & GUI)
 
    * Slint 宽度适配:
        * candidate.slint 的 width 虽然设置了 max(main_rect.preferred-width, 200px)，但在某些 Window Manager 下（尤其是

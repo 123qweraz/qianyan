@@ -92,10 +92,10 @@ impl Pipeline {
             let mut seen = std::collections::HashSet::new();
             candidates.retain(|c| seen.insert(c.text.clone()));
         }
-        candidates.truncate(200);
         for f in &self.filters {
             candidates = f.filter(input, candidates, config, context);
         }
+        candidates.truncate(limit);
         candidates
     }
 }
@@ -373,6 +373,7 @@ impl SearchEngine {
         pipeline.add_translator(Box::new(UserDictTranslator {
             user_dict: self.learned_words.clone(),
             profile: profile.to_string(),
+            trie: Some(trie_arc.clone()),
         }));
         pipeline.add_translator(Box::new(TableTranslator::new(
             trie_arc.clone(),

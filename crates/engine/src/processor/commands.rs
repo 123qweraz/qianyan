@@ -113,8 +113,14 @@ pub(crate) fn commit_candidate(
             ctx.session_state.commit_history.clear();
         }
 
+        let source = ctx
+            .session
+            .candidates
+            .get(index)
+            .map(|c| c.source.clone())
+            .unwrap_or_default();
         let last_word_opt = ctx.session_state.get_last_word().map(|s| s.to_string());
-        record_usage(ctx, &py, &cand, last_word_opt.as_deref());
+        record_usage(ctx, &py, &cand, &source, last_word_opt.as_deref());
         ctx.session_state
             .add_to_history(py.clone(), cand.to_string());
 
@@ -122,7 +128,7 @@ pub(crate) fn commit_candidate(
         ctx.session_state.set_last_committed(py.clone(), cand.to_string());
 
         for (py_c, word_c) in ctx.session_state.get_combination_candidates(8) {
-            record_usage(ctx, &py_c, &word_c, None);
+            record_usage(ctx, &py_c, &word_c, &Arc::from(""), None);
         }
         ctx.session_state.update_commit_time();
     }
@@ -144,7 +150,13 @@ pub(crate) fn commit_candidate(
     }
 }
 
-fn record_usage(ctx: &mut EngineContext, pinyin: &str, word: &str, context: Option<&str>) {
+fn record_usage(
+    ctx: &mut EngineContext,
+    pinyin: &str,
+    word: &str,
+    source: &Arc<str>,
+    context: Option<&str>,
+) {
     use crate::processor::learning;
 
     if pinyin.is_empty() || word.is_empty() {
@@ -182,9 +194,12 @@ fn record_usage(ctx: &mut EngineContext, pinyin: &str, word: &str, context: Opti
         }
     }
 
+    // 只有精确匹配（非自动组句、非简拼）才能进入用户词典
     if ctx.config.master_config.input.enable_word_discovery
         && word_len > 1
         && !ctx.engine.has_word_in_dict(&profile, word)
+        && source.as_ref() != "Compose"
+        && source.as_ref() != "Table (Abbr)"
     {
         let updated = learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
         ctx.config.insert_learned(&profile, pinyin, &updated);
