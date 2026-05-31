@@ -18,6 +18,8 @@ mime_guess = { workspace = true }
 rust-embed = { workspace = true }
 image = { workspace = true }
 walkdir = { workspace = true }
+encoding_rs = { workspace = true }
+encoding_rs_io = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 i-slint-core = { version = "1" }

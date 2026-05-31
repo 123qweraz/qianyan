@@ -28,10 +28,7 @@
   "input": {
     "autostart": true,
     "enabled_profiles": [
-      "chinese",
-      "english",
-      "japanese",
-      "stroke"
+      "chinese"
     ],
     "phantom_type": "Pinyin"
   },

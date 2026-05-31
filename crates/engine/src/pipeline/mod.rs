@@ -12,6 +12,9 @@ pub use filters::*;
 pub mod engine;
 pub use engine::*;
 
+pub mod word_discovery;
+pub use word_discovery::*;
+
 pub mod search_helper;
 pub use search_helper::*;
 

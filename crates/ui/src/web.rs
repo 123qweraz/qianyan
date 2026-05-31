@@ -73,7 +73,7 @@ impl WebServer {
             .route("/api/dict/clear_user", post(clear_user_dict))
             .route("/api/keyboard/send", post(send_key_handler))
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
-            .route("/api/tools/discover", post(discover_words_handler))
+            .route("/api/tools/discover", post(discover_words_file_handler))
             .route("/api/tools/discover/export", post(export_discovery_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
@@ -1416,9 +1416,16 @@ fn is_chinese(c: char) -> bool {
     (c >= '\u{4e00}' && c <= '\u{9fa5}') || (c >= '\u{3400}' && c <= '\u{4dbf}')
 }
 
+use axum::extract::Multipart;
+use encoding_rs::GBK;
+use std::io::Read;
+
 #[derive(Deserialize)]
-struct DiscoverRequest {
-    text: String,
+struct DiscoverConfigMsg {
+    min_count: Option<usize>,
+    min_pmi: Option<f64>,
+    min_entropy: Option<f64>,
+    max_word_len: Option<usize>,
 }
 
 #[derive(Serialize)]
@@ -1429,45 +1436,75 @@ struct DiscoverResult {
     weight: u32,
 }
 
-/// 新词发现器：从文本中发现未收录的词汇
-async fn discover_words_handler(
-    State(_): State<WebState>,
-    Json(req): Json<DiscoverRequest>,
-) -> Json<Vec<DiscoverResult>> {
-    let map = get_chinese_word_map();
-    let chars: Vec<char> = req.text.chars().collect();
-    let max_len = max_word_len(map);
+/// 新词发现器：处理上传的文件
+async fn discover_words_file_handler(
+    State((_, tries, _)): State<WebState>,
+    mut multipart: Multipart,
+) -> impl IntoResponse {
+    let mut text = String::new();
+    let mut config = qianyan_ime_engine::pipeline::DiscoveryConfig::default();
 
-    let mut results = Vec::new();
-    let mut seen = HashSet::new();
-
-    // 双向分词获取候选词
-    let forward = segment_forward(&chars, map, max_len);
-    let backward = segment_backward(&chars, map, max_len);
-
-    // 同时收集单字（不在词表中的）
-    for &c in &chars {
-        if is_chinese(c) {
-            let s = c.to_string();
-            if seen.insert(s.clone()) {
-                let in_dict = is_word_in_map(&s, map);
-                let weight = word_weight(&s, map);
-                let pinyin = word_pinyin(&s, map);
-                results.push(DiscoverResult { word: s, pinyin, in_dict, weight });
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let name = field.name().unwrap_or_default().to_string();
+        if name == "file" {
+            let data = match field.bytes().await {
+                Ok(b) => b,
+                Err(e) => return (StatusCode::BAD_REQUEST, format!("Read file error: {e}")).into_response(),
+            };
+            
+            // 自动检测编码：先尝试 UTF-8，失败则尝试 GBK
+            if let Ok(s) = String::from_utf8(data.to_vec()) {
+                text = s;
+            } else {
+                let (res, _, has_errors) = GBK.decode(&data);
+                if !has_errors {
+                    text = res.into_owned();
+                } else {
+                    // 最后的退而求其次：UTF-8 Lossy
+                    text = String::from_utf8_lossy(&data).into_owned();
+                }
+            }
+        } else if name == "config" {
+            if let Ok(config_bytes) = field.bytes().await {
+                if let Ok(cfg_msg) = serde_json::from_slice::<DiscoverConfigMsg>(&config_bytes) {
+                    if let Some(v) = cfg_msg.min_count { config.min_count = v; }
+                    if let Some(v) = cfg_msg.min_pmi { config.min_pmi = v; }
+                    if let Some(v) = cfg_msg.min_entropy { config.min_entropy = v; }
+                    if let Some(v) = cfg_msg.max_word_len { config.max_word_len = v; }
+                }
             }
         }
     }
 
-    for word in forward.into_iter().chain(backward) {
-        if word.chars().all(is_chinese) && word.chars().count() > 1 && seen.insert(word.clone()) {
-            let in_dict = is_word_in_map(&word, map);
-            let weight = word_weight(&word, map);
-            let pinyin = word_pinyin(&word, map);
-            results.push(DiscoverResult { word, pinyin, in_dict, weight });
+    if text.is_empty() {
+        return (StatusCode::BAD_REQUEST, "No text provided").into_response();
+    }
+
+    // 获取已知词库
+    let mut known_words = HashSet::new();
+    if let Ok(map) = tries.read() {
+        for trie in map.values() {
+            let mut stream = trie.index.stream();
+            while let Some((_, offset)) = stream.next() {
+                trie.read_block(offset as usize, |tr| {
+                    known_words.insert(tr.word.to_string());
+                });
+            }
         }
     }
 
-    Json(results)
+    let results = qianyan_ime_engine::pipeline::discover_words(&text, &config, &known_words);
+    
+    let response: Vec<DiscoverResult> = results.into_iter().map(|dw| {
+        DiscoverResult {
+            word: dw.word,
+            pinyin: "".into(), // 拼音可以后续由前端请求或在后端计算
+            in_dict: false,
+            weight: dw.count as u32,
+        }
+    }).collect();
+
+    Json(response).into_response()
 }
 
 #[derive(Deserialize)]

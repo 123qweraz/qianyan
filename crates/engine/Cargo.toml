@@ -14,3 +14,4 @@ walkdir = { workspace = true }
 fst = { workspace = true, features = ["levenshtein"] }
 memmap2 = { workspace = true }
 arc-swap = { workspace = true }
+rayon = { workspace = true }

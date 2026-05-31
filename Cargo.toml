@@ -22,7 +22,7 @@ rodio = "0.19"
 notify-rust = "4"
 arboard = "3.2"
 arc-swap = "1.7"
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
 rust-embed = "8.2"
 mime_guess = "2.0"
@@ -35,6 +35,9 @@ env_logger = "0.11"
 thiserror = "1.0"
 slint = "1.16.1"
 slint-build = "1.16.1"
+rayon = "1.10"
+encoding_rs = "0.8"
+encoding_rs_io = "0.1"
 winres = "0.1.12"
 embed-resource = "1.8"
 
