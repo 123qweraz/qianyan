@@ -1,53 +1,120 @@
+1. 拼音编辑功能优化 (Vim-like Editing)
 
-编辑功能， tab ＋h ＋l，改成左右移动光标
-增加更多的光标移动功能，tab＋a 移动到字母行首，tab＋e移动到字母行尾， w一个个音节移动， dd删掉整个拼音，dw删掉一个音节，
-编辑功能，i插入，r替换，i是在光标插入字母，r是替换光标出字母，有点想backspace和delete的差别
+  问题分析：
+  目前拼音缓冲区（buffer）的编辑仅支持末尾追加和回退（Backspace）。InputSession 虽然有 cursor_pos
+  字段，但在键盘输入处理中未被充分利用。用户希望实现类似 Vim 的快捷键来快速移动光标、按音节跳转和删除。
 
-slint bug
-slint emoji不会显示成彩色的，而是黑白的
-Emoji 颜色:
-       * 这是由于 Slint 在某些 Linux 环境下默认不加载彩色字体库。需要显式配置字体回退路径或使用支持彩色 Emoji
-         的渲染后端。
-在wayland时，候选栏显示不全，在x11正常，但是我不清楚原因
-候选词UI显示模式
-选择候选词的显示方式
-这个设置有问题，每次切换同步UI显示模式，都会导致软件关闭，然后我手动重新打开，会应用上次保存的设置。看看是怎么回事，怎么切换一个显示模式，会导致整个软件关闭呢
-问题分析
-根因在 crates/ui/src/gui_slint.rs 的 ApplyConfig 事件处理中。
-触发路径
-1. 用户在 system.html 切换"候选词UI显示模式" → 保存
-2. Web服务器调用 tray_tx.send(TrayEvent::ReloadConfig) 
-3. 主进程收到后，发送 GuiEvent::ApplyConfig 给GUI进程
-4. GUI进程的 handle_ipc_event / handle_event 检测到 show_slint_window 或 show_notification 等标志变化
-崩溃原因
-在 gui_slint.rs:244-253 中：
-if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
-    for display in displays.iter_mut() {
-        display.close();    // ← 第1步: 隐藏所有窗口（包括状态栏锚点窗口）
-    }
-    displays.clear();       // ← 第2步: 销毁所有Slint窗口句柄
-    *displays = create_displays(config);  // ← 第3步: 重新创建
-}
-关键问题是 SlintDisplay::close() (crates/ui/src/slint_window.rs:412-416)：
-fn close(&mut self) {
-    let _ = self.window.window().hide();
-    let _ = self.status_bar.window().hide();  // ← 连锚点窗口也隐藏了！
-    self.window_visible = false;
-}
-注释在 slint_window.rs:160-162 明确说明状态栏是 *"永久锚点窗口（始终 show），防止...因无窗口而自动退出 event loop"*。但 close() 违背了这个设计，强行隐藏了状态栏。
-然后 displays.clear() 会 drop 掉 SlintDisplay 和它内部的 CandidateWindow + StatusBar 组件句柄。当所有 Slint 窗口句柄都被销毁时，Slint 的 winit 后端检测到没有窗口了，就会退出事件循环 (slint::run_event_loop() 返回)，导致 GUI 进程退出。主进程等 GUI 退出后也退出 => 整个软件关闭。
-即使 create_displays() 会新建窗口，但旧的窗口销毁已经触发了事件循环退出，来不及了。
-修复方向
-方案 A：不为 show_slint_window 的变化而重建 SlintDisplay/WaylandLayerDisplay——它们本来就不依赖这个标志来决定是否创建（create_displays 总是创建 SlintDisplay/WaylandLayerDisplay）。只需要调 apply_config() 更新 candidate_enabled 字段即可。只有 show_notification 变化时才需要增删 LinuxNotifyDisplay。
-方案 B：如果一定要重建，应该先创建新窗口再销毁旧窗口，保证事件循环始终有窗口存活。
-推荐方案 A，改动最小且最安全。
+  解决方案：
+   1. 扩展 InputSession 状态：
+       * 在 crates/engine/src/session.rs 的 InputSession 中增加 insert_mode: bool。
+   2. 增强光标移动逻辑：
+       * 在 InputSession 中实现 move_cursor_left(), move_cursor_right(), move_cursor_start(),
+         move_cursor_end()。
+       * 音节跳转 (w)： 利用 best_segmentation（已分词结果）计算下一个分词点的索引。
+   3. 增强删除逻辑：
+       * 实现 delete_word()：删除光标处的当前音节。
+       * 实现 clear_buffer()：即 dd 功能。
+   4. 快捷键绑定 (Tab 组合键)：
+       * 修改 crates/engine/src/processor/mod.rs。当 tab_down 为 true 时，拦截 H/L/A/E/W/D 等键。
+       * Tab + H/L → 左右移动光标。
+       * Tab + A/E → 行首/行尾。
+       * W → 按音节向后跳转。
+       * DD → 清空缓冲区。
+       * I / R → 切换插入/替换模式。
 
-删掉状态栏，过括托盘与网页的候选栏关于状态栏的相关设置
+  ---
 
-用不同颜色的托盘图标，显示输入法状态
+  2. Slint 渲染器 Emoji 颜色问题
 
-中英混输 优化， 还没想好
+  问题分析：
+  在 Linux 环境下，Slint 默认使用的 Skia 或 FemtoVG 渲染后端可能不会自动加载系统的彩色 Emoji 字体（如 Noto
+  Color Emoji），导致显示为黑白符号。
 
+  解决方案：
+   1. 字体配置：
+       * 确保系统中安装了彩色 Emoji 字体。
+   2. 代码层显式配置：
+       * 在 crates/ui/src/gui_slint.rs 初始化时，尝试通过环境变量或 Slint 的 set_platform
+         接口设置默认字体家族，包含 "Noto Color Emoji"。
+       * 技巧： 在 Slint 的 .slint 文件中，为显示候选词的 Text 元素指定多字体回退：
 
+   1         font-family: "Source Han Sans CN", "Noto Color Emoji", sans-serif;
+   3. 后端强制： 确认是否启用了 slint/backend-skia，Skia 对彩色字体的支持通常优于默认后端。
 
+  ---
+
+  3. Wayland 下候选框显示不全
+
+  问题分析：
+  Wayland 的 layer-shell 协议对窗口位置和大小有严格限制。如果 CandidateWindow 的尺寸计算与 LayerSurface
+  的配置不一致，或者锚点（Anchor）设置错误，会导致窗口被裁剪。
+
+  解决方案：
+   1. 检查 crates/ui/src/wayland_layer.rs：
+       * 确保 set_size 调用时传入的是逻辑像素，并且与 Slint 内部计算的 window_width/height 同步。
+   2. 动态调整锚点：
+       * 根据输入位置计算窗口应该向左还是向右展开。避免窗口超出屏幕边缘。
+   3. Size Constraints：
+       * 在创建 LayerSurface 时，显式设置 set_keyboard_interactivity(KeyboardInteractivity::None)
+         以免干扰输入，并确保 Layer::Overlay 等级足够高。
+
+  ---
+
+  4. 切换 UI 显示模式导致软件崩溃
+
+  问题分析：
+  根源在于 ApplyConfig 处理逻辑。在 crates/ui/src/gui_slint.rs 中，修改显示模式会调用 display.close()。而
+  SlintDisplay::close() 隐藏了作为 "永久锚点" 的状态栏窗口。Slint
+  检测到没有可见窗口后会自动退出事件循环（Event Loop），导致 GUI 进程及其父进程关闭。
+
+  解决方案：
+   1. 避免重建：
+       * 修改 crates/ui/src/gui_slint.rs。如果只是切换 "候选词 UI 显示模式"（即 show_slint_window
+         变化），不要调用 displays.clear() 重建。
+       * 直接调用 display.apply_config(config)，让 SlintDisplay 内部通过透明度或 candidate_enabled
+         标志自行控制显隐。
+   2. 保持窗口存活：
+       * 如果必须重建，应先创建新窗口，再关闭旧窗口，确保事件循环中始终有一个窗口是 Active 状态。
+
+  ---
+
+  5. 彻底移除状态栏 (StatusBar)
+
+  问题分析：
+  状态栏目前不仅用于显示状态，还充当了防止事件循环退出的 "锚点窗口"。直接删除会导致程序 hide
+  候选框时直接退出。
+
+  解决方案：
+   1. 清理 UI：
+       * 删除 crates/ui/src/main.slint 中的 StatusBar 定义。
+       * 删除 crates/ui/src/status_bar.slint 文件。
+   2. 重构锚点逻辑：
+       * 在 crates/ui/src/slint_window.rs 中，将 CandidateWindow 设为主要窗口。
+       * 为了防止 hide 时退出，可以使用一个 1x1 像素且完全透明的不可见窗口作为永久存活的锚点。
+   3. 清理配置项：
+       * 从 configs/system.json 和 Web 配置界面（static/ 目录）中删除所有关于 "显示状态栏" 的开关和选项。
+       * 删除托盘菜单 crates/ui/src/tray.rs 中的 "显示/隐藏状态栏" 菜单项。
+
+  ---
+
+  6. 使用托盘图标显示中英状态
+
+  问题分析：
+  用户无法通过托盘直接判断当前是中文还是英文模式。
+
+  解决方案：
+   1. 准备素材：
+       * 准备两张不同颜色的图标，例如 icon_zh.png (彩色) 和 icon_en.png (灰色)。
+   2. 更新托盘逻辑：
+       * 在 crates/ui/src/tray.rs 中增加一个 update_status(chinese_enabled: bool) 方法。
+       * Windows： 调用 Shell_NotifyIconW 使用新的 hIcon 句柄进行 NIM_MODIFY。
+       * Linux (KSNI)： 更新 ImeTray 结构体中的状态，触发 icon_pixmap 的重新生成。
+   3. 联动：
+       * 在 src/main.rs 处理 MainToGui::ShowStatus 事件时，同步向托盘发送更新图标的消息。
+
+  ---
+
+  7. 中英混输优化
+
+  建议方向：
 

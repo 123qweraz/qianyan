@@ -635,6 +635,23 @@ impl WaylandLayerDisplay {
         unsafe { &*self.renderer_ptr }
     }
 
+    fn screen_size() -> (i32, i32) {
+        if let Ok(out) = std::process::Command::new("xdotool")
+            .arg("getdisplaygeometry")
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(out.stdout) {
+                let parts: Vec<&str> = s.trim().split_whitespace().collect();
+                if parts.len() == 2 {
+                    if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
+                        return (w, h);
+                    }
+                }
+            }
+        }
+        (1920, 1080)
+    }
+
     fn render_and_send_candidate(&self, w: u32, h: u32) {
         if self.window_visible && self.wl.is_some() {
             let window = self.candidate_window.window();
@@ -648,17 +665,22 @@ impl WaylandLayerDisplay {
                     _ => (Anchor::TOP | Anchor::LEFT, self.config.linux.fixed_y, self.config.linux.fixed_x),
                 }
             } else {
-                (Anchor::TOP | Anchor::LEFT, self.last_y + 20, self.last_x)
+                let cursor_x = self.last_x;
+                let cursor_y = self.last_y;
+                let (sw, sh) = Self::screen_size();
+                let w32 = w as i32;
+                let h32 = h as i32;
+                let use_bottom = cursor_y + 20 + h32 > sh;
+                let use_right = cursor_x + w32 > sw;
+                let anchor_v = if use_bottom { Anchor::BOTTOM } else { Anchor::TOP };
+                let anchor_h = if use_right { Anchor::RIGHT } else { Anchor::LEFT };
+                let anchor = anchor_v | anchor_h;
+                let margin_a = if use_bottom { sh - cursor_y } else { cursor_y + 20 };
+                let margin_b = if use_right { sw - cursor_x } else { cursor_x };
+                (anchor, margin_a, margin_b)
             };
 
-            let cmd = match anchor {
-                a if a == (Anchor::TOP | Anchor::RIGHT) || a == (Anchor::BOTTOM | Anchor::RIGHT) => {
-                    WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels }
-                }
-                _ => {
-                    WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels }
-                }
-            };
+            let cmd = WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels };
             let _ = self.wl.as_ref().unwrap().cmd_tx.send(cmd);
         } else if let Some(ref wl) = self.wl {
             let _ = wl.cmd_tx.send(WlCmd::HideCandidate);

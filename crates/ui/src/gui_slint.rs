@@ -242,11 +242,11 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     *config = new_config;
 
                     if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
+                        let new_displays = create_displays(config);
                         for display in displays.iter_mut() {
                             display.close();
                         }
-                        displays.clear();
-                        *displays = create_displays(config);
+                        *displays = new_displays;
                     } else {
                         for display in displays.iter_mut() {
                             display.apply_config(config);
@@ -341,11 +341,11 @@ fn handle_event(
 
             if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
                 eprintln!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
+                let new_displays = create_displays(&config.read().expect("config lock poisoned"));
                 for d in displays.iter_mut() {
                     d.close();
                 }
-                displays.clear();
-                *displays = create_displays(&config.read().expect("config lock poisoned"));
+                *displays = new_displays;
             } else {
                 eprintln!("[GUI_DEBUG] ApplyConfig: config unchanged, applying to existing");
                 let cfg = config.read().expect("config lock poisoned");

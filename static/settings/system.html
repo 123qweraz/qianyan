@@ -43,7 +43,7 @@
                     <div class="title">候选词UI显示模式</div>
                     <div class="desc">选择候选词的显示方式：使用输入法自带的候选栏、系统桌面通知、两者同时显示或不显示</div>
                 </div>
-                <select id="candidate_display_mode" class="select-input">
+                <select id="candidate_display_mode" class="select-input" onchange="saveCandidateDisplayMode()">
                     <option value="slint">输入法候选栏</option>
                     <option value="notification">系统桌面通知</option>
                     <option value="both">同时显示</option>
