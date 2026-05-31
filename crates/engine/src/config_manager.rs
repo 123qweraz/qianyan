@@ -58,6 +58,10 @@ impl ConfigManager {
         }
     }
 
+    pub fn master_config_write(&mut self) -> Result<&mut Config, String> {
+        Ok(&mut self.master_config)
+    }
+
     pub fn apply_config(&mut self, conf: &Config) {
         self.master_config = conf.clone();
 

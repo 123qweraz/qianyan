@@ -81,7 +81,11 @@ impl EngineContext {
         self.engine.clear_cache();
         self.sound_manager.set_enabled(conf.input.enable_keyboard_voice);
 
-        if !conf.input.enabled_profiles.is_empty() {
+        // Prioritize default_profile if it's in trie_paths
+        let default_profile = conf.input.default_profile.to_lowercase();
+        if !default_profile.is_empty() && self.engine.trie_paths.contains_key(&default_profile) {
+            self.session_state.active_profiles = vec![default_profile];
+        } else if !conf.input.enabled_profiles.is_empty() {
             let enabled: Vec<String> = conf
                 .input
                 .enabled_profiles
@@ -93,12 +97,7 @@ impl EngineContext {
                 self.session_state.active_profiles = vec![enabled[0].clone()];
             }
         } else {
-            let new_profile = conf.input.default_profile.to_lowercase();
-            if !new_profile.is_empty() && self.engine.trie_paths.contains_key(&new_profile) {
-                self.session_state.active_profiles = vec![new_profile];
-            } else {
-                self.session_state.active_profiles = vec!["chinese".to_string()];
-            }
+            self.session_state.active_profiles = vec!["chinese".to_string()];
         }
 
         let enabled_list: Vec<String> = conf

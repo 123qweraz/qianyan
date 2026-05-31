@@ -217,7 +217,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if let Ok(mut state) = app_state_tray.lock() {
                             state.status_text = if enabled { short } else { "英".into() };
                             state.chinese_enabled = enabled;
+                            state.active_profile = p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default();
                             let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                        }
+                    }
+                }
+                qianyan_ime_ui::tray::TrayEvent::SetProfile(profile) => {
+                    if let Ok(mut p) = processor_clone.lock() {
+                        if p.ctx.engine.trie_paths.contains_key(&profile) {
+                            p.ctx.session_state.active_profiles = vec![profile.clone()];
+                            
+                            // Persist to config
+                            if let Ok(conf) = p.ctx.config.master_config_write() {
+                                conf.input.default_profile = profile.clone();
+                                let _ = conf.save();
+                            }
+                            
+                            p.reset();
+                            let enabled = p.ctx.session_state.chinese_enabled;
+                            let short = p.get_short_display();
+                            
+                            if let Some(ref handle) = tray_handle {
+                                let profile_clone = profile.clone();
+                                handle.update(move |t| t.active_profile = profile_clone);
+                            }
+
+                            if let Ok(mut state) = app_state_tray.lock() {
+                                state.status_text = if enabled { short } else { "英".into() };
+                                state.chinese_enabled = enabled;
+                                state.active_profile = profile;
+                                let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                            }
                         }
                     }
                 }

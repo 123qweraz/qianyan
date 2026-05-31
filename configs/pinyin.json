@@ -45,7 +45,7 @@
     "auto_commit_unique_en_fuzhuma": false,
     "auto_commit_unique_full_match": false,
     "commit_mode": "double",
-    "default_profile": "chinese",
+    "default_profile": "english",
     "display_mode": "character_with_english",
     "double_tap_timeout_ms": 250,
     "double_taps": [],

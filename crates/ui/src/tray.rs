@@ -19,6 +19,7 @@ pub enum TrayEvent {
     ShowNotification(String),
     ClearUserDict,
     SendKey(String), // key code like "a", "Enter", "Backspace"
+    SetProfile(String),
 }
 
 pub struct TrayParams {
@@ -76,14 +77,37 @@ impl Tray for ImeTray {
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let profile_zh = match self.active_profile.as_str() {
-            "chinese" => "中文",
-            "english" => "英文",
-            "japanese" => "日文",
-            "stroke" => "笔画",
-            "shengpizi" => "生僻字",
-            "mixed" => "中日英混",
-            other => other,
+        let profiles = vec![
+            ("chinese", "中文"),
+            ("english", "英文"),
+            ("japanese", "日文"),
+            ("stroke", "笔画"),
+            ("shengpizi", "生僻字"),
+            ("mixed", "中日英混"),
+        ];
+
+        use ksni::menu::RadioGroup;
+        use ksni::menu::RadioItem;
+        use ksni::menu::SubMenu;
+
+        let selected_idx = profiles.iter().position(|(id, _)| self.active_profile == *id).unwrap_or(0);
+        let profile_options: Vec<RadioItem> = profiles
+            .iter()
+            .map(|(_, label)| RadioItem {
+                label: label.to_string(),
+                ..Default::default()
+            })
+            .collect();
+
+        let profiles_copy = profiles.clone();
+        let profile_radio = RadioGroup {
+            selected: selected_idx,
+            options: profile_options,
+            select: Box::new(move |this: &mut Self, index| {
+                if let Some((id, _)) = profiles_copy.get(index) {
+                    let _ = this.tx.send(TrayEvent::SetProfile(id.to_string()));
+                }
+            }),
         };
 
         vec![
@@ -95,11 +119,9 @@ impl Tray for ImeTray {
                 ..Default::default()
             }
             .into(),
-            StandardItem {
-                label: format!("词典方案: {}", profile_zh),
-                activate: Box::new(|this: &mut Self| {
-                    let _ = this.tx.send(TrayEvent::NextProfile);
-                }),
+            SubMenu {
+                label: "词典方案".into(),
+                submenu: vec![profile_radio.into()],
                 ..Default::default()
             }
             .into(),
@@ -336,6 +358,27 @@ unsafe extern "system" fn tray_wnd_proc(
                         activated_w.push(0);
                         let _ = AppendMenuW(h_menu, MF_STRING, 1001, PCWSTR(activated_w.as_ptr()));
 
+                        // Profile Submenu
+                        let h_profile_menu = CreatePopupMenu().expect("Failed to create profile menu");
+                        let profiles = vec![
+                            ("chinese", "中文"),
+                            ("english", "英文"),
+                            ("japanese", "日文"),
+                            ("stroke", "笔画"),
+                            ("shengpizi", "生僻字"),
+                            ("mixed", "混合"),
+                        ];
+
+                        for (i, (id, label)) in profiles.iter().enumerate() {
+                            let mut flags = MF_STRING;
+                            if state.active_profile == *id {
+                                flags |= MF_CHECKED;
+                            }
+                            let mut label_w: Vec<u16> = label.encode_utf16().collect();
+                            label_w.push(0);
+                            let _ = AppendMenuW(h_profile_menu, flags, (2000 + i) as u32, PCWSTR(label_w.as_ptr()));
+                        }
+
                         let profile_zh = match state.active_profile.as_str() {
                             "chinese" => "中文",
                             "english" => "英文",
@@ -348,7 +391,7 @@ unsafe extern "system" fn tray_wnd_proc(
                         let profile_label = format!("词典方案: {}", profile_zh);
                         let mut profile_w: Vec<u16> = profile_label.encode_utf16().collect();
                         profile_w.push(0);
-                        let _ = AppendMenuW(h_menu, MF_STRING, 1002, PCWSTR(profile_w.as_ptr()));
+                        let _ = AppendMenuW(h_menu, MF_POPUP, h_profile_menu.0 as usize, PCWSTR(profile_w.as_ptr()));
 
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
 
@@ -390,6 +433,12 @@ unsafe extern "system" fn tray_wnd_proc(
                     }
                     1002 => {
                         let _ = tx.send(TrayEvent::NextProfile);
+                    }
+                    2000..=2005 => {
+                        let profiles = vec!["chinese", "english", "japanese", "stroke", "shengpizi", "mixed"];
+                        if let Some(profile) = profiles.get(id as usize - 2000) {
+                            let _ = tx.send(TrayEvent::SetProfile(profile.to_string()));
+                        }
                     }
                     1003 => {
                         let _ = tx.send(TrayEvent::ToggleStatusBar);
