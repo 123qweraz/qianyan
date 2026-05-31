@@ -40,7 +40,7 @@
     "fixed_x": 40,
     "fixed_y": 40,
     "paste_method": "shift_insert",
-    "show_notification": false,
-    "show_slint_window": true
+    "show_notification": true,
+    "show_slint_window": false
   }
 }
