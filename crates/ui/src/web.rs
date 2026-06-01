@@ -7,7 +7,7 @@ use axum::{
 };
 use qianyan_ime_engine::fst::Streamer;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock, OnceLock};
+use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::{HashMap, HashSet};
 
@@ -444,6 +444,9 @@ async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
 
 async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
+    if let Ok(mut cache) = get_known_words_cache().lock() {
+        *cache = None;
+    }
     match qianyan_ime_engine::compiler::check_and_compile_all() {
         Ok(_) => {
             let _ = tray_tx.send(TrayEvent::ShowNotification("词库编译完成".into()));
@@ -460,6 +463,9 @@ async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> Statu
 }
 
 async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
+    if let Ok(mut cache) = get_known_words_cache().lock() {
+        *cache = None;
+    }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
 }
@@ -1570,6 +1576,12 @@ async fn extract_text_and_config(
     Ok((text, config))
 }
 
+static KNOWN_WORDS_CACHE: OnceLock<StdMutex<Option<HashSet<String>>>> = OnceLock::new();
+
+fn get_known_words_cache() -> &'static StdMutex<Option<HashSet<String>>> {
+    KNOWN_WORDS_CACHE.get_or_init(|| StdMutex::new(None))
+}
+
 /// 执行发现算法 + 拼音标注
 fn do_discovery(
     text: &str,
@@ -1577,17 +1589,26 @@ fn do_discovery(
     tries: &HashMap<String, Trie>,
     word_map: &WordMap,
 ) -> Vec<DiscoveredWordWithPinyin> {
-    let mut known_words = HashSet::new();
-    for trie in tries.values() {
-        let mut stream = trie.index.stream();
-        while let Some((_, offset)) = stream.next() {
-            trie.read_block(offset as usize, |tr| {
-                known_words.insert(tr.word.to_string());
-            });
+    let cache_mutex = get_known_words_cache();
+    let mut cache_guard = cache_mutex.lock().unwrap();
+    
+    if cache_guard.is_none() {
+        log::info!("[discover] Building global known_words index...");
+        let mut set = HashSet::new();
+        for trie in tries.values() {
+            let mut stream = trie.index.stream();
+            while let Some((_, offset)) = stream.next() {
+                trie.read_block(offset as usize, |tr| {
+                    set.insert(tr.word.to_string());
+                });
+            }
         }
+        log::info!("[discover] Index built with {} words", set.len());
+        *cache_guard = Some(set);
     }
-
-    let results = qianyan_ime_engine::pipeline::discover_words(text, config, &known_words);
+    
+    let known_words = cache_guard.as_ref().unwrap();
+    let results = qianyan_ime_engine::pipeline::discover_words(text, config, known_words);
 
     results.into_iter().map(|dw| {
         let (pinyin, in_dict) = if let Some((py, _)) = word_map.get(&dw.word) {

@@ -279,24 +279,24 @@ impl Vkbd {
         match mode {
             PasteMode::CtrlV => {
                 Self::do_emit(dev, Key::KEY_LEFTCTRL, true);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_tap(dev, Key::KEY_V);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_emit(dev, Key::KEY_LEFTCTRL, false);
             }
             PasteMode::ShiftInsert => {
                 Self::do_emit(dev, Key::KEY_LEFTSHIFT, true);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_tap(dev, Key::KEY_INSERT);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_emit(dev, Key::KEY_LEFTSHIFT, false);
             }
             PasteMode::CtrlShiftV => {
                 Self::do_emit(dev, Key::KEY_LEFTCTRL, true);
                 Self::do_emit(dev, Key::KEY_LEFTSHIFT, true);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_tap(dev, Key::KEY_V);
-                thread::sleep(Duration::from_millis(15));
+                thread::sleep(Duration::from_millis(5));
                 Self::do_emit(dev, Key::KEY_LEFTSHIFT, false);
                 Self::do_emit(dev, Key::KEY_LEFTCTRL, false);
             }
@@ -314,21 +314,24 @@ impl Vkbd {
         for _ in 0..count {
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 1);
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 0);
-            thread::sleep(Duration::from_millis(delay_ms));
+            if delay_ms > 0 {
+                thread::sleep(Duration::from_millis(delay_ms));
+            }
         }
         eprintln!("[Vkbd BG] do_backspace({}) done (sent 1 SPACE + 1 BS trick + {} BS)", count, count);
     }
 
     fn do_tap(dev: &Arc<Mutex<VirtualDevice>>, key: Key) {
         Self::do_emit(dev, key, true);
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(2));
         Self::do_emit(dev, key, false);
     }
 
     fn do_emit_raw(dev: &Arc<Mutex<VirtualDevice>>, key: Key, value: i32) {
         if let Ok(mut d) = dev.lock() {
             let ev = InputEvent::new(EventType::KEY, key.code(), value);
-            let _ = d.emit(&[ev]);
+            let syn = InputEvent::new(EventType::SYNCHRONIZATION, 0, 0); // SYN_REPORT
+            let _ = d.emit(&[ev, syn]);
         }
     }
 

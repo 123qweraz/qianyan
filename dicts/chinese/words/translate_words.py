@@ -9,7 +9,7 @@ INPUT_FILE = 'low_freq.txt'
 OUTPUT_FILE = 'low_freq_trans.txt'
 CHECKPOINT_FILE = 'translation_checkpoint.json'
 MODEL_NAME = 'granite4.1:3b'  # Updated to the exact name found
-BATCH_SIZE = 10                # Reduced to 5 for faster individual responses
+BATCH_SIZE = 30               # Reduced to 5 for faster individual responses
 TIMEOUT = 300                 # Increased to 5 minutes to prevent timeouts
 DELAY_BETWEEN_BATCHES = 1    # 1 second delay to let hardware breathe
 
