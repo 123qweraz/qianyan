@@ -469,6 +469,7 @@ struct SearchResult {
     word: String,
     hint: String,
     stroke_aux: String,
+    strokes: String,
     file: String,
 }
 
@@ -519,18 +520,20 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
                                         let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str())
                                             .or_else(|| v.get("category").and_then(|c| c.as_str()))
                                             .unwrap_or("");
+                                        let strokes = v.get("strokes").and_then(|s| s.as_str()).unwrap_or("");
 
                                         let match_py = pinyin.to_lowercase().starts_with(&q) || pinyin.to_lowercase() == q;
                                         let match_word = word.contains(&query.q);
                                         let match_hint = hint.to_lowercase().contains(&q);
                                         let match_stroke_aux = stroke_aux.to_lowercase().contains(&q);
+                                        let match_stroke = strokes.contains(&q);
                                         let matched = match search_by {
                                             "pinyin" => match_py,
                                             "word" => match_word,
                                             "en" => match_hint,
                                             "stroke_aux" => match_stroke_aux,
-                                            "stroke" => pinyin.to_lowercase().contains(&q),
-                                            _ => match_py || match_word || match_hint || match_stroke_aux,
+                                            "stroke" => match_stroke,
+                                            _ => match_py || match_word || match_hint || match_stroke_aux || match_stroke,
                                         };
                                         if !matched {
                                             continue;
@@ -540,6 +543,7 @@ async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQue
                                             word: word.to_string(),
                                             hint: hint.to_string(),
                                             stroke_aux: stroke_aux.to_string(),
+                                            strokes: strokes.to_string(),
                                             file: path_str.clone(),
                                         });
                                     }
@@ -575,6 +579,7 @@ struct DictEntryView {
     weight: i64,
     stroke_aux: String,
     category: String,
+    strokes: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -639,6 +644,7 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
                             let weight = v.get("weight").and_then(|w| w.as_i64()).unwrap_or(0);
                             let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("");
                             let category = v.get("category").and_then(|c| c.as_str()).unwrap_or("");
+                            let strokes = v.get("strokes").and_then(|s| s.as_str()).unwrap_or("");
 
                             let mut kind: u8 = 0;
                             if !search.is_empty() {
@@ -647,7 +653,7 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
                                 let match_word = word.to_lowercase().contains(&search);
                                 let match_en = en.to_lowercase().contains(&search);
                                 let match_stroke_aux = stroke_aux.to_lowercase().contains(&search);
-                                let match_stroke = strip_tone(&pinyin.to_lowercase()).contains(&search_plain);
+                                let match_stroke = strokes.contains(&search);
                                 let matched = match search_by {
                                     "pinyin" => match_py,
                                     "word" => match_word,
@@ -676,6 +682,7 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
                                 weight,
                                 stroke_aux: stroke_aux.to_string(),
                                 category: category.to_string(),
+                                strokes: strokes.to_string(),
                             });
                         }
                     }

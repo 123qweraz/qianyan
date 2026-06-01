@@ -23,6 +23,7 @@ pub enum TrayEvent {
 
 pub struct TrayParams {
     pub active_profile: String,
+    pub enabled_profiles: Vec<String>,
     pub tx: Sender<TrayEvent>,
 }
 
@@ -30,8 +31,19 @@ pub struct TrayParams {
 pub struct ImeTray {
     pub chinese_enabled: bool,
     pub active_profile: String,
+    pub enabled_profiles: Vec<String>,
     pub tx: Sender<TrayEvent>,
 }
+
+#[cfg(target_os = "linux")]
+const ALL_PROFILES: &[(&str, &str)] = &[
+    ("chinese", "中文"),
+    ("english", "英文"),
+    ("japanese", "日文"),
+    ("stroke", "笔画"),
+    ("shengpizi", "生僻字"),
+    ("chinese,english,japanese", "中日英混"),
+];
 
 #[cfg(target_os = "linux")]
 fn load_icon(chinese_enabled: bool) -> Vec<ksni::Icon> {
@@ -73,14 +85,10 @@ impl Tray for ImeTray {
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let profiles = vec![
-            ("chinese", "中文"),
-            ("english", "英文"),
-            ("japanese", "日文"),
-            ("stroke", "笔画"),
-            ("shengpizi", "生僻字"),
-            ("chinese,english,japanese", "中日英混"),
-        ];
+        let profiles: Vec<(&str, &str)> = ALL_PROFILES.iter()
+            .filter(|(id, _)| self.enabled_profiles.is_empty() || self.enabled_profiles.contains(&id.to_string()))
+            .copied()
+            .collect();
 
         use ksni::menu::RadioGroup;
         use ksni::menu::RadioItem;
@@ -170,6 +178,7 @@ pub fn start_tray(params: TrayParams) -> LinuxTrayHandle {
     let tray = ImeTray {
         chinese_enabled: true,
         active_profile: params.active_profile,
+        enabled_profiles: params.enabled_profiles,
         tx: params.tx,
     };
     let service = TrayService::new(tray);
@@ -195,6 +204,7 @@ const TRAY_ICON_ID: u32 = 1;
 pub struct ImeTrayStub {
     pub chinese_enabled: bool,
     pub active_profile: String,
+    pub enabled_profiles: Vec<String>,
 }
 
 #[cfg(target_os = "windows")]
@@ -226,6 +236,7 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
     let state = Arc::new(Mutex::new(ImeTrayStub {
         chinese_enabled: true,
         active_profile: params.active_profile,
+        enabled_profiles: params.enabled_profiles,
     }));
 
     TRAY_STATE.set(state.clone()).ok();
@@ -355,7 +366,7 @@ unsafe extern "system" fn tray_wnd_proc(
 
                         // Profile Submenu
                         let h_profile_menu = CreatePopupMenu().expect("Failed to create profile menu");
-                        let profiles = vec![
+                        let all_profiles = vec![
                             ("chinese", "中文"),
                             ("english", "英文"),
                             ("japanese", "日文"),
@@ -363,6 +374,9 @@ unsafe extern "system" fn tray_wnd_proc(
                             ("shengpizi", "生僻字"),
                             ("chinese,english,japanese", "混合"),
                         ];
+                        let profiles: Vec<&(&str, &str)> = all_profiles.iter()
+                            .filter(|(id, _)| state.enabled_profiles.is_empty() || state.enabled_profiles.contains(&id.to_string()))
+                            .collect();
 
                         for (i, (id, label)) in profiles.iter().enumerate() {
                             let mut flags = MF_STRING;

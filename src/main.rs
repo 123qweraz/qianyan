@@ -151,6 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if conf.appearance.show_tray {
             Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
                 active_profile: conf.input.default_profile.clone(),
+                enabled_profiles: conf.input.enabled_profiles.clone(),
                 tx: tray_tx.clone(),
             }))
         } else {
@@ -159,6 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
             active_profile: "chinese".into(),
+            enabled_profiles: vec!["chinese".into()],
             tx: tray_tx.clone(),
         }))
     };
@@ -294,11 +296,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     active_profile,
                 } => {
                     if let Some(ref handle) = tray_handle {
-                        handle.update(move |t| t.chinese_enabled = chinese_enabled);
+                        let ce = chinese_enabled;
+                        let ap = active_profile.clone();
+                        handle.update(move |t| {
+                            t.chinese_enabled = ce;
+                            t.active_profile = ap;
+                        });
                     }
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.chinese_enabled = chinese_enabled;
-                        state.active_profile = active_profile;
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
@@ -337,6 +344,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let new_conf = Config::load();
                     if let Ok(mut p) = processor_clone.lock() {
                         p.apply_config(&new_conf);
+                    }
+                    if let Some(ref handle) = tray_handle {
+                        let enabled = new_conf.input.enabled_profiles.clone();
+                        handle.update(move |t| {
+                            t.enabled_profiles = enabled;
+                        });
                     }
                     let _ = gui_tx_tray.send(GuiEvent::ApplyConfig(Box::new(new_conf)));
                 }

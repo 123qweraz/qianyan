@@ -28,7 +28,8 @@
   "input": {
     "autostart": true,
     "enabled_profiles": [
-      "chinese"
+      "chinese",
+      "english"
     ],
     "phantom_type": "Hanzi"
   },

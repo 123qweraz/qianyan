@@ -15,17 +15,8 @@
         <div class="note" style="padding:12px 16px; background:rgba(9,105,218,0.06); border-left:4px solid var(--apple-accent); border-radius:8px; margin-bottom:20px; font-size:13px; color:var(--apple-secondary);">
             ⚡ 拼音输入相关的设置（输入与转换、搜索匹配逻辑、快捷键、按键功能开关）已移至
             <a href="pinyin.html" style="color:var(--apple-accent);text-decoration:none;font-weight:600;">拼音设置</a>
-        </div>
-
-        <div class="card">
-            <h2>输入法方案</h2>
-            <div class="setting-item" style="display: block;">
-                <div class="info">
-                    <div class="title">启用的方案</div>
-                    <div class="desc">勾选您想要启用的输入法方案。未启用的方案不会在托盘中显示，也无法切换使用。</div>
-                </div>
-                <div id="enabled_profiles_container" class="profile-chip-group"></div>
-            </div>
+            &nbsp;·&nbsp; 输入法方案启用在
+            <a href="dictionary.html" style="color:var(--apple-accent);text-decoration:none;font-weight:600;">词典设置</a>
         </div>
 
         <h2>通用</h2>
@@ -135,15 +126,8 @@
         async function init() {
             await loadConfig();
 
-            const pc = document.getElementById('enabled_profiles_container');
-            pc.innerHTML = config.files.profiles.map(p => `
-                <div class="profile-chip ${config.input.enabled_profiles.includes(p.name)?'active':''}" onclick="toggleProfile('${p.name}', this)">
-                    <span>${p.name}</span>
-                </div>
-            `).join('');
-
-            bindInput('autostart', 'input');
             loadCandidateDisplayMode();
+            bindInput('autostart', 'input');
             bindInput('show_tray', 'appearance');
             bindInput('files_data_dir', 'files', 'data_dir');
 
@@ -199,19 +183,6 @@
                     config.linux.show_slint_window = true;
                     config.linux.show_notification = true;
                     break;
-            }
-        }
-
-        function toggleProfile(name, el) {
-            const idx = config.input.enabled_profiles.indexOf(name);
-            if (idx === -1) {
-                config.input.enabled_profiles.push(name);
-                el.classList.add('active');
-            } else {
-                if (config.input.enabled_profiles.length > 1) {
-                    config.input.enabled_profiles.splice(idx, 1);
-                    el.classList.remove('active');
-                }
             }
         }
 

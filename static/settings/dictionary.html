@@ -2,16 +2,144 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>词库管理 - 千言输入法</title>
+    <title>词典设置 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <meta http-equiv="refresh" content="0; url=/static/settings/dictionary_editor.html">
+    <style>
+        .profile-chip-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .profile-chip {
+            padding: 8px 18px;
+            border-radius: 20px;
+            border: 1.5px solid var(--apple-border);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+            background: var(--apple-card-bg);
+            color: var(--apple-text);
+        }
+        .profile-chip:hover {
+            border-color: var(--apple-accent);
+            background: rgba(0,122,255,0.05);
+        }
+        .profile-chip.active {
+            background: var(--apple-accent);
+            color: #fff;
+            border-color: var(--apple-accent);
+        }
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .nav-grid a {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            border: 1px solid var(--apple-border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--apple-text);
+            background: var(--apple-card-bg);
+            transition: all 0.15s;
+        }
+        .nav-grid a:hover {
+            border-color: var(--apple-accent);
+            background: rgba(0,122,255,0.04);
+        }
+        .nav-grid a .icon { font-size: 28px; }
+        .nav-grid a .title { font-weight: 600; font-size: 14px; }
+        .nav-grid a .desc { font-size: 12px; color: var(--apple-secondary); margin-top: 2px; }
+    </style>
 </head>
 <body>
-    <div class="container" style="text-align:center; padding-top:120px;">
-        <h2>词库管理已合并至词典编辑器</h2>
-        <p style="color:var(--apple-secondary);">正在跳转至新版词典编辑器...</p>
-        <p>如果未自动跳转，<a href="/static/settings/dictionary_editor.html">请点击此处</a>。</p>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>词典设置</h1>
+        </header>
+
+        <div class="card">
+            <h2>启用的输入法方案</h2>
+            <div class="setting-item" style="display: block;">
+                <div class="info">
+                    <div class="title">输入法方案</div>
+                    <div class="desc">勾选您想要启用的输入法方案。未启用的方案不会在托盘中显示，也无法切换使用。</div>
+                </div>
+                <div id="enabled_profiles_container" class="profile-chip-group"></div>
+            </div>
+        </div>
+
+        <h2>词典管理</h2>
+        <div class="nav-grid">
+            <a href="/static/settings/dictionary_editor.html">
+                <div class="icon">📖</div>
+                <div>
+                    <div class="title">词典编辑器</div>
+                    <div class="desc">浏览、搜索、添加、编辑、删除词典词条</div>
+                </div>
+            </a>
+            <a href="/static/settings/user_dict_editor.html">
+                <div class="icon">👤</div>
+                <div>
+                    <div class="title">用户词典</div>
+                    <div class="desc">查看、删除、导出用户自造词</div>
+                </div>
+            </a>
+            <a href="/static/settings/dictionary_viewer.html">
+                <div class="icon">📋</div>
+                <div>
+                    <div class="title">辅助码对照表</div>
+                    <div class="desc">查看笔画辅助码、英文辅助码</div>
+                </div>
+            </a>
+        </div>
     </div>
-    <script>location.href = '/static/settings/dictionary_editor.html';</script>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetConfig('input')">重置默认</button>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        async function init() {
+            await loadConfig();
+
+            const pc = document.getElementById('enabled_profiles_container');
+            pc.innerHTML = config.files.profiles.map(p => `
+                <div class="profile-chip ${config.input.enabled_profiles.includes(p.name)?'active':''}" onclick="toggleProfile('${p.name}', this)">
+                    <span>${p.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function toggleProfile(name, el) {
+            const idx = config.input.enabled_profiles.indexOf(name);
+            if (idx === -1) {
+                config.input.enabled_profiles.push(name);
+                el.classList.add('active');
+            } else {
+                if (config.input.enabled_profiles.length > 1) {
+                    config.input.enabled_profiles.splice(idx, 1);
+                    el.classList.remove('active');
+                }
+            }
+        }
+
+        async function save() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
 </body>
 </html>
