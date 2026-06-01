@@ -1,6 +1,6 @@
 use axum::{
     routing::{get, post},
-    extract::{State, Json},
+    extract::{State, Json, DefaultBodyLimit},
     response::{IntoResponse, Html},
     http::{StatusCode, Uri, HeaderName, header},
     Router,
@@ -79,6 +79,7 @@ impl WebServer {
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
+            .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .with_state(state);
 
         let mut current_port = self.port;
@@ -1628,10 +1629,18 @@ async fn discover_words_file_handler(
         Ok(m) => m.clone(),
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read tries").into_response(),
     };
+    let tries_clone = tries.clone();
+    let text_clone = text.clone();
+    let config_clone = config.clone();
     let word_map = get_chinese_word_map();
 
     log::info!("[discover] starting discovery (text length: {} chars)", text.chars().count());
-    let results = do_discovery(&text, &config, &tries, word_map);
+    let results = match tokio::task::spawn_blocking(move || {
+        do_discovery(&text_clone, &config_clone, &tries_clone, word_map)
+    }).await {
+        Ok(res) => res,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Discovery task panicked").into_response(),
+    };
     log::info!("[discover] found {} candidate words", results.len());
 
     let response: Vec<DiscoverResult> = results.into_iter().map(|dw| DiscoverResult {
@@ -1659,10 +1668,18 @@ async fn discover_download_handler(
         Ok(m) => m.clone(),
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read tries").into_response(),
     };
+    let tries_clone = tries.clone();
+    let text = params.text.clone();
+    let config = params.config.clone();
     let word_map = get_chinese_word_map();
 
-    log::info!("[discover] starting discovery (text length: {} chars)", params.text.chars().count());
-    let mut results = do_discovery(&params.text, &params.config, &tries, word_map);
+    let mut results = match tokio::task::spawn_blocking(move || {
+        do_discovery(&text, &config, &tries_clone, word_map)
+    }).await {
+        Ok(res) => res,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Discovery task panicked").into_response(),
+    };
+
     log::info!("[discover] found {} candidate words, generating download", results.len());
 
     if params.only_new {

@@ -103,6 +103,7 @@ env_logger = { workspace = true }
 thiserror = { workspace = true }
 slint = { workspace = true }
 rodio = { workspace = true }
+encoding_rs = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 qianyan-ime-linux = { path = "crates/platform-linux" }

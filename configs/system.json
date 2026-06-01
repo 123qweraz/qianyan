@@ -29,7 +29,9 @@
     "autostart": true,
     "enabled_profiles": [
       "chinese",
-      "english"
+      "english",
+      "japanese",
+      "stroke"
     ],
     "phantom_type": "Hanzi"
   },

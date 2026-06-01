@@ -4505,6 +4505,7 @@ dependencies = [
  "axum",
  "daemonize",
  "embed-resource",
+ "encoding_rs",
  "env_logger",
  "evdev",
  "fst",

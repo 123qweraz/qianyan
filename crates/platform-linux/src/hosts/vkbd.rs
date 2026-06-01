@@ -2,9 +2,10 @@ use evdev::uinput::{VirtualDevice, VirtualDeviceBuilder};
 use evdev::{AttributeSet, Device, EventType, InputEvent, Key};
 use std::process::Command;
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
+use arboard::Clipboard;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PasteMode {
@@ -139,16 +140,20 @@ impl Vkbd {
             return;
         }
 
-        // 1. FAST PATH: Only for supported lowercase, digits and basic punctuation
-        // 这部分不走剪贴板，性能最高
+        // 1. FAST PATH: 只要是能通过 uinput 直接模拟的 ASCII 字符，都不走剪贴板
+        // 这解决了 "打一个字母就触发一次剪贴板" 的问题，同时也极大减少了 wl-copy 进程的启动
         if !highlight
-            && text.chars().all(|c| {
-                c.is_ascii_lowercase() || c.is_ascii_digit() || " /'.,;[]\\-=`".contains(c)
-            })
+            && text.chars().all(|c| char_to_key_with_shift(c).is_some())
         {
             for c in text.chars() {
-                if let Some(key) = char_to_key(c) {
+                if let Some((key, needs_shift)) = char_to_key_with_shift(c) {
+                    if needs_shift {
+                        Self::do_emit(dev, Key::KEY_LEFTSHIFT, true);
+                    }
                     Self::do_tap(dev, key);
+                    if needs_shift {
+                        Self::do_emit(dev, Key::KEY_LEFTSHIFT, false);
+                    }
                     thread::sleep(Duration::from_micros(200));
                 }
             }
@@ -246,18 +251,28 @@ impl Vkbd {
         delay: u64,
         text: &str,
     ) -> bool {
-        use arboard::Clipboard;
-        let mut cb = match Clipboard::new() {
-            Ok(c) => c,
-            Err(_) => return false,
-        };
+        static CLIPBOARD_INSTANCE: OnceLock<Option<Mutex<Clipboard>>> = OnceLock::new();
+        
+        let cb_opt = CLIPBOARD_INSTANCE.get_or_init(|| {
+            match Clipboard::new() {
+                Ok(c) => Some(Mutex::new(c)),
+                Err(e) => {
+                    eprintln!("[Vkbd] 无法初始化剪贴板库: {}", e);
+                    None
+                }
+            }
+        });
 
-        if cb.set_text(text.to_string()).is_err() {
-            return false;
+        if let Some(cb_mutex) = cb_opt {
+            if let Ok(mut cb) = cb_mutex.lock() {
+                if cb.set_text(text.to_string()).is_ok() {
+                    thread::sleep(Duration::from_millis(delay));
+                    Self::perform_paste(dev, mode);
+                    return true;
+                }
+            }
         }
-        thread::sleep(Duration::from_millis(delay));
-        Self::perform_paste(dev, mode);
-        true
+        false
     }
 
     fn perform_paste(dev: &Arc<Mutex<VirtualDevice>>, mode: PasteMode) {
@@ -338,6 +353,54 @@ impl Vkbd {
     }
 }
 
+fn char_to_key_with_shift(c: char) -> Option<(Key, bool)> {
+    // 返回 (按键, 是否需要 Shift)
+    match c {
+        'a'..='z' => Some((char_to_key(c).unwrap(), false)),
+        'A'..='Z' => {
+            let lower = c.to_lowercase().next().unwrap();
+            Some((char_to_key(lower).unwrap(), true))
+        }
+        '0'..='9' => Some((char_to_key(c).unwrap(), false)),
+        '!' => Some((Key::KEY_1, true)),
+        '@' => Some((Key::KEY_2, true)),
+        '#' => Some((Key::KEY_3, true)),
+        '$' => Some((Key::KEY_4, true)),
+        '%' => Some((Key::KEY_5, true)),
+        '^' => Some((Key::KEY_6, true)),
+        '&' => Some((Key::KEY_7, true)),
+        '*' => Some((Key::KEY_8, true)),
+        '(' => Some((Key::KEY_9, true)),
+        ')' => Some((Key::KEY_0, true)),
+        '_' => Some((Key::KEY_MINUS, true)),
+        '+' => Some((Key::KEY_EQUAL, true)),
+        '{' => Some((Key::KEY_LEFTBRACE, true)),
+        '}' => Some((Key::KEY_RIGHTBRACE, true)),
+        '|' => Some((Key::KEY_BACKSLASH, true)),
+        ':' => Some((Key::KEY_SEMICOLON, true)),
+        '"' => Some((Key::KEY_APOSTROPHE, true)),
+        '<' => Some((Key::KEY_COMMA, true)),
+        '>' => Some((Key::KEY_DOT, true)),
+        '?' => Some((Key::KEY_SLASH, true)),
+        '~' => Some((Key::KEY_GRAVE, true)),
+        ' ' => Some((Key::KEY_SPACE, false)),
+        '\'' => Some((Key::KEY_APOSTROPHE, false)),
+        ',' => Some((Key::KEY_COMMA, false)),
+        '.' => Some((Key::KEY_DOT, false)),
+        '/' => Some((Key::KEY_SLASH, false)),
+        ';' => Some((Key::KEY_SEMICOLON, false)),
+        '[' => Some((Key::KEY_LEFTBRACE, false)),
+        ']' => Some((Key::KEY_RIGHTBRACE, false)),
+        '\\' => Some((Key::KEY_BACKSLASH, false)),
+        '-' => Some((Key::KEY_MINUS, false)),
+        '=' => Some((Key::KEY_EQUAL, false)),
+        '`' => Some((Key::KEY_GRAVE, false)),
+        '\n' => Some((Key::KEY_ENTER, false)),
+        '\t' => Some((Key::KEY_TAB, false)),
+        _ => None,
+    }
+}
+
 fn char_to_key(c: char) -> Option<Key> {
     match c {
         'a' => Some(Key::KEY_A),
@@ -388,6 +451,8 @@ fn char_to_key(c: char) -> Option<Key> {
         '-' => Some(Key::KEY_MINUS),
         '=' => Some(Key::KEY_EQUAL),
         '`' => Some(Key::KEY_GRAVE),
+        '\n' => Some(Key::KEY_ENTER),
+        '\t' => Some(Key::KEY_TAB),
         _ => None,
     }
 }
