@@ -1418,7 +1418,6 @@ fn is_chinese(c: char) -> bool {
 
 use axum::extract::Multipart;
 use encoding_rs::GBK;
-use std::io::Read;
 
 #[derive(Deserialize)]
 struct DiscoverConfigMsg {
@@ -1441,6 +1440,7 @@ async fn discover_words_file_handler(
     State((_, tries, _)): State<WebState>,
     mut multipart: Multipart,
 ) -> impl IntoResponse {
+    log::info!("[discover] new word discovery request received");
     let mut text = String::new();
     let mut config = qianyan_ime_engine::pipeline::DiscoveryConfig::default();
 
@@ -1493,17 +1493,37 @@ async fn discover_words_file_handler(
         }
     }
 
+    let word_map = get_chinese_word_map();
+
+    log::info!("[discover] loaded word map, starting discovery (text length: {} chars)", text.chars().count());
     let results = qianyan_ime_engine::pipeline::discover_words(&text, &config, &known_words);
-    
+    log::info!("[discover] found {} candidate words", results.len());
+
     let response: Vec<DiscoverResult> = results.into_iter().map(|dw| {
+        let (pinyin, in_dict) = if let Some((py, _)) = word_map.get(&dw.word) {
+            (py.clone(), true)
+        } else {
+            // 逐字查拼音
+            let mut chars_py = Vec::new();
+            for c in dw.word.chars() {
+                let s = c.to_string();
+                if let Some((py, _)) = word_map.get(&s) {
+                    chars_py.push(py.clone());
+                } else {
+                    chars_py.push(s);
+                }
+            }
+            (chars_py.join(" "), false)
+        };
         DiscoverResult {
             word: dw.word,
-            pinyin: "".into(), // 拼音可以后续由前端请求或在后端计算
-            in_dict: false,
+            pinyin,
+            in_dict,
             weight: dw.count as u32,
         }
     }).collect();
 
+    log::info!("[discover] returning {} results", response.len());
     Json(response).into_response()
 }
 

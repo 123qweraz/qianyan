@@ -11163,3 +11163,83 @@
 查询接口: Interface
 查询时间: Duration
 查询数据: Records
+查询优化: Query optimization
+查询站: Query station
+查询者: Querier
+差压: Differential pressure
+差压变送器: Differential pressure transmitter
+插眼: Eye plug
+茶宴: Tea banquet
+插言: Interject
+查夜: Night patrol
+插页: Insert page
+茶叶蛋: Tea egg
+茶叶店: Tea shop
+茶叶罐: Tea canister
+茶叶盒: Tea box
+茶叶加工: Tea processing
+差异备份: Differential backup
+茶艺表演: Tea art performance
+差异不大: Not much difference
+差异分析: Difference analysis
+茶艺馆: Tea art hall
+插一脚: Give a little push
+茶艺师: Tea artist
+插一下: Interject briefly
+差一些: A little lacking
+茶友: Tea enthusiast
+茶油: Tea oil
+叉友: Fork friend
+茶余: After tea
+差于: Inferior to
+插于: Inserted into
+察隅县: Chayuxi County
+差远: Far away
+茶苑: Tea garden
+茶园: Tea plantation
+差远啦: It's so far
+差远了: Far from it
+差在: The difference is
+查找表: Lookup table
+查找功能: Search function
+查找和替换: Find and replace
+查找机票: Search for tickets
+查找内容: Search for content
+查找时间: Search for time
+查找树: Search for tree
+查找算法: Search for algorithm
+查找替换: Find and replace
+查找文件: Find file
+查找字符: Find character
+叉着: Cross
+叉着腰: Hands on hips
+插针: Syringe needle
+察知: Detect
+茶质: Tea grade
+插值: Interpolation
+茶盅: Teacup
+茶砖: Tea brick
+叉状: Fork-shaped
+茶渍: Tea stain
+岔子: Fork
+茶籽油: Tea seed oil
+插足: Interfere
+拆包: Unwrap
+拆不: Cannot dismantle
+差补: Supplement
+拆出: Dismantle
+拆穿: Expose
+柴达木: Caida Bay
+拆弹: Defuse
+拆到: Dismantle
+柴刀: Cleaver
+拆灯: Dismantle the lamp
+拆点: Dismantle the point
+拆东墙: Dismantle the east wall
+拆东墙补西墙: Dismantle the east wall to patch the west wall
+拆队: Dismantle the team
+拆兑: Dismantle exchange
+拆房: Demolish building
+柴房: Wood shed
+拆放: Take apart and place
+柴扉: Wood door

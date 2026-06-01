@@ -69,7 +69,7 @@
                 <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
                     <div class="icon">📄</div>
                     <p id="file-status">拖拽文件到此处，或点击选择文本文件 (.txt)</p>
-                    <p style="font-size: 11px;">支持大文件 (44MB+) 和 GBK/UTF-8 自动识别</p>
+                    <p style="font-size: 11px;">支持大文件 (44MB+) 和 GBK/UTF-8 自动识别，大文件分析可能需要几分钟，请耐心等待</p>
                     <input type="file" id="file-input" accept=".txt" style="display:none" onchange="handleFile(this.files[0])">
                 </div>
 
@@ -101,6 +101,7 @@
                             <tr>
                                 <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all" onchange="toggleAll()" checked></th>
                                 <th>词汇</th>
+                                <th>拼音</th>
                                 <th>词频</th>
                                 <th>凝聚度</th>
                                 <th>自由度</th>
@@ -133,6 +134,7 @@
 
         function handleFile(file) {
             if (!file) return;
+            if (analyzing) { showToast('正在分析中，请等待完成', 'error'); return; }
             if (!file.name.endsWith('.txt')) {
                 showToast('请上传文本文件 (.txt)', 'error');
                 return;
@@ -143,17 +145,28 @@
             discover(false);
         }
 
+        let analyzing = false;
+
         async function discover(useTextarea) {
+            if (analyzing) return;
             const spinner = document.getElementById('loading-spinner');
             const resultPanel = document.getElementById('result-panel');
+            const btn = document.querySelector('.toolbar .btn');
+            const statusText = document.getElementById('file-status');
             
             let body = new FormData();
             
             if (useTextarea) {
                 const text = document.getElementById('input-text').value.trim();
-                if (!text) { showToast('请输入文本或拖入文件', 'error'); return; }
-                const blob = new Blob([text], { type: 'text/plain' });
-                body.append('file', blob, 'pasted.txt');
+                if (text) {
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    body.append('file', blob, 'pasted.txt');
+                } else if (currentFile) {
+                    body.append('file', currentFile);
+                } else {
+                    showToast('请输入文本或拖入文件', 'error');
+                    return;
+                }
             } else if (currentFile) {
                 body.append('file', currentFile);
             } else {
@@ -169,8 +182,16 @@
             };
             body.append('config', JSON.stringify(config));
 
-            spinner.style.display = 'block';
+            analyzing = true;
+            spinner.style.display = 'inline-block';
+            btn.disabled = true;
+            btn.textContent = '分析中...';
             resultPanel.style.display = 'none';
+            if (currentFile) {
+                statusText.innerHTML = `<strong>正在分析 ${currentFile.name}...</strong> (${(currentFile.size / 1024 / 1024).toFixed(2)} MB，请耐心等待)`;
+            } else {
+                statusText.textContent = '正在分析中，请耐心等待...';
+            }
 
             try {
                 const r = await fetch('/api/tools/discover', {
@@ -188,31 +209,42 @@
                 renderResults();
                 resultPanel.style.display = 'block';
                 showToast(`分析完成，发现 ${discoveredWords.length} 个新词`, 'success');
+                if (currentFile) {
+                    statusText.innerHTML = `<strong>已准备好分析: ${currentFile.name}</strong> (${(currentFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                }
             } catch (e) {
                 showToast('分析异常: ' + e, 'error');
             } finally {
+                analyzing = false;
                 spinner.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '🔍 开始分析';
             }
         }
 
         function renderResults() {
+            const onlyNew = document.getElementById('show-only-new').checked;
+            const filtered = onlyNew ? discoveredWords.filter(w => !w.in_dict) : discoveredWords;
             const tbody = document.getElementById('result-body');
-            document.getElementById('found-count').textContent = discoveredWords.length;
+            document.getElementById('found-count').textContent = filtered.length;
 
-            if (discoveredWords.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">按当前配置未发现符合条件的新词</td></tr>';
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">按当前配置未发现符合条件的新词</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = discoveredWords.map((w, idx) => `
-                <tr>
-                    <td style="text-align: center;"><input type="checkbox" class="word-check" data-word="${escAttr(w.word)}" checked onchange="updateSelectCount()"></td>
-                    <td style="font-weight:600;">${esc(w.word)}</td>
+            tbody.innerHTML = filtered.map((w, idx) => {
+                const realIdx = discoveredWords.indexOf(w);
+                const tag = w.in_dict ? '<span class="tag tag-known">已知</span>' : '<span class="tag tag-new">新词</span>';
+                return `<tr>
+                    <td style="text-align: center;"><input type="checkbox" class="word-check" data-word="${escAttr(w.word)}" data-idx="${realIdx}" checked onchange="updateSelectCount()"></td>
+                    <td style="font-weight:600;">${esc(w.word)} ${tag}</td>
+                    <td>${w.pinyin || '-'}</td>
                     <td>${w.weight}</td>
                     <td>${w.pmi ? w.pmi.toFixed(2) : '-'}</td>
                     <td>${w.entropy ? w.entropy.toFixed(2) : '-'}</td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
 
             updateSelectCount();
         }
@@ -234,8 +266,9 @@
 
             const words = [], pinyins = [];
             checks.forEach(cb => {
+                const idx = parseInt(cb.dataset.idx);
                 words.push(cb.dataset.word);
-                pinyins.push(""); 
+                pinyins.push(discoveredWords[idx].pinyin);
             });
 
             const format = document.getElementById('export-format').value;
