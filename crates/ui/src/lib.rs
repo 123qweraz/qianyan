@@ -27,7 +27,7 @@ pub trait CandidateDisplay {
     /// 更新候选词列表及拼音
     fn update_candidates(&mut self, pinyin: &str, candidates: Vec<DisplayCandidate>, selected: usize, page: usize, total_pages: usize);
     
-    /// 更新状态栏显示（中/英模式文字）
+    /// 更新中/英文模式状态显示（用于通知等）
     fn update_status(&mut self, text: &str, chinese_enabled: bool);
     
     /// 移动显示位置（通常仅对窗口 UI 有效）
@@ -39,9 +39,6 @@ pub trait CandidateDisplay {
     /// 应用配置更新
     fn apply_config(&mut self, config: &Config);
 
-    /// 显示或隐藏状态栏（不影响中文/英文模式指示）
-    fn set_status_bar_visible(&mut self, visible: bool);
-
     /// 销毁或关闭显示
     fn close(&mut self);
 }
@@ -50,7 +47,6 @@ pub trait CandidateDisplay {
 pub struct AppState {
     pub chinese_enabled: bool,
     pub active_profile: String,
-    pub show_status_bar_pref: bool,
     pub show_candidates_pref: bool,
     pub is_ime_active: bool, // 窗口是否获得焦点/输入法是否激活
     pub pinyin: String,
@@ -64,7 +60,6 @@ pub struct AppState {
 #[derive(Debug, Clone)]
 pub enum GuiEvent {
     SyncState(AppState), // 单一数据源同步
-    ForceStatusVisible(bool), // 强制、独立的状态栏显隐控制 (不受任何焦点影响)
     Update {
         pinyin: String,
         candidates: Vec<DisplayCandidate>,
@@ -77,8 +72,7 @@ pub enum GuiEvent {
     },
     MoveTo { x: i32, y: i32 },
     ApplyConfig(Box<Config>),
-    ShowStatus(String, bool), // 状态文字, 是否为中文模式 (用于更新文字)
-    UpdateStatusBarVisible(bool), // 手动更新状态栏显隐
+    ShowStatus(String, bool), // 状态文字, 是否为中文模式 (用于通知)
     SetVisible(bool),         // 窗口显隐 (用于输入法激活/停用)
     #[allow(dead_code)]
     OpenTrayMenu { x: i32, y: i32, chinese_enabled: bool, active_profile: String },

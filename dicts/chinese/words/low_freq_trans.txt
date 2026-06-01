@@ -10953,3 +10953,63 @@
 查不出: Cannot find
 差不多啊: Nearly
 差不多吧: Probably
+差不多得了: Enough already
+差不多得了吧: Cut it out
+差不了: Not far
+插册: Insert
+叉叉: Cross
+插插: Plugs
+嚓嚓: Rustling
+茶场: Tea factory
+查抄: Transcribe
+叉乘: Cross product
+茶城: Tea City
+插翅: Clip wings
+差池: Error
+茶匙: Teaspoon
+插齿机: Gear cutter
+查重: Plagiarism check
+查出来: Find out
+插床: Cot
+查词: Look up words
+查词典: Check dictionary
+查错: Error checking
+插错: Misinsertion
+差错控制: Error control
+差错率: Error rate
+插袋: Pocket insertion
+查档: Check records
+查档案: Review dossiers
+差到: Arrive at
+岔道: Side path
+岔道儿: Byway
+岔道口: Junction
+查到了: Found
+查得: Investigated
+插得: Inserted
+差得多: Much difference
+查电路: Check the circuit
+查电线: Check the wires
+插电源: Plug in the power
+插定: Plug into the outlet
+插动: Plug and operate
+差动: Differential
+查堵: Check for blockages
+差多了: Too much
+差多少: far off
+碴儿: How much difference
+插法: Insertion method
+茶饭: Meals
+茶饭不思: Forget meals
+察访: Investigate
+茶房: Teahouse
+查封了: Sealed
+叉竿: fishing pole
+查岗: snoop
+茶缸: tea mug
+差个: difference
+查个: Check
+茶工: Tea worker
+茶垢: Tea scale
+插关儿: Plug in
+插过: Plugged in

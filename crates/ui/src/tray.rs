@@ -8,7 +8,6 @@ use std::sync::mpsc::Sender;
 pub enum TrayEvent {
     ToggleIme,
     NextProfile,
-    ToggleStatusBar,
     OpenConfig,
     Exit,
     ReloadConfig,
@@ -24,7 +23,6 @@ pub enum TrayEvent {
 
 pub struct TrayParams {
     pub active_profile: String,
-    pub show_status_bar: bool,
     pub tx: Sender<TrayEvent>,
 }
 
@@ -32,23 +30,21 @@ pub struct TrayParams {
 pub struct ImeTray {
     pub chinese_enabled: bool,
     pub active_profile: String,
-    pub show_status_bar: bool,
     pub tx: Sender<TrayEvent>,
 }
 
 #[cfg(target_os = "linux")]
-fn load_icon() -> Vec<ksni::Icon> {
+fn load_icon(chinese_enabled: bool) -> Vec<ksni::Icon> {
     let root = qianyan_ime_core::utils::find_project_root();
+    let icon_name = if chinese_enabled { "zh" } else { "en" };
     let icon_paths = [
-        "picture/qianyan-ime_v2.ico",
-        "picture/qianyan-ime.ico",
-        "picture/qianyan-ime_v2.png",
-        "picture/qianyan-ime.png",
+        format!("picture/{}.png", icon_name),
+        format!("picture/{}.ico", icon_name),
     ];
 
     for path in &icon_paths {
-        let full_path = root.join(path);
-        if let Ok(img) = image::open(full_path) {
+        let full_path = root.join(&path);
+        if let Ok(img) = image::open(&full_path) {
             let rgba = img.to_rgba8();
             let (width, height) = rgba.dimensions();
             let data = rgba.into_raw();
@@ -66,7 +62,7 @@ fn load_icon() -> Vec<ksni::Icon> {
 #[cfg(target_os = "linux")]
 impl Tray for ImeTray {
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        load_icon()
+        load_icon(self.chinese_enabled)
     }
 
     fn title(&self) -> String {
@@ -125,19 +121,6 @@ impl Tray for ImeTray {
                 ..Default::default()
             }
             .into(),
-            StandardItem {
-                label: if self.show_status_bar {
-                    "隐藏状态栏"
-                } else {
-                    "显示状态栏"
-                }
-                .to_string(),
-                activate: Box::new(|this: &mut Self| {
-                    let _ = this.tx.send(TrayEvent::ToggleStatusBar);
-                }),
-                ..Default::default()
-            }
-            .into(),
             MenuItem::Separator,
             StandardItem {
                 label: "配置管理 (Web)".to_string(),
@@ -187,7 +170,6 @@ pub fn start_tray(params: TrayParams) -> LinuxTrayHandle {
     let tray = ImeTray {
         chinese_enabled: true,
         active_profile: params.active_profile,
-        show_status_bar: params.show_status_bar,
         tx: params.tx,
     };
     let service = TrayService::new(tray);
@@ -213,7 +195,6 @@ const TRAY_ICON_ID: u32 = 1;
 pub struct ImeTrayStub {
     pub chinese_enabled: bool,
     pub active_profile: String,
-    pub show_status_bar: bool,
 }
 
 #[cfg(target_os = "windows")]
@@ -245,7 +226,6 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
     let state = Arc::new(Mutex::new(ImeTrayStub {
         chinese_enabled: true,
         active_profile: params.active_profile,
-        show_status_bar: params.show_status_bar,
     }));
 
     TRAY_STATE.set(state.clone()).ok();
@@ -285,9 +265,17 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
             None,
         );
 
-        let icon_path = "picture/qianyan-ime_v2.ico\0"
+        let zh_icon_path = "picture/zh.ico\0"
             .encode_utf16()
             .collect::<Vec<u16>>();
+        let default_icon_path = "picture/qianyan-ime_v2.ico\0"
+            .encode_utf16()
+            .collect::<Vec<u16>>();
+        let icon_path = if std::path::Path::new("picture/zh.ico").exists() {
+            &zh_icon_path
+        } else {
+            &default_icon_path
+        };
         let h_icon = match LoadImageW(
             None,
             PCWSTR(icon_path.as_ptr()),
@@ -395,15 +383,6 @@ unsafe extern "system" fn tray_wnd_proc(
 
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
 
-                        let sb_label = if state.show_status_bar {
-                            "隐藏状态栏"
-                        } else {
-                            "显示状态栏"
-                        };
-                        let mut sb_w: Vec<u16> = sb_label.encode_utf16().collect();
-                        sb_w.push(0);
-                        let _ = AppendMenuW(h_menu, MF_STRING, 1003, PCWSTR(sb_w.as_ptr()));
-
                         let _ = AppendMenuW(
                             h_menu,
                             MF_STRING,
@@ -439,9 +418,6 @@ unsafe extern "system" fn tray_wnd_proc(
                         if let Some(profile) = profiles.get(id as usize - 2000) {
                             let _ = tx.send(TrayEvent::SetProfile(profile.to_string()));
                         }
-                    }
-                    1003 => {
-                        let _ = tx.send(TrayEvent::ToggleStatusBar);
                     }
                     1011 => {
                         let _ = tx.send(TrayEvent::OpenConfig);

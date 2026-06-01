@@ -189,8 +189,6 @@ struct WlState {
     _seat_state: SeatState,
     candidate_layer: Option<LayerSurface>,
     candidate_pool: Option<SlotPool>,
-    status_layer: Option<LayerSurface>,
-    status_pool: Option<SlotPool>,
     exit: AtomicBool,
     pixel_pool: PixelPool,
 }
@@ -340,8 +338,6 @@ impl ProvidesRegistryState for WlState {
 enum WlCmd {
     ShowCandidate { x: i32, y: i32, w: u32, h: u32, anchor: Anchor, pixels: Vec<u8> },
     HideCandidate,
-    ShowStatus { x: i32, y: i32, w: u32, h: u32, anchor: Anchor, pixels: Vec<u8> },
-    HideStatus,
     Exit,
 }
 
@@ -396,8 +392,6 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         _seat_state: SeatState::new(&globals, &qh),
         candidate_layer: None,
         candidate_pool: None,
-        status_layer: None,
-        status_pool: None,
         exit: AtomicBool::new(false),
         pixel_pool: pixel_pool.clone(),
     };
@@ -421,27 +415,6 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
     if let Ok(pool) = SlotPool::new(4 * 1024 * 1024, &state.shm) {
         state.candidate_pool = Some(pool);
         eprintln!("[WL_DEBUG] Candidate pool created (4MB)");
-    }
-
-    // Create status layer surface
-    {
-        let surf = state.compositor_state.create_surface(&qh);
-        let layer = state
-            .layer_shell
-            .as_ref()
-            .unwrap()
-            .create_layer_surface(&qh, surf, Layer::Overlay, Some("qianyan-ime-status"), None);
-        layer.set_anchor(Anchor::TOP | Anchor::LEFT);
-        layer.set_exclusive_zone(-1);
-        layer.set_keyboard_interactivity(KeyboardInteractivity::None);
-        layer.set_size(60, 28);
-        layer.commit();
-        state.status_layer = Some(layer);
-        eprintln!("[WL_DEBUG] Status layer surface created");
-    }
-    if let Ok(pool) = SlotPool::new(4 * 1024 * 1024, &state.shm) {
-        state.status_pool = Some(pool);
-        eprintln!("[WL_DEBUG] Status pool created (4MB)");
     }
 
     let _ = event_queue.dispatch_pending(&mut state);
@@ -479,40 +452,6 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                     WlCmd::HideCandidate => {
                         if let Some(ref mut pool) = state.candidate_pool {
                             if let Some(layer) = state.candidate_layer.clone() {
-                                if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
-                                    canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
-                                    if buffer.attach_to(layer.wl_surface()).is_ok() {
-                                        layer.wl_surface().damage_buffer(0, 0, 1, 1);
-                                        layer.commit();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    WlCmd::ShowStatus { x, y, w, h, anchor, pixels } => {
-                        if let Some(layer) = state.status_layer.clone() {
-                            layer.set_anchor(anchor);
-                            layer.set_size(w.max(1), h.max(1));
-                            let has_top = anchor.contains(Anchor::TOP);
-                            let has_bottom = anchor.contains(Anchor::BOTTOM);
-                            let has_left = anchor.contains(Anchor::LEFT);
-                            let has_right = anchor.contains(Anchor::RIGHT);
-                            layer.set_margin(
-                                if has_top { y.max(0) as i32 } else { 0 },
-                                if has_right { x.max(0) as i32 } else { 0 },
-                                if has_bottom { y.max(0) as i32 } else { 0 },
-                                if has_left { x.max(0) as i32 } else { 0 },
-                            );
-                            if let Some(ref mut pool) = state.status_pool {
-                                submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
-                            }
-                        }
-                        // Reuse pixel buffer
-                        state.pixel_pool.put(pixels);
-                    }
-                    WlCmd::HideStatus => {
-                        if let Some(ref mut pool) = state.status_pool {
-                            if let Some(layer) = state.status_layer.clone() {
                                 if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
                                     canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
                                     if buffer.attach_to(layer.wl_surface()).is_ok() {
@@ -589,18 +528,13 @@ struct WlThread {
 }
 
 pub struct WaylandLayerDisplay {
-    // Raw pointer to the SoftwareRenderer owned by OffscreenWindow.
-    // Safe because OffscreenWindow lives as long as WaylandLayerDisplay
-    // (candidate_window owns the adapter chain).
     renderer_ptr: *const slint::platform::software_renderer::SoftwareRenderer,
     candidate_window: CandidateWindow,
-    status_bar: StatusBar,
     config: Config,
     window_visible: bool,
     candidate_enabled: bool,
     last_x: i32,
     last_y: i32,
-    status_bar_visible: bool,
     wl: Option<WlThread>,
     pixel_pool: PixelPool,
 }
@@ -614,13 +548,9 @@ impl WaylandLayerDisplay {
         setup_slint_platform()?;
 
         let candidate_window = CandidateWindow::new().ok()?;
-        let status_bar = StatusBar::new().ok()?;
 
         // Set initial sizes for the layer surfaces before any content arrives.
-        // Width adapts to content; use a reasonable initial size.
         candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(100, 100)));
-        // Status bar: will be sized by its binding.
-        status_bar.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(60, 28)));
         slint::platform::update_timers_and_animations();
 
         // Get the renderer from the offscreen window adapter.
@@ -647,13 +577,11 @@ impl WaylandLayerDisplay {
         let display = Self {
             renderer_ptr,
             candidate_window,
-            status_bar,
             config: config.clone(),
             window_visible: false,
             candidate_enabled,
             last_x: 0,
             last_y: 0,
-            status_bar_visible: false,
             wl: join.ok().map(|_| WlThread { cmd_tx: tx }),
             pixel_pool,
         };
@@ -729,56 +657,6 @@ impl WaylandLayerDisplay {
             }
         } else if let Some(ref wl) = self.wl {
             let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
-        }
-    }
-
-    fn render_and_send_status(&self) {
-        if self.status_bar_visible {
-            if let Some(ref wl) = self.wl {
-                let _window = self.status_bar.window();
-                let w = 60u32;
-                let h = 28u32;
-                let mut pixels = self.pixel_pool.get((w * h * 4) as usize);
-                
-                let buf: &mut [slint::platform::software_renderer::PremultipliedRgbaColor] =
-                    bytemuck::cast_slice_mut(&mut pixels);
-                self.renderer().render(buf, w as usize);
-
-                // RGBA -> BGRA for wl_shm Argb8888
-                for pixel in pixels.chunks_exact_mut(4) {
-                    pixel.swap(0, 2);
-                }
-
-                let anchor = if self.config.linux.fixed_position {
-                    match self.config.linux.corner.as_str() {
-                        "top-right" => Anchor::TOP | Anchor::RIGHT,
-                        "bottom-left" => Anchor::BOTTOM | Anchor::LEFT,
-                        "bottom-right" => Anchor::BOTTOM | Anchor::RIGHT,
-                        _ => Anchor::TOP | Anchor::LEFT,
-                    }
-                } else {
-                    Anchor::TOP | Anchor::LEFT
-                };
-                let margin_y = if self.config.linux.fixed_position {
-                    self.config.linux.fixed_y
-                } else {
-                    self.last_y
-                };
-                let margin_x = if self.config.linux.fixed_position {
-                    self.config.linux.fixed_x
-                } else {
-                    self.last_x
-                };
-                let cmd = WlCmd::ShowStatus {
-                    x: margin_x, y: margin_y, anchor,
-                    w, h, pixels,
-                };
-                if let Err(e) = wl.cmd_tx.send(cmd) {
-                    log::error!("Wayland channel disconnected: {e:?}");
-                }
-            }
-        } else if let Some(ref wl) = self.wl {
-            let _ = wl.cmd_tx.send(WlCmd::HideStatus);
         }
     }
 
@@ -908,21 +786,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
         self.render_and_send_candidate(size.width.max(1), size.height.max(1));
     }
 
-    fn update_status(&mut self, text: &str, chinese_enabled: bool) {
-        if !text.is_empty() {
-            self.status_bar
-                .set_status_text(slint::SharedString::from(text));
-        }
-        self.status_bar.set_chinese_enabled(chinese_enabled);
-        slint::platform::update_timers_and_animations();
-        self.render_and_send_status();
-    }
-
-    fn set_status_bar_visible(&mut self, visible: bool) {
-        self.status_bar_visible = visible;
-        self.config.appearance.show_status_bar = visible;
-        self.status_bar.set_bar_visible(visible);
-        self.render_and_send_status();
+    fn update_status(&mut self, _text: &str, _chinese_enabled: bool) {
+        // StatusBar 已移除，状态通过托盘图标显示
     }
 
     fn move_to(&mut self, x: i32, y: i32) {

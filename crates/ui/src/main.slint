@@ -1,4 +1,11 @@
 import { CandidateData, CandidateWindow } from "candidate.slint";
-import { StatusBar } from "status_bar.slint";
 
-export { CandidateData, CandidateWindow, StatusBar }
+export { CandidateData, CandidateWindow }
+
+export component AnchorWindow inherits Window {
+    no-frame: true;
+    background: transparent;
+    width: 1px;
+    height: 1px;
+    always-on-top: true;
+}

@@ -38,7 +38,6 @@
     "row_spacing": 8.0,
     "show_learning_english_hint": true,
     "show_learning_stroke_hint": true,
-    "show_status_bar": false,
     "theme_mode": "auto",
     "window_bg_color": "#ffffff",
     "window_border_color": "rgba(0, 0, 0, 0.1)",

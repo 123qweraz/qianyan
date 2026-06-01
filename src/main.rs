@@ -151,7 +151,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if conf.appearance.show_tray {
             Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
                 active_profile: conf.input.default_profile.clone(),
-                show_status_bar: conf.appearance.show_status_bar,
                 tx: tray_tx.clone(),
             }))
         } else {
@@ -160,7 +159,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
             active_profile: "chinese".into(),
-            show_status_bar: true,
             tx: tray_tx.clone(),
         }))
     };
@@ -169,7 +167,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(qianyan_ime_ui::AppState {
         chinese_enabled: true,
         active_profile: "".into(),
-        show_status_bar_pref: config.read().map_or(true, |c| c.appearance.show_status_bar),
         show_candidates_pref: config.read().map_or(true, |c| c.appearance.show_candidates),
         is_ime_active: true,
         pinyin: "".into(),
@@ -290,22 +287,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 });
                             }
                         }
-                    }
-                }
-                qianyan_ime_ui::tray::TrayEvent::ToggleStatusBar => {
-                    let mut new_show = false;
-                    if let Ok(mut w) = config_msg.write() {
-                        w.appearance.show_status_bar = !w.appearance.show_status_bar;
-                        new_show = w.appearance.show_status_bar;
-                        let _ = w.save();
-                    }
-                    if let Some(ref handle) = tray_handle {
-                        handle.update(move |t| t.show_status_bar = new_show);
-                    }
-
-                    if let Ok(mut state) = app_state_tray.lock() {
-                        state.show_status_bar_pref = new_show;
-                        let _ = gui_tx_tray.send(GuiEvent::ForceStatusVisible(new_show));
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::SyncStatus {
@@ -515,7 +496,6 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
             Some(MainToGui::SyncState(transport::AppStateMsg {
                 chinese_enabled: state.chinese_enabled,
                 active_profile: state.active_profile,
-                show_status_bar_pref: state.show_status_bar_pref,
                 show_candidates_pref: state.show_candidates_pref,
                 is_ime_active: state.is_ime_active,
                 pinyin: state.pinyin,
@@ -533,9 +513,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
         }
         GuiEvent::MoveTo { x, y } => Some(MainToGui::MoveTo { x, y }),
         GuiEvent::SetVisible(v) => Some(MainToGui::SetVisible(v)),
-        GuiEvent::ForceStatusVisible(v) => Some(MainToGui::ForceStatusVisible(v)),
         GuiEvent::ShowStatus(text, chinese) => Some(MainToGui::ShowStatus(text, chinese)),
-        GuiEvent::UpdateStatusBarVisible(v) => Some(MainToGui::UpdateStatusBarVisible(v)),
         GuiEvent::ApplyConfig(config) => {
             serde_json::to_string(&*config).ok().map(|json| MainToGui::ApplyConfig(json))
         }

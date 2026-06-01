@@ -33,12 +33,10 @@ pub fn start_gui(
             let cfg = config.clone();
             let event_type = match &event {
                 GuiEvent::SyncState(_) => "SyncState",
-                GuiEvent::ForceStatusVisible(_) => "ForceStatusVisible",
                 GuiEvent::Update{..} => "Update",
                 GuiEvent::MoveTo{..} => "MoveTo",
                 GuiEvent::ApplyConfig(_) => "ApplyConfig",
                 GuiEvent::ShowStatus(..) => "ShowStatus",
-                GuiEvent::UpdateStatusBarVisible(_) => "UpdateStatusBarVisible",
                 GuiEvent::SetVisible(_) => "SetVisible",
                 GuiEvent::OpenTrayMenu{..} => "OpenTrayMenu",
                 GuiEvent::HideAndAck(..) => "HideAndAck",
@@ -244,19 +242,9 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     display.set_visible(*visible);
                 }
             }
-            MainToGui::ForceStatusVisible(visible) => {
-                for display in displays.iter_mut() {
-                    display.set_status_bar_visible(*visible);
-                }
-            }
             MainToGui::ShowStatus(text, chinese_enabled) => {
                 for display in displays.iter_mut() {
                     display.update_status(text, *chinese_enabled);
-                }
-            }
-            MainToGui::UpdateStatusBarVisible(visible) => {
-                for display in displays.iter_mut() {
-                    display.set_status_bar_visible(*visible);
                 }
             }
             MainToGui::ApplyConfig(json) => {
@@ -380,16 +368,6 @@ fn handle_event(
                 for d in displays.iter_mut() {
                     d.apply_config(&cfg);
                 }
-            }
-        }
-        GuiEvent::UpdateStatusBarVisible(visible) => {
-            for d in displays.iter_mut() {
-                d.set_status_bar_visible(visible);
-            }
-        }
-        GuiEvent::ForceStatusVisible(visible) => {
-            for d in displays.iter_mut() {
-                d.set_status_bar_visible(visible);
             }
         }
         GuiEvent::HideAndAck(ack_tx) => {

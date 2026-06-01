@@ -86,7 +86,6 @@ pub enum AuxFilterMode {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Appearance {
     pub show_candidates: bool,
-    pub show_status_bar: bool,
     pub page_size: usize,
     pub candidate_anchor: String,
     pub candidate_layout: String,
@@ -796,7 +795,6 @@ impl Config {
             },
             appearance: Appearance {
                 show_candidates: true,
-                show_status_bar: false,
                 page_size: 5,
                 candidate_anchor: "bottom".to_string(),
                 candidate_layout: "horizontal".to_string(),

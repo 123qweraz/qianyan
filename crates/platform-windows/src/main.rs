@@ -113,14 +113,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _tray_handle = tray::start_tray(tray::TrayParams {
         active_profile: config.read().map(|c| c.input.default_profile.clone()).unwrap_or_else(|_| "chinese".into()),
-        show_status_bar: config.read().map(|c| c.appearance.show_status_bar).unwrap_or(true),
         tx: tray_tx.clone(),
     });
 
     let app_state = Arc::new(Mutex::new(ui::AppState {
         chinese_enabled: true,
         active_profile: "".into(),
-        show_status_bar_pref: true,
         show_candidates_pref: true,
         is_ime_active: true,
         pinyin: "".into(),

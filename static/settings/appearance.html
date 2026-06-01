@@ -24,10 +24,6 @@
                     </select>
                 </div>
                 <div class="setting-item">
-                    <div class="info"><div class="title">显示状态显示栏</div><div class="desc">控制输入状态（中/英）浮窗的显示</div></div>
-                    <label class="switch"><input type="checkbox" id="show_status_bar"><span class="slider"></span></label>
-                </div>
-                <div class="setting-item">
                     <div class="info"><div class="title">随机高亮颜色</div><div class="desc">每次选词时随机变换选中项的背景色</div></div>
                     <label class="switch"><input type="checkbox" id="enable_random_highlight"><span class="slider"></span></label>
                 </div>
@@ -142,7 +138,6 @@
             
             // 1. 基础外观设置
             bindInput('theme_mode', 'appearance');
-            bindInput('show_status_bar', 'appearance');
             bindInput('enable_random_highlight', 'appearance');
             bindInput('candidate_layout', 'appearance');
             

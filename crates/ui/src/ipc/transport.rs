@@ -71,9 +71,7 @@ pub enum MainToGui {
     },
     MoveTo { x: i32, y: i32 },
     SetVisible(bool),
-    ForceStatusVisible(bool),
     ShowStatus(String, bool),
-    UpdateStatusBarVisible(bool),
     ApplyConfig(String),
     /// GUI must respond with GuiToMain::Ack after hiding the candidate window.
     HideCandidate,
@@ -91,7 +89,6 @@ pub enum GuiToMain {
 pub struct AppStateMsg {
     pub chinese_enabled: bool,
     pub active_profile: String,
-    pub show_status_bar_pref: bool,
     pub show_candidates_pref: bool,
     pub is_ime_active: bool,
     pub pinyin: String,
