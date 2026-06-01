@@ -484,6 +484,7 @@ impl InputMethodHost for EvdevHost {
                                 drop(pending);
                                 if let Ok(mut p_locked) = self.processor.lock() {
                                     eprintln!("[DEBUG] sync key handler: key={:?} val={}", vk, val);
+                                    let prev_enabled = p_locked.ctx.session_state.chinese_enabled;
                                     let action =
                                         p_locked.handle_key_ext(vk, val, shift, ctrl, alt, true);
                                     eprintln!("[DEBUG] sync key action type: {}",
@@ -496,15 +497,21 @@ impl InputMethodHost for EvdevHost {
                                             qianyan_ime_engine::processor::Action::Notify(..) => "Notify",
                                         });
 
-                                    // 如果状态发生了变化，同步到托盘
                                     let enabled = p_locked.ctx.session_state.chinese_enabled;
-                                    let profile = p_locked.get_current_profile_display();
-                                    let _ = self.tray_tx.send(
-                                        qianyan_ime_ui::tray::TrayEvent::SyncStatus {
-                                            chinese_enabled: enabled,
-                                            active_profile: profile,
-                                        },
-                                    );
+                                    if prev_enabled != enabled {
+                                        let short = p_locked.get_short_display();
+                                        let text = if enabled { short } else { "英".into() };
+                                        if let Some(ref gui_tx) = self.gui_tx {
+                                            let _ = gui_tx.send(qianyan_ime_ui::GuiEvent::ShowStatus(text, enabled));
+                                        }
+                                        let profile = p_locked.get_current_profile_display();
+                                        let _ = self.tray_tx.send(
+                                            qianyan_ime_ui::tray::TrayEvent::SyncStatus {
+                                                chinese_enabled: enabled,
+                                                active_profile: profile,
+                                            },
+                                        );
+                                    }
 
                                     if let Ok(vkbd) = self.vkbd.lock() {
                                         execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));

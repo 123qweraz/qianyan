@@ -11108,3 +11108,58 @@
 茶钱: Tea money
 查清事实: Clarify the facts
 岔曲儿: Curvature
+查全率: Coverage Rate
+插入点: Insertion Point
+插入记号: Insertion Marker
+插入节点: Inserted Node
+插入式: Insertional
+插入损耗: Insertion loss
+插入文本: Insert text
+插入阴道: Vaginal insertion
+茶商: Tea merchant
+搽上: Apply
+插上电源: Plug in
+叉烧: Char siu
+叉烧包: Char siu bao
+茶社: Tea house
+插身: Personal
+茶圣: Tea Saint
+差生文具多: Poor student stationery
+查士丁尼: Constantine
+差时症: Jet lag
+叉梳: Claw comb
+差数: Difference
+茶树菇: Tea tree mushroom
+茶肆: Teahouse
+插死: Stab to death
+差速锁: Differential lock
+插穗: Inflorescence
+查探: investigate
+茶汤壶: teapot
+插条: strip
+插头插座: power outlet
+茶托: Tea tray
+查完: Checked
+茶碗: Tea bowl
+查完房: Checked out
+茶网: Tea strainer
+茶味: Tea flavor
+查韦斯: Chávez
+茶文化节: Tea Culture Festival
+差误: Error
+查无此人: Person not found
+差唔多: Approximately
+查下去: Investigate further
+插线: Plug in a wire
+茶锈: Tea rust
+茶学: Tea studies
+查寻: Search
+查询单: Inquiry Form
+查询费: Inquiry Fee
+查询分析: Query Analysis
+查询分析器: Query Analyzer
+查询工具: Tool
+查询缓存: Cache
+查询接口: Interface
+查询时间: Duration
+查询数据: Records

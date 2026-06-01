@@ -284,6 +284,9 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 let enabled = guard.ctx.session_state.chinese_enabled;
 
                 if prev_enabled != enabled {
+                    let short = guard.get_short_display();
+                    let text = if enabled { short } else { "英".into() };
+                    let _ = state.gui_tx.send(GuiEvent::ShowStatus(text, enabled));
                     let profile = guard.get_current_profile_display();
                     let _ = state.tray_tx.send(TrayEvent::SyncStatus {
                         chinese_enabled: enabled,
