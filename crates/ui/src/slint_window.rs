@@ -76,7 +76,7 @@ fn set_skip_taskbar_and_hide() -> bool {
     let Some(utility) = intern(b"_NET_WM_WINDOW_TYPE_UTILITY") else { return false };
     let Some(net_wm_name) = intern(b"_NET_WM_NAME") else { return false };
 
-    let window_names = ["RustImeCandidateWindow"];
+    let window_names = ["QianyanIMECandidateWindow", "QianyanIMEAnchor"];
     let mut found = false;
 
     for name in &window_names {

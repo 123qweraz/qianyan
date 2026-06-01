@@ -25,6 +25,7 @@ use qianyan_ime_engine::keys::VirtualKey;
 use qianyan_ime_engine::processor::Action;
 use qianyan_ime_engine::Processor;
 use qianyan_ime_ui::GuiEvent;
+use qianyan_ime_ui::tray::TrayEvent;
 
 use super::wayland_host::{keysym_to_vk, xkb_to_vk_raw};
 
@@ -32,6 +33,7 @@ struct WlState {
     _running: Arc<AtomicBool>,
     processor: Arc<Mutex<Processor>>,
     gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<TrayEvent>,
     active: bool,
     _input_method: Option<ZwpInputMethodV1>,
     context: Option<ZwpInputMethodContextV1>,
@@ -277,8 +279,18 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     Err(_) => return,
                 };
 
+                let prev_enabled = guard.ctx.session_state.chinese_enabled;
                 let action = guard.handle_key(vk, 1, false, false, false);
-                
+                let enabled = guard.ctx.session_state.chinese_enabled;
+
+                if prev_enabled != enabled {
+                    let profile = guard.get_current_profile_display();
+                    let _ = state.tray_tx.send(TrayEvent::SyncStatus {
+                        chinese_enabled: enabled,
+                        active_profile: profile,
+                    });
+                }
+
                 let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
                 let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = if pinyin.is_empty() {
                     vec![]
@@ -353,6 +365,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
 pub struct WaylandInputHostV1 {
     processor: Arc<Mutex<Processor>>,
     gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
 }
 
@@ -383,6 +396,7 @@ impl InputMethodHost for WaylandInputHostV1 {
             _running: self.running.clone(),
             processor: self.processor.clone(),
             gui_tx: self.gui_tx.clone(),
+            tray_tx: self.tray_tx.clone(),
             active: false,
             _input_method: Some(input_method),
             context: None,
@@ -416,6 +430,7 @@ impl WaylandInputHostV1 {
     pub fn new(
         processor: Arc<Mutex<Processor>>,
         gui_tx: Sender<GuiEvent>,
+        tray_tx: Sender<TrayEvent>,
     ) -> Option<Self> {
         if std::env::var("WAYLAND_DISPLAY").is_err() {
             return None;
@@ -426,6 +441,7 @@ impl WaylandInputHostV1 {
         Some(Self {
             processor,
             gui_tx,
+            tray_tx,
             running: Arc::new(AtomicBool::new(false)),
         })
     }

@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         use windows::Win32::System::Threading::*;
 
         let name = PCWSTR(
-            r"Global\RustImeUniqueMutex\0"
+            r"Global\QianyanIMEUniqueMutex\0"
                 .encode_utf16()
                 .collect::<Vec<u16>>()
                 .as_ptr(),
@@ -293,9 +293,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     chinese_enabled,
                     active_profile,
                 } => {
+                    if let Some(ref handle) = tray_handle {
+                        handle.update(move |t| t.chinese_enabled = chinese_enabled);
+                    }
+                    let short = processor_clone.lock().ok().map(|p| p.get_short_display()).unwrap_or_default();
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.chinese_enabled = chinese_enabled;
                         state.active_profile = active_profile;
+                        state.status_text = if chinese_enabled { short } else { "英".into() };
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {

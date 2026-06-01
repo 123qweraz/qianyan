@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         use windows::Win32::System::Threading::*;
 
         let name = PCWSTR(
-            r"Global\RustImeUniqueMutex\0"
+            r"Global\QianyanIMEUniqueMutex\0"
                 .encode_utf16()
                 .collect::<Vec<u16>>()
                 .as_ptr(),

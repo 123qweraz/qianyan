@@ -7,6 +7,7 @@ use qianyan_ime_core::Config;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::Processor;
 use qianyan_ime_ui::GuiEvent;
+use qianyan_ime_ui::tray::TrayEvent;
 use std::error::Error;
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -41,7 +42,7 @@ pub fn create_input_host(
 
     match backend {
         BackendType::Wayland => {
-            let (mut host, desc) = create_wayland_host(processor, gui_tx)?;
+            let (mut host, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
             println!("[Main] 成功启动{}输入法模式。", desc);
             Ok((
                 None,
@@ -86,7 +87,7 @@ pub fn create_input_host(
             // Fallback: try Wayland input method protocol
             #[cfg(target_os = "linux")]
             if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match create_wayland_host(processor.clone(), gui_tx.clone()) {
+                match create_wayland_host(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
                     Ok((mut host, desc)) => {
                         println!("[Main] 成功启动{}输入法模式。", desc);
                         return Ok((
@@ -110,6 +111,7 @@ pub fn create_input_host(
 fn create_wayland_host(
     processor: Arc<Mutex<Processor>>,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
+    tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, &'static str), Box<dyn Error>> {
     // Minimal state just to query globals; we don't need a real dispatch loop
     struct DummyState;
@@ -139,13 +141,13 @@ fn create_wayland_host(
 
     if has_v2 {
         Ok((
-            Box::new(WaylandInputHost::new(processor, gui_tx)
+            Box::new(WaylandInputHost::new(processor.clone(), gui_tx.clone(), tray_tx.clone())
                 .ok_or("Wayland v2 host init failed")?),
             " Wayland v2",
         ))
     } else if has_v1 {
         Ok((
-            Box::new(WaylandInputHostV1::new(processor, gui_tx)
+            Box::new(WaylandInputHostV1::new(processor, gui_tx, tray_tx)
                 .ok_or("Wayland v1 host init failed")?),
             " Wayland v1",
         ))

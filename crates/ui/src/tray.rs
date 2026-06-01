@@ -36,14 +36,14 @@ pub struct ImeTray {
 #[cfg(target_os = "linux")]
 fn load_icon(chinese_enabled: bool) -> Vec<ksni::Icon> {
     let root = qianyan_ime_core::utils::find_project_root();
-    let icon_name = if chinese_enabled { "zh" } else { "en" };
-    let icon_paths = [
-        format!("picture/{}.png", icon_name),
-        format!("picture/{}.ico", icon_name),
-    ];
+    let icon_paths = if chinese_enabled {
+        ["picture/qianyan-ime_v2.png", "picture/qianyan-ime.png"]
+    } else {
+        ["picture/qianyan-ime_v2_en.png", "picture/qianyan-ime.png"]
+    };
 
     for path in &icon_paths {
-        let full_path = root.join(&path);
+        let full_path = root.join(path);
         if let Ok(img) = image::open(&full_path) {
             let rgba = img.to_rgba8();
             let (width, height) = rgba.dimensions();
@@ -67,7 +67,7 @@ impl Tray for ImeTray {
 
     fn title(&self) -> String {
         format!(
-            "rust-IME ({})",
+            "qianyan ({})",
             if self.chinese_enabled { "中" } else { "英" }
         )
     }
@@ -236,7 +236,7 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
         let instance =
             windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap_or_default();
         let window_class = PCWSTR(
-            "RustImeTrayClass\0"
+            "QianyanIMETrayClass\0"
                 .encode_utf16()
                 .collect::<Vec<u16>>()
                 .as_ptr(),
@@ -268,13 +268,20 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
         let zh_icon_path = "picture/zh.ico\0"
             .encode_utf16()
             .collect::<Vec<u16>>();
+        let en_icon_path = "picture/en.ico\0"
+            .encode_utf16()
+            .collect::<Vec<u16>>();
         let default_icon_path = "picture/qianyan-ime_v2.ico\0"
             .encode_utf16()
             .collect::<Vec<u16>>();
-        let icon_path = if std::path::Path::new("picture/zh.ico").exists() {
-            &zh_icon_path
-        } else {
-            &default_icon_path
+        // 根据中英文状态选择图标
+        let icon_path = {
+            let stub = TRAY_STATE.get().and_then(|s| s.lock().ok());
+            match stub.as_ref().map(|s| s.chinese_enabled) {
+                Some(true) if std::path::Path::new("picture/zh.ico").exists() => &zh_icon_path,
+                Some(false) if std::path::Path::new("picture/en.ico").exists() => &en_icon_path,
+                _ => &default_icon_path,
+            }
         };
         let h_icon = match LoadImageW(
             None,
