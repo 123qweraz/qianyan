@@ -33,7 +33,8 @@
     "phantom_type": "Hanzi"
   },
   "linux": {
-    "clipboard_delay_ms": 50,
+    "backspace_delay_ms": 2,
+    "clipboard_delay_ms": 10,
     "corner": "bottom-right",
     "device_path": "/dev/input/event4",
     "fixed_position": true,

@@ -28,6 +28,7 @@ pub fn create_input_host(
             device_path: "/dev/input/event4".into(),
             paste_method: "shift_insert".into(),
             clipboard_delay_ms: 50,
+            backspace_delay_ms: 10,
             show_slint_window: true,
             show_notification: false,
             show_toggle_notification: false,

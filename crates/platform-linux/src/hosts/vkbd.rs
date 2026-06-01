@@ -22,6 +22,7 @@ pub struct Vkbd {
     pub dev: Arc<Mutex<VirtualDevice>>,
     pub paste_mode: Arc<Mutex<PasteMode>>,
     pub clipboard_delay_ms: Arc<Mutex<u64>>,
+    pub backspace_delay_ms: Arc<Mutex<u64>>,
     task_tx: Sender<VkbdTask>,
 }
 
@@ -59,6 +60,7 @@ impl Vkbd {
         let dev = Arc::new(Mutex::new(dev_raw));
         let paste_mode = Arc::new(Mutex::new(PasteMode::ShiftInsert));
         let clipboard_delay_ms = Arc::new(Mutex::new(50));
+        let backspace_delay_ms = Arc::new(Mutex::new(10));
 
         let (task_tx, task_rx) = mpsc::channel::<VkbdTask>();
         let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
@@ -67,6 +69,7 @@ impl Vkbd {
         let dev_bg = dev.clone();
         let paste_mode_bg = paste_mode.clone();
         let delay_bg = clipboard_delay_ms.clone();
+        let bs_delay_bg = backspace_delay_ms.clone();
 
         thread::spawn(move || {
             while let Ok(task) = task_rx.recv() {
@@ -85,7 +88,11 @@ impl Vkbd {
                         );
                     }
                     VkbdTask::Backspace(count) => {
-                        Self::do_backspace(&dev_bg, count);
+                        let bs_delay = match bs_delay_bg.lock() {
+                            Ok(d) => *d,
+                            Err(_) => 10,
+                        };
+                        Self::do_backspace(&dev_bg, count, bs_delay);
                     }
                 }
             }
@@ -95,6 +102,7 @@ impl Vkbd {
             dev,
             paste_mode,
             clipboard_delay_ms,
+            backspace_delay_ms,
             task_tx,
         })
     }
@@ -280,7 +288,7 @@ impl Vkbd {
         }
     }
 
-    fn do_backspace(dev: &Arc<Mutex<VirtualDevice>>, count: usize) {
+    fn do_backspace(dev: &Arc<Mutex<VirtualDevice>>, count: usize, delay_ms: u64) {
         if count == 0 {
             return;
         }
@@ -291,7 +299,7 @@ impl Vkbd {
         for _ in 0..count {
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 1);
             Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 0);
-            thread::sleep(Duration::from_millis(10));
+            thread::sleep(Duration::from_millis(delay_ms));
         }
         eprintln!("[Vkbd BG] do_backspace({}) done (sent 1 SPACE + 1 BS trick + {} BS)", count, count);
     }
@@ -316,6 +324,9 @@ impl Vkbd {
     pub fn apply_config(&mut self, config: &qianyan_ime_core::Config) {
         if let Ok(mut delay) = self.clipboard_delay_ms.lock() {
             *delay = config.linux.clipboard_delay_ms;
+        }
+        if let Ok(mut delay) = self.backspace_delay_ms.lock() {
+            *delay = config.linux.backspace_delay_ms;
         }
         if let Ok(mut mode) = self.paste_mode.lock() {
             *mode = match config.linux.paste_method.as_str() {

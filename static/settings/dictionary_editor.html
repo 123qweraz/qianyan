@@ -242,7 +242,12 @@
                                 <option value="pinyin">拼音</option>
                                 <option value="word">汉字</option>
                                 <option value="en">英文</option>
+                                <option value="stroke_aux">辅码</option>
+                                <option value="stroke">笔画</option>
                             </select>
+                            <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
+                                <input type="checkbox" id="search-all-dicts" onchange="toggleSearchMode()"> 搜索所有词典
+                            </label>
                         </div>
                         <span class="stats" id="stats-bar"></span>
                     </div>
@@ -272,6 +277,7 @@
                                     <th class="center">辅码</th>
                                     <th class="center">繁体</th>
                                     <th class="center">分类</th>
+                                    <th class="center" id="th-source" style="display:none;">来源</th>
                                     <th class="center">操作</th>
                                 </tr>
                             </thead>
@@ -303,7 +309,10 @@
         let dictsCache = [];
 
         function getDictName(filePath) {
-            return (filePath.split('/').pop() || filePath).replace(/\.json(\.disabled)?$/, '');
+            const name = (filePath.split('/').pop() || filePath).replace(/\.json(\.disabled)?$/, '');
+            const parts = filePath.split('/');
+            const group = parts.length >= 2 ? parts[parts.length - 2] : '';
+            return group ? `${group}/${name}` : name;
         }
 
         async function init() {
@@ -366,6 +375,7 @@
             document.getElementById('no-file-selected').style.display = 'none';
             document.getElementById('editor-content').style.display = 'block';
             document.getElementById('current-file-label').textContent = getDictName(path);
+            document.getElementById('search-all-dicts').checked = false;
             document.getElementById('search-input').value = '';
             document.getElementById('search-type').value = 'all';
             currentSearch = '';
@@ -421,47 +431,80 @@
             }, 300);
         }
 
+        function toggleSearchMode() {
+            document.getElementById('search-input').value = '';
+            currentSearch = '';
+            currentPage = 1;
+            loadPage(1);
+        }
+
+        function getSearchParams() {
+            const searchAll = document.getElementById('search-all-dicts').checked;
+            const searchBy = document.getElementById('search-type')?.value || 'all';
+            const p = new URLSearchParams();
+            p.set('page', currentPage);
+            p.set('page_size', pageSize);
+            if (currentSearch) p.set('search', currentSearch);
+            if (searchBy !== 'all') p.set('search_by', searchBy);
+            if (searchAll) {
+                p.set('q', currentSearch);
+                p.set('ime', 'all');
+                p.set('search_by', searchBy);
+            } else {
+                p.set('file', currentFile);
+                p.set('sort_by', currentSortBy);
+                p.set('sort_order', currentSortOrder);
+            }
+            return p;
+        }
+
         async function loadPage(page) {
             currentPage = page;
-            const searchBy = document.getElementById('search-type')?.value || 'all';
-            const params = new URLSearchParams({
-                file: currentFile,
-                page: currentPage,
-                page_size: pageSize,
-                search: currentSearch,
-                sort_by: currentSortBy,
-                sort_order: currentSortOrder,
-                search_by: searchBy,
-            });
-            const r = await fetch(`/api/dict/browse?${params}`);
+            const searchAll = document.getElementById('search-all-dicts').checked;
+            const params = getSearchParams();
+
+            // 显示/隐藏"来源"表头
+            document.getElementById('th-source').style.display = searchAll ? '' : 'none';
+
+            const url = searchAll ? `/api/dict/search?${params}` : `/api/dict/browse?${params}`;
+            const r = await fetch(url);
             if (!r.ok) {
                 document.getElementById('table-body').innerHTML =
-                    '<tr><td colspan="8" class="no-data">无法加载词典文件</td></tr>';
+                    `<tr><td colspan="${searchAll ? 9 : 8}" class="no-data">无法加载词典文件</td></tr>`;
                 return;
             }
             const data = await r.json();
-            totalEntries = data.total;
-            totalPages = data.total_pages;
+            if (searchAll) {
+                totalEntries = data.length;
+                totalPages = 1;
+                document.getElementById('pagination').innerHTML = '';
+                document.getElementById('stats-bar').textContent = totalEntries + ' 条结果';
+            } else {
+                totalEntries = data.total;
+                totalPages = data.total_pages;
+                renderPagination();
+                updateStats();
+            }
             editingRow = null;
-            renderTable(data.entries);
-            renderPagination();
-            updateStats();
+            renderTable(searchAll ? data : data.entries, searchAll);
         }
 
         function renderTable(entries) {
             const tbody = document.getElementById('table-body');
             if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="no-data">没有找到匹配的词条</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${searchAll ? 9 : 8}" class="no-data">没有找到匹配的词条</td></tr>`;
                 return;
             }
+            const searchAll = document.getElementById('search-all-dicts').checked;
             tbody.innerHTML = entries.map((e, idx) => {
                 const uid = `${e.pinyin}|${e.word}|${idx}`;
+                const sourceCell = searchAll ? `<td class="center" style="font-size:11px;color:var(--apple-secondary);">${esc(getDictName(e.file||''))}</td>` : '';
                 return `<tr id="row-${idx}" data-uid="${uid}">
                     <td class="cell-pinyin left">${esc(e.pinyin)}</td>
                     <td class="cell-word left">${esc(e.word)}</td>
-                    <td class="cell-en left">${esc(e.en || '-')}</td>
+                    <td class="cell-en left">${esc(e.hint || e.en || '-')}</td>
                     <td class="center cell-weight">
-                        <span class="view-mode" id="weight-${idx}">${(e.weight||0).toLocaleString()}</span>
+                        <span class="view-mode" id="weight-${idx}">${((e.weight||0)).toLocaleString()}</span>
                         <input type="number" class="edit-mode" id="input-weight-${idx}" value="${e.weight||0}" style="display:none; width:70px;">
                     </td>
                     <td class="center">
@@ -476,13 +519,14 @@
                         <span class="view-mode" id="category-${idx}">${esc(e.category || '-')}</span>
                         <input class="edit-mode" id="input-category-${idx}" value="${escAttr(e.category || '')}" style="display:none; width:60px;">
                     </td>
+                    ${sourceCell}
                     <td class="center">
-                        <div class="row-actions" style="justify-content:center;">
+                        ${searchAll ? '-' : `<div class="row-actions" style="justify-content:center;">
                             <button class="btn-edit-row view-mode" id="edit-${idx}" onclick="startEditRow(${idx})">编辑</button>
                             <button class="btn-save edit-mode" id="save-${idx}" style="display:none;" onclick="saveEditRow(${idx})">保存</button>
                             <button class="btn-cancel edit-mode" id="cancel-${idx}" style="display:none;" onclick="cancelEditRow(${idx})">取消</button>
                             <button class="btn-delete" id="del-${idx}" onclick="deleteEntry(${idx})" title="删除">✕</button>
-                        </div>
+                        </div>`}
                     </td>
                 </tr>`;
             }).join('');

@@ -11243,3 +11243,338 @@
 柴房: Wood shed
 拆放: Take apart and place
 柴扉: Wood door
+豺狗: Vicious dog
+差官: low-ranking official
+拆过: dismantled
+柴鸡: rustic chicken
+拆家: demolish a house
+拆建: Demolition and construction
+拆开来: Dismantle
+豺狼: Jackals and wolves
+拆了东墙: Undermine
+拆零: Zero out
+拆零件: Dismantle parts
+拆零件用: For dismantling parts
+差旅: Business travel
+柴门闻犬吠: Hearing trivial matters
+柴米油盐: Daily necessities
+柴米油盐酱醋茶: Daily necessities
+拆那: Dismantle that
+拆哪: Take apart which
+拆牌: Remove the sign
+差派: Dispatch
+拆迁办: Demolition Office
+拆迁补偿安置协议: Demolition Compensation and Resettlement Agreement
+拆迁补偿协议: Compensation Agreement for Demolition
+拆迁范围: Demolition Scope
+拆迁房: Demolition Housing
+拆迁费: Compensation fee
+拆迁工作: Relocation work
+拆墙: Demolish wall
+拆塔: Dismantle tower
+拆台: Tear down stage
+柴田胜家: Katsukata Shibata
+钗头凤: Phoenix Hairpin
+拆完: Finished dismantling
+拆违: Demolish illegal structures
+拆洗: Disassemble and wash
+拆箱: Unpacking
+拆卸式: Detachable
+柴油版: Diesel
+柴油机厂: Diesel engine factory
+柴油价格: Diesel price
+拆阅: Review
+拆招: Reveal strategy
+拆字: Deconstruct character
+拆走: Remove
+拆走了: Has dismantled and taken
+缠绑: Bind
+缠抱: Embrace
+产宝: Bear a child
+缠绷带: Bandage
+觇标: Mark
+铲冰: Shovel ice
+颤颤: Trembling
+缠缠绵绵: Sweet and lingering
+铲车: Loader
+产程: Production process
+馋虫: Craving
+产出比: Output ratio
+产床: Birthing bed
+产蛋鸡: Laying hen
+产道: Birthing canal
+铲倒: To knock down
+缠的: Attached to
+馋得: Craving
+馋的: Craving
+产地证: Certificate of origin
+产地证明: Certificate of origin
+铲掉: shovel
+颤动着: trembling
+铲斗: bucket
+颤抖地: shakingly
+颤抖的脸: trembling face
+颤抖了: trembled
+掺兑: mix
+蝉儿: cicada
+产儿: childbirth
+产房: Delivery room
+禅房: Meditation room
+禅房花木深: Deep flowers and woods in the meditation room
+蝉赋: Cicada ode
+缠缚: Binding
+蟾宫: Toad Palace
+禅功: Zen cultivation
+产供销: Production, supply, and marketing
+产供销一体化: Integrated production, supply, and marketing
+缠裹: To wrap
+禅机: Zen insight
+禅家: Zen master
+产检: Prenatal check-up
+产胶: Adhesive manufacturing
+缠结: Entanglement
+掺进: Mix into
+产经: Industry Economy
+禅境: Zen state
+产经新闻: Economic News
+产科医生: Obstetrician
+觇孔: Aperture
+觇孔式: Aperture style
+掺了: Adulterated
+禅理: Zen principle
+蝉联冠军: Win consecutive championships
+产量大: High yield
+产量达到: Achieve yield
+产量分析: Yield analysis
+产粮区: Grain production zone
+产量小: Low yield
+产量增长: Production growth
+禅林: Zen forest
+缠满: Wrapped up
+缠满绷带: Wrapped in bandages
+馋猫: Gluttonous cat
+产煤: Coal production
+谄媚: Flattery
+禅门: Zen sect
+产棉: Cotton production
+缠磨: Grinding
+产奶: Milk production
+产品标志: Product logo
+产品策略: Product strategy
+产品陈列: Product display
+产品代号: Product code
+产品分配: Product Allocation
+产品分析: Product Analysis
+产品概念: Product Concept
+产品更新换代: Product Renewal and Replacement
+产品合格率: Product Pass Rate
+产品计划: Product Plan
+产品积压: Product Backlog
+产品价值: Product Value
+产品奖: Product Award
+产品交易: Product Transaction
+产品链: Product chain
+产品缺陷: Product defect
+产品生命周期: Product life cycle
+产品数: Product count
+产品税: Product tax
+产品推介: Presentation
+产品效果图: Visualization
+产品研究: Investigation
+产品研制: Engineering
+产品责任: Accountability
+产品责任险: Product Liability Insurance
+产品展销: Product Exhibition
+产品质量标准: Product Quality Standard
+产品质量监督管理: Product Quality Supervision and Management
+产品质量问题: Product Quality Issue
+产品知名度: Product awareness
+产品滞销: Slow-moving inventory
+产品专利: Product patent
+产品组: Product group
+铲平: Level
+产婆: Midwife
+产期: Due date
+搀起: Help up
+铲起: Scoop up
+产前检查: Prenatal check-up
+产权变更: Change of Ownership
+产权登记面积: Registered Property Area
+产权改革: Property Rights Reform
+产权关系: Ownership Relationship
+产权过户: Title Transfer
+产权界: Property boundary
+产权界定: Definition of property rights
+产权纠纷: Property rights dispute
+产权市场: Property rights market
+产权所有人: Property rights owner
+产权问题: Property rights issues
+产权形式: Form of ownership
+产权性质: Nature of ownership
+产权证明: Proof of ownership
+产权证书: Title deed
+产权转移: Ownership transfer
+刬却君山好: Leveling the gentleman's mountain is good
+冁然而笑: To smile spontaneously
+缠绕管: Winding tube
+缠绕机: Winding machine
+缠绕膜: Wrapping film
+缠绕在: wrapped around
+产热: heat generation
+馋人: tempting
+缠人: obsessive
+谗人: Slanderer
+产褥: Postpartum
+产褥感染: Postpartum infection
+产褥期: Postpartum period
+孱弱: Frail
+禅僧: Zen monk
+缠上: get entangled in
+产生变化: undergo changes
+产生错误: generate errors
+产生反感: arouse distaste
+产生分歧: Develop disagreement
+产生感情: Foster emotions
+产生精子: Produce sperm
+产生抗体: Generate antibodies
+产生热量: Produce heat energy
+产生什么: What does it produce
+产生问题: Cause problems
+产生效果: Produce effects
+产生压力: Create pressure
+产生着: Is generating
+产生皱纹: Develop wrinkles
+铲屎: Scoop litter
+铲屎官: Litter cleaner
+铲屎官们: Litter keepers
+掺水: Adulterate
+产水量: Water output
+阐说: Elaborate
+馋死: Craving to death
+产糖: Sugar production
+禅堂: Zen hall
+缠头: Knotting
+禅悟: Zen enlightenment
+产销两旺: Strong production and sales
+产销率: Production-to-sales ratio
+产销衔接: Production-sales linkage
+禅心: Zen mind
+禅修: Zen meditation
+禅学: Zen studies
+铲雪: Shovel snow
+阐扬: Elaborate
+产业博览会: Industry Expo
+产业大军: Industrial Force
+产业工会: Industry Union
+产业环境: Industrial Environment
+产业竞争: Industry Competition
+产业开发: Industrial development
+产业领域: Industrial sector
+产业论坛: Industry forum
+产业前景: Industry prospects
+产业市场: Industry market
+产业体系: Industrial System
+产业调整: Industrial Adjustment
+产业投资基金: Industry Investment Fund
+产业项目: Industrial Project
+产业协会: Industry Association
+产业资本: Industrial capital
+掺有: Contains
+产油: Oil production
+禅语: Zen discourse
+单于: Chanyu
+单于夜遁逃: Danyu's night escape
+产于印度: Originating in India
+潺湲: Murmuring stream
+禅院: Zen monastery
+澶渊: Chanyuan
+掺杂使假: Adulterate and fake
+掺杂着: Mixed with
+缠在: Wrapped around
+产仔: Give birth
+缠在一起: Entangled together
+掺着: Mixed with
+产值率: Output value ratio
+馋嘴: Craving
+肠癌: Colorectal cancer
+长安大戏院: Chang'an Grand Theater
+长安大学: Chang'an University
+长安福特福克斯: Chang'an Ford Focus
+长安街上: On Chang'an Street
+长安马自达: Chang'an Mazda
+长按事件: Long press event
+长安县: Chang'an County
+唱罢: Finished singing
+唱吧: Let's sing
+尝百草: Taste a hundred herbs
+长白县: Changbai County
+倡办: Initiate
+厂办: Factory-run
+常伴: Constant companion
+长板: Long plank
+长板凳: Long bench
+常备不懈: Constant vigilance
+常备药品: Emergency medicine
+长鼻: Long nose
+长臂: Long arm
+肠壁: Intestinal wall
+常闭: Constantly closed
+长鼻子: Long nose
+尝遍: Sample all
+长编: Long compilation
+长辫: Long braid
+长鞭: Long whip
+厂标: Factory standard
+厂部: Factory department
+长不长: Is it long or not?
+长不了: Cannot grow long
+常采用: commonly adopted
+怅怅: wistful
+唱唱: singing
+常常把: frequently use
+尝尝吧: try it
+长长久久: Long and lasting
+尝尝味道: Taste the flavor
+尝尝鲜: Sample the freshness
+敞车: Open carriage
+长城杯: Great Wall Cup
+长城电脑: Great Wall Computer
+长城饭店: Great Wall Hotel
+长城哈弗: Great Wall Haval
+长城轿车: Great Wall Sedan
+长城宽带: Great Wall Broadband
+长城牌: Great Wall Brand
+长城汽车: Great Wall Motors
+长城站: Great Wall Station
+长城证券: Great Wall Securities
+尝出: Taste out
+长串: Long string
+长传: Long transmission
+长川: Long river
+长串儿: Long skewer
+肠穿孔: Bowel perforation
+长春大学: Changchun University
+长春工业大学: Changchun University of Technology
+长椿街: Changchun Chun Street
+常春藤: Ivy
+长春藤: Wisteria
+畅春园: Chuangchun Garden
+长词: long word
+长此: long this
+长辞: long poem
+长此下去: continue like this
+长大衣: Growth clothes
+常带着: Frequently carrying
+肠道病: Intestinal disorder
+肠道传染病: Enteric infectious disease
+肠道疾病: Intestinal illness
+肠道内: Intestinal tract
+尝到甜头: Reap the benefits
+倡导下: Advocated by
+长岛县: Changdao County
+长得多: Much longer
+唱的歌: Sung song
+唱的歌曲: Repertoire song
+常德路: Changde Road
+唱得响亮: Sing loudly
+场地布置: Venue decoration

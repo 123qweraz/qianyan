@@ -75,6 +75,7 @@ impl WebServer {
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
             .route("/api/tools/discover", post(discover_words_file_handler))
             .route("/api/tools/discover/export", post(export_discovery_handler))
+            .route("/api/tools/discover/download", post(discover_download_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
@@ -467,6 +468,7 @@ struct SearchResult {
     pinyin: String,
     word: String,
     hint: String,
+    stroke_aux: String,
     file: String,
 }
 
@@ -474,59 +476,80 @@ struct SearchResult {
 struct SearchQuery {
     q: String,
     ime: Option<String>,
+    search_by: Option<String>,
 }
 
 async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQuery>) -> Json<Vec<SearchResult>> {
     let mut results = Vec::new();
     let q = query.q.to_lowercase();
     let ime = query.ime.as_deref().unwrap_or("chinese");
-    
+    let search_by = query.search_by.as_deref().unwrap_or("all");
+
     if q.is_empty() {
         return Json(results);
     }
-    
-    // 确定搜索路径（只允许已知语言）
-    let search_root = match ime {
-        "japanese" => "dicts/japanese",
-        "stroke" => "dicts/stroke",
-        "english" => "dicts/english",
-        "chinese" => "dicts/chinese",
+
+    // 确定搜索路径
+    let search_roots: &[&str] = match ime {
+        "japanese" => &["dicts/japanese"],
+        "stroke" => &["dicts/stroke"],
+        "english" => &["dicts/english"],
+        "chinese" => &["dicts/chinese"],
+        "all" => &["dicts/chinese", "dicts/stroke", "dicts/english", "dicts/japanese"],
         _ => return Json(results),
     };
-    
+
     // 遍历指定目录下的 json
-    let entries = walkdir::WalkDir::new(search_root);
-    for entry in entries.into_iter().filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
-        if entry.path().extension().is_some_and(|ext: &std::ffi::OsStr| ext == "json") {
-            let path_str = entry.path().to_string_lossy().to_string();
-            if path_str.contains(".disabled") {
-                continue;
-            }
-            if let Ok(f) = std::fs::File::open(entry.path()) {
-                if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
-                    if let Some(obj) = json.as_object() {
-                        for (pinyin, val) in obj {
-                            let pinyin_match = pinyin.to_lowercase().starts_with(&q) || pinyin.to_lowercase() == q;
-                            if let Some(arr) = val.as_array() {
-                                for v in arr {
-                                    let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
-                                    let hint = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
-                                    // 支持按拼音、汉字、英文释义搜索
-                                    if !pinyin_match && !word.contains(&query.q) && !hint.to_lowercase().contains(&q) {
-                                        continue;
+    for root in search_roots {
+        let entries = walkdir::WalkDir::new(root);
+        for entry in entries.into_iter().filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
+            if entry.path().extension().is_some_and(|ext: &std::ffi::OsStr| ext == "json") {
+                let path_str = entry.path().to_string_lossy().to_string();
+                if path_str.contains(".disabled") {
+                    continue;
+                }
+                if let Ok(f) = std::fs::File::open(entry.path()) {
+                    if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
+                        if let Some(obj) = json.as_object() {
+                            for (pinyin, val) in obj {
+                                if let Some(arr) = val.as_array() {
+                                    for v in arr {
+                                        let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
+                                        let hint = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
+                                        let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str())
+                                            .or_else(|| v.get("category").and_then(|c| c.as_str()))
+                                            .unwrap_or("");
+
+                                        let match_py = pinyin.to_lowercase().starts_with(&q) || pinyin.to_lowercase() == q;
+                                        let match_word = word.contains(&query.q);
+                                        let match_hint = hint.to_lowercase().contains(&q);
+                                        let match_stroke_aux = stroke_aux.to_lowercase().contains(&q);
+                                        let matched = match search_by {
+                                            "pinyin" => match_py,
+                                            "word" => match_word,
+                                            "en" => match_hint,
+                                            "stroke_aux" => match_stroke_aux,
+                                            "stroke" => pinyin.to_lowercase().contains(&q),
+                                            _ => match_py || match_word || match_hint || match_stroke_aux,
+                                        };
+                                        if !matched {
+                                            continue;
+                                        }
+                                        results.push(SearchResult {
+                                            pinyin: pinyin.clone(),
+                                            word: word.to_string(),
+                                            hint: hint.to_string(),
+                                            stroke_aux: stroke_aux.to_string(),
+                                            file: path_str.clone(),
+                                        });
                                     }
-                                    results.push(SearchResult {
-                                        pinyin: pinyin.clone(),
-                                        word: word.to_string(),
-                                        hint: hint.to_string(),
-                                        file: path_str.clone(),
-                                    });
                                 }
                             }
                         }
                     }
                 }
             }
+            if results.len() > 100 { break; }
         }
         if results.len() > 100 { break; }
     }
@@ -623,13 +646,19 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
                                 let match_py = strip_tone(&pinyin.to_lowercase()).contains(&search_plain);
                                 let match_word = word.to_lowercase().contains(&search);
                                 let match_en = en.to_lowercase().contains(&search);
+                                let match_stroke_aux = stroke_aux.to_lowercase().contains(&search);
+                                let match_stroke = strip_tone(&pinyin.to_lowercase()).contains(&search_plain);
                                 let matched = match search_by {
                                     "pinyin" => match_py,
                                     "word" => match_word,
                                     "en" => match_en,
+                                    "stroke_aux" => match_stroke_aux,
+                                    "stroke" => match_stroke,
                                     _ => {
                                         if match_py { kind = 0; true }
                                         else if match_word { kind = 1; true }
+                                        else if match_stroke_aux { kind = 2; true }
+                                        else if match_stroke { kind = 3; true }
                                         else { false }
                                     },
                                 };
@@ -1436,23 +1465,26 @@ struct DiscoverResult {
 }
 
 /// 新词发现器：处理上传的文件
-async fn discover_words_file_handler(
-    State((_, tries, _)): State<WebState>,
+/// 从 multipart 中提取文本、配置和导出参数
+struct DiscoverDownloadParams {
+    text: String,
+    config: qianyan_ime_engine::pipeline::DiscoveryConfig,
+    format: String,
+    only_new: bool,
+}
+
+async fn extract_download_params(
     mut multipart: Multipart,
-) -> impl IntoResponse {
-    log::info!("[discover] new word discovery request received");
+) -> Result<DiscoverDownloadParams, (StatusCode, String)> {
     let mut text = String::new();
     let mut config = qianyan_ime_engine::pipeline::DiscoveryConfig::default();
+    let mut format = String::from("txt");
+    let mut only_new = false;
 
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or_default().to_string();
         if name == "file" {
-            let data = match field.bytes().await {
-                Ok(b) => b,
-                Err(e) => return (StatusCode::BAD_REQUEST, format!("Read file error: {e}")).into_response(),
-            };
-            
-            // 自动检测编码：先尝试 UTF-8，失败则尝试 GBK
+            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, format!("Read file error: {e}")))?;
             if let Ok(s) = String::from_utf8(data.to_vec()) {
                 text = s;
             } else {
@@ -1460,7 +1492,55 @@ async fn discover_words_file_handler(
                 if !has_errors {
                     text = res.into_owned();
                 } else {
-                    // 最后的退而求其次：UTF-8 Lossy
+                    text = String::from_utf8_lossy(&data).into_owned();
+                }
+            }
+        } else if name == "config" {
+            if let Ok(config_bytes) = field.bytes().await {
+                if let Ok(cfg_msg) = serde_json::from_slice::<DiscoverConfigMsg>(&config_bytes) {
+                    if let Some(v) = cfg_msg.min_count { config.min_count = v; }
+                    if let Some(v) = cfg_msg.min_pmi { config.min_pmi = v; }
+                    if let Some(v) = cfg_msg.min_entropy { config.min_entropy = v; }
+                    if let Some(v) = cfg_msg.max_word_len { config.max_word_len = v; }
+                }
+            }
+        } else if name == "format" {
+            if let Ok(b) = field.bytes().await {
+                let s = String::from_utf8_lossy(&b).to_string();
+                if s == "json" { format = s; }
+            }
+        } else if name == "only_new" {
+            if let Ok(b) = field.bytes().await {
+                let s = String::from_utf8_lossy(&b).to_string();
+                only_new = s == "true";
+            }
+        }
+    }
+
+    if text.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "No text provided".into()));
+    }
+    Ok(DiscoverDownloadParams { text, config, format, only_new })
+}
+
+/// 从 multipart 中提取文本和配置（用于 JSON 端点）
+async fn extract_text_and_config(
+    mut multipart: Multipart,
+) -> Result<(String, qianyan_ime_engine::pipeline::DiscoveryConfig), (StatusCode, String)> {
+    let mut text = String::new();
+    let mut config = qianyan_ime_engine::pipeline::DiscoveryConfig::default();
+
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let name = field.name().unwrap_or_default().to_string();
+        if name == "file" {
+            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, format!("Read file error: {e}")))?;
+            if let Ok(s) = String::from_utf8(data.to_vec()) {
+                text = s;
+            } else {
+                let (res, _, has_errors) = GBK.decode(&data);
+                if !has_errors {
+                    text = res.into_owned();
+                } else {
                     text = String::from_utf8_lossy(&data).into_owned();
                 }
             }
@@ -1477,33 +1557,34 @@ async fn discover_words_file_handler(
     }
 
     if text.is_empty() {
-        return (StatusCode::BAD_REQUEST, "No text provided").into_response();
+        return Err((StatusCode::BAD_REQUEST, "No text provided".into()));
     }
+    Ok((text, config))
+}
 
-    // 获取已知词库
+/// 执行发现算法 + 拼音标注
+fn do_discovery(
+    text: &str,
+    config: &qianyan_ime_engine::pipeline::DiscoveryConfig,
+    tries: &HashMap<String, Trie>,
+    word_map: &WordMap,
+) -> Vec<DiscoveredWordWithPinyin> {
     let mut known_words = HashSet::new();
-    if let Ok(map) = tries.read() {
-        for trie in map.values() {
-            let mut stream = trie.index.stream();
-            while let Some((_, offset)) = stream.next() {
-                trie.read_block(offset as usize, |tr| {
-                    known_words.insert(tr.word.to_string());
-                });
-            }
+    for trie in tries.values() {
+        let mut stream = trie.index.stream();
+        while let Some((_, offset)) = stream.next() {
+            trie.read_block(offset as usize, |tr| {
+                known_words.insert(tr.word.to_string());
+            });
         }
     }
 
-    let word_map = get_chinese_word_map();
+    let results = qianyan_ime_engine::pipeline::discover_words(text, config, &known_words);
 
-    log::info!("[discover] loaded word map, starting discovery (text length: {} chars)", text.chars().count());
-    let results = qianyan_ime_engine::pipeline::discover_words(&text, &config, &known_words);
-    log::info!("[discover] found {} candidate words", results.len());
-
-    let response: Vec<DiscoverResult> = results.into_iter().map(|dw| {
+    results.into_iter().map(|dw| {
         let (pinyin, in_dict) = if let Some((py, _)) = word_map.get(&dw.word) {
             (py.clone(), true)
         } else {
-            // 逐字查拼音
             let mut chars_py = Vec::new();
             for c in dw.word.chars() {
                 let s = c.to_string();
@@ -1515,16 +1596,100 @@ async fn discover_words_file_handler(
             }
             (chars_py.join(" "), false)
         };
-        DiscoverResult {
+        DiscoveredWordWithPinyin {
             word: dw.word,
             pinyin,
             in_dict,
-            weight: dw.count as u32,
+            count: dw.count,
+            pmi: dw.pmi,
+            entropy: dw.entropy,
         }
+    }).collect()
+}
+
+async fn discover_words_file_handler(
+    State((_, tries, _)): State<WebState>,
+    multipart: Multipart,
+) -> impl IntoResponse {
+    log::info!("[discover] JSON discovery request received");
+    let (text, config) = match extract_text_and_config(multipart).await {
+        Ok(v) => v,
+        Err((code, msg)) => return (code, msg).into_response(),
+    };
+
+    let tries = match tries.read() {
+        Ok(m) => m.clone(),
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read tries").into_response(),
+    };
+    let word_map = get_chinese_word_map();
+
+    log::info!("[discover] starting discovery (text length: {} chars)", text.chars().count());
+    let results = do_discovery(&text, &config, &tries, word_map);
+    log::info!("[discover] found {} candidate words", results.len());
+
+    let response: Vec<DiscoverResult> = results.into_iter().map(|dw| DiscoverResult {
+        word: dw.word,
+        pinyin: dw.pinyin,
+        in_dict: dw.in_dict,
+        weight: dw.count as u32,
     }).collect();
 
     log::info!("[discover] returning {} results", response.len());
     Json(response).into_response()
+}
+
+async fn discover_download_handler(
+    State((_, tries, _)): State<WebState>,
+    multipart: Multipart,
+) -> impl IntoResponse {
+    log::info!("[discover] download discovery request received");
+    let params = match extract_download_params(multipart).await {
+        Ok(v) => v,
+        Err((_code, msg)) => return (StatusCode::BAD_REQUEST, msg).into_response(),
+    };
+
+    let tries = match tries.read() {
+        Ok(m) => m.clone(),
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read tries").into_response(),
+    };
+    let word_map = get_chinese_word_map();
+
+    log::info!("[discover] starting discovery (text length: {} chars)", params.text.chars().count());
+    let mut results = do_discovery(&params.text, &params.config, &tries, word_map);
+    log::info!("[discover] found {} candidate words, generating download", results.len());
+
+    if params.only_new {
+        results.retain(|w| !w.in_dict);
+    }
+
+    let (content_type, filename, body) = if params.format == "json" {
+        let json_body = serde_json::to_string_pretty(&results).unwrap_or_default();
+        ("application/json; charset=utf-8".to_string(), "discovered_words.json".to_string(), json_body)
+    } else {
+        let mut lines = Vec::with_capacity(results.len() + 1);
+        lines.push("词\t拼音\t词频\t凝聚度\t自由度".to_string());
+        for dw in &results {
+            lines.push(format!("{}\t{}\t{}\t{:.2}\t{:.2}",
+                dw.word, dw.pinyin, dw.count, dw.pmi, dw.entropy));
+        }
+        ("text/plain; charset=utf-8".to_string(), "discovered_words.txt".to_string(), lines.join("\n"))
+    };
+
+    let headers = [
+        (header::CONTENT_TYPE, content_type.as_str()),
+        (header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
+    ];
+    (StatusCode::OK, headers, body).into_response()
+}
+
+#[derive(Serialize)]
+struct DiscoveredWordWithPinyin {
+    word: String,
+    pinyin: String,
+    in_dict: bool,
+    count: usize,
+    pmi: f64,
+    entropy: f64,
 }
 
 #[derive(Deserialize)]

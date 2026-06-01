@@ -25,6 +25,8 @@ pub struct LinuxConfig {
     pub device_path: String,
     pub paste_method: String,
     pub clipboard_delay_ms: u64,
+    #[serde(default = "default_backspace_delay")]
+    pub backspace_delay_ms: u64,
     #[serde(default = "default_true")]
     pub show_slint_window: bool,
     #[serde(default)]
@@ -49,6 +51,10 @@ fn default_fixed_x() -> i32 {
 
 fn default_fixed_y() -> i32 {
     40
+}
+
+fn default_backspace_delay() -> u64 {
+    10
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -1018,6 +1024,7 @@ impl Config {
                 device_path: "/dev/input/event4".to_string(),
                 paste_method: "shift_insert".to_string(),
                 clipboard_delay_ms: 50,
+                backspace_delay_ms: 10,
                 show_slint_window: true,
                 show_notification: false,
                 show_toggle_notification: false,

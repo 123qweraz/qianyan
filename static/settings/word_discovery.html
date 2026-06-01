@@ -6,19 +6,25 @@
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .discover-layout { display: flex; flex-direction: column; gap: 20px; }
-        .input-panel { flex: 1; min-width: 0; }
-        .result-panel { flex: 1; min-width: 0; }
         .drop-zone { border: 2px dashed var(--apple-border); border-radius: 16px; padding: 40px; text-align: center; transition: all 0.2s; background: var(--apple-card-bg); cursor: pointer; margin-bottom: 12px; position: relative; }
         .drop-zone.hover { border-color: var(--apple-accent); background: rgba(0, 122, 255, 0.05); }
         .drop-zone .icon { font-size: 48px; margin-bottom: 12px; }
         .drop-zone p { margin: 8px 0; color: var(--apple-secondary); }
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; padding: 16px; border: 1px solid var(--apple-border); border-radius: 12px; background: var(--apple-card-bg); margin-bottom: 20px; }
-        .config-item { display: flex; flex-direction: column; gap: 6px; }
-        .config-item label { font-size: 12px; font-weight: 600; color: var(--apple-secondary); }
+        .file-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--apple-border); border-radius: 10px; background: var(--apple-card-bg); }
+        .file-bar .name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-bar .size { font-size: 12px; color: var(--apple-secondary); }
+        .file-bar .remove-btn { cursor: pointer; color: var(--apple-red); font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+        .file-bar .remove-btn:hover { background: rgba(255,59,48,0.1); }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 16px; border: 1px solid var(--apple-border); border-radius: 12px; background: var(--apple-card-bg); margin-bottom: 20px; }
+        .config-item { display: flex; flex-direction: column; gap: 4px; }
+        .config-item label { font-size: 12px; font-weight: 600; color: var(--apple-secondary); cursor: help; display: flex; align-items: center; gap: 4px; }
+        .config-item label .help-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--apple-border); color: var(--apple-text); font-size: 10px; text-align: center; line-height: 14px; cursor: help; }
         .config-item input { height: 34px; padding: 0 10px; border: 1px solid var(--apple-border); border-radius: 6px; background: var(--apple-bg); color: var(--apple-text); }
-        textarea { width: 100%; height: 160px; padding: 12px; border: 1px solid var(--apple-border); border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; background: var(--apple-card-bg); color: var(--apple-text); box-sizing: border-box; }
+        .config-item .help-text { font-size: 11px; color: var(--apple-secondary); line-height: 1.4; display: none; padding: 6px 8px; background: var(--apple-bg); border-radius: 6px; margin-top: 2px; }
+        .config-item .help-text.show { display: block; }
+        textarea { width: 100%; height: 140px; padding: 12px; border: 1px solid var(--apple-border); border-radius: 10px; font-size: 14px; font-family: inherit; resize: vertical; background: var(--apple-card-bg); color: var(--apple-text); box-sizing: border-box; }
         textarea:focus { outline: 2px solid var(--apple-accent); outline-offset: -1px; border-color: transparent; }
-        .stats-bar { font-size: 12px; color: var(--apple-secondary); margin: 8px 0; }
+        .section-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--apple-secondary); }
         .dict-table-wrap { overflow-x: auto; border: 1px solid var(--apple-border); border-radius: 10px; max-height: 600px; overflow-y: auto; }
         .dict-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .dict-table th { position: sticky; top: 0; background: var(--apple-bg); padding: 10px 8px; font-weight: 600; border-bottom: 2px solid var(--apple-border); user-select: none; white-space: nowrap; z-index: 1; font-size: 12px; text-align: left; }
@@ -32,10 +38,12 @@
         .toast.show { opacity: 1; }
         .toast.success { background: #34c759; color: #fff; }
         .toast.error { background: var(--apple-red); color: #fff; }
-        .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--apple-border); border-radius: 12px; background: var(--apple-card-bg); margin-bottom: 12px; }
+        .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border: 1px solid var(--apple-border); border-radius: 12px; background: var(--apple-card-bg); }
         .batch-bar { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border: 1px solid var(--apple-border); border-radius: 12px; background: var(--apple-card-bg); margin-bottom: 12px; }
         .loader { width: 24px; height: 24px; border: 3px solid #f3f3f3; border-top: 3px solid var(--apple-accent); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .action-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+        .action-row .btn { margin-left: auto; }
     </style>
 </head>
 <body>
@@ -46,69 +54,114 @@
         </header>
 
         <div class="discover-layout">
-            <div class="input-panel">
-                <div class="config-grid">
-                    <div class="config-item">
-                        <label>最小词频</label>
-                        <input type="number" id="cfg-min-count" value="5" min="1">
-                    </div>
-                    <div class="config-item">
-                        <label>最小凝聚度 (PMI)</label>
-                        <input type="number" id="cfg-min-pmi" value="3.0" step="0.1">
-                    </div>
-                    <div class="config-item">
-                        <label>最小自由度 (熵)</label>
-                        <input type="number" id="cfg-min-entropy" value="0.8" step="0.1">
-                    </div>
-                    <div class="config-item">
-                        <label>最大词长</label>
-                        <input type="number" id="cfg-max-len" value="4" min="2" max="10">
+
+            <!-- 参数配置 -->
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>
+                        <span>最小词频</span>
+                        <span class="help-icon" onclick="toggleHelp('h-min-count')">?</span>
+                    </label>
+                    <input type="number" id="cfg-min-count" value="5" min="1">
+                    <div class="help-text" id="h-min-count">
+                        一个候选词在文本中出现的最少次数。调高可减少噪声（只保留高频词），调低可发现更多低频候选词。
                     </div>
                 </div>
+                <div class="config-item">
+                    <label>
+                        <span>最小凝聚度 (PMI)</span>
+                        <span class="help-icon" onclick="toggleHelp('h-pmi')">?</span>
+                    </label>
+                    <input type="number" id="cfg-min-pmi" value="3.0" step="0.1">
+                    <div class="help-text" id="h-pmi">
+                        <strong>凝聚度</strong>衡量词内部各部分的"绑定程度"。<br>
+                        调高：只保留内部绑定极紧的词（更精确，可能漏词）；调低：容忍松散组合（更多候选，可能含噪声）。
+                    </div>
+                </div>
+                <div class="config-item">
+                    <label>
+                        <span>最小自由度 (熵)</span>
+                        <span class="help-icon" onclick="toggleHelp('h-entropy')">?</span>
+                    </label>
+                    <input type="number" id="cfg-min-entropy" value="0.8" step="0.1">
+                    <div class="help-text" id="h-entropy">
+                        <strong>自由度</strong>衡量候选词上下文的丰富程度。<br>
+                        调高：要求上下文极丰富（更精确）；调低：容忍单调上下文（更多候选）。
+                    </div>
+                </div>
+                <div class="config-item">
+                    <label>
+                        <span>最大词长</span>
+                        <span class="help-icon" onclick="toggleHelp('h-maxlen')">?</span>
+                    </label>
+                    <input type="number" id="cfg-max-len" value="4" min="2" max="10">
+                    <div class="help-text" id="h-maxlen">
+                        候选词的最大字数（2~10）。调高可发现更长的新词；调低只找短词（2~3 字），速度更快。
+                    </div>
+                </div>
+            </div>
 
+                <!-- 文件上传区（直接下载 TXT/JSON） -->
+            <div>
+                <div class="section-label">📄 从文件导入（大文件，直接下载结果文件）</div>
                 <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
                     <div class="icon">📄</div>
                     <p id="file-status">拖拽文件到此处，或点击选择文本文件 (.txt)</p>
-                    <p style="font-size: 11px;">支持大文件 (44MB+) 和 GBK/UTF-8 自动识别，大文件分析可能需要几分钟，请耐心等待</p>
+                    <p style="font-size: 11px;">支持大文件 (44MB+) 和 GBK/UTF-8 自动识别</p>
                     <input type="file" id="file-input" accept=".txt" style="display:none" onchange="handleFile(this.files[0])">
                 </div>
-
-                <div class="toolbar">
-                    <span style="font-weight:600;">或者粘贴文本进行分析</span>
-                    <button class="btn" onclick="discover(true)" style="background:var(--apple-accent);color:#fff;border:none;margin-left:auto;">🔍 开始分析</button>
+                <div id="file-bar-area"></div>
+                <div class="action-row" style="justify-content: flex-end;">
+                    <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer; margin-right:10px;">
+                        <input type="checkbox" id="file-only-new" checked> 只看新词
+                    </label>
+                    <select id="file-export-format" style="height:34px; padding:0 8px; border:1px solid var(--apple-border); border-radius:6px; background:var(--apple-bg); color:var(--apple-text);">
+                        <option value="txt">TXT 列表</option>
+                        <option value="json">JSON 字典</option>
+                    </select>
                     <div id="loading-spinner" class="loader"></div>
+                    <button class="btn" id="btn-analyze-file" onclick="analyzeFile()" style="background:var(--apple-accent);color:#fff;border:none;">🔍 分析并下载</button>
                 </div>
-                <textarea id="input-text" placeholder="在此粘贴中文文本..."></textarea>
             </div>
 
-            <div class="result-panel" id="result-panel" style="display:none;">
-                <div class="batch-bar">
-                    <span style="font-size:13px; font-weight:600;">找到 <span id="found-count">0</span> 个候选词，已选 <span id="selected-count">0</span> 个</span>
-                    <div style="flex:1"></div>
-                    <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer; margin-right:10px;">
-                        <input type="checkbox" id="show-only-new" onchange="renderResults()"> 只看新词
-                    </label>
-                    <select id="export-format">
-                        <option value="json">JSON 字典</option>
-                        <option value="txt">TXT 列表</option>
-                    </select>
-                    <button class="btn" onclick="exportSelected()" style="background:var(--apple-accent);color:#fff;border:none;">📥 导出选中</button>
+            <!-- 粘贴文本区（网页渲染表格） -->
+            <div>
+                <div class="section-label">✏️ 粘贴文本（10 万字以内，网页展示结果）</div>
+                <textarea id="input-text" placeholder="在此粘贴中文文本进行分析...（不超过 10 万字）"></textarea>
+                <div class="action-row">
+                    <span style="font-size:12px;color:var(--apple-secondary);">分析完成后在下方展示结果表格，可勾选导出</span>
+                    <button class="btn" id="btn-analyze-paste" onclick="analyzePaste()" style="background:var(--apple-accent);color:#fff;border:none;">🔍 开始分析</button>
                 </div>
 
-                <div class="dict-table-wrap">
-                    <table class="dict-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all" onchange="toggleAll()" checked></th>
-                                <th>词汇</th>
-                                <th>拼音</th>
-                                <th>词频</th>
-                                <th>凝聚度</th>
-                                <th>自由度</th>
-                            </tr>
-                        </thead>
-                        <tbody id="result-body"></tbody>
-                    </table>
+                <!-- 结果表格 -->
+                <div class="result-panel" id="result-panel" style="display:none; margin-top: 16px;">
+                    <div class="batch-bar">
+                        <span style="font-size:13px; font-weight:600;">找到 <span id="found-count">0</span> 个候选词，已选 <span id="selected-count">0</span> 个</span>
+                        <div style="flex:1"></div>
+                        <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer; margin-right:10px;">
+                            <input type="checkbox" id="show-only-new" onchange="renderResults()"> 只看新词
+                        </label>
+                        <select id="export-format">
+                            <option value="json">JSON 字典</option>
+                            <option value="txt">TXT 列表</option>
+                        </select>
+                        <button class="btn" onclick="exportSelected()" style="background:var(--apple-accent);color:#fff;border:none;">📥 导出选中</button>
+                    </div>
+                    <div class="dict-table-wrap">
+                        <table class="dict-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all" onchange="toggleAll()" checked></th>
+                                    <th>词汇</th>
+                                    <th>拼音</th>
+                                    <th>词频</th>
+                                    <th>凝聚度</th>
+                                    <th>自由度</th>
+                                </tr>
+                            </thead>
+                            <tbody id="result-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,8 +172,8 @@
     <script>
         let discoveredWords = [];
         let currentFile = null;
+        let analyzing = false;
 
-        // Drag and drop logic
         const dropZone = document.getElementById('drop-zone');
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('hover'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
@@ -132,6 +185,11 @@
             }
         });
 
+        function toggleHelp(id) {
+            document.getElementById(id).classList.toggle('show');
+        }
+
+        // ---- 文件上传 ----
         function handleFile(file) {
             if (!file) return;
             if (analyzing) { showToast('正在分析中，请等待完成', 'error'); return; }
@@ -140,88 +198,113 @@
                 return;
             }
             currentFile = file;
-            document.getElementById('file-status').innerHTML = `<strong>已准备好分析: ${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            const el = document.getElementById('file-status');
+            if (file.size > 1024 * 1024) {
+                el.innerHTML = `<strong>已选择: ${file.name}</strong> (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            } else if (file.size > 1024) {
+                el.innerHTML = `<strong>已选择: ${file.name}</strong> (${(file.size / 1024).toFixed(1)} KB)`;
+            } else {
+                el.innerHTML = `<strong>已选择: ${file.name}</strong> (${file.size} B)`;
+            }
+            document.getElementById('file-bar-area').innerHTML =
+                `<div class="file-bar"><span class="name">${esc(file.name)}</span><span class="size">${(file.size / 1024 / 1024).toFixed(2)} MB</span><span class="remove-btn" onclick="removeFile()">✕</span></div>`;
+            document.getElementById('result-panel').style.display = 'none';
             document.getElementById('input-text').value = '';
-            discover(false);
         }
 
-        let analyzing = false;
+        function removeFile() {
+            currentFile = null;
+            document.getElementById('file-status').innerHTML = '拖拽文件到此处，或点击选择文本文件 (.txt)';
+            document.getElementById('file-bar-area').innerHTML = '';
+            document.getElementById('file-input').value = '';
+        }
 
-        async function discover(useTextarea) {
-            if (analyzing) return;
-            const spinner = document.getElementById('loading-spinner');
-            const resultPanel = document.getElementById('result-panel');
-            const btn = document.querySelector('.toolbar .btn');
-            const statusText = document.getElementById('file-status');
-            
-            let body = new FormData();
-            
-            if (useTextarea) {
-                const text = document.getElementById('input-text').value.trim();
-                if (text) {
-                    const blob = new Blob([text], { type: 'text/plain' });
-                    body.append('file', blob, 'pasted.txt');
-                } else if (currentFile) {
-                    body.append('file', currentFile);
-                } else {
-                    showToast('请输入文本或拖入文件', 'error');
-                    return;
-                }
-            } else if (currentFile) {
-                body.append('file', currentFile);
-            } else {
-                showToast('请先选择文件或输入文本', 'error');
-                return;
-            }
-
-            const config = {
+        function getConfig() {
+            return {
                 min_count: parseInt(document.getElementById('cfg-min-count').value),
                 min_pmi: parseFloat(document.getElementById('cfg-min-pmi').value),
                 min_entropy: parseFloat(document.getElementById('cfg-min-entropy').value),
                 max_word_len: parseInt(document.getElementById('cfg-max-len').value)
             };
-            body.append('config', JSON.stringify(config));
-
-            analyzing = true;
-            spinner.style.display = 'inline-block';
-            btn.disabled = true;
-            btn.textContent = '分析中...';
-            resultPanel.style.display = 'none';
-            if (currentFile) {
-                statusText.innerHTML = `<strong>正在分析 ${currentFile.name}...</strong> (${(currentFile.size / 1024 / 1024).toFixed(2)} MB，请耐心等待)`;
-            } else {
-                statusText.textContent = '正在分析中，请耐心等待...';
-            }
-
-            try {
-                const r = await fetch('/api/tools/discover', {
-                    method: 'POST',
-                    body: body
-                });
-                
-                if (!r.ok) {
-                    const err = await r.text();
-                    showToast('分析失败: ' + err, 'error');
-                    return;
-                }
-
-                discoveredWords = await r.json();
-                renderResults();
-                resultPanel.style.display = 'block';
-                showToast(`分析完成，发现 ${discoveredWords.length} 个新词`, 'success');
-                if (currentFile) {
-                    statusText.innerHTML = `<strong>已准备好分析: ${currentFile.name}</strong> (${(currentFile.size / 1024 / 1024).toFixed(2)} MB)`;
-                }
-            } catch (e) {
-                showToast('分析异常: ' + e, 'error');
-            } finally {
-                analyzing = false;
-                spinner.style.display = 'none';
-                btn.disabled = false;
-                btn.textContent = '🔍 开始分析';
-            }
         }
 
+        // ---- 文件分析：直接下载 TXT ----
+        function setButtonsEnabled(enabled) {
+            document.getElementById('btn-analyze-file').disabled = !enabled;
+            document.getElementById('btn-analyze-paste').disabled = !enabled;
+            document.getElementById('btn-analyze-file').textContent = enabled ? '🔍 分析并下载' : '分析中...';
+            document.getElementById('btn-analyze-paste').textContent = enabled ? '🔍 开始分析' : '分析中...';
+            document.getElementById('loading-spinner').style.display = enabled ? 'none' : 'inline-block';
+        }
+
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function doDownload(body) {
+            if (analyzing) return;
+            analyzing = true;
+            setButtonsEnabled(false);
+            document.getElementById('result-panel').style.display = 'none';
+            try {
+                const r = await fetch('/api/tools/discover/download', { method: 'POST', body });
+                if (!r.ok) { const e = await r.text(); showToast('分析失败: ' + e, 'error'); return; }
+                const blob = await r.blob();
+                const d = r.headers.get('Content-Disposition') || '';
+                const m = d.match(/filename="?(.+?)"?$/);
+                triggerDownload(blob, m ? m[1] : `qianyan_discovered_${Date.now()}.txt`);
+                showToast('分析完成，文件已下载', 'success');
+            } catch (e) { showToast('分析异常: ' + e, 'error'); }
+            finally { analyzing = false; setButtonsEnabled(true); }
+        }
+
+        async function analyzeFile() {
+            if (!currentFile) { showToast('请先选择文件', 'error'); return; }
+            const body = new FormData();
+            body.append('file', currentFile);
+            body.append('config', JSON.stringify(getConfig()));
+            body.append('format', document.getElementById('file-export-format').value);
+            body.append('only_new', document.getElementById('file-only-new').checked ? 'true' : 'false');
+            await doDownload(body);
+        }
+
+        // ---- 粘贴分析：网页渲染表格 ----
+        async function doAnalyzeJSON(body) {
+            if (analyzing) return;
+            analyzing = true;
+            setButtonsEnabled(false);
+            document.getElementById('result-panel').style.display = 'none';
+            try {
+                const r = await fetch('/api/tools/discover', { method: 'POST', body });
+                if (!r.ok) { const e = await r.text(); showToast('分析失败: ' + e, 'error'); return; }
+                discoveredWords = await r.json();
+                renderResults();
+                document.getElementById('result-panel').style.display = 'block';
+                showToast(`分析完成，发现 ${discoveredWords.length} 个新词`, 'success');
+            } catch (e) { showToast('分析异常: ' + e, 'error'); }
+            finally { analyzing = false; setButtonsEnabled(true); }
+        }
+
+        async function analyzePaste() {
+            const text = document.getElementById('input-text').value.trim();
+            if (!text) { showToast('请先在文本框中粘贴内容', 'error'); return; }
+            if (text.length > 100_000) {
+                showToast('粘贴文本超过 10 万字限制，请使用文件上传功能', 'error');
+                return;
+            }
+            const body = new FormData();
+            const blob = new Blob([text], { type: 'text/plain' });
+            body.append('file', blob, 'pasted.txt');
+            body.append('config', JSON.stringify(getConfig()));
+            await doAnalyzeJSON(body);
+        }
+
+        // ---- 表格渲染 ----
         function renderResults() {
             const onlyNew = document.getElementById('show-only-new').checked;
             const filtered = onlyNew ? discoveredWords.filter(w => !w.in_dict) : discoveredWords;
@@ -245,7 +328,6 @@
                     <td>${w.entropy ? w.entropy.toFixed(2) : '-'}</td>
                 </tr>`;
             }).join('');
-
             updateSelectCount();
         }
 
@@ -256,41 +338,29 @@
         }
 
         function updateSelectCount() {
-            const checks = document.querySelectorAll('.word-check:checked');
-            document.getElementById('selected-count').textContent = checks.length;
+            document.getElementById('selected-count').textContent = document.querySelectorAll('.word-check:checked').length;
         }
 
         async function exportSelected() {
             const checks = document.querySelectorAll('.word-check:checked');
             if (checks.length === 0) { showToast('请选择要导出的词', 'error'); return; }
-
             const words = [], pinyins = [];
             checks.forEach(cb => {
                 const idx = parseInt(cb.dataset.idx);
                 words.push(cb.dataset.word);
                 pinyins.push(discoveredWords[idx].pinyin);
             });
-
             const format = document.getElementById('export-format').value;
-
             try {
                 const r = await fetch('/api/tools/discover/export', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ words, pinyins, format })
                 });
-                
                 const blob = await r.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `qianyan_discovered_${new Date().getTime()}.${format}`;
-                a.click();
-                URL.revokeObjectURL(url);
+                triggerDownload(blob, `qianyan_discovered_${Date.now()}.${format}`);
                 showToast('导出成功', 'success');
-            } catch (e) {
-                showToast('导出失败', 'error');
-            }
+            } catch (e) { showToast('导出失败', 'error'); }
         }
 
         function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
