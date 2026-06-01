@@ -30,7 +30,7 @@
     "enabled_profiles": [
       "chinese"
     ],
-    "phantom_type": "Pinyin"
+    "phantom_type": "Hanzi"
   },
   "linux": {
     "clipboard_delay_ms": 50,

@@ -21,81 +21,8 @@
        * W → 按音节向后跳转。
        * DD → 清空缓冲区。
        * I / R → 切换插入/替换模式。
-
+      tab +s 手动切换模糊音， 比如 输入 shun 按下快捷键就变成 sun 再按一下， 由变成shun ch c zh z 同理， 
    ---
-
-   2. 渲染后端选择：为何使用软件渲染器而非 Skia
-
-   问题分析：
-   候选框中的 emoji 显示为单色轮廓而非彩色，根本原因是 Slint 软件渲染器（SoftwareRenderer）的字体光栅化
-   只使用 `swash::scale::Source::Outline` + `Format::Alpha`，将每个字形渲染为单通道 Alpha 遮罩，
-   然后用文本颜色着色。COLR/CPAL 彩色表从未被访问，因此无法输出彩色像素。
-
-   为什么不切回 Skia？
-
-   历史背景：
-   - 项目早期确实使用 Skia（通过 Slint 的 renderer-skia-opengl 后端），但当时发现离屏渲染场景下
-     Skia 需要创建 EGL/OpenGL 上下文，候选框每次按键都要重绘，GL 上下文切换开销导致明显卡顿。
-   - 当时的解决方案是切到 fontdue（一个纯 CPU 字体光栅化库），极大降低了渲染延迟。
-   - Slint 1.5+ 后，软件渲染器内部用 `swash` + `skrifa` 替换了 fontdue，但仍属于纯 CPU 光栅化。
-
-   当前权衡：
-
-   | 方案 | 优点 | 缺点 |
-   |------|------|------|
-   | 软件渲染器（swash+skrifa） | 纯 CPU，无 GL 依赖，离屏渲染直接在内存 buffer 中完成，延迟低 | 不支持彩色 emoji（仅单色轮廓） |
-   | Skia（renderer-skia-opengl） | 原生支持彩色 emoji（COLR/CPAL） | 需要 headless GL context + wl_egl_window，离屏渲染复杂；每次重绘有 GL 上下文开销，可能卡顿；依赖 glutin/glow 等重量级库 |
-
-   决策：维持软件渲染器，不切 Skia。
-
-   理由：
-   1. 候选框 95%+ 内容是中文文本，emoji 出现频率极低。
-   2. 单色 emoji 轮廓已能辨识图形，不影响选词功能。
-   3. Skia 的 GL 上下文在离屏频繁重绘场景下，历史上有过卡顿问题，不是纯软件渲染器的直接替代品。
-   4. 若要修复彩色 emoji，更轻量的做法是 fork/patch i-slint-renderer-software，在 render_vector_glyph
-      中增加 `Source::ColorOutline` 回退 + RGBA 输出。但这目前不值得做。
-
-   如果未来确实需要彩色 emoji：
-   - 优先 patch 软件渲染器（改动量 ~200 行），而非切换到 Skia 渲染器。
-   - 路线：修改 vectorfont.rs 的 render_vector_glyph，使用 `[Source::ColorOutline(0), Source::Outline]`
-     和 `Format::Color`，同时扩展 RenderableVectorGlyph 以携带 RGBA 数据。
-
-   ---
-
-  3. Wayland 下候选框显示不全
-
-  问题分析：
-  Wayland 的 layer-shell 协议对窗口位置和大小有严格限制。如果 CandidateWindow 的尺寸计算与 LayerSurface
-  的配置不一致，或者锚点（Anchor）设置错误，会导致窗口被裁剪。
-
-  解决方案：
-   1. 检查 crates/ui/src/wayland_layer.rs：
-       * 确保 set_size 调用时传入的是逻辑像素，并且与 Slint 内部计算的 window_width/height 同步。
-   2. 动态调整锚点：
-       * 根据输入位置计算窗口应该向左还是向右展开。避免窗口超出屏幕边缘。
-   3. Size Constraints：
-       * 在创建 LayerSurface 时，显式设置 set_keyboard_interactivity(KeyboardInteractivity::None)
-         以免干扰输入，并确保 Layer::Overlay 等级足够高。
-
-  ---
-
-  4. 切换 UI 显示模式导致软件崩溃
-
-  问题分析：
-  根源在于 ApplyConfig 处理逻辑。在 crates/ui/src/gui_slint.rs 中，修改显示模式会调用 display.close()。而
-  SlintDisplay::close() 隐藏了作为 "永久锚点" 的状态栏窗口。Slint
-  检测到没有可见窗口后会自动退出事件循环（Event Loop），导致 GUI 进程及其父进程关闭。
-
-  解决方案：
-   1. 避免重建：
-       * 修改 crates/ui/src/gui_slint.rs。如果只是切换 "候选词 UI 显示模式"（即 show_slint_window
-         变化），不要调用 displays.clear() 重建。
-       * 直接调用 display.apply_config(config)，让 SlintDisplay 内部通过透明度或 candidate_enabled
-         标志自行控制显隐。
-   2. 保持窗口存活：
-       * 如果必须重建，应先创建新窗口，再关闭旧窗口，确保事件循环中始终有一个窗口是 Active 状态。
-
-  ---
 
   5. 彻底移除状态栏 (StatusBar)
 
@@ -133,9 +60,29 @@
 
   ---
 
-  7. 中英混输优化
 
-  建议方向：
 
 qianyan-ime-gui内存随着打字缓慢升高的现象，话说为啥会渐渐升高，UI不是只负责展示文字，为啥会升高内存，是缓存了什么东西在gui吗
+仅限wayland环境，在x11，不会，x11的内存稳定在10m以下
 
+中/英文切换通知 没有
+
+剪切板延时时间和backspace延时时间给用户开放，让用户可以在系统设置里改
+
+组句算法没有写在拼音设置里
+
+新词发现器完善
+
+网页增加简体与繁体互转功能
+
+系统设置 输入法方案  应该放在系统词典，同时优化下UI与设置，这些设置有问题，和托盘的词典方案没有联动
+
+
+系统词典 搜索 增加 笔画 和 笔画辅助码 搜索 ，同时 搜索可以同时 搜多本词典，比如搜所有的字
+
+生僻字
+
+
+ai修bug加功能应该改一个git保存一下
+要通过测试，cargo test
+不懂要问
