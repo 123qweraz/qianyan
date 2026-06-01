@@ -75,6 +75,7 @@ impl WebServer {
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
             .route("/api/tools/discover", post(discover_words_file_handler))
             .route("/api/tools/discover/export", post(export_discovery_handler))
+            .route("/api/tools/discover/save", post(save_discovery_handler))
             .route("/api/tools/discover/download", post(discover_download_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
@@ -1741,7 +1742,59 @@ struct DiscoveredWordWithPinyin {
 struct ExportDiscoveryRequest {
     words: Vec<String>,
     pinyins: Vec<String>,
+    weights: Vec<u32>,
     format: String,
+}
+
+/// 保存发现的新词到服务器
+async fn save_discovery_handler(
+    State(_): State<WebState>,
+    Json(req): Json<ExportDiscoveryRequest>,
+) -> impl IntoResponse {
+    let dict_root = find_dicts_root();
+    let save_path = dict_root.join("chinese").join("words").join("discovered.json");
+    
+    // 确保目录存在
+    if let Some(parent) = save_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let mut data: HashMap<String, Vec<serde_json::Value>> = if save_path.exists() {
+        match std::fs::File::open(&save_path) {
+            Ok(f) => serde_json::from_reader(std::io::BufReader::new(f)).unwrap_or_default(),
+            Err(_) => HashMap::new(),
+        }
+    } else {
+        HashMap::new()
+    };
+
+    for ((word, pinyin), weight) in req.words.iter().zip(req.pinyins.iter()).zip(req.weights.iter()) {
+        let entries = data.entry(pinyin.clone()).or_default();
+        // 检查是否已存在
+        let mut exists = false;
+        for entry in entries.iter() {
+            if entry.get("char").and_then(|c| c.as_str()) == Some(word) {
+                exists = true;
+                break;
+            }
+        }
+        if !exists {
+            entries.push(serde_json::json!({
+                "char": word,
+                "weight": weight
+            }));
+        }
+    }
+
+    match std::fs::File::create(&save_path) {
+        Ok(f) => {
+            if let Err(e) = serde_json::to_writer_pretty(std::io::BufWriter::new(f), &data) {
+                return (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write JSON: {}", e)).into_response();
+            }
+            StatusCode::OK.into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create file: {}", e)).into_response(),
+    }
 }
 
 /// 导出发现的新词
@@ -1749,8 +1802,6 @@ async fn export_discovery_handler(
     State(_): State<WebState>,
     Json(req): Json<ExportDiscoveryRequest>,
 ) -> impl IntoResponse {
-    let map = get_chinese_word_map();
-
     if req.format == "txt" {
         let lines: Vec<String> = req.words.iter().zip(req.pinyins.iter())
             .map(|(w, p)| format!("{}\t{}", w, p))
@@ -1760,29 +1811,23 @@ async fn export_discovery_handler(
             (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
             (header::CONTENT_DISPOSITION, "attachment; filename=\"discovered_words.txt\""),
         ];
-        (StatusCode::OK, headers, body)
+        (StatusCode::OK, headers, body).into_response()
     } else {
         let mut data: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
-        for (word, pinyin) in req.words.iter().zip(req.pinyins.iter()) {
-            let weight = word_weight(word, map).max(1);
+        for ((word, pinyin), weight) in req.words.iter().zip(req.pinyins.iter()).zip(req.weights.iter()) {
             data.entry(pinyin.clone())
                 .or_default()
-                .push(serde_json::json!([word, weight]));
+                .push(serde_json::json!({
+                    "char": word,
+                    "weight": weight
+                }));
         }
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
-        let output = serde_json::json!({
-            "version": "1.0",
-            "updated_at": now,
-            "data": data,
-        });
-        let body = serde_json::to_string_pretty(&output).unwrap_or_default();
+        
+        let body = serde_json::to_string_pretty(&data).unwrap_or_default();
         let headers = [
             (header::CONTENT_TYPE, "application/json; charset=utf-8"),
             (header::CONTENT_DISPOSITION, "attachment; filename=\"discovered_words.json\""),
         ];
-        (StatusCode::OK, headers, body)
+        (StatusCode::OK, headers, body).into_response()
     }
 }
