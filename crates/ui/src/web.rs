@@ -17,6 +17,7 @@ use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::time::Instant;
 
 use qianyan_ime_core::Config;
 use qianyan_ime_engine::trie::Trie;
@@ -46,6 +47,13 @@ type WebState = (
 pub struct ImeEngineHandle {
     pub engine: Arc<RwLock<Option<Arc<SearchEngine>>>>,
     pub root: PathBuf,
+    pub(super) sessions: StdMutex<HashMap<String, ImeSession>>,
+}
+
+pub(super) struct ImeSession {
+    processor: qianyan_ime_engine::Processor,
+    #[allow(dead_code)]
+    created: std::time::Instant,
 }
 
 impl WebServer {
@@ -65,6 +73,7 @@ impl WebServer {
         let ime_handle = Arc::new(ImeEngineHandle {
             engine: Arc::new(RwLock::new(None)),
             root: self.root,
+            sessions: StdMutex::new(HashMap::new()),
         });
         let app = Router::new()
             .route("/", get(index_handler))
@@ -91,11 +100,14 @@ impl WebServer {
             .route("/api/dict/clear_user", post(clear_user_dict))
             .route("/api/keyboard/send", post(send_key_handler))
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
+            .route("/api/convert", post(convert_handler))
             .route("/api/tools/discover", post(discover_words_file_handler))
             .route("/api/tools/discover/export", post(export_discovery_handler))
             .route("/api/tools/discover/save", post(save_discovery_handler))
             .route("/api/tools/discover/download", post(discover_download_handler))
             .route("/api/ime/search", post(ime_search_handler))
+            .route("/api/ime/session", post(ime_session_handler))
+            .route("/api/ime/key", post(ime_key_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
@@ -1501,6 +1513,227 @@ fn is_chinese(c: char) -> bool {
     (c >= '\u{4e00}' && c <= '\u{9fa5}') || (c >= '\u{3400}' && c <= '\u{4dbf}')
 }
 
+// ===== Simplified ⇄ Traditional conversion =====
+
+type S2TMap = HashMap<String, String>;
+
+static S2T_MAP: OnceLock<S2TMap> = OnceLock::new();
+static T2S_MAP: OnceLock<S2TMap> = OnceLock::new();
+static MAX_S2T_WORD_LEN: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+static MAX_T2S_WORD_LEN: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+
+fn load_s2t_t2s_maps() -> (S2TMap, S2TMap, usize, usize) {
+    let root = qianyan_ime_core::utils::find_project_root();
+    let data_dir = root.join("data");
+    let index_path = data_dir.join("chinese/trie.index");
+    let data_path = data_dir.join("chinese/trie.data");
+
+    let trie = match Trie::load(&index_path, &data_path, false) {
+        Ok(t) => t,
+        Err(e) => {
+            log::warn!("[s2t] Failed to load chinese trie: {}", e);
+            return (HashMap::new(), HashMap::new(), 0, 0);
+        }
+    };
+
+    let mut s2t: S2TMap = HashMap::new();
+    let mut t2s: S2TMap = HashMap::new();
+    let mut s2t_max = 0usize;
+    let mut t2s_max = 0usize;
+
+    let mut stream = trie.index.stream();
+    while let Some((_pinyin_bytes, offset)) = stream.next() {
+        trie.read_block(offset as usize, |tr| {
+            let word = tr.word.to_string();
+            let trad = tr.trad.to_string();
+            if !trad.is_empty() && word != trad {
+                let wc = word.chars().count();
+                if wc > s2t_max { s2t_max = wc; }
+                // For s2t: prefer longer match, then higher weight
+                s2t.entry(word.clone())
+                    .and_modify(|existing| {
+                        let existing_len = existing.chars().count();
+                        if wc > existing_len {
+                            *existing = trad.clone();
+                        }
+                    })
+                    .or_insert_with(|| trad.clone());
+
+                let tc = trad.chars().count();
+                if tc > t2s_max { t2s_max = tc; }
+                t2s.entry(trad)
+                    .and_modify(|existing| {
+                        let existing_len = existing.chars().count();
+                        if tc > existing_len {
+                            *existing = word.clone();
+                        }
+                    })
+                    .or_insert_with(|| word.clone());
+            }
+        });
+    }
+
+    (s2t, t2s, s2t_max, t2s_max)
+}
+
+fn get_s2t_map() -> &'static S2TMap { S2T_MAP.get_or_init(|| load_s2t_t2s_maps().0) }
+fn get_t2s_map() -> &'static S2TMap { T2S_MAP.get_or_init(|| load_s2t_t2s_maps().1) }
+fn get_s2t_max_len() -> usize { *MAX_S2T_WORD_LEN.get_or_init(|| load_s2t_t2s_maps().2) }
+fn get_t2s_max_len() -> usize { *MAX_T2S_WORD_LEN.get_or_init(|| load_s2t_t2s_maps().3) }
+fn ensure_s2t_loaded() { let _ = get_s2t_map(); let _ = get_t2s_map(); }
+
+fn convert_longest_match(text: &str, map: &S2TMap, max_len: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    let mut result = String::with_capacity(text.len() * 2);
+    let mut i = 0;
+    while i < chars.len() {
+        let mut best_len = 0usize;
+        let mut best_word = None;
+        let max_check = max_len.min(chars.len() - i);
+        for len in (1..=max_check).rev() {
+            let slice: String = chars[i..i + len].iter().collect();
+            if let Some(converted) = map.get(&slice) {
+                best_len = len;
+                best_word = Some(converted.clone());
+                break;
+            }
+        }
+        if best_len > 0 {
+            result.push_str(&best_word.unwrap());
+            i += best_len;
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    result
+}
+
+#[derive(Deserialize)]
+struct ConvertRequest {
+    text: String,
+    #[serde(default = "default_convert_mode")]
+    mode: String,
+}
+
+fn default_convert_mode() -> String { "pinyin".into() }
+
+#[derive(Serialize)]
+struct ConvertResponse {
+    result: String,
+    segmented: Option<String>,
+    pinyin: Option<String>,
+}
+
+fn cn_punct_to_en(c: char) -> Option<char> {
+    match c {
+        '，' => Some(','),
+        '。' => Some('.'),
+        '！' => Some('!'),
+        '？' => Some('?'),
+        '；' => Some(';'),
+        '：' => Some(':'),
+        '\u{201c}' | '\u{201d}' => Some('"'),
+        '\u{2018}' | '\u{2019}' => Some('\''),
+        '（' => Some('('),
+        '）' => Some(')'),
+        '【' => Some('['),
+        '】' => Some(']'),
+        '《' => Some('<'),
+        '》' => Some('>'),
+        '、' => Some(','),
+        '～' => Some('~'),
+        '…' => Some('.'),
+        '—' => Some('-'),
+        _ => None,
+    }
+}
+
+fn segment_and_convert_pinyin(text: &str, map: &WordMap) -> (String, String) {
+    let chars: Vec<char> = text.chars().collect();
+    let max_len = max_word_len(map);
+    let mut segmented = Vec::new();
+    let mut pinyin_parts = Vec::new();
+    let mut i = 0;
+
+    while i < chars.len() {
+        if !is_chinese(chars[i]) {
+            // Punctuation / non-Chinese: keep in segmented, convert for pinyin
+            segmented.push(chars[i].to_string());
+            if let Some(en) = cn_punct_to_en(chars[i]) {
+                pinyin_parts.push(en.to_string());
+            } else if chars[i].is_whitespace() {
+                pinyin_parts.push(" ".to_string());
+            } else {
+                pinyin_parts.push(chars[i].to_string());
+            }
+            i += 1;
+            continue;
+        }
+
+        let mut best_len = 0usize;
+        let max_check = max_len.min(chars.len() - i);
+        for len in (1..=max_check).rev() {
+            let slice: String = chars[i..i + len].iter().collect();
+            if is_word_in_map(&slice, map) {
+                best_len = len;
+                break;
+            }
+        }
+        if best_len == 0 {
+            best_len = 1;
+        }
+
+        let word: String = chars[i..i + best_len].iter().collect();
+        let py = word_pinyin(&word, map);
+        segmented.push(word);
+        pinyin_parts.push(py);
+        i += best_len;
+    }
+
+    // Compact: no space before punctuation, space after/between
+    let mut pinyin_compact = String::new();
+    for (i, part) in pinyin_parts.iter().enumerate() {
+        if i > 0 {
+            let curr_is_punct = part.chars().all(|c| !c.is_ascii_alphanumeric());
+            if !curr_is_punct {
+                pinyin_compact.push(' ');
+            }
+        }
+        pinyin_compact.push_str(part);
+    }
+
+    (segmented.join(" "), pinyin_compact)
+}
+
+async fn convert_handler(
+    State(_): State<WebState>,
+    Json(req): Json<ConvertRequest>,
+) -> Json<ConvertResponse> {
+    match req.mode.as_str() {
+        "s2t" => {
+            ensure_s2t_loaded();
+            let map = get_s2t_map();
+            let max_len = get_s2t_max_len();
+            Json(ConvertResponse { result: convert_longest_match(&req.text, map, max_len), segmented: None, pinyin: None })
+        }
+        "t2s" => {
+            ensure_s2t_loaded();
+            let map = get_t2s_map();
+            let max_len = get_t2s_max_len();
+            Json(ConvertResponse { result: convert_longest_match(&req.text, map, max_len), segmented: None, pinyin: None })
+        }
+        _ => {
+            let map = get_chinese_word_map();
+            if map.is_empty() {
+                return Json(ConvertResponse { result: req.text.clone(), segmented: None, pinyin: None });
+            }
+            let (segmented, pinyin) = segment_and_convert_pinyin(&req.text, map);
+            Json(ConvertResponse { result: String::new(), segmented: Some(segmented), pinyin: Some(pinyin) })
+        }
+    }
+}
+
 use axum::extract::Multipart;
 use encoding_rs::GBK;
 
@@ -2015,4 +2248,208 @@ async fn ime_search_handler(
         candidates: response_candidates,
         segments,
     })
+}
+
+// ===== Session-based IME (thin client: key events in, state out) =====
+
+fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
+    let guard = handle.engine.read().unwrap();
+    if let Some(ref engine) = *guard {
+        return Some(engine.clone());
+    }
+    drop(guard);
+    match prepare_ime_engine(&handle.root) {
+        Ok(engine) => {
+            let mut w = handle.engine.write().unwrap();
+            if w.is_none() {
+                *w = Some(Arc::new(engine.clone()));
+            }
+            Some(Arc::new(engine))
+        }
+        Err(e) => {
+            log::error!("[Web] Failed to init IME engine: {}", e);
+            None
+        }
+    }
+}
+
+fn create_processor(root: &std::path::Path) -> Option<qianyan_ime_engine::Processor> {
+    let syllables = load_syllables(root);
+    let syllable_freq = load_syllable_frequencies(root);
+
+    let data_dir = root.join("data");
+    let mut trie_paths: HashMap<String, (PathBuf, PathBuf)> = HashMap::new();
+    if let Ok(entries) = std::fs::read_dir(&data_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    let trie_idx = path.join("trie.index");
+                    let trie_dat = path.join("trie.data");
+                    if trie_idx.exists() && trie_dat.exists() {
+                        trie_paths.insert(dir_name.to_string(), (trie_idx, trie_dat));
+                    }
+                }
+            }
+        }
+    }
+
+    if trie_paths.is_empty() {
+        return None;
+    }
+
+    Some(qianyan_ime_engine::Processor::new(trie_paths, syllables, syllable_freq))
+}
+
+#[derive(Serialize)]
+struct ImeSessionResponse {
+    session_id: String,
+    pinyin_display: String,
+    candidates: Vec<ImeCandidateResponse>,
+    segments: Vec<String>,
+    filter_active: bool,
+    chinese_enabled: bool,
+    action: Option<ImeActionResponse>,
+}
+
+#[derive(Serialize)]
+struct ImeActionResponse {
+    #[serde(rename = "type")]
+    action_type: String,
+    text: Option<String>,
+    delete: Option<usize>,
+}
+
+fn build_state_response(
+    processor: &qianyan_ime_engine::Processor,
+    action: &qianyan_ime_engine::processor::Action,
+) -> ImeSessionResponse {
+    let pinyin_display = qianyan_ime_engine::compositor::Compositor::get_preedit(&processor.ctx);
+    let filter_active = processor.ctx.session.filter_mode != qianyan_ime_engine::processor::FilterMode::None;
+    let chinese_enabled = processor.ctx.session_state.chinese_enabled;
+
+    let candidates: Vec<ImeCandidateResponse> = processor.ctx.session.candidates
+        .iter()
+        .map(|c| ImeCandidateResponse {
+            text: c.text.to_string(),
+            simplified: c.simplified.to_string(),
+            traditional: c.traditional.to_string(),
+            hint: c.hint.to_string(),
+            weight: c.weight,
+            match_level: c.match_level,
+            source: c.source.to_string(),
+        })
+        .collect();
+
+    let segments = processor.ctx.session.best_segmentation.clone();
+
+    let action_resp = match action {
+        qianyan_ime_engine::processor::Action::Emit(text) => Some(ImeActionResponse {
+            action_type: "commit".into(),
+            text: Some(text.clone()),
+            delete: None,
+        }),
+        qianyan_ime_engine::processor::Action::DeleteAndEmit { delete, insert } => Some(ImeActionResponse {
+            action_type: "delete_and_emit".into(),
+            text: Some(insert.clone()),
+            delete: Some(*delete),
+        }),
+        _ => None,
+    };
+
+    ImeSessionResponse {
+        session_id: String::new(), // filled in by caller
+        pinyin_display,
+        candidates,
+        segments,
+        filter_active,
+        chinese_enabled,
+        action: action_resp,
+    }
+}
+
+#[derive(Deserialize)]
+struct ImeKeyRequest {
+    session_id: String,
+    key: String,
+    #[serde(default)]
+    val: i32,
+    #[serde(default)]
+    shift: bool,
+    #[serde(default)]
+    ctrl: bool,
+    #[serde(default)]
+    alt: bool,
+    #[serde(default)]
+    candidate_index: Option<usize>,
+    #[serde(default)]
+    profile: Option<String>,
+}
+
+async fn ime_session_handler(
+    State((config, _, _)): State<WebState>,
+    Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
+) -> Result<Json<ImeSessionResponse>, StatusCode> {
+    ensure_engine(&ime_handle).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let cfg = config.read().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.clone();
+    let mut processor = create_processor(&ime_handle.root).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    processor.apply_config(&cfg);
+    let _ = processor.handle_event(qianyan_ime_engine::InputEvent::CandidateSelect(0)); // warmup first lookup
+
+    let session_id = uuid_v4();
+    let action = qianyan_ime_engine::processor::Action::Consume;
+    let mut resp = build_state_response(&processor, &action);
+    resp.session_id = session_id.clone();
+
+    let mut sessions = ime_handle.sessions.lock().unwrap();
+    sessions.insert(session_id, ImeSession { processor, created: Instant::now() });
+
+    Ok(Json(resp))
+}
+
+
+async fn ime_key_handler(
+    State(_): State<WebState>,
+    Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
+    Json(req): Json<ImeKeyRequest>,
+) -> Result<Json<ImeSessionResponse>, StatusCode> {
+    let mut sessions = ime_handle.sessions.lock().unwrap();
+    let session = sessions.get_mut(&req.session_id).ok_or(StatusCode::NOT_FOUND)?;
+
+    if let Some(ref profile) = req.profile {
+        session.processor.ctx.session_state.active_profiles = vec![profile.clone()];
+        session.processor.ctx.engine.clear_cache();
+    }
+
+    let action = if let Some(idx) = req.candidate_index {
+        session.processor.handle_event(qianyan_ime_engine::InputEvent::CandidateSelect(idx))
+    } else {
+        let key: qianyan_ime_engine::keys::VirtualKey = req.key.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
+        session.processor.handle_event(qianyan_ime_engine::InputEvent::Key {
+            key,
+            val: req.val,
+            shift: req.shift,
+            ctrl: req.ctrl,
+            alt: req.alt,
+        })
+    };
+
+    let mut resp = build_state_response(&session.processor, &action);
+    resp.session_id = req.session_id;
+
+    Ok(Json(resp))
+}
+
+fn uuid_v4() -> String {
+    use std::fmt::Write;
+    let mut s = String::with_capacity(32);
+    for _ in 0..8 { write!(s, "{:x}", rand_u8()).unwrap(); }
+    s
+}
+
+fn rand_u8() -> u8 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().subsec_nanos();
+    ((nanos >> 16) ^ (nanos >> 8) ^ nanos) as u8
 }

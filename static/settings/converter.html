@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转换器 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 22px; color: var(--apple-text); margin-bottom: 4px; }
+        .subtitle { font-size: 13px; color: var(--apple-secondary); margin-bottom: 24px; }
+
+        .mode-select { display: flex; gap: 6px; margin-bottom: 20px; background: var(--apple-card); border-radius: 12px; padding: 6px; }
+        .mode-btn { padding: 10px 20px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--apple-secondary); transition: all 0.2s; }
+        .mode-btn:hover { color: var(--apple-text); }
+        .mode-btn.active { background: var(--apple-accent); color: white; }
+
+        /* s2t/t2s: two-column layout. pinyin: three-row layout */
+        .boxes { display: flex; gap: 16px; margin-bottom: 16px; }
+        .box { flex: 1; display: flex; flex-direction: column; }
+        .box label { font-size: 13px; color: var(--apple-secondary); margin-bottom: 8px; font-weight: 600; }
+        .box textarea {
+            width: 100%; min-height: 220px; padding: 14px 16px; font-size: 17px;
+            border: 2px solid var(--apple-border); border-radius: 14px;
+            outline: none; background: white; color: var(--apple-text);
+            resize: vertical; font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.7; box-sizing: border-box;
+        }
+        .box textarea:focus { border-color: var(--apple-accent); }
+        .box textarea.output-box { background: #f8f8fa; }
+
+        /* Two outputs for pinyin mode, stacked */
+        .output-section { display: flex; flex-direction: column; gap: 10px; }
+        .output-section textarea { min-height: 100px; }
+
+        .actions { display: flex; gap: 10px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 12px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--apple-accent); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-secondary { background: #e5e5ea; color: var(--apple-text); }
+        .btn-secondary:hover { background: #d1d1d6; }
+
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #34c759; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 600; opacity: 0; transition: opacity 0.3s; z-index: 1000; pointer-events: none; }
+        .toast.show { opacity: 1; }
+        .toast.err { background: #ff3b30; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 转换器</h1>
+        <div class="subtitle">简繁互转 / 汉字转拼音</div>
+
+        <div class="mode-select">
+            <button class="mode-btn active" data-mode="s2t">简化 → 繁体</button>
+            <button class="mode-btn" data-mode="t2s">繁体 → 简化</button>
+            <button class="mode-btn" data-mode="pinyin">汉字 → 拼音</button>
+        </div>
+
+        <!-- Single output layout (s2t/t2s) -->
+        <div class="boxes" id="singleOutput">
+            <div class="box">
+                <label id="inputLabel">输入 (简体)</label>
+                <textarea id="inputBox" placeholder="在此输入或粘贴文本..."></textarea>
+            </div>
+            <div class="box">
+                <label id="outputLabel">输出 (繁体)</label>
+                <textarea id="outputBox" class="output-box" placeholder="转换结果..." readonly></textarea>
+            </div>
+        </div>
+
+        <!-- Double output layout (pinyin) -->
+        <div class="boxes hidden" id="pinyinOutput">
+            <div class="box">
+                <label>输入 (中文)</label>
+                <textarea id="inputBox2" placeholder="在此输入或粘贴中文文本..."></textarea>
+            </div>
+            <div class="box">
+                <div class="output-section">
+                    <div>
+                        <label>句子分词</label>
+                        <textarea id="segBox" class="output-box" placeholder="分词结果..." readonly></textarea>
+                    </div>
+                    <div>
+                        <label>拼音分词句子</label>
+                        <textarea id="pyBox" class="output-box" placeholder="拼音结果..." readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="btnConvert">⇄ 转换</button>
+            <button class="btn btn-secondary" id="btnCopySeg">📋 复制分词</button>
+            <button class="btn btn-secondary" id="btnCopyPy">📋 复制拼音</button>
+            <button class="btn btn-secondary" id="btnCopyResult">📋 复制结果</button>
+            <button class="btn btn-secondary" id="btnClear">🗑️ 清空</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentMode = 's2t';
+
+        const modeNames = { s2t: '简化 → 繁体', t2s: '繁体 → 简化', pinyin: '汉字 → 拼音' };
+        const inputLabels = { s2t: '输入 (简体)', t2s: '输入 (繁体)', pinyin: '输入 (中文)' };
+        const outputLabels = { s2t: '输出 (繁体)', t2s: '输出 (简体)', pinyin: '输出' };
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            let isPinyin = mode === 'pinyin';
+            document.getElementById('singleOutput').classList.toggle('hidden', isPinyin);
+            document.getElementById('pinyinOutput').classList.toggle('hidden', !isPinyin);
+            document.getElementById('inputLabel').textContent = inputLabels[mode];
+            document.getElementById('outputLabel').textContent = outputLabels[mode];
+
+            // Show/hide copy buttons
+            document.getElementById('btnCopySeg').classList.toggle('hidden', !isPinyin);
+            document.getElementById('btnCopyPy').classList.toggle('hidden', !isPinyin);
+            document.getElementById('btnCopyResult').classList.toggle('hidden', isPinyin);
+
+            // Sync input values
+            if (currentMode === 'pinyin') {
+                document.getElementById('inputBox2').value = document.getElementById('inputBox').value;
+                document.getElementById('inputBox2').focus();
+            } else {
+                document.getElementById('inputBox').value = document.getElementById('inputBox2').value;
+                document.getElementById('inputBox').focus();
+            }
+            convert();
+        }
+
+        // Mode switch
+        document.querySelectorAll('.mode-btn').forEach(b => {
+            b.addEventListener('click', () => switchMode(b.dataset.mode));
+        });
+
+        // Convert button
+        document.getElementById('btnConvert').addEventListener('click', convert);
+
+        function getInputText() {
+            return currentMode === 'pinyin'
+                ? document.getElementById('inputBox2').value
+                : document.getElementById('inputBox').value;
+        }
+
+        // Auto-convert on typing (debounced)
+        let debounce;
+        document.getElementById('inputBox').addEventListener('input', () => {
+            if (currentMode !== 'pinyin') {
+                clearTimeout(debounce);
+                debounce = setTimeout(convert, 300);
+            } else {
+                document.getElementById('inputBox2').value = document.getElementById('inputBox').value;
+            }
+        });
+        document.getElementById('inputBox2').addEventListener('input', () => {
+            if (currentMode === 'pinyin') {
+                document.getElementById('inputBox').value = document.getElementById('inputBox2').value;
+                clearTimeout(debounce);
+                debounce = setTimeout(convert, 300);
+            }
+        });
+
+        async function convert() {
+            const text = getInputText();
+            if (!text) {
+                document.getElementById('outputBox').value = '';
+                document.getElementById('segBox').value = '';
+                document.getElementById('pyBox').value = '';
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, mode: currentMode })
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+
+                if (currentMode === 'pinyin') {
+                    document.getElementById('segBox').value = data.segmented || '';
+                    document.getElementById('pyBox').value = data.pinyin || '';
+                } else {
+                    document.getElementById('outputBox').value = data.result || '';
+                }
+            } catch (e) {
+                document.getElementById('outputBox').value = '转换失败: ' + e.message;
+            }
+        }
+
+        // Copy buttons
+        document.getElementById('btnCopyResult').addEventListener('click', () => {
+            copyText(document.getElementById('outputBox').value);
+        });
+        document.getElementById('btnCopySeg').addEventListener('click', () => {
+            copyText(document.getElementById('segBox').value);
+        });
+        document.getElementById('btnCopyPy').addEventListener('click', () => {
+            copyText(document.getElementById('pyBox').value);
+        });
+
+        async function copyText(text) {
+            if (!text) { showToast('没有内容', true); return; }
+            try { await navigator.clipboard.writeText(text); showToast('已复制!'); }
+            catch { showToast('复制失败', true); }
+        }
+
+        // Clear
+        document.getElementById('btnClear').addEventListener('click', () => {
+            document.getElementById('inputBox').value = '';
+            document.getElementById('inputBox2').value = '';
+            document.getElementById('outputBox').value = '';
+            document.getElementById('segBox').value = '';
+            document.getElementById('pyBox').value = '';
+            (currentMode === 'pinyin' ? document.getElementById('inputBox2') : document.getElementById('inputBox')).focus();
+            showToast('已清空');
+        });
+
+        function showToast(msg, err) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (err ? ' err' : '');
+            setTimeout(() => t.className = 'toast', 2000);
+        }
+
+        // Init
+        switchMode('s2t');
+    </script>
+</body>
+</html>

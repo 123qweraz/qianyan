@@ -17,42 +17,12 @@
         .status-bar b { color: var(--apple-accent); }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #ccc; }
         .status-dot.ok { background: #34c759; }
+        .status-dot.filter { background: #ff9500; }
 
-        /* Pinyin input row */
-        .pinyin-row { margin-bottom: 12px; }
-        .pinyin-row input {
-            width: 100%; padding: 14px 18px; font-size: 22px;
-            border: 2px solid var(--apple-border); border-radius: 14px;
-            outline: none; background: white; color: var(--apple-text);
-            font-family: "SF Mono", "Fira Code", monospace;
-            transition: border-color 0.2s;
-        }
-        .pinyin-row input:focus { border-color: var(--apple-accent); }
-        .pinyin-row input::placeholder { color: #ccc; font-size: 16px; }
-        .pinyin-row .segments { font-size: 13px; color: var(--apple-accent); margin-top: 6px; padding-left: 4px; min-height: 19px; }
-
-        /* Candidates */
-        .candidates { background: var(--apple-card); border: 1px solid var(--apple-border); border-radius: 16px; padding: 16px 20px; margin-bottom: 14px; display: none; }
-        .candidates.show { display: block; }
-        .candidates .words { display: flex; flex-wrap: wrap; gap: 8px; }
-        .candidates .word {
-            background: #f2f2f7; color: var(--apple-text);
-            padding: 10px 16px; border-radius: 10px; cursor: pointer;
-            font-size: 18px; transition: all 0.15s;
-            display: flex; flex-direction: column; align-items: center; min-width: 44px;
-        }
-        .candidates .word:hover { background: var(--apple-accent); color: white; }
-        .candidates .word:active { transform: scale(0.96); }
-        .candidates .word .num { color: var(--apple-secondary); font-size: 11px; }
-        .candidates .word .hint { color: #999; font-size: 11px; margin-top: 2px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .candidates .word.exact { border: 2px solid #34c759; }
-        .candidates .word.abbr { border: 2px solid #ff9500; }
-        .candidates .word.prefix { border: 2px solid #007aff; }
-
-        /* Editor */
+        /* Editor on top */
         .editor-row { margin-bottom: 14px; }
         .editor-row textarea {
-            width: 100%; min-height: 100px; padding: 14px 18px;
+            width: 100%; min-height: 120px; padding: 14px 18px;
             font-size: 20px; border: 2px solid var(--apple-border);
             border-radius: 14px; outline: none; background: white;
             color: var(--apple-text); resize: vertical;
@@ -60,26 +30,65 @@
             line-height: 1.8;
         }
         .editor-row textarea:focus { border-color: var(--apple-accent); }
-
-        /* Action buttons */
         .editor-actions { display: flex; gap: 10px; }
         .btn { padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--apple-accent); color: white; }
         .btn-secondary { background: #e5e5ea; color: var(--apple-text); }
-        .btn-warn { background: #ff3b30; color: white; }
+
+        /* Candidates row */
+        .cand-row {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+            background: var(--apple-card); border: 1px solid var(--apple-border);
+            border-radius: 12px; padding: 8px 12px; min-height: 52px;
+        }
+        .cand-row .page-btn {
+            width: 32px; height: 32px; border-radius: 8px; border: none;
+            background: #e5e5ea; cursor: pointer; font-size: 16px;
+            font-weight: 600; color: var(--apple-secondary);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .cand-row .page-btn:active { background: var(--apple-accent); color: white; }
+        .cand-row .page-btn:disabled { opacity: 0.3; cursor: default; }
+        .cand-row .cand-items { display: flex; gap: 6px; flex: 1; justify-content: center; }
+        .cand-row .cand-item {
+            background: #f2f2f7; color: var(--apple-text);
+            padding: 8px 14px; border-radius: 8px; cursor: pointer;
+            font-size: 18px; transition: all 0.15s;
+            display: flex; flex-direction: column; align-items: center;
+            min-width: 48px; text-align: center;
+        }
+        .cand-row .cand-item:hover { background: var(--apple-accent); color: white; }
+        .cand-row .cand-item:active { transform: scale(0.96); }
+        .cand-row .cand-item .num { color: var(--apple-secondary); font-size: 11px; }
+        .cand-row .cand-item .hint { color: #999; font-size: 10px; margin-top: 1px; }
+        .cand-row .cand-item.exact { border: 2px solid #34c759; }
+        .cand-row .cand-item.abbr { border: 2px solid #ff9500; }
+        .cand-row .cand-item.prefix { border: 2px solid #007aff; }
+        .cand-row .page-info { font-size: 12px; color: var(--apple-secondary); white-space: nowrap; flex-shrink: 0; }
+
+        /* Pinyin display */
+        .pinyin-row { margin-bottom: 8px; }
+        .pinyin-display {
+            background: white; border: 2px solid var(--apple-border); border-radius: 12px;
+            padding: 10px 14px; font-size: 20px; color: var(--apple-text);
+            min-height: 44px; font-family: "SF Mono", "Fira Code", monospace;
+        }
+        .pinyin-display.focus { border-color: var(--apple-accent); }
+        .segments-row { font-size: 12px; color: var(--apple-accent); margin-bottom: 8px; padding-left: 4px; min-height: 17px; }
 
         /* Keyboard */
-        .keyboard { background: #e5e5ea; padding: 16px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; user-select: none; margin-top: 16px; }
+        .keyboard { background: #e5e5ea; padding: 16px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; user-select: none; margin-top: 12px; }
         .kb-row { display: flex; justify-content: center; gap: 6px; }
         .key { min-width: 48px; height: 52px; background: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 3px 0 #d1d1d6; cursor: pointer; transition: all 0.08s; position: relative; padding: 0 8px; }
         .key:active, .key.pressed { transform: translateY(3px); box-shadow: 0 0 0 #d1d1d6; background: var(--apple-accent); color: white; }
         .key.shift-on { background: var(--apple-accent); color: white; }
+        .key.filter-on { background: #ff9500; color: white; }
         .key.caps-on { background: #007aff; color: white; }
-        .key.filter-on { background: #34c759; color: white; }
         .key .char { font-size: 18px; font-weight: 600; }
         .key .sub { font-size: 10px; color: #8e8e93; position: absolute; top: 3px; right: 5px; }
-        .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.caps-on .sub { color: rgba(255,255,255,0.7); }
+        .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.filter-on .sub, .key.caps-on .sub { color: rgba(255,255,255,0.7); }
         .key.wide { min-width: 80px; }
         .key.wider { min-width: 100px; }
         .key.space { min-width: 280px; }
@@ -105,23 +114,12 @@
         <div class="status-bar">
             <span><span class="status-dot" id="statusDot"></span><b id="current-ime">中文</b></span>
             <span>编辑框: <b id="char-count">0</b> 字符</span>
-            <span>引擎: <b id="engineStatus">未连接</b></span>
+            <span>引擎: <b id="engineStatus">等待</b></span>
         </div>
 
-        <!-- Pinyin input -->
-        <div class="pinyin-row">
-            <input type="text" id="pinyinInput" placeholder="输入拼音，如 nihao → 你好" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-            <div class="segments" id="segments"></div>
-        </div>
-
-        <!-- Candidates -->
-        <div class="candidates" id="candidates">
-            <div class="words" id="cand-words"></div>
-        </div>
-
-        <!-- Editor output -->
+        <!-- Editor on top -->
         <div class="editor-row">
-            <textarea id="editorArea" placeholder="选择的候选字词会填入这里..."></textarea>
+            <textarea id="editorArea" placeholder="候选字词自动填入此处..."></textarea>
         </div>
         <div class="editor-actions">
             <button class="btn btn-primary" id="btn-copy">📋 复制</button>
@@ -129,14 +127,29 @@
             <button class="btn btn-secondary" id="btn-clear-editor">🗑️ 清空编辑框</button>
         </div>
 
+        <!-- Candidates (5 per page) -->
+        <div class="cand-row">
+            <button class="page-btn" id="btnPageUp" disabled title="上一页">&lt;</button>
+            <div class="cand-items" id="candItems"></div>
+            <button class="page-btn" id="btnPageDown" disabled title="下一页">&gt;</button>
+            <span class="page-info" id="pageInfo"></span>
+        </div>
+
+        <!-- Pinyin display -->
+        <div class="pinyin-row">
+            <div class="pinyin-display focus" id="pinyinDisplay" tabindex="0"></div>
+        </div>
+        <div class="segments-row" id="segments"></div>
+
         <!-- Virtual keyboard -->
         <div class="keyboard" id="keyboard"></div>
-        <div class="help-tip">空格选首词 | 数字 1-9 选词 | Shift 切换辅助码筛选 | Backspace 删拼音/辅助码 | Enter 提交原拼音 | -/= 翻页</div>
+        <div class="help-tip">空格选首词 | 数字1-5选词 | Shift进入辅助码 | Backspace退格 | Enter提交原拼音 | -/=翻页 | Esc重置</div>
     </div>
 
     <div class="toast" id="toast"></div>
 
     <script>
+        const PAGE_SIZE = 5;
         const KEYBOARD = [
             [
                 { id: '`', label: '`', sub: '~' },
@@ -156,30 +169,21 @@
             ],
             [
                 { id: 'Tab', label: 'Tab', className: 'wide' },
-                { id: 'q', label: 'q' },
-                { id: 'w', label: 'w' },
-                { id: 'e', label: 'e' },
-                { id: 'r', label: 'r' },
-                { id: 't', label: 't' },
-                { id: 'y', label: 'y' },
-                { id: 'u', label: 'u' },
-                { id: 'i', label: 'i' },
-                { id: 'o', label: 'o' },
-                { id: 'p', label: 'p' },
+                { id: 'q', label: 'q' }, { id: 'w', label: 'w' },
+                { id: 'e', label: 'e' }, { id: 'r', label: 'r' },
+                { id: 't', label: 't' }, { id: 'y', label: 'y' },
+                { id: 'u', label: 'u' }, { id: 'i', label: 'i' },
+                { id: 'o', label: 'o' }, { id: 'p', label: 'p' },
                 { id: '[', label: '[', sub: '{' },
                 { id: ']', label: ']', sub: '}' },
                 { id: '\\', label: '\\', sub: '|' }
             ],
             [
                 { id: 'CapsLock', label: 'Caps', className: 'wider' },
-                { id: 'a', label: 'a' },
-                { id: 's', label: 's' },
-                { id: 'd', label: 'd' },
-                { id: 'f', label: 'f' },
-                { id: 'g', label: 'g' },
-                { id: 'h', label: 'h' },
-                { id: 'j', label: 'j' },
-                { id: 'k', label: 'k' },
+                { id: 'a', label: 'a' }, { id: 's', label: 's' },
+                { id: 'd', label: 'd' }, { id: 'f', label: 'f' },
+                { id: 'g', label: 'g' }, { id: 'h', label: 'h' },
+                { id: 'j', label: 'j' }, { id: 'k', label: 'k' },
                 { id: 'l', label: 'l' },
                 { id: ';', label: ';', sub: ':' },
                 { id: "'", label: "'", sub: '"' },
@@ -187,12 +191,9 @@
             ],
             [
                 { id: 'Shift', label: 'Shift', className: 'wider' },
-                { id: 'z', label: 'z' },
-                { id: 'x', label: 'x' },
-                { id: 'c', label: 'c' },
-                { id: 'v', label: 'v' },
-                { id: 'b', label: 'b' },
-                { id: 'n', label: 'n' },
+                { id: 'z', label: 'z' }, { id: 'x', label: 'x' },
+                { id: 'c', label: 'c' }, { id: 'v', label: 'v' },
+                { id: 'b', label: 'b' }, { id: 'n', label: 'n' },
                 { id: 'm', label: 'm' },
                 { id: ',', label: ',', sub: '<' },
                 { id: '.', label: '.', sub: '>' },
@@ -211,618 +212,230 @@
             ]
         ];
 
-        let currentIme = 'chinese';
+        // Client state
+        let sessionId = null;
+        let editorArea = document.getElementById('editorArea');
+        let pinyinDiv = document.getElementById('pinyinDisplay');
         let isShift = false;
         let isCapsLock = false;
-        let currentPage = 0;
-        let allCandidates = [];
-        let engineReady = false;
-        let debounceTimer;
-
-        // IME state: pinyin buffer + aux filter (separate, like the real IME)
-        let pinyinBuffer = '';
-        let auxFilter = '';
+        let currentIme = 'chinese';
+        let allCands = [];
+        let candPage = 0;
         let filterActive = false;
 
-        const pinyinInput = document.getElementById('pinyinInput');
-        const editorArea = document.getElementById('editorArea');
-        const candContainer = document.getElementById('candidates');
-        const candWords = document.getElementById('cand-words');
-        const segmentsEl = document.getElementById('segments');
-        const statusDot = document.getElementById('statusDot');
-        const engineStatus = document.getElementById('engineStatus');
-
-        function auxDisplay() {
-            if (!auxFilter) return '';
-            let s = '';
-            for (let i = 0; i < auxFilter.length; i++) {
-                s += i === 0 ? auxFilter[i].toUpperCase() : auxFilter[i].toLowerCase();
-            }
-            return s;
+        // Key mapping from physical keyboard
+        function kbToApi(k) {
+            const m = { Backspace: 'backspace', Enter: 'enter', ' ': 'space',
+                Shift: 'shift', Escape: 'esc', CapsLock: 'capslock', Tab: 'tab',
+                '-': '-', '=': '=', '`': '`', ',': ',', '.': '.',
+                '/': '/', ';': ';', "'": "'", '[': '[', ']': ']', '\\': '\\' };
+            return m[k] || k.toLowerCase();
         }
 
-        function updatePinyinDisplay() {
-            pinyinInput.value = pinyinBuffer + auxDisplay();
-            statusDot.className = 'status-dot' + (engineReady ? ' ok' : '') + (filterActive ? '' : '');
-            if (filterActive) statusDot.classList.add('filter-on');
+        async function api(method, body) {
+            const r = await fetch('/api/ime/' + method, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body) });
+            if (!r.ok) throw new Error(method + ': ' + r.status);
+            return r.json();
         }
 
-        function enterFilterMode() {
-            if (!pinyinBuffer) return;
-            filterActive = true;
-            auxFilter = '';
-            updatePinyinDisplay();
-            queryCandidates();
-            renderKeyboard();
+        async function initSession() {
+            const d = await api('session', {});
+            sessionId = d.session_id;
+            document.getElementById('engineStatus').textContent = '就绪';
+            document.getElementById('statusDot').className = 'status-dot ok';
+            applyState(d);
         }
 
-        function exitFilterMode() {
-            filterActive = false;
-            auxFilter = '';
-            updatePinyinDisplay();
-            queryCandidates();
-            renderKeyboard();
+        async function sendKey(key, val, shift, ctrl, alt, extra) {
+            if (!sessionId) await initSession();
+            const b = { session_id: sessionId, key, val: val || 1,
+                shift: shift || false, ctrl: ctrl || false, alt: alt || false };
+            if (extra) Object.assign(b, extra);
+            applyState(await api('key', b));
         }
 
-        // ===== Engine search with proper syllable segmentation =====
-        async function queryCandidates() {
-            if (!pinyinBuffer) {
-                hideCandidates();
-                return;
-            }
+        async function selectCandidate(idx) {
+            if (!sessionId || idx >= allCands.length) return;
+            applyState(await api('key', {
+                session_id: sessionId, key: 'digit' + (idx % 10), candidate_index: idx }));
+        }
 
-            const filterMode = filterActive ? 'global' : 'none';
+        function applyState(data) {
+            pinyinDiv.textContent = data.pinyin_display || '';
+            filterActive = data.filter_active;
+            let sd = document.getElementById('statusDot');
+            sd.className = 'status-dot ok' + (filterActive ? ' filter' : '');
 
-            try {
-                const resp = await fetch('/api/ime/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ buffer: pinyinBuffer, profile: currentIme, limit: 500, filter_mode: filterMode, aux_filter: auxFilter })
-                });
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            // Candidates with paging
+            allCands = data.candidates || [];
+            candPage = 0;
+            renderCandPage();
 
-                const data = await resp.json();
-                allCandidates = data.candidates || [];
-                currentPage = 0;
+            // Segments
+            let segs = data.segments || [];
+            document.getElementById('segments').textContent = segs.length ? '分词: ' + segs.join(' ') : '';
 
-                // Show segments
-                if (data.segments && data.segments.length) {
-                    segmentsEl.textContent = '分词: ' + data.segments.join(' ');
-                } else {
-                    segmentsEl.textContent = '';
-                }
-
-                showCandidates(allCandidates);
-
-                if (!engineReady) {
-                    engineReady = true;
-                    engineStatus.textContent = '就绪';
-                    statusDot.className = 'status-dot ok' + (filterActive ? ' filter-on' : '');
-                }
-            } catch (e) {
-                // Fallback: use old dict search API
-                try {
-                    const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(pinyinBuffer) + '&ime=' + currentIme);
-                    const results = await resp.json();
-                    // Convert old format to new format
-                    allCandidates = (results || []).map(r => ({
-                        text: r.word,
-                        simplified: r.word,
-                        traditional: r.word,
-                        hint: r.hint || '',
-                        weight: 0,
-                        match_level: 3,
-                        source: 'dict'
-                    }));
-                    currentPage = 0;
-                    segmentsEl.textContent = '';
-                    showCandidates(allCandidates);
-                } catch (e2) {
-                    console.error('Candidate search failed:', e2);
-                    hideCandidates();
+            // Action → editor
+            if (data.action) {
+                let a = data.action, cur = editorArea.selectionStart;
+                let bef = editorArea.value.substring(0, cur);
+                let aft = editorArea.value.substring(editorArea.selectionEnd);
+                if (a.type === 'commit') {
+                    editorArea.value = bef + a.text + aft;
+                    editorArea.selectionStart = editorArea.selectionEnd = cur + a.text.length;
+                } else if (a.type === 'delete_and_emit') {
+                    let d = a.delete || 0;
+                    let nb = bef.substring(0, Math.max(0, cur - d));
+                    editorArea.value = nb + (a.text || '') + aft;
+                    editorArea.selectionStart = editorArea.selectionEnd = nb.length + (a.text || '').length;
                 }
             }
+            document.getElementById('char-count').textContent = editorArea.value.length;
+            renderKB();
         }
 
-        function showCandidates(results) {
-            if (!results || results.length === 0) {
-                hideCandidates();
-                return;
-            }
+        function renderCandPage() {
+            let container = document.getElementById('candItems');
+            let totalPages = Math.ceil(allCands.length / PAGE_SIZE);
+            let start = candPage * PAGE_SIZE;
+            let page = allCands.slice(start, start + PAGE_SIZE);
 
-            const pageSize = 9;
-            const start = currentPage * pageSize;
-            const page = results.slice(start, start + pageSize);
-
-            const matchClass = { 0: '', 1: 'prefix', 2: 'abbr', 3: 'exact' };
-            candWords.innerHTML = page.map((c, i) => {
-                const cls = matchClass[c.match_level] || '';
-                return `<div class="word ${cls}" data-index="${start + i}">
-                    <span class="num">${start + i + 1}</span>
-                    <span>${escHtml(c.text)}</span>
-                    ${c.hint ? `<span class="hint">${escHtml(c.hint)}</span>` : ''}
+            let mc = { 0: '', 1: 'prefix', 2: 'abbr', 3: 'exact' };
+            container.innerHTML = page.map((c, i) => {
+                let cls = mc[c.match_level] || '';
+                let gIdx = start + i;
+                return `<div class="cand-item ${cls}" onclick="selectCandidate(${gIdx})">
+                    <span class="num">${gIdx + 1}</span>
+                    <span>${esc(c.text)}</span>
+                    ${c.hint ? `<span class="hint">${esc(c.hint)}</span>` : ''}
                 </div>`;
             }).join('');
-
-            // Click handlers for candidate words
-            candWords.querySelectorAll('.word').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const idx = parseInt(el.dataset.index);
-                    commitCandidate(idx);
-                });
-            });
-
-            candContainer.classList.add('show');
-        }
-
-        function hideCandidates() {
-            candContainer.classList.remove('show');
-            candWords.innerHTML = '';
-            allCandidates = [];
-            currentPage = 0;
-            segmentsEl.textContent = '';
-        }
-
-        function commitCandidate(idx) {
-            if (!allCandidates[idx]) return;
-            const word = allCandidates[idx].text;
-
-            // Add to editor
-            const cursor = editorArea.selectionStart;
-            const before = editorArea.value.substring(0, cursor);
-            const after = editorArea.value.substring(editorArea.selectionEnd);
-            editorArea.value = before + word + after;
-            editorArea.selectionStart = editorArea.selectionEnd = cursor + word.length;
-
-            // Clear pinyin buffer, aux filter, and candidates
-            pinyinBuffer = '';
-            auxFilter = '';
-            filterActive = false;
-            pinyinInput.value = '';
-            hideCandidates();
-            updateCharCount();
-            renderKeyboard();
-
-            // Keep focus on pinyin input for continued typing
-            pinyinInput.focus();
-        }
-
-        function commitRawPinyin() {
-            if (pinyinBuffer) {
-                const cursor = editorArea.selectionStart;
-                const before = editorArea.value.substring(0, cursor);
-                const after = editorArea.value.substring(editorArea.selectionEnd);
-                editorArea.value = before + pinyinBuffer + after;
-                editorArea.selectionStart = editorArea.selectionEnd = cursor + pinyinBuffer.length;
-            } else {
-                const cursor = editorArea.selectionStart;
-                editorArea.value = editorArea.value.substring(0, cursor) +
-                    '\n' + editorArea.value.substring(editorArea.selectionEnd);
-                editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
+            for (let i = page.length; i < PAGE_SIZE; i++) {
+                container.innerHTML += '<div class="cand-item" style="visibility:hidden;"></div>';
             }
 
-            pinyinBuffer = '';
-            auxFilter = '';
-            filterActive = false;
-            pinyinInput.value = '';
-            hideCandidates();
-            updateCharCount();
-            renderKeyboard();
-            pinyinInput.focus();
+            document.getElementById('btnPageUp').disabled = candPage <= 0;
+            document.getElementById('btnPageDown').disabled = candPage >= totalPages - 1;
+            document.getElementById('pageInfo').textContent = allCands.length > 0 ?
+                (candPage + 1) + '/' + totalPages : '';
         }
 
-        function pageUp() {
-            if (currentPage > 0) {
-                currentPage--;
-                showCandidates(allCandidates);
-            }
-        }
-
-        function pageDown() {
-            const maxPage = Math.ceil(allCandidates.length / 9) - 1;
-            if (currentPage < maxPage) {
-                currentPage++;
-                showCandidates(allCandidates);
-            }
-        }
-
-        function updateCharCount() {
-            document.getElementById('char-count').textContent = editorArea.value.length;
-        }
-
-        function escHtml(s) {
-            const div = document.createElement('div');
-            div.textContent = s;
-            return div.innerHTML;
+        function esc(s) {
+            let d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
         }
 
         // ===== Virtual keyboard =====
-        function renderKeyboard() {
-            const container = document.getElementById('keyboard');
-            container.innerHTML = '';
-
+        function renderKB() {
+            let ct = document.getElementById('keyboard');
+            ct.innerHTML = '';
             KEYBOARD.forEach(row => {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'kb-row';
-
-                row.forEach(key => {
-                    const keyDiv = document.createElement('div');
-                    keyDiv.className = `key ${key.className || ''}`;
-                    keyDiv.dataset.key = key.id;
-
-                    if (key.id === 'Shift') {
-                        if (isShift) keyDiv.classList.add('shift-on');
-                        if (filterActive) keyDiv.classList.add('filter-on');
+                let rd = document.createElement('div'); rd.className = 'kb-row';
+                row.forEach(k => {
+                    let kd = document.createElement('div');
+                    kd.className = 'key ' + (k.className || '');
+                    kd.dataset.key = k.id;
+                    if (k.id === 'Shift') {
+                        if (isShift) kd.classList.add('shift-on');
+                        if (filterActive) kd.classList.add('filter-on');
                     }
-                    if (key.id === 'CapsLock' && isCapsLock) keyDiv.classList.add('caps-on');
-
-                    keyDiv.innerHTML = `
-                        <span class="sub">${key.sub || ''}</span>
-                        <span class="char">${key.label}</span>
-                    `;
-
-                    keyDiv.addEventListener('click', () => handleKey(key.id, key.label));
-                    rowDiv.appendChild(keyDiv);
+                    if (k.id === 'CapsLock' && isCapsLock) kd.classList.add('caps-on');
+                    kd.innerHTML = `<span class="sub">${k.sub || ''}</span><span class="char">${k.label}</span>`;
+                    kd.addEventListener('click', () => keyClick(k));
+                    rd.appendChild(kd);
                 });
-                container.appendChild(rowDiv);
+                ct.appendChild(rd);
             });
         }
 
-        function handleKey(keyId, keyLabel) {
-            const hasCandidates = candContainer.classList.contains('show');
-
-            // Number keys: select candidate when candidates visible
-            if (keyId >= '0' && keyId <= '9') {
-                if (hasCandidates && allCandidates.length > 0) {
-                    const idx = keyId === '0' ? 9 : parseInt(keyId) - 1;
-                    const globalIdx = currentPage * 9 + idx;
-                    if (globalIdx < allCandidates.length) {
-                        commitCandidate(globalIdx);
-                    }
-                } else {
-                    // Direct number input into pinyin buffer
-                    appendToBuffer(keyId);
-                }
-                return;
-            }
-
-            // -/= page flip
-            if ((keyId === '-' || keyId === '=') && hasCandidates) {
-                if (keyId === '-') pageUp();
-                else pageDown();
-                return;
-            }
-
-            if (keyId === 'Space') {
-                if (hasCandidates && allCandidates.length > 0) {
-                    commitCandidate(currentPage * 9);
-                } else {
-                    // No candidates: input space into editor
-                    const cursor = editorArea.selectionStart;
-                    editorArea.value = editorArea.value.substring(0, cursor) +
-                        ' ' + editorArea.value.substring(editorArea.selectionEnd);
-                    editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
-                    updateCharCount();
-                }
-                return;
-            }
-
-            if (keyId === 'Backspace') {
-                if (filterActive) {
-                    if (auxFilter.length > 0) {
-                        auxFilter = auxFilter.slice(0, -1);
-                        if (auxFilter.length === 0) {
-                            filterActive = false;
-                            renderKeyboard();
-                        }
-                    }
-                    updatePinyinDisplay();
-                    queryCandidates();
-                } else if (pinyinBuffer.length > 0) {
-                    pinyinBuffer = pinyinBuffer.slice(0, -1);
-                    updatePinyinDisplay();
-                    queryCandidates();
-                } else {
-                    // Delete from editor when all buffers are empty
-                    const cursor = editorArea.selectionStart;
-                    if (editorArea.selectionStart === editorArea.selectionEnd && cursor > 0) {
-                        editorArea.value = editorArea.value.substring(0, cursor - 1) +
-                            editorArea.value.substring(cursor);
-                        editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
-                    } else if (editorArea.selectionStart !== editorArea.selectionEnd) {
-                        editorArea.value = editorArea.value.substring(0, editorArea.selectionStart) +
-                            editorArea.value.substring(editorArea.selectionEnd);
-                        editorArea.selectionStart = editorArea.selectionEnd = editorArea.selectionStart;
-                    }
-                    updateCharCount();
-                    hideCandidates();
-                }
-                return;
-            }
-
-            if (keyId === 'Enter') {
-                commitRawPinyin();
-                return;
-            }
-
-            if (keyId === 'Shift') {
-                if (pinyinBuffer) {
-                    // Toggle aux filter (same as real IME: press Shift alone)
-                    if (filterActive) {
-                        exitFilterMode();
-                    } else {
-                        enterFilterMode();
-                    }
-                } else {
-                    // No pinyin: toggle case for next letter
-                    isShift = !isShift;
-                }
-                renderKeyboard();
-                return;
-            }
-
-            if (keyId === 'CapsLock') {
-                isCapsLock = !isCapsLock;
-                renderKeyboard();
-                return;
-            }
-
-            if (['Ctrl', 'Win', 'Alt', 'Menu', 'Tab'].includes(keyId)) {
-                return;
-            }
-
-            // Letter/character keys
-            let char = keyLabel;
-            if ((isCapsLock || isShift) && char.length === 1 && char >= 'a' && char <= 'z') {
-                char = char.toUpperCase();
-                if (filterActive) {
-                    // Shift+letter in filter mode = first aux char uppercased
-                    auxFilter += char; // keep original letter
-                    updatePinyinDisplay();
-                    queryCandidates();
-                    return;
-                }
-            }
-            if (isShift && char.length === 1) {
-                isShift = false;
-            }
-
-            appendToBuffer(char.toLowerCase());
-            if (isShift) renderKeyboard();
+        async function keyClick(k) {
+            let id = k.id;
+            if (id === 'Shift') { await sendKey('shift', 1); await sendKey('shift', 0); return; }
+            if (id === 'CapsLock') { isCapsLock = !isCapsLock; renderKB(); return; }
+            if (['Ctrl','Win','Alt','Menu','Tab'].includes(id)) return;
+            await sendKey(id, 1, isShift);
+            if (isShift) { isShift = false; renderKB(); }
         }
 
-        function appendToBuffer(char) {
-            if (filterActive) {
-                // In filter mode, add to aux filter
-                auxFilter += char.toLowerCase();
-            } else {
-                pinyinBuffer += char.toLowerCase();
-            }
-            updatePinyinDisplay();
-            queryCandidates();
-        }
-
-        // ===== Pinyin input events (physical keyboard) =====
-        // The pinyinInput is a visual display - all state lives in pinyinBuffer/auxFilter
-        pinyinInput.addEventListener('keydown', (e) => {
-            const hasCandidates = candContainer.classList.contains('show');
-            const key = e.key;
-            const isLetter = key.length === 1 && ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z'));
-
-            // Number keys 1-9: select candidate
-            if (key >= '1' && key <= '9' && hasCandidates && allCandidates.length > 0) {
-                e.preventDefault();
-                const idx = parseInt(key) - 1;
-                const globalIdx = currentPage * 9 + idx;
-                if (globalIdx < allCandidates.length) {
-                    commitCandidate(globalIdx);
-                }
+        // ===== Physical keyboard =====
+        document.addEventListener('keydown', async e => {
+            if (document.activeElement === editorArea) {
+                if (e.key === 'Escape') { e.preventDefault(); editorArea.blur(); pinyinDiv.focus(); }
                 return;
             }
-
-            // Space: select first candidate or add space to editor
-            if (key === ' ') {
-                e.preventDefault();
-                if (hasCandidates && allCandidates.length > 0) {
-                    commitCandidate(currentPage * 9);
-                } else {
-                    const cursor = editorArea.selectionStart;
-                    editorArea.value = editorArea.value.substring(0, cursor) +
-                        ' ' + editorArea.value.substring(editorArea.selectionEnd);
-                    editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
-                    updateCharCount();
-                }
-                return;
-            }
-
-            // Enter: commit raw pinyin
-            if (key === 'Enter') {
-                e.preventDefault();
-                commitRawPinyin();
-                return;
-            }
-
-            // Escape: clear everything
-            if (key === 'Escape') {
-                pinyinBuffer = '';
-                auxFilter = '';
-                filterActive = false;
-                updatePinyinDisplay();
-                hideCandidates();
-                renderKeyboard();
-                return;
-            }
-
-            // Shift: toggle aux filter (like real IME)
-            if (key === 'Shift') {
-                e.preventDefault();
-                if (pinyinBuffer) {
-                    if (filterActive) {
-                        exitFilterMode();
-                    } else {
-                        enterFilterMode();
-                    }
-                }
-                return;
-            }
-
-            // Backspace
-            if (key === 'Backspace') {
-                e.preventDefault();
-                if (filterActive) {
-                    if (auxFilter.length > 0) {
-                        auxFilter = auxFilter.slice(0, -1);
-                        if (auxFilter.length === 0) {
-                            filterActive = false;
-                            renderKeyboard();
-                        }
-                    }
-                    updatePinyinDisplay();
-                    queryCandidates();
-                } else if (pinyinBuffer.length > 0) {
-                    pinyinBuffer = pinyinBuffer.slice(0, -1);
-                    updatePinyinDisplay();
-                    queryCandidates();
-                } else {
-                    // Delete from editor
-                    const cursor = editorArea.selectionStart;
-                    if (editorArea.selectionStart === editorArea.selectionEnd && cursor > 0) {
-                        editorArea.value = editorArea.value.substring(0, cursor - 1) +
-                            editorArea.value.substring(cursor);
-                        editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
-                    } else if (editorArea.selectionStart !== editorArea.selectionEnd) {
-                        editorArea.value = editorArea.value.substring(0, editorArea.selectionStart) +
-                            editorArea.value.substring(editorArea.selectionEnd);
-                        editorArea.selectionStart = editorArea.selectionEnd = editorArea.selectionStart;
-                    }
-                    updateCharCount();
-                    hideCandidates();
-                }
-                return;
-            }
-
-            // -/= page flip
-            if (key === '-' && hasCandidates) {
-                e.preventDefault();
-                pageUp();
-                return;
-            }
-            if (key === '=' && hasCandidates) {
-                e.preventDefault();
-                pageDown();
-                return;
-            }
-
-            // Letter keys: add to buffer (or aux filter if active)
-            if (isLetter) {
-                e.preventDefault();
-                const lower = key.toLowerCase();
-                if (filterActive) {
-                    auxFilter += lower;
-                } else {
-                    pinyinBuffer += lower;
-                }
-                updatePinyinDisplay();
-                queryCandidates();
-                return;
-            }
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+            e.preventDefault();
+            let ak = kbToApi(e.key);
+            if (e.key === 'Shift') { await sendKey(ak, 1); return; }
+            // Convert -, = to minus/equal for page-flip in engine
+            if (e.key === '-') ak = '-';
+            if (e.key === '=') ak = '=';
+            await sendKey(ak, 1, e.shiftKey, e.ctrlKey, e.altKey);
+        });
+        document.addEventListener('keyup', async e => {
+            if (document.activeElement === editorArea) return;
+            if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+            if (e.key === 'Shift') await sendKey('shift', 0);
         });
 
-        // Prevent input event from overwriting our display value
-        pinyinInput.addEventListener('input', () => {
-            // Sync back our display in case something else modified it
-            updatePinyinDisplay();
+        // ===== Editor =====
+        editorArea.addEventListener('focus', () => pinyinDiv.classList.remove('focus'));
+        editorArea.addEventListener('blur', () => pinyinDiv.classList.add('focus'));
+        editorArea.addEventListener('input', () => {
+            document.getElementById('char-count').textContent = editorArea.value.length;
         });
-
-        // Always keep focus on pinyin input unless user explicitly clicks editor
-        pinyinInput.addEventListener('blur', (e) => {
-            // Small delay to allow checking where focus went
-            setTimeout(() => {
-                if (document.activeElement !== editorArea &&
-                    document.activeElement !== pinyinInput &&
-                    !document.activeElement.closest('.keyboard')) {
-                    pinyinInput.focus();
-                }
-            }, 50);
-        });
-
-        editorArea.addEventListener('input', updateCharCount);
 
         // ===== Buttons =====
+        document.getElementById('btnPageUp').addEventListener('click', () => {
+            if (candPage > 0) { candPage--; renderCandPage(); }
+        });
+        document.getElementById('btnPageDown').addEventListener('click', () => {
+            let total = Math.ceil(allCands.length / PAGE_SIZE);
+            if (candPage < total - 1) { candPage++; renderCandPage(); }
+        });
         document.getElementById('btn-copy').addEventListener('click', async () => {
-            const text = editorArea.value;
-            if (!text) { showToast('没有内容', true); return; }
-            try {
-                await navigator.clipboard.writeText(text);
-                showToast('已复制!');
-            } catch {
-                editorArea.select();
-                document.execCommand('copy');
-                showToast('已复制!');
-            }
+            let t = editorArea.value;
+            if (!t) { showToast('没有内容', true); return; }
+            try { await navigator.clipboard.writeText(t); showToast('已复制!'); }
+            catch { editorArea.select(); document.execCommand('copy'); showToast('已复制!'); }
         });
-
         document.getElementById('btn-search').addEventListener('click', () => {
-            const text = editorArea.value.trim();
-            if (!text) { showToast('没有内容', true); return; }
-            window.open('https://www.baidu.com/s?wd=' + encodeURIComponent(text), '_blank');
+            let t = editorArea.value.trim();
+            if (!t) { showToast('没有内容', true); return; }
+            window.open('https://www.baidu.com/s?wd=' + encodeURIComponent(t), '_blank');
         });
-
         document.getElementById('btn-clear-editor').addEventListener('click', () => {
             editorArea.value = '';
-            pinyinBuffer = '';
-            auxFilter = '';
-            filterActive = false;
-            updatePinyinDisplay();
-            hideCandidates();
-            updateCharCount();
-            renderKeyboard();
-            pinyinInput.focus();
-            showToast('已清空');
+            document.getElementById('char-count').textContent = '0';
+            pinyinDiv.focus(); showToast('已清空');
         });
 
-        function showToast(msg, isErr) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.className = 'toast show' + (isErr ? ' err' : '');
-            setTimeout(() => toast.className = 'toast', 2000);
+        function showToast(msg, err) {
+            let t = document.getElementById('toast'); t.textContent = msg;
+            t.className = 'toast show' + (err ? ' err' : '');
+            setTimeout(() => t.className = 'toast', 2000);
         }
 
         // ===== IME switch =====
-        document.querySelectorAll('.ime-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.ime-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentIme = btn.dataset.ime;
-                document.getElementById('current-ime').textContent = btn.textContent;
-                pinyinBuffer = '';
-                auxFilter = '';
-                filterActive = false;
-                updatePinyinDisplay();
-                hideCandidates();
-                renderKeyboard();
-                pinyinInput.focus();
+        document.querySelectorAll('.ime-btn').forEach(b => {
+            b.addEventListener('click', async () => {
+                document.querySelectorAll('.ime-btn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                currentIme = b.dataset.ime;
+                document.getElementById('current-ime').textContent = b.textContent;
+                if (sessionId) {
+                    await sendKey('a', 1, false, false, false, { profile: currentIme });
+                    await sendKey('backspace', 1);
+                }
             });
         });
 
-        // ===== Init =====
-        renderKeyboard();
-        pinyinInput.focus();
-
-        // Initial engine warmup
-        fetch('/api/ime/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ buffer: 'ni', profile: 'chinese', limit: 1 })
-        }).then(resp => {
-            if (resp.ok) {
-                engineReady = true;
-                engineStatus.textContent = '就绪';
-                statusDot.className = 'status-dot ok';
-            }
-        }).catch(() => {});
+        renderKB();
+        pinyinDiv.focus();
+        initSession().catch(() => {
+            document.getElementById('engineStatus').textContent = '启动失败';
+        });
     </script>
 </body>
 </html>
