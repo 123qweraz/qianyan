@@ -195,6 +195,8 @@ pub struct Input {
     pub auto_commit_unique_en_fuzhuma: bool,
     pub auto_commit_unique_full_match: bool,
     pub auto_commit_stroke: bool,
+    #[serde(default = "default_auto_sentence_min_syllables")]
+    pub auto_sentence_min_syllables: u32,
     pub enable_prefix_matching: bool,
     pub prefix_matching_limit: usize,
     pub enable_abbreviation_matching: bool,
@@ -335,6 +337,10 @@ fn default_toggle_traditional() -> Hotkey {
 
 fn default_segmentation_delimiters() -> String {
     "'".to_string()
+}
+
+fn default_auto_sentence_min_syllables() -> u32 {
+    4
 }
 
 fn default_page_up() -> Vec<String> {
@@ -866,6 +872,7 @@ impl Config {
                 auto_commit_unique_en_fuzhuma: false,
                 auto_commit_unique_full_match: false,
                 auto_commit_stroke: true,
+                auto_sentence_min_syllables: 4,
                 enable_prefix_matching: true,
                 prefix_matching_limit: 20,
                 enable_abbreviation_matching: true,

@@ -435,12 +435,21 @@ impl Translator for ComposeTranslator {
         &self,
         input: &str,
         _segments: &[String],
-        _config: &Config,
+        config: &Config,
         _limit: usize,
     ) -> Vec<Candidate> {
         let base = self.segment_base(input);
-        if base.len() < 2 || base.len() > 12 {
+        let min_syllables = config.input.auto_sentence_min_syllables as usize;
+        let min_syllables = min_syllables.max(2);
+        if base.len() < min_syllables || base.len() > 12 {
             return vec![];
+        }
+
+        if base.len() >= 2 {
+            let prefix_without_last: String = base[..base.len() - 1].concat();
+            if self.trie.has_longer_match(&prefix_without_last) {
+                return vec![];
+            }
         }
 
         let mut all_partitions = Vec::new();

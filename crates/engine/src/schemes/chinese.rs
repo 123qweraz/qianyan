@@ -509,42 +509,50 @@ impl InputScheme for ChineseScheme {
             let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
             if let Some(d) = context.tries.get("chinese") {
                 let base = self.segment_base(&pinyin_only, context.base_syllables);
+                let min_syllables = context.config.input.auto_sentence_min_syllables as usize;
+                let min_syllables = min_syllables.max(2);
                 if base.len() >= 2 && base.len() <= 12
-                    && (base.len() >= 4 || final_results.is_empty()) {
-                    let mut all_partitions = Vec::new();
-                    self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d);
-                    if all_partitions.len() > 100 {
-                        all_partitions.truncate(100);
-                    }
-                    let mut compose_results: Vec<(String, usize, u64)> = Vec::new();
-                    for part in &all_partitions {
-                        let mut text = String::new();
-                        let mut total_freq = 0u64;
-                        let mut ok = true;
-                        for &(s, e) in part {
-                            let py: String = base[s..e].concat();
-                            if let Some(entries) = d.get_all_exact(&py) {
-                                if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
-                                    text.push_str(best.word);
-                                    total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
-                                    continue;
+                    && (base.len() >= min_syllables || final_results.is_empty()) {
+                    let prefix_without_last: String = base[..base.len() - 1].concat();
+                    if d.has_longer_match(&prefix_without_last) {
+                        // 去掉最后一个音节的前缀仍在词典中有更长的匹配，
+                        // 说明用户可能正在输入一个较长的已知词，跳过组句
+                    } else {
+                        let mut all_partitions = Vec::new();
+                        self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d);
+                        if all_partitions.len() > 100 {
+                            all_partitions.truncate(100);
+                        }
+                        let mut compose_results: Vec<(String, usize, u64)> = Vec::new();
+                        for part in &all_partitions {
+                            let mut text = String::new();
+                            let mut total_freq = 0u64;
+                            let mut ok = true;
+                            for &(s, e) in part {
+                                let py: String = base[s..e].concat();
+                                if let Some(entries) = d.get_all_exact(&py) {
+                                    if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
+                                        text.push_str(best.word);
+                                        total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
+                                        continue;
+                                    }
                                 }
+                                ok = false;
+                                break;
                             }
-                            ok = false;
-                            break;
+                            if ok {
+                                compose_results.push((text, part.len(), total_freq));
+                            }
                         }
-                        if ok {
-                            compose_results.push((text, part.len(), total_freq));
-                        }
-                    }
-                    compose_results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
-                    compose_results.truncate(6);
-                    for (text, _, freq) in &compose_results {
-                        if seen.insert(text.clone()) {
-                            let weight = (*freq as f64 * 0.001 + 0.1) as u32;
-                            let mut cand = SchemeCandidate::new(text.clone(), weight);
-                            cand.match_level = 3;
-                            final_results.push(cand);
+                        compose_results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
+                        compose_results.truncate(6);
+                        for (text, _, freq) in &compose_results {
+                            if seen.insert(text.clone()) {
+                                let weight = (*freq as f64 * 0.001 + 0.1) as u32;
+                                let mut cand = SchemeCandidate::new(text.clone(), weight);
+                                cand.match_level = 3;
+                                final_results.push(cand);
+                            }
                         }
                     }
                 }

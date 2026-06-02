@@ -76,6 +76,10 @@
                         <label class="switch"><input type="checkbox" id="auto_commit_unique_full_match"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
+                        <div class="info"><div class="title">自动造句起始音节数</div><div class="desc">拼音音节数达到多少个时开始自动组句（默认4，调大可减少误组句）</div></div>
+                        <input type="number" id="auto_sentence_min_syllables" style="width: 80px;" min="2" max="12">
+                    </div>
+                    <div class="setting-item">
                         <div class="info"><div class="title">开启前缀联想</div><div class="desc">根据已输入的码推荐可能的后续词</div></div>
                         <label class="switch"><input type="checkbox" id="enable_prefix_matching"><span class="slider"></span></label>
                     </div>
@@ -213,6 +217,7 @@
             bindInput('enable_auto_reorder', 'input');
             bindInput('segmentation_delimiters', 'input');
             bindInput('auto_commit_unique_full_match', 'input');
+            bindInput('auto_sentence_min_syllables', 'input');
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
             bindInput('anti_typo_mode', 'input');
