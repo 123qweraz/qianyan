@@ -1926,10 +1926,15 @@ struct ImeSearchRequest {
     profile: String,
     #[serde(default = "default_limit")]
     limit: usize,
+    #[serde(default)]
+    aux_filter: String,
+    #[serde(default = "default_filter_mode")]
+    filter_mode: String,
 }
 
 fn default_profile() -> String { "chinese".into() }
-fn default_limit() -> usize { 50 }
+fn default_limit() -> usize { 500 }
+fn default_filter_mode() -> String { "none".into() }
 
 #[derive(Serialize)]
 struct ImeCandidateResponse {
@@ -1976,14 +1981,19 @@ async fn ime_search_handler(
     };
 
     let cfg = config.read().unwrap().clone();
+    let fm = match req.filter_mode.as_str() {
+        "global" => FilterMode::Global,
+        "page" => FilterMode::Page,
+        _ => FilterMode::None,
+    };
     let (candidates, segments) = engine.search(EngineSearchQuery {
         buffer: &req.buffer,
         profile: &req.profile,
         syllables: &engine.syllables,
         config: &cfg,
         limit: req.limit,
-        filter_mode: FilterMode::None,
-        aux_filter: "",
+        filter_mode: fm,
+        aux_filter: &req.aux_filter,
         context: None,
         fuzzy_enabled: cfg.input.enable_fuzzy_pinyin,
     });

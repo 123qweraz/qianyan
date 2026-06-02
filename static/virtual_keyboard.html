@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>虚拟键盘 - 千言输入法</title>
+    <title>网页输入法 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         body { background: #f5f5f7; min-height: 100vh; }
@@ -76,6 +76,7 @@
         .key:active, .key.pressed { transform: translateY(3px); box-shadow: 0 0 0 #d1d1d6; background: var(--apple-accent); color: white; }
         .key.shift-on { background: var(--apple-accent); color: white; }
         .key.caps-on { background: #007aff; color: white; }
+        .key.filter-on { background: #34c759; color: white; }
         .key .char { font-size: 18px; font-weight: 600; }
         .key .sub { font-size: 10px; color: #8e8e93; position: absolute; top: 3px; right: 5px; }
         .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.caps-on .sub { color: rgba(255,255,255,0.7); }
@@ -109,7 +110,7 @@
 
         <!-- Pinyin input -->
         <div class="pinyin-row">
-            <input type="text" id="pinyinInput" placeholder="在此输入拼音，如 nihao → 你好" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input type="text" id="pinyinInput" placeholder="输入拼音，如 nihao → 你好" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
             <div class="segments" id="segments"></div>
         </div>
 
@@ -130,7 +131,7 @@
 
         <!-- Virtual keyboard -->
         <div class="keyboard" id="keyboard"></div>
-        <div class="help-tip">空格选首词 | 数字 1-9 选词 | Backspace 删拼音 | Enter 提交原拼音 | -/= 翻页</div>
+        <div class="help-tip">空格选首词 | 数字 1-9 选词 | Shift 切换辅助码筛选 | Backspace 删拼音/辅助码 | Enter 提交原拼音 | -/= 翻页</div>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -218,25 +219,65 @@
         let engineReady = false;
         let debounceTimer;
 
+        // IME state: pinyin buffer + aux filter (separate, like the real IME)
+        let pinyinBuffer = '';
+        let auxFilter = '';
+        let filterActive = false;
+
         const pinyinInput = document.getElementById('pinyinInput');
         const editorArea = document.getElementById('editorArea');
         const candContainer = document.getElementById('candidates');
         const candWords = document.getElementById('cand-words');
         const segmentsEl = document.getElementById('segments');
+        const statusDot = document.getElementById('statusDot');
+        const engineStatus = document.getElementById('engineStatus');
+
+        function auxDisplay() {
+            if (!auxFilter) return '';
+            let s = '';
+            for (let i = 0; i < auxFilter.length; i++) {
+                s += i === 0 ? auxFilter[i].toUpperCase() : auxFilter[i].toLowerCase();
+            }
+            return s;
+        }
+
+        function updatePinyinDisplay() {
+            pinyinInput.value = pinyinBuffer + auxDisplay();
+            statusDot.className = 'status-dot' + (engineReady ? ' ok' : '') + (filterActive ? '' : '');
+            if (filterActive) statusDot.classList.add('filter-on');
+        }
+
+        function enterFilterMode() {
+            if (!pinyinBuffer) return;
+            filterActive = true;
+            auxFilter = '';
+            updatePinyinDisplay();
+            queryCandidates();
+            renderKeyboard();
+        }
+
+        function exitFilterMode() {
+            filterActive = false;
+            auxFilter = '';
+            updatePinyinDisplay();
+            queryCandidates();
+            renderKeyboard();
+        }
 
         // ===== Engine search with proper syllable segmentation =====
         async function queryCandidates() {
-            const pinyin = pinyinInput.value.trim();
-            if (!pinyin) {
+            if (!pinyinBuffer) {
                 hideCandidates();
                 return;
             }
+
+            const filterMode = filterActive ? 'global' : 'none';
 
             try {
                 const resp = await fetch('/api/ime/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ buffer: pinyin, profile: currentIme, limit: 50 })
+                    body: JSON.stringify({ buffer: pinyinBuffer, profile: currentIme, limit: 500, filter_mode: filterMode, aux_filter: auxFilter })
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
@@ -255,13 +296,13 @@
 
                 if (!engineReady) {
                     engineReady = true;
-                    document.getElementById('engineStatus').textContent = '就绪';
-                    document.getElementById('statusDot').className = 'status-dot ok';
+                    engineStatus.textContent = '就绪';
+                    statusDot.className = 'status-dot ok' + (filterActive ? ' filter-on' : '');
                 }
             } catch (e) {
                 // Fallback: use old dict search API
                 try {
-                    const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(pinyin) + '&ime=' + currentIme);
+                    const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(pinyinBuffer) + '&ime=' + currentIme);
                     const results = await resp.json();
                     // Convert old format to new format
                     allCandidates = (results || []).map(r => ({
@@ -335,35 +376,40 @@
             editorArea.value = before + word + after;
             editorArea.selectionStart = editorArea.selectionEnd = cursor + word.length;
 
-            // Clear pinyin and candidates
+            // Clear pinyin buffer, aux filter, and candidates
+            pinyinBuffer = '';
+            auxFilter = '';
+            filterActive = false;
             pinyinInput.value = '';
             hideCandidates();
             updateCharCount();
+            renderKeyboard();
 
             // Keep focus on pinyin input for continued typing
             pinyinInput.focus();
         }
 
         function commitRawPinyin() {
-            // Add raw pinyin to editor
-            const pinyin = pinyinInput.value;
-            if (!pinyin) {
-                // Insert newline if no pinyin
+            if (pinyinBuffer) {
+                const cursor = editorArea.selectionStart;
+                const before = editorArea.value.substring(0, cursor);
+                const after = editorArea.value.substring(editorArea.selectionEnd);
+                editorArea.value = before + pinyinBuffer + after;
+                editorArea.selectionStart = editorArea.selectionEnd = cursor + pinyinBuffer.length;
+            } else {
                 const cursor = editorArea.selectionStart;
                 editorArea.value = editorArea.value.substring(0, cursor) +
                     '\n' + editorArea.value.substring(editorArea.selectionEnd);
                 editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
-            } else {
-                const cursor = editorArea.selectionStart;
-                const before = editorArea.value.substring(0, cursor);
-                const after = editorArea.value.substring(editorArea.selectionEnd);
-                editorArea.value = before + pinyin + after;
-                editorArea.selectionStart = editorArea.selectionEnd = cursor + pinyin.length;
             }
 
+            pinyinBuffer = '';
+            auxFilter = '';
+            filterActive = false;
             pinyinInput.value = '';
             hideCandidates();
             updateCharCount();
+            renderKeyboard();
             pinyinInput.focus();
         }
 
@@ -406,7 +452,10 @@
                     keyDiv.className = `key ${key.className || ''}`;
                     keyDiv.dataset.key = key.id;
 
-                    if (key.id === 'Shift' && isShift) keyDiv.classList.add('shift-on');
+                    if (key.id === 'Shift') {
+                        if (isShift) keyDiv.classList.add('shift-on');
+                        if (filterActive) keyDiv.classList.add('filter-on');
+                    }
                     if (key.id === 'CapsLock' && isCapsLock) keyDiv.classList.add('caps-on');
 
                     keyDiv.innerHTML = `
@@ -433,9 +482,8 @@
                         commitCandidate(globalIdx);
                     }
                 } else {
-                    // Direct number input into pinyin
-                    pinyinInput.value += keyId;
-                    debounceSearch();
+                    // Direct number input into pinyin buffer
+                    appendToBuffer(keyId);
                 }
                 return;
             }
@@ -462,11 +510,22 @@
             }
 
             if (keyId === 'Backspace') {
-                if (pinyinInput.value.length > 0) {
-                    pinyinInput.value = pinyinInput.value.slice(0, -1);
-                    debounceSearch();
+                if (filterActive) {
+                    if (auxFilter.length > 0) {
+                        auxFilter = auxFilter.slice(0, -1);
+                        if (auxFilter.length === 0) {
+                            filterActive = false;
+                            renderKeyboard();
+                        }
+                    }
+                    updatePinyinDisplay();
+                    queryCandidates();
+                } else if (pinyinBuffer.length > 0) {
+                    pinyinBuffer = pinyinBuffer.slice(0, -1);
+                    updatePinyinDisplay();
+                    queryCandidates();
                 } else {
-                    // Delete from editor when pinyin is empty
+                    // Delete from editor when all buffers are empty
                     const cursor = editorArea.selectionStart;
                     if (editorArea.selectionStart === editorArea.selectionEnd && cursor > 0) {
                         editorArea.value = editorArea.value.substring(0, cursor - 1) +
@@ -489,7 +548,17 @@
             }
 
             if (keyId === 'Shift') {
-                isShift = !isShift;
+                if (pinyinBuffer) {
+                    // Toggle aux filter (same as real IME: press Shift alone)
+                    if (filterActive) {
+                        exitFilterMode();
+                    } else {
+                        enterFilterMode();
+                    }
+                } else {
+                    // No pinyin: toggle case for next letter
+                    isShift = !isShift;
+                }
                 renderKeyboard();
                 return;
             }
@@ -508,34 +577,44 @@
             let char = keyLabel;
             if ((isCapsLock || isShift) && char.length === 1 && char >= 'a' && char <= 'z') {
                 char = char.toUpperCase();
+                if (filterActive) {
+                    // Shift+letter in filter mode = first aux char uppercased
+                    auxFilter += char; // keep original letter
+                    updatePinyinDisplay();
+                    queryCandidates();
+                    return;
+                }
             }
             if (isShift && char.length === 1) {
                 isShift = false;
             }
 
-            pinyinInput.value += char.toLowerCase();
+            appendToBuffer(char.toLowerCase());
             if (isShift) renderKeyboard();
-            debounceSearch();
         }
 
-        // ===== Debounce for physical keyboard typing =====
-        function debounceSearch() {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => queryCandidates(), 60);
+        function appendToBuffer(char) {
+            if (filterActive) {
+                // In filter mode, add to aux filter
+                auxFilter += char.toLowerCase();
+            } else {
+                pinyinBuffer += char.toLowerCase();
+            }
+            updatePinyinDisplay();
+            queryCandidates();
         }
 
         // ===== Pinyin input events (physical keyboard) =====
-        pinyinInput.addEventListener('input', () => {
-            debounceSearch();
-        });
-
+        // The pinyinInput is a visual display - all state lives in pinyinBuffer/auxFilter
         pinyinInput.addEventListener('keydown', (e) => {
             const hasCandidates = candContainer.classList.contains('show');
+            const key = e.key;
+            const isLetter = key.length === 1 && ((key >= 'a' && key <= 'z') || (key >= 'A' && key <= 'Z'));
 
             // Number keys 1-9: select candidate
-            if (e.key >= '1' && e.key <= '9' && hasCandidates && allCandidates.length > 0) {
+            if (key >= '1' && key <= '9' && hasCandidates && allCandidates.length > 0) {
                 e.preventDefault();
-                const idx = parseInt(e.key) - 1;
+                const idx = parseInt(key) - 1;
                 const globalIdx = currentPage * 9 + idx;
                 if (globalIdx < allCandidates.length) {
                     commitCandidate(globalIdx);
@@ -544,49 +623,117 @@
             }
 
             // Space: select first candidate or add space to editor
-            if (e.key === ' ') {
+            if (key === ' ') {
+                e.preventDefault();
                 if (hasCandidates && allCandidates.length > 0) {
-                    e.preventDefault();
                     commitCandidate(currentPage * 9);
+                } else {
+                    const cursor = editorArea.selectionStart;
+                    editorArea.value = editorArea.value.substring(0, cursor) +
+                        ' ' + editorArea.value.substring(editorArea.selectionEnd);
+                    editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
+                    updateCharCount();
                 }
                 return;
             }
 
             // Enter: commit raw pinyin
-            if (e.key === 'Enter') {
+            if (key === 'Enter') {
                 e.preventDefault();
                 commitRawPinyin();
                 return;
             }
 
-            // Escape: clear pinyin
-            if (e.key === 'Escape') {
-                pinyinInput.value = '';
+            // Escape: clear everything
+            if (key === 'Escape') {
+                pinyinBuffer = '';
+                auxFilter = '';
+                filterActive = false;
+                updatePinyinDisplay();
                 hideCandidates();
+                renderKeyboard();
                 return;
             }
 
-            // Backspace: handled by input event + manual check for empty
-            if (e.key === 'Backspace' && pinyinInput.value.length === 0) {
-                // Delete from editor
-                const cursor = editorArea.selectionStart;
-                if (cursor > 0) {
-                    editorArea.value = editorArea.value.substring(0, cursor - 1) +
-                        editorArea.value.substring(cursor);
-                    editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
+            // Shift: toggle aux filter (like real IME)
+            if (key === 'Shift') {
+                e.preventDefault();
+                if (pinyinBuffer) {
+                    if (filterActive) {
+                        exitFilterMode();
+                    } else {
+                        enterFilterMode();
+                    }
                 }
-                updateCharCount();
+                return;
+            }
+
+            // Backspace
+            if (key === 'Backspace') {
+                e.preventDefault();
+                if (filterActive) {
+                    if (auxFilter.length > 0) {
+                        auxFilter = auxFilter.slice(0, -1);
+                        if (auxFilter.length === 0) {
+                            filterActive = false;
+                            renderKeyboard();
+                        }
+                    }
+                    updatePinyinDisplay();
+                    queryCandidates();
+                } else if (pinyinBuffer.length > 0) {
+                    pinyinBuffer = pinyinBuffer.slice(0, -1);
+                    updatePinyinDisplay();
+                    queryCandidates();
+                } else {
+                    // Delete from editor
+                    const cursor = editorArea.selectionStart;
+                    if (editorArea.selectionStart === editorArea.selectionEnd && cursor > 0) {
+                        editorArea.value = editorArea.value.substring(0, cursor - 1) +
+                            editorArea.value.substring(cursor);
+                        editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
+                    } else if (editorArea.selectionStart !== editorArea.selectionEnd) {
+                        editorArea.value = editorArea.value.substring(0, editorArea.selectionStart) +
+                            editorArea.value.substring(editorArea.selectionEnd);
+                        editorArea.selectionStart = editorArea.selectionEnd = editorArea.selectionStart;
+                    }
+                    updateCharCount();
+                    hideCandidates();
+                }
+                return;
             }
 
             // -/= page flip
-            if (e.key === '-' && hasCandidates) {
+            if (key === '-' && hasCandidates) {
                 e.preventDefault();
                 pageUp();
+                return;
             }
-            if (e.key === '=' && hasCandidates) {
+            if (key === '=' && hasCandidates) {
                 e.preventDefault();
                 pageDown();
+                return;
             }
+
+            // Letter keys: add to buffer (or aux filter if active)
+            if (isLetter) {
+                e.preventDefault();
+                const lower = key.toLowerCase();
+                if (filterActive) {
+                    auxFilter += lower;
+                } else {
+                    pinyinBuffer += lower;
+                }
+                updatePinyinDisplay();
+                queryCandidates();
+                return;
+            }
+        });
+
+        // Prevent input event from overwriting our display value
+        pinyinInput.addEventListener('input', () => {
+            // Sync back our display in case something else modified it
+            updatePinyinDisplay();
         });
 
         // Always keep focus on pinyin input unless user explicitly clicks editor
@@ -625,9 +772,13 @@
 
         document.getElementById('btn-clear-editor').addEventListener('click', () => {
             editorArea.value = '';
-            pinyinInput.value = '';
+            pinyinBuffer = '';
+            auxFilter = '';
+            filterActive = false;
+            updatePinyinDisplay();
             hideCandidates();
             updateCharCount();
+            renderKeyboard();
             pinyinInput.focus();
             showToast('已清空');
         });
@@ -646,7 +797,10 @@
                 btn.classList.add('active');
                 currentIme = btn.dataset.ime;
                 document.getElementById('current-ime').textContent = btn.textContent;
-                pinyinInput.value = '';
+                pinyinBuffer = '';
+                auxFilter = '';
+                filterActive = false;
+                updatePinyinDisplay();
                 hideCandidates();
                 renderKeyboard();
                 pinyinInput.focus();
@@ -665,8 +819,8 @@
         }).then(resp => {
             if (resp.ok) {
                 engineReady = true;
-                document.getElementById('engineStatus').textContent = '就绪';
-                document.getElementById('statusDot').className = 'status-dot ok';
+                engineStatus.textContent = '就绪';
+                statusDot.className = 'status-dot ok';
             }
         }).catch(() => {});
     </script>
