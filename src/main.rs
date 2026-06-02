@@ -176,6 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 全局状态维护
     let app_state = Arc::new(Mutex::new(qianyan_ime_ui::AppState {
         chinese_enabled: true,
+        ime_enabled: true,
         active_profile: "".into(),
         show_candidates_pref: config.read().map_or(true, |c| c.appearance.show_candidates),
         is_ime_active: true,
@@ -209,6 +210,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.chinese_enabled = snap.chinese_enabled;
                         state.status_text = if snap.chinese_enabled { snap.short_display } else { "英".into() };
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                    }
+                }
+                qianyan_ime_ui::tray::TrayEvent::ToggleEnabled => {
+                    let snap = match processor_clone.toggle_enabled() {
+                        Some(s) => s,
+                        None => continue,
+                    };
+                    if let Some(ref handle) = tray_handle {
+                        let ime_enabled = snap.ime_enabled;
+                        handle.update(move |t| t.ime_enabled = ime_enabled);
+                    }
+                    if let Ok(mut state) = app_state_tray.lock() {
+                        state.ime_enabled = snap.ime_enabled;
+                        state.chinese_enabled = snap.chinese_enabled;
+                        state.status_text = if snap.ime_enabled {
+                            if snap.chinese_enabled { snap.short_display } else { "英".into() }
+                        } else {
+                            "禁".into()
+                        };
                         let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }

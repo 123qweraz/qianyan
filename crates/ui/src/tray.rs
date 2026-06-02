@@ -7,6 +7,7 @@ use std::sync::mpsc::Sender;
 #[derive(Debug, Clone)]
 pub enum TrayEvent {
     ToggleIme,
+    ToggleEnabled,
     NextProfile,
     OpenConfig,
     Exit,
@@ -30,6 +31,7 @@ pub struct TrayParams {
 #[cfg(target_os = "linux")]
 pub struct ImeTray {
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub active_profile: String,
     pub enabled_profiles: Vec<String>,
     pub tx: Sender<TrayEvent>,
@@ -82,62 +84,113 @@ fn load_icon(chinese_enabled: bool) -> Vec<ksni::Icon> {
 #[cfg(target_os = "linux")]
 impl Tray for ImeTray {
     fn icon_pixmap(&self) -> Vec<ksni::Icon> {
-        load_icon(self.chinese_enabled)
+        // When disabled or English mode, show English icon
+        let show_cn = self.ime_enabled && self.chinese_enabled;
+        load_icon(show_cn)
     }
 
     fn title(&self) -> String {
-        format!(
-            "qianyan ({})",
-            if self.chinese_enabled { "中" } else { "英" }
-        )
+        if !self.ime_enabled {
+            "qianyan (已禁用)".to_string()
+        } else {
+            format!(
+                "qianyan ({})",
+                if self.chinese_enabled { "中" } else { "英" }
+            )
+        }
     }
 
     fn menu(&self) -> Vec<MenuItem<Self>> {
-        let profiles: Vec<(&str, &str)> = ALL_PROFILES.iter()
-            .filter(|(id, _)| self.enabled_profiles.is_empty() || self.enabled_profiles.contains(&id.to_string()))
-            .copied()
-            .collect();
-
         use ksni::menu::RadioGroup;
         use ksni::menu::RadioItem;
         use ksni::menu::SubMenu;
 
-        let selected_idx = profiles.iter().position(|(id, _)| self.active_profile == *id).unwrap_or(0);
-        let profile_options: Vec<RadioItem> = profiles
-            .iter()
-            .map(|(_, label)| RadioItem {
-                label: label.to_string(),
-                ..Default::default()
-            })
-            .collect();
+        let mut items: Vec<MenuItem<Self>> = Vec::new();
 
-        let profiles_copy = profiles.clone();
-        let profile_radio = RadioGroup {
-            selected: selected_idx,
-            options: profile_options,
-            select: Box::new(move |this: &mut Self, index| {
-                if let Some((id, _)) = profiles_copy.get(index) {
-                    let _ = this.tx.send(TrayEvent::SetProfile(id.to_string()));
+        if self.ime_enabled {
+            items.push(
+                StandardItem {
+                    label: format!("输入法: {}", if self.chinese_enabled { "中" } else { "英" }),
+                    activate: Box::new(|this: &mut Self| {
+                        let _ = this.tx.send(TrayEvent::ToggleIme);
+                    }),
+                    ..Default::default()
                 }
-            }),
-        };
+                .into(),
+            );
+        } else {
+            items.push(
+                StandardItem {
+                    label: "输入法: 已禁用".to_string(),
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
 
-        vec![
-            StandardItem {
-                label: format!("输入法: {}", if self.chinese_enabled { "中" } else { "英" }),
-                activate: Box::new(|this: &mut Self| {
-                    let _ = this.tx.send(TrayEvent::ToggleIme);
+        // Enable/Disable toggle
+        if self.ime_enabled {
+            items.push(
+                StandardItem {
+                    label: "停用输入法".to_string(),
+                    activate: Box::new(|this: &mut Self| {
+                        let _ = this.tx.send(TrayEvent::ToggleEnabled);
+                    }),
+                    ..Default::default()
+                }
+                .into(),
+            );
+        } else {
+            items.push(
+                StandardItem {
+                    label: "激活输入法".to_string(),
+                    activate: Box::new(|this: &mut Self| {
+                        let _ = this.tx.send(TrayEvent::ToggleEnabled);
+                    }),
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+
+        if self.ime_enabled {
+            let profiles: Vec<(&str, &str)> = ALL_PROFILES.iter()
+                .filter(|(id, _)| self.enabled_profiles.is_empty() || self.enabled_profiles.contains(&id.to_string()))
+                .copied()
+                .collect();
+
+            let selected_idx = profiles.iter().position(|(id, _)| self.active_profile == *id).unwrap_or(0);
+            let profile_options: Vec<RadioItem> = profiles
+                .iter()
+                .map(|(_, label)| RadioItem {
+                    label: label.to_string(),
+                    ..Default::default()
+                })
+                .collect();
+
+            let profiles_copy = profiles.clone();
+            let profile_radio = RadioGroup {
+                selected: selected_idx,
+                options: profile_options,
+                select: Box::new(move |this: &mut Self, index| {
+                    if let Some((id, _)) = profiles_copy.get(index) {
+                        let _ = this.tx.send(TrayEvent::SetProfile(id.to_string()));
+                    }
                 }),
-                ..Default::default()
-            }
-            .into(),
-            SubMenu {
-                label: "词典方案".into(),
-                submenu: vec![profile_radio.into()],
-                ..Default::default()
-            }
-            .into(),
-            MenuItem::Separator,
+            };
+
+            items.push(
+                SubMenu {
+                    label: "词典方案".into(),
+                    submenu: vec![profile_radio.into()],
+                    ..Default::default()
+                }
+                .into(),
+            );
+        }
+
+        items.push(MenuItem::Separator);
+        items.push(
             StandardItem {
                 label: "打开管理页面".to_string(),
                 activate: Box::new(|this: &mut Self| {
@@ -146,6 +199,8 @@ impl Tray for ImeTray {
                 ..Default::default()
             }
             .into(),
+        );
+        items.push(
             StandardItem {
                 label: "重载配置".to_string(),
                 activate: Box::new(|this: &mut Self| {
@@ -154,7 +209,9 @@ impl Tray for ImeTray {
                 ..Default::default()
             }
             .into(),
-            MenuItem::Separator,
+        );
+        items.push(MenuItem::Separator);
+        items.push(
             StandardItem {
                 label: "退出程序".to_string(),
                 activate: Box::new(|this: &mut Self| {
@@ -163,7 +220,9 @@ impl Tray for ImeTray {
                 ..Default::default()
             }
             .into(),
-        ]
+        );
+
+        items
     }
 }
 
@@ -185,6 +244,7 @@ pub fn start_tray(params: TrayParams) -> LinuxTrayHandle {
     println!("[Tray] 正在启动 Linux 系统托盘...");
     let tray = ImeTray {
         chinese_enabled: true,
+        ime_enabled: true,
         active_profile: params.active_profile,
         enabled_profiles: params.enabled_profiles,
         tx: params.tx,
@@ -211,6 +271,7 @@ const TRAY_ICON_ID: u32 = 1;
 #[cfg(target_os = "windows")]
 pub struct ImeTrayStub {
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub active_profile: String,
     pub enabled_profiles: Vec<String>,
 }
@@ -276,12 +337,14 @@ impl WindowsTrayHandle {
     fn refresh_icon(&self) {
         let (hwnd, icon, tip_text) = match (TRAY_HWND.get(), self.0.lock().ok()) {
             (Some(h), Ok(ref s)) => {
-                let icon = if s.chinese_enabled {
+                let icon = if s.chinese_enabled && s.ime_enabled {
                     *TRAY_HICON_ZH.get().unwrap_or_else(|| TRAY_HICON_DEF.get().unwrap())
                 } else {
                     *TRAY_HICON_EN.get().unwrap_or_else(|| TRAY_HICON_DEF.get().unwrap())
                 };
-                let tip = if s.chinese_enabled { "千言输入法 (中)" } else { "千言输入法 (英)" };
+                let tip = if !s.ime_enabled { "千言输入法 (已禁用)" }
+                    else if s.chinese_enabled { "千言输入法 (中)" }
+                    else { "千言输入法 (英)" };
                 (*h, icon, make_wide_tip(tip))
             }
             _ => return,
@@ -303,6 +366,7 @@ impl WindowsTrayHandle {
 pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
     let state = Arc::new(Mutex::new(ImeTrayStub {
         chinese_enabled: true,
+        ime_enabled: true,
         active_profile: params.active_profile,
         enabled_profiles: params.enabled_profiles,
     }));
@@ -393,46 +457,60 @@ unsafe extern "system" fn tray_wnd_proc(
                     if let Ok(state) = state_arc.lock() {
                         let h_menu = CreatePopupMenu().expect("Failed to create popup menu");
 
-                        let toggle_label = format!(
-                            "输入法: {}",
-                            if state.chinese_enabled { "中" } else { "英" }
-                        );
-                        let mut toggle_w: Vec<u16> = toggle_label.encode_utf16().collect();
-                        toggle_w.push(0);
-                        let _ = AppendMenuW(h_menu, MF_STRING, 1001, PCWSTR(toggle_w.as_ptr()));
-
-                        let h_profile_menu = CreatePopupMenu().expect("Failed to create profile menu");
-                        let all_profiles = vec![
-                            ("chinese", "中文"),
-                            ("english", "英文"),
-                            ("japanese", "日文"),
-                            ("stroke", "笔画"),
-                            ("shengpizi", "生僻字"),
-                            ("chinese,english,japanese", "中日英混"),
-                        ];
-                        let profiles: Vec<&(&str, &str)> = all_profiles.iter()
-                            .filter(|(id, _)| state.enabled_profiles.is_empty() || state.enabled_profiles.contains(&id.to_string()))
-                            .collect();
-
-                        for (i, (id, label)) in profiles.iter().enumerate() {
-                            let mut flags = MF_STRING;
-                            if state.active_profile == *id { flags |= MF_CHECKED; }
-                            let mut label_w: Vec<u16> = label.encode_utf16().collect();
-                            label_w.push(0);
-                            let _ = AppendMenuW(h_profile_menu, flags, (2000 + i) as u32, PCWSTR(label_w.as_ptr()));
-                        }
-
-                        let profile_zh = match state.active_profile.as_str() {
-                            "chinese" => "中文", "english" => "英文",
-                            "japanese" => "日文", "stroke" => "笔画",
-                            "shengpizi" => "生僻字",
-                            "chinese,english,japanese" => "中日英混",
-                            other => other,
+                        // Top item: status
+                        let status_label = if !state.ime_enabled {
+                            "输入法: 已禁用".to_string()
+                        } else if state.chinese_enabled {
+                            "输入法: 中".to_string()
+                        } else {
+                            "输入法: 英".to_string()
                         };
-                        let profile_label = format!("词典方案: {}", profile_zh);
-                        let mut profile_w: Vec<u16> = profile_label.encode_utf16().collect();
-                        profile_w.push(0);
-                        let _ = AppendMenuW(h_menu, MF_POPUP, h_profile_menu.0 as usize, PCWSTR(profile_w.as_ptr()));
+                        let mut status_w: Vec<u16> = status_label.encode_utf16().collect();
+                        status_w.push(0);
+                        let flags = if state.ime_enabled { MF_STRING } else { MF_STRING | MF_GRAYED };
+                        let _ = AppendMenuW(h_menu, flags, 1001, PCWSTR(status_w.as_ptr()));
+
+                        // Enable/Disable toggle
+                        let en_label = if state.ime_enabled { "停用输入法" } else { "激活输入法" };
+                        let mut en_w: Vec<u16> = en_label.encode_utf16().collect();
+                        en_w.push(0);
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1009, PCWSTR(en_w.as_ptr()));
+
+                        // Profile submenu (only when enabled)
+                        if state.ime_enabled {
+                            let h_profile_menu = CreatePopupMenu().expect("Failed to create profile menu");
+                            let all_profiles = vec![
+                                ("chinese", "中文"),
+                                ("english", "英文"),
+                                ("japanese", "日文"),
+                                ("stroke", "笔画"),
+                                ("shengpizi", "生僻字"),
+                                ("chinese,english,japanese", "中日英混"),
+                            ];
+                            let profiles: Vec<&(&str, &str)> = all_profiles.iter()
+                                .filter(|(id, _)| state.enabled_profiles.is_empty() || state.enabled_profiles.contains(&id.to_string()))
+                                .collect();
+
+                            for (i, (id, label)) in profiles.iter().enumerate() {
+                                let mut flags = MF_STRING;
+                                if state.active_profile == *id { flags |= MF_CHECKED; }
+                                let mut label_w: Vec<u16> = label.encode_utf16().collect();
+                                label_w.push(0);
+                                let _ = AppendMenuW(h_profile_menu, flags, (2000 + i) as u32, PCWSTR(label_w.as_ptr()));
+                            }
+
+                            let profile_zh = match state.active_profile.as_str() {
+                                "chinese" => "中文", "english" => "英文",
+                                "japanese" => "日文", "stroke" => "笔画",
+                                "shengpizi" => "生僻字",
+                                "chinese,english,japanese" => "中日英混",
+                                other => other,
+                            };
+                            let profile_label = format!("词典方案: {}", profile_zh);
+                            let mut profile_w: Vec<u16> = profile_label.encode_utf16().collect();
+                            profile_w.push(0);
+                            let _ = AppendMenuW(h_menu, MF_POPUP, h_profile_menu.0 as usize, PCWSTR(profile_w.as_ptr()));
+                        }
 
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
                         let _ = AppendMenuW(h_menu, MF_STRING, 1011, windows::core::w!("打开管理页面"));
@@ -454,6 +532,7 @@ unsafe extern "system" fn tray_wnd_proc(
             if let Some(tx) = TRAY_TX.get() {
                 match id {
                     1001 => { let _ = tx.send(TrayEvent::ToggleIme); }
+                    1009 => { let _ = tx.send(TrayEvent::ToggleEnabled); }
                     2000..=2005 => {
                         let profiles = vec!["chinese", "english", "japanese", "stroke", "shengpizi", "chinese,english,japanese"];
                         if let Some(profile) = profiles.get(id as usize - 2000) {

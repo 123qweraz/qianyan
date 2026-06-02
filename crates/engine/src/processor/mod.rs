@@ -125,6 +125,17 @@ impl Processor {
         }
     }
 
+    pub fn toggle_enabled(&mut self) -> Action {
+        self.ctx.session_state.ime_enabled = !self.ctx.session_state.ime_enabled;
+        let enabled = self.ctx.session_state.ime_enabled;
+        self.reset();
+        if enabled {
+            Action::Notify("中".into(), "输入法已激活".into())
+        } else {
+            Action::Notify("禁".into(), "输入法已停用".into())
+        }
+    }
+
     pub fn next_profile(&mut self) -> String {
         let enabled: Vec<String> = self
             .ctx
@@ -183,6 +194,10 @@ impl Processor {
         let now = Instant::now();
         let is_press = val == 1;
         let is_release = val == 0;
+
+        if !self.ctx.session_state.ime_enabled {
+            return Action::PassThrough;
+        }
 
         if is_press && is_letter(key) {
             if let Some(c) = key_to_char(key, shift_pressed, false) {

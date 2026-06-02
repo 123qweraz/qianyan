@@ -4,6 +4,7 @@ use std::time::Instant;
 pub struct SessionState {
     pub active_profiles: Vec<String>,
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub traditional_enabled: bool,
     pub commit_history: Vec<(String, String)>,
     pub last_commit_time: Instant,
@@ -23,6 +24,7 @@ impl SessionState {
         Self {
             active_profiles: Vec::new(),
             chinese_enabled: true,
+            ime_enabled: true,
             traditional_enabled: false,
             commit_history: Vec::new(),
             last_commit_time: Instant::now(),

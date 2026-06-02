@@ -46,6 +46,7 @@ pub trait CandidateDisplay {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppState {
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub active_profile: String,
     pub show_candidates_pref: bool,
     pub is_ime_active: bool, // 窗口是否获得焦点/输入法是否激活

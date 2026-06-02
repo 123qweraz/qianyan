@@ -61,6 +61,7 @@ pub struct GuiSnapshot {
 #[derive(Clone)]
 pub struct TraySnapshot {
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub short_display: String,
     pub commit_mode: String,
     pub active_profile: String,
@@ -71,6 +72,7 @@ pub struct TraySnapshot {
 #[derive(Clone)]
 pub struct BasicStatus {
     pub chinese_enabled: bool,
+    pub ime_enabled: bool,
     pub short_display: String,
     pub active_profile: String,
 }
@@ -94,6 +96,9 @@ pub enum ProcessorMsg {
         reply: Sender<(Action, GuiSnapshot, BasicStatus)>,
     },
     Toggle {
+        reply: Sender<TraySnapshot>,
+    },
+    ToggleEnabled {
         reply: Sender<TraySnapshot>,
     },
     NextProfile {
@@ -182,6 +187,11 @@ impl ProcessorHandle {
     pub fn toggle(&self) -> Option<TraySnapshot> {
         let (tx, rx) = mpsc::channel();
         self.call(ProcessorMsg::Toggle { reply: tx }, rx)
+    }
+
+    pub fn toggle_enabled(&self) -> Option<TraySnapshot> {
+        let (tx, rx) = mpsc::channel();
+        self.call(ProcessorMsg::ToggleEnabled { reply: tx }, rx)
     }
 
     pub fn next_profile(&self) -> Option<TraySnapshot> {
@@ -294,6 +304,7 @@ impl ProcessorActor {
     fn build_basic_status(&self) -> BasicStatus {
         BasicStatus {
             chinese_enabled: self.processor.ctx.session_state.chinese_enabled,
+            ime_enabled: self.processor.ctx.session_state.ime_enabled,
             short_display: self.processor.get_short_display(),
             active_profile: self.processor.get_current_profile_display(),
         }
@@ -302,6 +313,7 @@ impl ProcessorActor {
     fn build_tray_snapshot(&self) -> TraySnapshot {
         TraySnapshot {
             chinese_enabled: self.processor.ctx.session_state.chinese_enabled,
+            ime_enabled: self.processor.ctx.session_state.ime_enabled,
             short_display: self.processor.get_short_display(),
             commit_mode: self.processor.ctx.config.commit_mode().to_string(),
             active_profile: self.processor.get_current_profile_display(),
@@ -389,6 +401,11 @@ impl ProcessorActor {
             }
             ProcessorMsg::Toggle { reply } => {
                 self.processor.toggle();
+                let snap = self.build_tray_snapshot();
+                let _ = reply.send(snap);
+            }
+            ProcessorMsg::ToggleEnabled { reply } => {
+                self.processor.toggle_enabled();
                 let snap = self.build_tray_snapshot();
                 let _ = reply.send(snap);
             }
