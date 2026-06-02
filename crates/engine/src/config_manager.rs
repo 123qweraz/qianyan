@@ -101,9 +101,9 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(pinyin.to_string(), entries.to_vec());
-            self.learned_words.store(Arc::new(current.clone()));
             let _ =
                 user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &current);
+            self.learned_words.store(Arc::new(current));
         }
     }
 
@@ -114,8 +114,8 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(pinyin.to_string(), entries.to_vec());
-            self.usage_history.store(Arc::new(current.clone()));
             let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &current);
+            self.usage_history.store(Arc::new(current));
         }
     }
 
@@ -126,8 +126,8 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(context.to_string(), entries.to_vec());
-            self.ngram_history.store(Arc::new(current.clone()));
             let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &current);
+            self.ngram_history.store(Arc::new(current));
         }
     }
 

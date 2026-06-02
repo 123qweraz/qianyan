@@ -86,6 +86,16 @@ fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
     }
 }
 
+/// State snapshot for background search, read under Processor lock but used outside.
+struct BgState {
+    buffer: String,
+    profile: String,
+    config: qianyan_ime_core::config::Config,
+    aux_filter: String,
+    filter_mode: qianyan_ime_engine::processor::FilterMode,
+    fuzzy_activated: bool,
+}
+
 pub struct EvdevHost {
     processor: Arc<Mutex<Processor>>,
     pub vkbd: Arc<Mutex<Vkbd>>,
@@ -224,92 +234,92 @@ impl EvdevHost {
                     }
                 }
                 let _guard = PendingGuard(pending_bg.clone());
-
                 while lookup_rx.try_recv().is_ok() {}
 
-                let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    // Step 1: 快速读取 buffer、配置和辅助码状态（持有锁，但不做检索）
-                    let (buffer, profile, config, aux_filter, filter_mode, fuzzy_activated) = {
-                        if let Ok(p) = p_bg.lock() {
-                            (p.ctx.session.buffer.clone(),
-                             p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
-                             p.ctx.config.master_config.clone(),
-                             p.ctx.session.aux_filter.clone(),
-                             p.ctx.session.filter_mode.clone(),
-                             p.ctx.session.fuzzy_activated)
-                        } else { return; }
+                // Step 1: 读取 buffer、配置和辅助码状态（单次获取锁）
+                let state = {
+                    let p = match p_bg.lock() {
+                        Ok(guard) => guard,
+                        Err(_) => continue,
                     };
+                    if p.ctx.session.buffer.is_empty() {
+                        update_gui_internal(&p, &g_bg);
+                        continue;
+                    }
+                    BgState {
+                        buffer: p.ctx.session.buffer.clone(),
+                        profile: p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
+                        config: p.ctx.config.master_config.clone(),
+                        aux_filter: p.ctx.session.aux_filter.clone(),
+                        filter_mode: p.ctx.session.filter_mode.clone(),
+                        fuzzy_activated: p.ctx.session.fuzzy_activated,
+                    }
+                };
 
-                    if buffer.is_empty() {
-                        if let Ok(p) = p_bg.lock() {
-                            update_gui_internal(&p, &g_bg);
+                // Step 2: 在不持有 Processor 锁的情况下执行检索
+                let syllables = engine_bg.syllables.clone();
+                let query = qianyan_ime_engine::pipeline::SearchQuery {
+                    buffer: &state.buffer,
+                    profile: &state.profile,
+                    syllables: &syllables,
+                    config: &state.config,
+                    limit: MAX_LOOKUP_LIMIT,
+                    filter_mode: state.filter_mode,
+                    aux_filter: &state.aux_filter,
+                    context: None,
+                    fuzzy_enabled: state.fuzzy_activated,
+                };
+                let (results, segments) = engine_bg.search(query);
+
+                // Step 3: 更新状态、检查自动上屏（单次获取锁）
+                {
+                    let mut p = match p_bg.lock() {
+                        Ok(guard) => guard,
+                        Err(_) => continue,
+                    };
+                    p.ctx.session.candidates = results;
+                    p.ctx.session.best_segmentation = segments;
+                    p.ctx.session.has_dict_match = !p.ctx.session.candidates.is_empty();
+                    p.ctx.session.last_lookup_pinyin = p.ctx.session.buffer.clone();
+
+                    if p.ctx.session.candidates.is_empty() {
+                        let buf_arc: std::sync::Arc<str> = std::sync::Arc::from(
+                            p.ctx.session.buffer.as_str(),
+                        );
+                        p.ctx.session.candidates.push(
+                            qianyan_ime_engine::pipeline::Candidate {
+                                text: buf_arc.clone(),
+                                simplified: buf_arc.clone(),
+                                traditional: buf_arc.clone(),
+                                hint: std::sync::Arc::from(""),
+                                english_aux: std::sync::Arc::from(""),
+                                stroke_aux: std::sync::Arc::from(""),
+                                source: std::sync::Arc::from("Raw"),
+                                weight: 0.0,
+                                match_level: 0,
+                            },
+                        );
+                    }
+                    p.ctx.session.update_state();
+
+                    if let Some(commit_action) = Compositor::check_auto_commit(&mut p.ctx) {
+                        drop(p);
+                        if let Ok(vkbd) = v_bg.lock() {
+                            execute_action(&vkbd, &g_bg, commit_action, None);
                         }
-                        return;
+                        let _ = p_bg.lock().map(|p| update_gui_internal(&p, &g_bg));
+                        continue;
                     }
 
-                    // Step 2: 在不持有 Processor 锁的情况下执行检索
-                    let syllables = engine_bg.syllables.clone();
-                    let query = qianyan_ime_engine::pipeline::SearchQuery {
-                        buffer: &buffer,
-                        profile: &profile,
-                        syllables: &syllables,
-                        config: &config,
-                        limit: MAX_LOOKUP_LIMIT,
-                        filter_mode,
-                        aux_filter: &aux_filter,
-                        context: None,
-                        fuzzy_enabled: fuzzy_activated,
-                    };
-                    let (results, segments) = engine_bg.search(query);
-
-                    // Step 3: 快速更新状态、检查自动上屏
-                    if let Ok(mut p) = p_bg.lock() {
-                        p.ctx.session.candidates = results;
-                        p.ctx.session.best_segmentation = segments;
-                        p.ctx.session.has_dict_match = !p.ctx.session.candidates.is_empty();
-                        p.ctx.session.last_lookup_pinyin = p.ctx.session.buffer.clone();
-
-                        if p.ctx.session.candidates.is_empty() {
-                            let buf_arc: std::sync::Arc<str> = std::sync::Arc::from(
-                                p.ctx.session.buffer.as_str(),
-                            );
-                            p.ctx.session.candidates.push(
-                                qianyan_ime_engine::pipeline::Candidate {
-                                    text: buf_arc.clone(),
-                                    simplified: buf_arc.clone(),
-                                    traditional: buf_arc.clone(),
-                                    hint: std::sync::Arc::from(""),
-                                    english_aux: std::sync::Arc::from(""),
-                                    stroke_aux: std::sync::Arc::from(""),
-                                    source: std::sync::Arc::from("Raw"),
-                                    weight: 0.0,
-                                    match_level: 0,
-                                },
-                            );
-                        }
-                        p.ctx.session.update_state();
-
-                        if let Some(commit_action) = Compositor::check_auto_commit(&mut p.ctx) {
-                            drop(p);
-                            if let Ok(vkbd) = v_bg.lock() {
-                                execute_action(&vkbd, &g_bg, commit_action, None);
-                            }
-                            if let Ok(p) = p_bg.lock() {
-                                update_gui_internal(&p, &g_bg);
-                            }
-                            return;
-                        }
-
-                        let phantom_action = p.update_phantom_action();
-                        drop(p);
+                    let phantom_action = p.update_phantom_action();
+                    drop(p);
+                    if phantom_action != Action::Consume {
                         if let Ok(vkbd) = v_bg.lock() {
                             execute_action(&vkbd, &g_bg, phantom_action, None);
                         }
-                        if let Ok(p) = p_bg.lock() {
-                            update_gui_internal(&p, &g_bg);
-                        }
                     }
-                }));
+                    let _ = p_bg.lock().map(|p| update_gui_internal(&p, &g_bg));
+                }
             }
         });
 
