@@ -191,6 +191,7 @@ struct WlState {
     candidate_pool: Option<SlotPool>,
     exit: AtomicBool,
     pixel_pool: PixelPool,
+    layer_closed: bool,
 }
 
 delegate_registry!(WlState);
@@ -200,6 +201,27 @@ delegate_shm!(WlState);
 delegate_seat!(WlState);
 delegate_keyboard!(WlState);
 delegate_layer!(WlState);
+
+impl WlState {
+    fn ensure_layer(&mut self, qh: &QueueHandle<Self>) -> Option<LayerSurface> {
+        if let Some(layer) = &self.candidate_layer {
+            return Some(layer.clone());
+        }
+        if !self.layer_closed {
+            return None;
+        }
+        let ls = self.layer_shell.as_ref()?;
+        let surf = self.compositor_state.create_surface(qh);
+        let layer = ls.create_layer_surface(qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
+        layer.set_exclusive_zone(-1);
+        layer.set_keyboard_interactivity(KeyboardInteractivity::None);
+        layer.commit();
+        self.candidate_layer = Some(layer.clone());
+        self.layer_closed = false;
+        eprintln!("[WL_DEBUG] Candidate layer surface recreated after compositor closed");
+        Some(layer)
+    }
+}
 
 impl Dispatch<WlSurface, ()> for WlState {
     fn event(
@@ -298,17 +320,21 @@ impl KeyboardHandler for WlState {
 }
 
 impl LayerShellHandler for WlState {
-    fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &LayerSurface) {
-        self.exit.store(true, Ordering::SeqCst);
+    fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _layer: &LayerSurface) {
+        eprintln!("[WL_DEBUG] Layer surface closed by compositor, marking for re-creation");
+        self.candidate_layer = None;
+        self.layer_closed = true;
     }
     fn configure(
         &mut self,
         _: &Connection,
-        _: &QueueHandle<Self>,
-        _: &LayerSurface,
-        _: LayerSurfaceConfigure,
-        _: u32,
+        _qh: &QueueHandle<Self>,
+        layer: &LayerSurface,
+        _cfg: LayerSurfaceConfigure,
+        _serial: u32,
     ) {
+        // Acknowledge configure by committing the surface
+        layer.commit();
     }
 }
 
@@ -394,6 +420,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         candidate_pool: None,
         exit: AtomicBool::new(false),
         pixel_pool: pixel_pool.clone(),
+        layer_closed: false,
     };
 
     // Create candidate layer surface
@@ -427,7 +454,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                 Ok(cmd) => match cmd {
                     WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
                         eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
-                        if let Some(layer) = state.candidate_layer.clone() {
+                        if let Some(layer) = state.ensure_layer(&qh) {
                             layer.set_anchor(anchor);
                             layer.set_size(w.max(1), h.max(1));
                             let has_top = anchor.contains(Anchor::TOP);
@@ -450,14 +477,14 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                         state.pixel_pool.put(pixels);
                     }
                     WlCmd::HideCandidate => {
-                        if let Some(ref mut pool) = state.candidate_pool {
-                            if let Some(layer) = state.candidate_layer.clone() {
-                                if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
-                                    canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
-                                    if buffer.attach_to(layer.wl_surface()).is_ok() {
-                                        layer.wl_surface().damage_buffer(0, 0, 1, 1);
-                                        layer.commit();
-                                    }
+                        let layer = state.candidate_layer.clone();
+                        let pool = &mut state.candidate_pool;
+                        if let (Some(layer), Some(ref mut pool)) = (layer, pool) {
+                            if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                                canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                                if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                    layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                    layer.commit();
                                 }
                             }
                         }
@@ -502,8 +529,13 @@ fn submit_to_layer(
 ) {
     let stride = (width * 4) as i32;
     let needed = (stride * height as i32) as usize;
+    const MAX_POOL_SIZE: usize = 32 * 1024 * 1024;
     if needed > pool.len() {
         let new_size = needed.next_power_of_two().max(1024 * 1024);
+        if new_size > MAX_POOL_SIZE {
+            log::error!("SHM pool would exceed max size {}MB, skipping render", MAX_POOL_SIZE / 1024 / 1024);
+            return;
+        }
         log::info!("SHM pool resize: {} -> {} (needed={})", pool.len(), new_size, needed);
         if pool.resize(new_size).is_err() {
             log::error!("Failed to resize SHM pool");
