@@ -2,7 +2,7 @@ use std::error::Error;
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use log::{error, info, warn};
 use qianyan_ime_core::Rect;
@@ -25,13 +25,13 @@ use xkbcommon::xkb::keysyms;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::keys::VirtualKey;
 use qianyan_ime_engine::processor::Action;
-use qianyan_ime_engine::Processor;
+use qianyan_ime_engine::processor::actor::ProcessorHandle;
 use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 
 struct WlState {
     running: Arc<AtomicBool>,
-    processor: Arc<Mutex<Processor>>,
+    processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
     serial: u32,
@@ -45,6 +45,7 @@ struct WlState {
     surrounding_anchor: u32,
     content_hint: u32,
     content_purpose: u32,
+    prev_chinese_enabled: bool,
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlState {
@@ -183,78 +184,70 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
 
                 let (vk, utf8_text) = state.resolve_key(key);
 
-                let mut guard = match state.processor.lock() {
-                    Ok(g) => g,
-                    Err(_) => return,
+                let prev_enabled = state.prev_chinese_enabled;
+                let action = match state.processor.handle_key(vk, 1, false, false, false, true) {
+                    Some(a) => a,
+                    None => return,
                 };
 
-                let prev_enabled = guard.ctx.session_state.chinese_enabled;
-                let action = guard.handle_key(vk, 1, false, false, false);
-                let enabled = guard.ctx.session_state.chinese_enabled;
-
-                if prev_enabled != enabled {
-                    let short = guard.get_short_display();
-                    let text = if enabled { short } else { "英".into() };
-                    let _ = state.gui_tx.send(GuiEvent::ShowStatus(text, enabled));
-                    let profile = guard.get_current_profile_display();
-                    let _ = state.tray_tx.send(TrayEvent::SyncStatus {
-                        chinese_enabled: enabled,
-                        active_profile: profile,
-                    });
+                if let Some(status) = state.processor.get_basic_status() {
+                    state.prev_chinese_enabled = status.chinese_enabled;
+                    if status.chinese_enabled != prev_enabled {
+                        let text = if status.chinese_enabled { status.short_display.clone() } else { "英".into() };
+                        let _ = state.gui_tx.send(GuiEvent::ShowStatus(text, status.chinese_enabled));
+                        let _ = state.tray_tx.send(TrayEvent::SyncStatus {
+                            chinese_enabled: status.chinese_enabled,
+                            active_profile: status.active_profile.clone(),
+                        });
+                    }
                 }
 
-                let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
-                let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = if pinyin.is_empty() {
-                    vec![]
+                let (update, preedit) = if let Some(gui) = state.processor.get_gui_snapshot() {
+                    if gui.pinyin.is_empty() || !gui.chinese_enabled {
+                        (GuiEvent::Update {
+                            pinyin: "".into(),
+                            candidates: vec![],
+                            selected: 0, page: 0, total_pages: 0,
+                            sentence: "".into(), cursor_pos: 0,
+                            commit_mode: gui.commit_mode.clone(),
+                        }, String::new())
+                    } else {
+                        let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
+                            let full_display = if c.is_fuzzy {
+                                format!("{}{}(模糊)", c.label, c.text)
+                            } else if c.hint.is_empty() {
+                                format!("{}{}", c.label, c.text)
+                            } else {
+                                format!("{}{}({})", c.label, c.text, c.hint)
+                            };
+                            qianyan_ime_ui::DisplayCandidate {
+                                text: c.text.clone(),
+                                label: c.label.clone(),
+                                hint: c.hint.clone(),
+                                full_display,
+                                is_fuzzy: c.is_fuzzy,
+                            }
+                        }).collect();
+                        (GuiEvent::Update {
+                            pinyin: gui.pinyin.clone(),
+                            candidates,
+                            selected: gui.selected,
+                            page: gui.page,
+                            total_pages: gui.total_pages,
+                            sentence: gui.sentence.clone(),
+                            cursor_pos: gui.cursor_pos,
+                            commit_mode: gui.commit_mode,
+                        }, gui.pinyin)
+                    }
                 } else {
-                    let page_size = guard.ctx.config.page_size();
-                    let start = guard.ctx.session.page.min(guard.ctx.session.candidates.len());
-                    let end = (start + page_size).min(guard.ctx.session.candidates.len());
-                    guard.ctx.session.candidates[start..end].iter().enumerate().map(|(i, c)| {
-                        let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
-                        let label = format!("{}.", i + 1);
-                        let full_display = if is_fuzzy {
-                            format!("{label}{}(模糊)", c.text)
-                        } else if c.hint.is_empty() {
-                            format!("{label}{}", c.text)
-                        } else {
-                            format!("{label}{}({})", c.text, c.hint)
-                        };
-                        qianyan_ime_ui::DisplayCandidate {
-                            text: c.text.to_string(),
-                            label,
-                            hint: c.hint.to_string(),
-                            full_display,
-                            is_fuzzy,
-                        }
-                    }).collect()
+                    return;
                 };
-
-                let page_size = guard.ctx.config.page_size();
-                let total_candidates = guard.ctx.session.candidates.len();
-                let current_page = if page_size > 0 { guard.ctx.session.page / page_size } else { 0 };
-                let total_pages = if page_size > 0 { (total_candidates + page_size - 1) / page_size } else { 0 };
-                let relative_selected = guard.ctx.session.selected.saturating_sub(guard.ctx.session.page);
-
-                let update = GuiEvent::Update {
-                    pinyin,
-                    candidates,
-                    selected: relative_selected,
-                    page: current_page,
-                    total_pages,
-                    sentence: guard.ctx.session.joined_sentence.clone(),
-                    cursor_pos: guard.ctx.session.cursor_pos,
-                    commit_mode: guard.ctx.config.commit_mode().to_string(),
-                };
-                
-                let preedit = qianyan_ime_engine::compositor::Compositor::get_preedit(&guard.ctx);
-                drop(guard);
 
                 Self::handle_action(state, &action, conn, utf8_text, key, time);
 
                 let _ = state.gui_tx.send(update);
 
-                Self::send_preedit(state, Some(&preedit));
+                Self::send_preedit(state, if preedit.is_empty() { None } else { Some(&preedit) });
                 let _ = conn.flush();
             }
             Event::Modifiers {
@@ -362,7 +355,7 @@ impl WlState {
 }
 
 pub struct WaylandInputHost {
-    processor: Arc<Mutex<Processor>>,
+    processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
@@ -402,6 +395,9 @@ impl InputMethodHost for WaylandInputHost {
 
         info!("[WaylandIM] connected, input_method obtained");
 
+        let prev_chinese_enabled = self.processor.get_basic_status()
+            .map(|s| s.chinese_enabled).unwrap_or(true);
+
         let mut state = WlState {
             running: self.running.clone(),
             processor: self.processor.clone(),
@@ -418,6 +414,7 @@ impl InputMethodHost for WaylandInputHost {
             surrounding_anchor: 0,
             content_hint: 0,
             content_purpose: 0,
+            prev_chinese_enabled,
         };
 
         let _ = event_queue.dispatch_pending(&mut state);
@@ -442,7 +439,7 @@ impl InputMethodHost for WaylandInputHost {
 
 impl WaylandInputHost {
     pub fn new(
-        processor: Arc<Mutex<Processor>>,
+        processor: ProcessorHandle,
         gui_tx: Sender<GuiEvent>,
         tray_tx: Sender<TrayEvent>,
     ) -> Option<Self> {

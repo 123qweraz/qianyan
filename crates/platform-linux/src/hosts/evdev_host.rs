@@ -1,18 +1,18 @@
 use super::vkbd::Vkbd;
 use evdev::{Device, InputEventKind, Key};
 use qianyan_ime_core::{InputMethodHost, Rect};
-use qianyan_ime_engine::compositor::Compositor;
 use qianyan_ime_engine::keys::VirtualKey;
-use qianyan_ime_engine::pipeline::MAX_LOOKUP_LIMIT;
 use qianyan_ime_engine::processor::Action;
-use qianyan_ime_engine::Processor;
+use qianyan_ime_engine::processor::actor::{
+    GuiSnapshot, ProcessorHandle,
+};
 use qianyan_ime_ui::GuiEvent;
 use std::collections::HashSet;
 use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::Sender;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    Arc, Condvar, Mutex,
+    Arc, Mutex,
 };
 
 fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
@@ -86,18 +86,8 @@ fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
     }
 }
 
-/// State snapshot for background search, read under Processor lock but used outside.
-struct BgState {
-    buffer: String,
-    profile: String,
-    config: qianyan_ime_core::config::Config,
-    aux_filter: String,
-    filter_mode: qianyan_ime_engine::processor::FilterMode,
-    fuzzy_activated: bool,
-}
-
 pub struct EvdevHost {
-    processor: Arc<Mutex<Processor>>,
+    processor: ProcessorHandle,
     pub vkbd: Arc<Mutex<Vkbd>>,
     dev: Arc<Mutex<Device>>,
     gui_tx: Option<Sender<GuiEvent>>,
@@ -105,10 +95,10 @@ pub struct EvdevHost {
     should_exit: Arc<AtomicBool>,
     tab_held_and_not_used: bool,
     lookup_tx: std::sync::mpsc::Sender<()>,
-    lookup_completion: Arc<(Mutex<bool>, Condvar)>,
     is_grabbed: bool,
     meta_was_pressed: bool,
     epoll_fd: std::os::unix::io::RawFd,
+    prev_chinese_enabled: bool,
 }
 
 struct GrabGuard {
@@ -178,13 +168,12 @@ impl Drop for EvdevHost {
 
 impl EvdevHost {
     pub fn new(
-        processor: Arc<Mutex<Processor>>,
+        processor: ProcessorHandle,
         device_path: &str,
         gui_tx: Option<Sender<GuiEvent>>,
         tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let dev = Device::open(device_path)?;
-        // 使用 epoll 阻塞等待键盘事件，避免 1ms 轮询空转 CPU
         let epoll_fd = unsafe {
             let fd = libc::epoll_create1(0);
             if fd < 0 {
@@ -203,122 +192,35 @@ impl EvdevHost {
         };
         let vkbd_raw = Vkbd::new(&dev)?;
         let vkbd = Arc::new(Mutex::new(vkbd_raw));
-        {
-            if let Ok(p) = processor.lock() {
+        let prev_chinese_enabled = {
+            if let Some(config) = processor.get_config() {
                 if let Ok(mut vk) = vkbd.lock() {
-                    vk.apply_config(&p.ctx.config.master_config);
+                    vk.apply_config(&config);
                 }
             }
-        }
+            processor.get_basic_status().map(|s| s.chinese_enabled).unwrap_or(true)
+        };
         let (lookup_tx, lookup_rx) = std::sync::mpsc::channel::<()>();
-        let lookup_completion = Arc::new((Mutex::new(false), Condvar::new()));
 
-        // 启动后台检索线程（克隆 SearchEngine 避免 engine.search() 占用 Processor 锁）
-        let p_bg = processor.clone();
+        let h_bg = processor.clone();
         let v_bg = vkbd.clone();
         let g_bg = gui_tx.clone();
-        let pending_bg = lookup_completion.clone();
-        let engine_bg = {
-            let p = processor.lock().expect("processor lock poisoned");
-            p.ctx.engine.clone()
-        };
 
         std::thread::spawn(move || {
             while lookup_rx.recv().is_ok() {
-                struct PendingGuard(Arc<(Mutex<bool>, Condvar)>);
-                impl Drop for PendingGuard {
-                    fn drop(&mut self) {
-                        let (lock, cvar) = &*self.0;
-                        *lock.lock().expect("lookup_completion lock poisoned") = false;
-                        cvar.notify_all();
-                    }
-                }
-                let _guard = PendingGuard(pending_bg.clone());
                 while lookup_rx.try_recv().is_ok() {}
 
-                // Step 1: 读取 buffer、配置和辅助码状态（单次获取锁）
-                let state = {
-                    let p = match p_bg.lock() {
-                        Ok(guard) => guard,
-                        Err(_) => continue,
-                    };
-                    if p.ctx.session.buffer.is_empty() {
-                        update_gui_internal(&p, &g_bg);
-                        continue;
-                    }
-                    BgState {
-                        buffer: p.ctx.session.buffer.clone(),
-                        profile: p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default(),
-                        config: p.ctx.config.master_config.clone(),
-                        aux_filter: p.ctx.session.aux_filter.clone(),
-                        filter_mode: p.ctx.session.filter_mode.clone(),
-                        fuzzy_activated: p.ctx.session.fuzzy_activated,
-                    }
-                };
+                // Actor performs search internally and returns any action to execute
+                let pending_action = h_bg.perform_search().unwrap_or(None);
 
-                // Step 2: 在不持有 Processor 锁的情况下执行检索
-                let syllables = engine_bg.syllables.clone();
-                let query = qianyan_ime_engine::pipeline::SearchQuery {
-                    buffer: &state.buffer,
-                    profile: &state.profile,
-                    syllables: &syllables,
-                    config: &state.config,
-                    limit: MAX_LOOKUP_LIMIT,
-                    filter_mode: state.filter_mode,
-                    aux_filter: &state.aux_filter,
-                    context: None,
-                    fuzzy_enabled: state.fuzzy_activated,
-                };
-                let (results, segments) = engine_bg.search(query);
-
-                // Step 3: 更新状态、检查自动上屏（单次获取锁）
-                {
-                    let mut p = match p_bg.lock() {
-                        Ok(guard) => guard,
-                        Err(_) => continue,
-                    };
-                    p.ctx.session.candidates = results;
-                    p.ctx.session.best_segmentation = segments;
-                    p.ctx.session.has_dict_match = !p.ctx.session.candidates.is_empty();
-                    p.ctx.session.last_lookup_pinyin = p.ctx.session.buffer.clone();
-
-                    if p.ctx.session.candidates.is_empty() {
-                        let buf_arc: std::sync::Arc<str> = std::sync::Arc::from(
-                            p.ctx.session.buffer.as_str(),
-                        );
-                        p.ctx.session.candidates.push(
-                            qianyan_ime_engine::pipeline::Candidate {
-                                text: buf_arc.clone(),
-                                simplified: buf_arc.clone(),
-                                traditional: buf_arc.clone(),
-                                hint: std::sync::Arc::from(""),
-                                english_aux: std::sync::Arc::from(""),
-                                stroke_aux: std::sync::Arc::from(""),
-                                source: std::sync::Arc::from("Raw"),
-                                weight: 0.0,
-                                match_level: 0,
-                            },
-                        );
+                if let Some(action) = pending_action {
+                    if let Ok(vkbd) = v_bg.lock() {
+                        execute_action(&vkbd, &g_bg, action, None);
                     }
-                    p.ctx.session.update_state();
+                }
 
-                    if let Some(commit_action) = Compositor::check_auto_commit(&mut p.ctx) {
-                        drop(p);
-                        if let Ok(vkbd) = v_bg.lock() {
-                            execute_action(&vkbd, &g_bg, commit_action, None);
-                        }
-                        let _ = p_bg.lock().map(|p| update_gui_internal(&p, &g_bg));
-                        continue;
-                    }
-
-                    let phantom_action = p.update_phantom_action();
-                    drop(p);
-                    if phantom_action != Action::Consume {
-                        if let Ok(vkbd) = v_bg.lock() {
-                            execute_action(&vkbd, &g_bg, phantom_action, None);
-                        }
-                    }
-                    let _ = p_bg.lock().map(|p| update_gui_internal(&p, &g_bg));
+                if let Some(gui) = h_bg.get_gui_snapshot() {
+                    send_gui_update(&g_bg, &gui);
                 }
             }
         });
@@ -332,10 +234,10 @@ impl EvdevHost {
             should_exit: Arc::new(AtomicBool::new(false)),
             tab_held_and_not_used: false,
             lookup_tx,
-            lookup_completion,
             is_grabbed: true,
             meta_was_pressed: false,
             epoll_fd,
+            prev_chinese_enabled,
         })
     }
 }
@@ -461,88 +363,79 @@ impl InputMethodHost for EvdevHost {
                     let alt = held_keys.contains(&Key::KEY_LEFTALT)
                         || held_keys.contains(&Key::KEY_RIGHTALT);
 
-                    if let Ok(mut p) = self.processor.lock() {
-                        if let Some(vk) = evdev_to_virtual(key) {
-                            // 所有的按键（包含组合键）现在都交给 Processor 统一处理
-                            let is_sync_key = vk == VirtualKey::Space
-                                || vk == VirtualKey::Enter
-                                || vk == VirtualKey::CapsLock
-                                || vk == VirtualKey::Tab
-                                || (vk.to_u32() >= VirtualKey::Digit0.to_u32()
-                                    && vk.to_u32() <= VirtualKey::Digit9.to_u32())
-                                || matches!(
-                                    vk,
-                                    VirtualKey::PageUp
-                                        | VirtualKey::PageDown
-                                        | VirtualKey::Up
-                                        | VirtualKey::Down
-                                        | VirtualKey::Left
-                                        | VirtualKey::Right
-                                        | VirtualKey::Minus
-                                        | VirtualKey::Equal
-                                        | VirtualKey::Comma
-                                        | VirtualKey::Dot
-                                );
+                    if let Some(vk) = evdev_to_virtual(key) {
+                        let is_sync_key = vk == VirtualKey::Space
+                            || vk == VirtualKey::Enter
+                            || vk == VirtualKey::CapsLock
+                            || vk == VirtualKey::Tab
+                            || (vk.to_u32() >= VirtualKey::Digit0.to_u32()
+                                && vk.to_u32() <= VirtualKey::Digit9.to_u32())
+                            || matches!(
+                                vk,
+                                VirtualKey::PageUp
+                                    | VirtualKey::PageDown
+                                    | VirtualKey::Up
+                                    | VirtualKey::Down
+                                    | VirtualKey::Left
+                                    | VirtualKey::Right
+                                    | VirtualKey::Minus
+                                    | VirtualKey::Equal
+                                    | VirtualKey::Comma
+                                    | VirtualKey::Dot
+                            );
 
-                            if is_sync_key {
-                                drop(p);
-                                let (lock, cvar) = &*self.lookup_completion;
-                                let mut pending = lock.lock().expect("lookup_completion lock poisoned");
-                                while *pending {
-                                    pending = cvar.wait(pending).expect("lookup_completion cvar wait failed");
+                        if is_sync_key {
+                            if let Some((action, gui_snapshot, status)) =
+                                self.processor.handle_key_sync(vk, val, shift, ctrl, alt)
+                            {
+                                if status.chinese_enabled != self.prev_chinese_enabled {
+                                    self.prev_chinese_enabled = status.chinese_enabled;
+                                    let text = if status.chinese_enabled {
+                                        status.short_display.clone()
+                                    } else {
+                                        "英".into()
+                                    };
+                                    if let Some(ref gui_tx) = self.gui_tx {
+                                        let _ = gui_tx.send(GuiEvent::ShowStatus(
+                                            text.clone(),
+                                            status.chinese_enabled,
+                                        ));
+                                    }
+                                    let _ = self.tray_tx.send(
+                                        qianyan_ime_ui::tray::TrayEvent::SyncStatus {
+                                            chinese_enabled: status.chinese_enabled,
+                                            active_profile: status.active_profile.clone(),
+                                        },
+                                    );
                                 }
-                                drop(pending);
-                                if let Ok(mut p_locked) = self.processor.lock() {
-                                    let prev_enabled = p_locked.ctx.session_state.chinese_enabled;
-                                    let action =
-                                        p_locked.handle_key_ext(vk, val, shift, ctrl, alt, true);
 
-                                    let enabled = p_locked.ctx.session_state.chinese_enabled;
-                                    if prev_enabled != enabled {
-                                        let short = p_locked.get_short_display();
-                                        let text = if enabled { short } else { "英".into() };
-                                        if let Some(ref gui_tx) = self.gui_tx {
-                                            let _ = gui_tx.send(qianyan_ime_ui::GuiEvent::ShowStatus(text, enabled));
-                                        }
-                                        let profile = p_locked.get_current_profile_display();
-                                        let _ = self.tray_tx.send(
-                                            qianyan_ime_ui::tray::TrayEvent::SyncStatus {
-                                                chinese_enabled: enabled,
-                                                active_profile: profile,
-                                            },
-                                        );
-                                    }
-
-                                    if let Ok(vkbd) = self.vkbd.lock() {
-                                        execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
-                                    }
-                                    if val != 0 {
-                                        drop(p_locked);
-                                        self.update_gui();
-                                    }
-                                }
-                            } else {
-                                let fast_action =
-                                    p.handle_key_ext(vk, val, shift, ctrl, alt, false);
                                 if let Ok(vkbd) = self.vkbd.lock() {
-                                    execute_action(&vkbd, &self.gui_tx, fast_action, Some((key, val)));
+                                    execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
                                 }
-
                                 if val != 0 {
-                                    {
-                                        let (lock, _) = &*self.lookup_completion;
-                                        *lock.lock().expect("lookup_completion lock poisoned") = true;
-                                    }
-                                    let _ = self.lookup_tx.send(());
-                                    drop(p);
-                                    self.update_gui();
+                                    send_gui_update(&self.gui_tx, &gui_snapshot);
                                 }
                             }
                         } else {
-                            if let Ok(vkbd) = self.vkbd.lock() {
-                                vkbd.emit_raw(key, val);
+                            let fast_action =
+                                self.processor.handle_key(vk, val, shift, ctrl, alt, false);
+
+                            if let Some(action) = fast_action {
+                                if let Ok(vkbd) = self.vkbd.lock() {
+                                    execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
+                                }
                             }
-                            drop(p);
+
+                            if val != 0 {
+                                let _ = self.lookup_tx.send(());
+                                if let Some(gui) = self.processor.get_gui_snapshot() {
+                                    send_gui_update(&self.gui_tx, &gui);
+                                }
+                            }
+                        }
+                    } else {
+                        if let Ok(vkbd) = self.vkbd.lock() {
+                            vkbd.emit_raw(key, val);
                         }
                     }
                 }
@@ -552,71 +445,50 @@ impl InputMethodHost for EvdevHost {
     }
 }
 
-impl EvdevHost {
-    fn update_gui(&self) {
-        if let Ok(p) = self.processor.lock() {
-            update_gui_internal(&p, &self.gui_tx);
-        }
-    }
-}
+fn send_gui_update(gui_tx: &Option<Sender<GuiEvent>>, snap: &GuiSnapshot) {
+    let Some(ref tx) = gui_tx else { return };
 
-fn update_gui_internal(p: &Processor, gui_tx: &Option<Sender<GuiEvent>>) {
-    if let Some(ref tx) = gui_tx {
-        let pinyin = qianyan_ime_engine::compositor::Compositor::get_preedit(&p.ctx);
-
-        if pinyin.is_empty() || !p.ctx.session_state.chinese_enabled {
-            let _ = tx.send(GuiEvent::Update {
-                pinyin: "".into(),
-                candidates: vec![],
-                selected: 0,
-                page: 0,
-                total_pages: 0,
-                sentence: "".into(),
-                cursor_pos: 0,
-                commit_mode: p.ctx.config.commit_mode().to_string(),
-            });
-            return;
-        }
-
-        let page_size = p.ctx.config.page_size();
-        let start = p.ctx.session.page.min(p.ctx.session.candidates.len());
-        let end = (start + page_size).min(p.ctx.session.candidates.len());
-
-        let mut display_candidates = Vec::new();
-        for (i, c) in p.ctx.session.candidates[start..end].iter().enumerate() {
-            let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
-            let label = format!("{}.", i + 1);
-            let full_display = if is_fuzzy {
-                format!("{label}{}(模糊)", c.text)
-            } else if c.hint.is_empty() {
-                format!("{label}{}", c.text)
-            } else {
-                format!("{label}{}({})", c.text, c.hint)
-            };
-            display_candidates.push(qianyan_ime_ui::DisplayCandidate {
-                text: c.text.to_string(),
-                label,
-                hint: c.hint.to_string(),
-                full_display,
-                is_fuzzy,
-            });
-        }
-
-        let relative_selected = p.ctx.session.selected.saturating_sub(start);
-        let current_page = if page_size > 0 { start / page_size } else { 0 };
-        let total_pages = if page_size > 0 { (p.ctx.session.candidates.len() + page_size - 1) / page_size } else { 0 };
-
+    if snap.pinyin.is_empty() || !snap.chinese_enabled {
         let _ = tx.send(GuiEvent::Update {
-            pinyin,
-            candidates: display_candidates,
-            selected: relative_selected,
-            page: current_page,
-            total_pages,
-            sentence: p.ctx.session.joined_sentence.clone(),
-            cursor_pos: p.ctx.session.cursor_pos,
-            commit_mode: p.ctx.config.commit_mode().to_string(),
+            pinyin: "".into(),
+            candidates: vec![],
+            selected: 0,
+            page: 0,
+            total_pages: 0,
+            sentence: "".into(),
+            cursor_pos: 0,
+            commit_mode: snap.commit_mode.clone(),
         });
+        return;
     }
+
+    let display_candidates: Vec<_> = snap.candidates.iter().map(|c| {
+        let full_display = if c.is_fuzzy {
+            format!("{}{}(模糊)", c.label, c.text)
+        } else if c.hint.is_empty() {
+            format!("{}{}", c.label, c.text)
+        } else {
+            format!("{}{}({})", c.label, c.text, c.hint)
+        };
+        qianyan_ime_ui::DisplayCandidate {
+            text: c.text.clone(),
+            label: c.label.clone(),
+            hint: c.hint.clone(),
+            full_display,
+            is_fuzzy: c.is_fuzzy,
+        }
+    }).collect();
+
+    let _ = tx.send(GuiEvent::Update {
+        pinyin: snap.pinyin.clone(),
+        candidates: display_candidates,
+        selected: snap.selected,
+        page: snap.page,
+        total_pages: snap.total_pages,
+        sentence: snap.sentence.clone(),
+        cursor_pos: snap.cursor_pos,
+        commit_mode: snap.commit_mode.clone(),
+    });
 }
 
 fn execute_action(

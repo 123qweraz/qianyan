@@ -5,7 +5,7 @@ use crate::hosts::wayland_host_v1::WaylandInputHostV1;
 use qianyan_ime_core::config::LinuxConfig;
 use qianyan_ime_core::Config;
 use qianyan_ime_core::InputMethodHost;
-use qianyan_ime_engine::Processor;
+use qianyan_ime_engine::processor::actor::ProcessorHandle;
 use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 use std::error::Error;
@@ -15,7 +15,7 @@ pub type InputHostResult = Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + 
 
 pub fn create_input_host(
     args: &[String],
-    processor: Arc<Mutex<Processor>>,
+    processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     config: Arc<RwLock<Config>>,
     tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>,
@@ -110,7 +110,7 @@ pub fn create_input_host(
 }
 
 fn create_wayland_host(
-    processor: Arc<Mutex<Processor>>,
+    processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, &'static str), Box<dyn Error>> {

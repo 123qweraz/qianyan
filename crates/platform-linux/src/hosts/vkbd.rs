@@ -1,6 +1,5 @@
 use evdev::uinput::{VirtualDevice, VirtualDeviceBuilder};
 use evdev::{AttributeSet, Device, EventType, InputEvent, Key};
-use std::process::Command;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
@@ -140,8 +139,7 @@ impl Vkbd {
             return;
         }
 
-        // 1. FAST PATH: 只要是能通过 uinput 直接模拟的 ASCII 字符，都不走剪贴板
-        // 这解决了 "打一个字母就触发一次剪贴板" 的问题，同时也极大减少了 wl-copy 进程的启动
+        // FAST PATH: 只要是能通过 uinput 直接模拟的 ASCII 字符，都不走剪贴板
         if !highlight
             && text.chars().all(|c| char_to_key_with_shift(c).is_some())
         {
@@ -162,102 +160,65 @@ impl Vkbd {
 
         println!("[Vkbd BG] 正在通过剪贴板路径发送文字: {text} (模式={mode:?})");
 
-        // 优先使用命令行工具 wl-copy/xclip，解决库调用超时问题
-        if Self::do_send_via_clipboard_cmd(dev, is_wayland, mode, delay, text) {
-            return;
+        // Wayland: 使用 wl-clipboard-rs 直接操作剪贴板协议 (无外部进程)
+        if is_wayland {
+            if Self::do_send_via_wl_clipboard(dev, mode, delay, text) {
+                return;
+            }
+            eprintln!("[Vkbd] wl-clipboard-rs 失败, 降级到 arboard");
         }
 
-        // 兜底: 尝试使用 arboard 库
-        let _ = Self::do_send_via_clipboard_lib(dev, mode, delay, text);
+        // X11 或降级: 使用 arboard
+        let _ = Self::do_send_via_arboard(dev, mode, delay, text);
     }
 
-    /// 使用命令行工具 wl-copy 或 xclip (更稳定)
-    fn do_send_via_clipboard_cmd(
+    /// 使用 wl-clipboard-rs (Wayland 原生, 不产生外部进程)
+    fn do_send_via_wl_clipboard(
         dev: &Arc<Mutex<VirtualDevice>>,
-        is_wayland: bool,
         mode: PasteMode,
         delay: u64,
         text: &str,
     ) -> bool {
-        // 尝试所有可能的工具，直到一个成功
-        let mut tools = if is_wayland {
-            vec![("wl-copy", vec![text.to_string()]), ("xclip", vec!["-selection".to_string(), "clipboard".to_string()])]
-        } else {
-            vec![("xclip", vec!["-selection".to_string(), "clipboard".to_string()]), ("wl-copy", vec![text.to_string()])]
+        use wl_clipboard_rs::copy::{self, ClipboardType, MimeType, Options, Source};
+
+        let clipboard_type = match mode {
+            PasteMode::ShiftInsert => ClipboardType::Both,
+            _ => ClipboardType::Regular,
         };
-        // 增加 xsel 作为最后手段
-        tools.push(("xsel", vec!["--clipboard".to_string(), "--input".to_string()]));
 
-        let mut success = false;
+        let mut opts = Options::new();
+        opts.clipboard(clipboard_type);
+        // foreground(false) 默认: copy() 后台线程注册数据源 + serve 剪贴板,
+        // 前台线程立即返回, delay 后粘贴时数据已就绪
+        let opts = opts.clone();
 
-        for (cmd, args) in tools {
-            let child = if cmd == "wl-copy" {
-                Command::new(cmd).args(&args).spawn()
-            } else {
-                use std::process::Stdio;
-                Command::new(cmd)
-                    .args(&args)
-                    .stdin(Stdio::piped())
-                    .spawn()
-            };
-
-            if let Ok(mut c) = child {
-                if cmd != "wl-copy" {
-                    if let Some(mut stdin) = c.stdin.take() {
-                        use std::io::Write;
-                        let _ = stdin.write_all(text.as_bytes());
-                    }
-                }
-                let status = c.wait();
-                if status.is_ok() && status.expect("is_ok check").success() {
-                    success = true;
-                    
-                    // 如果是 ShiftInsert 模式且不是 wl-copy (wl-copy 默认可能不设 primary)，
-                    // 我们额外尝试设置 PRIMARY 选区
-                    if mode == PasteMode::ShiftInsert && cmd != "wl-copy" {
-                        let p_args = if cmd == "xclip" {
-                            vec!["-selection", "primary"]
-                        } else {
-                            vec!["--primary", "--input"]
-                        };
-                        if let Ok(mut p_c) = Command::new(cmd).args(p_args).stdin(std::process::Stdio::piped()).spawn() {
-                            if let Some(mut stdin) = p_c.stdin.take() {
-                                use std::io::Write;
-                                let _ = stdin.write_all(text.as_bytes());
-                            }
-                            let _ = p_c.wait();
-                        }
-                    } else if mode == PasteMode::ShiftInsert && cmd == "wl-copy" {
-                         let _ = Command::new("wl-copy").arg("--primary").arg(text).spawn();
-                    }
-
-                    break; // 成功一个就够了
-                }
+        match copy::copy(opts, Source::Bytes(text.as_bytes().to_vec().into()), MimeType::Text) {
+            Ok(()) => {
+                thread::sleep(Duration::from_millis(delay));
+                Self::perform_paste(dev, mode);
+                true
             }
-        }
-
-        if success {
-            thread::sleep(Duration::from_millis(delay));
-            Self::perform_paste(dev, mode);
-            true
-        } else {
-            false
+            Err(e) => {
+                eprintln!("[Vkbd] wl-clipboard-rs copy 失败: {e:?}");
+                false
+            }
         }
     }
 
-    fn do_send_via_clipboard_lib(
+    /// 使用 arboard 库 (X11 主力, Wayland 降级)
+    fn do_send_via_arboard(
         dev: &Arc<Mutex<VirtualDevice>>,
         mode: PasteMode,
         delay: u64,
         text: &str,
     ) -> bool {
         static CLIPBOARD_INSTANCE: OnceLock<Option<Mutex<Clipboard>>> = OnceLock::new();
-        
+
         let cb_opt = CLIPBOARD_INSTANCE.get_or_init(|| {
             match Clipboard::new() {
                 Ok(c) => Some(Mutex::new(c)),
                 Err(e) => {
-                    eprintln!("[Vkbd] 无法初始化剪贴板库: {}", e);
+                    eprintln!("[Vkbd] 无法初始化 arboard: {e}");
                     None
                 }
             }

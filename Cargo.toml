@@ -46,6 +46,7 @@ evdev = "0.12.1"
 libc = "0.2"
 daemonize = "0.5"
 ksni = "0.2.1"
+wl-clipboard-rs = "0.9"
 
 # Windows
 windows = { version = "0.52", features = [

@@ -1,3 +1,4 @@
+pub mod actor;
 pub mod commands;
 pub mod fsm;
 pub mod handlers;
