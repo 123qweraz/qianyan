@@ -9,7 +9,7 @@ pub mod utils;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use crate::compositor::Compositor;
 use crate::keys::VirtualKey;
@@ -18,8 +18,6 @@ use qianyan_ime_core::config::Config;
 
 pub use fsm::ImeState;
 pub use utils::*;
-
-const KEY_BATCH_DELAY_MS: u64 = 0;
 
 pub fn inject_text(ctx: &mut EngineContext, text: &str) -> Action {
     use crate::compositor::Compositor;
@@ -312,64 +310,18 @@ impl Processor {
         }
 
         if is_press && is_letter(key) && perform_lookup {
-            // 如果 FSM 已经消耗或处理了该键（例如 Shift 字母用于辅助码过滤），则不再走批量缓冲逻辑
             if fsm_action != Action::PassThrough {
                 return fsm_action;
             }
-
-            let elapsed = now.duration_since(self.ctx.last_key_time);
-            if elapsed < Duration::from_millis(KEY_BATCH_DELAY_MS) {
-                if let Some(c) = key_to_char(key, shift_pressed, false) {
-                    self.ctx.pending_key_buffer.push(c);
-                }
-                self.ctx.last_key_time = now;
-                return Action::Consume;
-            } else if !self.ctx.pending_key_buffer.is_empty() {
-                let buffered = self.ctx.pending_key_buffer.clone();
-                self.ctx.pending_key_buffer.clear();
-
-                if let Some(c) = key_to_char(key, shift_pressed, false) {
-                    self.ctx.pending_key_buffer.push(c);
-                }
-                self.ctx.last_key_time = now;
-
-                return self.process_batched_keys(&buffered);
-            } else {
-                if let Some(c) = key_to_char(key, shift_pressed, false) {
-                    self.ctx.pending_key_buffer.push(c);
-                }
-                self.ctx.last_key_time = now;
-            }
-        } else if is_press
-            && !is_letter(key)
-            && perform_lookup
-            && !self.ctx.pending_key_buffer.is_empty()
-        {
-            let buffered = self.ctx.pending_key_buffer.clone();
-            self.ctx.pending_key_buffer.clear();
-            let action = self.process_batched_keys(&buffered);
-            if !matches!(action, Action::Consume) {
-                return action;
-            }
-        }
-
-        fsm_action
-    }
-
-    fn process_batched_keys(&mut self, keys: &str) -> Action {
-        for c in keys.chars() {
-            if let Some(action) = self.inject_char_internal(c) {
-                if !matches!(action, Action::Consume) {
+            if let Some(c) = key_to_char(key, shift_pressed, false) {
+                self.ctx.session.push_char(c);
+                if let Some(action) = self.lookup() {
                     return action;
                 }
             }
         }
-        Action::Consume
-    }
 
-    fn inject_char_internal(&mut self, c: char) -> Option<Action> {
-        self.ctx.session.push_char(c);
-        self.lookup()
+        fsm_action
     }
 
     fn handle_fsm_transition(

@@ -12,8 +12,7 @@ pub struct EngineContext {
     pub engine: crate::pipeline::SearchEngine,
     pub syllables: HashSet<String>,
     pub dispatcher: crate::KeyDispatcher,
-    pub last_key_time: std::time::Instant,
-    pub pending_key_buffer: String,
+
     pub sound_manager: crate::sound::SoundManager,
 }
 
@@ -63,8 +62,7 @@ impl EngineContext {
             engine,
             syllables,
             dispatcher: crate::KeyDispatcher::new(),
-            last_key_time: std::time::Instant::now(),
-            pending_key_buffer: String::new(),
+
             sound_manager: crate::sound::SoundManager::new(),
         }
     }
@@ -72,8 +70,6 @@ impl EngineContext {
     pub fn reset(&mut self) {
         self.session.reset();
         self.session_state.commit_history.clear();
-        self.pending_key_buffer.clear();
-        self.last_key_time = std::time::Instant::now();
     }
 
     pub fn apply_config(&mut self, conf: &Config) {

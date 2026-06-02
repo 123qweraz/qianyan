@@ -427,11 +427,11 @@ impl InputMethodHost for WaylandInputHost {
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
+            let _ = conn.flush();
             if let Err(e) = event_queue.dispatch_pending(&mut state) {
                 error!("[WaylandIM] dispatch error: {e}");
                 break;
             }
-            let _ = conn.flush();
             std::thread::sleep(std::time::Duration::from_millis(4));
         }
 
