@@ -189,110 +189,119 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_msg = config.clone();
     let app_state_tray = app_state.clone();
 
+    // Tray 事件处理线程。
+    // 架构约定：Processor 锁只用于极短的临界区（读取/写入处理器的状态），
+    // GUI 更新、托盘图标更新等操作在锁外执行，避免阻塞其他线程（evdev/背景检索）。
     std::thread::spawn(move || {
         while let Ok(event) = tray_rx.recv() {
             match event {
                 qianyan_ime_ui::tray::TrayEvent::ToggleIme => {
-                    if let Ok(mut p) = processor_clone.lock() {
+                    // 临界区：仅读取处理器状态，不做 GUI 操作
+                    let (enabled, short) = {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => continue,
+                        };
                         p.toggle();
-                        let enabled = p.ctx.session_state.chinese_enabled;
-                        let short = p.get_short_display();
-                        if let Some(ref handle) = tray_handle {
-                            handle.update(move |t| t.chinese_enabled = enabled);
-                        }
-
-                        if let Ok(mut state) = app_state_tray.lock() {
-                            state.chinese_enabled = enabled;
-                            state.status_text = if enabled { short } else { "英".into() };
-                            let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
-                        }
+                        (p.ctx.session_state.chinese_enabled, p.get_short_display())
+                    };
+                    // GUI/托盘更新在锁外执行
+                    if let Some(ref handle) = tray_handle {
+                        handle.update(move |t| t.chinese_enabled = enabled);
+                    }
+                    if let Ok(mut state) = app_state_tray.lock() {
+                        state.chinese_enabled = enabled;
+                        state.status_text = if enabled { short } else { "英".into() };
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::NextProfile => {
-                    if let Ok(mut p) = processor_clone.lock() {
+                    let (profile, enabled, short, commit_mode) = {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => continue,
+                        };
                         let profile = p.next_profile();
                         let enabled = p.ctx.session_state.chinese_enabled;
                         let short = p.get_short_display();
-                        if let Some(ref handle) = tray_handle {
-                            handle.update(move |t| t.active_profile = profile);
-                        }
-
-                        if let Ok(mut state) = app_state_tray.lock() {
-                            state.status_text = if enabled { short } else { "英".into() };
-                            state.chinese_enabled = enabled;
-                            state.active_profile = p.ctx.session_state.active_profiles.first().cloned().unwrap_or_default();
-                            
-                            // Reset UI state
-                            state.pinyin = "".into();
-                            state.candidates = vec![];
-                            state.selected_index = 0;
-                            state.page = 0;
-                            state.total_pages = 0;
-
-                            let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
-                            let _ = gui_tx_tray.send(GuiEvent::Update {
-                                pinyin: "".into(),
-                                candidates: vec![],
-                                selected: 0,
-                                page: 0,
-                                total_pages: 0,
-                                sentence: "".into(),
-                                cursor_pos: 0,
-                                commit_mode: p.ctx.config.commit_mode().to_string(),
-                            });
-                        }
+                        let commit_mode = p.ctx.config.commit_mode().to_string();
+                        (profile, enabled, short, commit_mode)
+                    };
+                    let profile_for_tray = profile.clone();
+                    if let Some(ref handle) = tray_handle {
+                        handle.update(move |t| t.active_profile = profile_for_tray);
+                    }
+                    if let Ok(mut state) = app_state_tray.lock() {
+                        state.status_text = if enabled { short } else { "英".into() };
+                        state.chinese_enabled = enabled;
+                        state.active_profile = profile;
+                        state.pinyin = "".into();
+                        state.candidates = vec![];
+                        state.selected_index = 0;
+                        state.page = 0;
+                        state.total_pages = 0;
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                        let _ = gui_tx_tray.send(GuiEvent::Update {
+                            pinyin: "".into(),
+                            candidates: vec![],
+                            selected: 0,
+                            page: 0,
+                            total_pages: 0,
+                            sentence: "".into(),
+                            cursor_pos: 0,
+                            commit_mode,
+                        });
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::SetProfile(profile) => {
-                    if let Ok(mut p) = processor_clone.lock() {
+                    let result = {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => continue,
+                        };
                         let profiles: Vec<String> = profile.split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| p.ctx.engine.trie_paths.contains_key(s))
                             .collect();
-
-                        if !profiles.is_empty() {
-                            p.ctx.session_state.active_profiles = profiles.clone();
-                            
-                            // Persist to config (save the raw comma-separated string)
+                        if profiles.is_empty() {
+                            None
+                        } else {
+                            p.ctx.session_state.active_profiles = profiles;
                             if let Ok(conf) = p.ctx.config.master_config_write() {
                                 conf.input.default_profile = profile.clone();
                                 let _ = conf.save();
                             }
-                            
                             p.reset();
-                            let enabled = p.ctx.session_state.chinese_enabled;
-                            let short = p.get_short_display();
-                            
-                            if let Some(ref handle) = tray_handle {
-                                let profile_clone = profile.clone();
-                                handle.update(move |t| t.active_profile = profile_clone);
-                            }
-
-                            if let Ok(mut state) = app_state_tray.lock() {
-                                state.status_text = if enabled { short } else { "英".into() };
-                                state.chinese_enabled = enabled;
-                                state.active_profile = profile;
-                                
-                                // Reset UI state for the new profile
-                                state.pinyin = "".into();
-                                state.candidates = vec![];
-                                state.selected_index = 0;
-                                state.page = 0;
-                                state.total_pages = 0;
-                                
-                                let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
-                                let _ = gui_tx_tray.send(GuiEvent::Update {
-                                    pinyin: "".into(),
-                                    candidates: vec![],
-                                    selected: 0,
-                                    page: 0,
-                                    total_pages: 0,
-                                    sentence: "".into(),
-                                    cursor_pos: 0,
-                                    commit_mode: p.ctx.config.commit_mode().to_string(),
-                                });
-                            }
+                            Some((p.ctx.session_state.chinese_enabled, p.get_short_display(), p.ctx.config.commit_mode().to_string()))
                         }
+                    };
+                    let Some((enabled, short, commit_mode)) = result else {
+                        continue;
+                    };
+                    if let Some(ref handle) = tray_handle {
+                        let profile_for_tray = profile.clone();
+                        handle.update(move |t| t.active_profile = profile_for_tray);
+                    }
+                    if let Ok(mut state) = app_state_tray.lock() {
+                        state.status_text = if enabled { short } else { "英".into() };
+                        state.chinese_enabled = enabled;
+                        state.active_profile = profile;
+                        state.pinyin = "".into();
+                        state.candidates = vec![];
+                        state.selected_index = 0;
+                        state.page = 0;
+                        state.total_pages = 0;
+                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                        let _ = gui_tx_tray.send(GuiEvent::Update {
+                            pinyin: "".into(),
+                            candidates: vec![],
+                            selected: 0,
+                            page: 0,
+                            total_pages: 0,
+                            sentence: "".into(),
+                            cursor_pos: 0,
+                            commit_mode,
+                        });
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::SyncStatus {
@@ -346,7 +355,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 qianyan_ime_ui::tray::TrayEvent::ReloadConfig => {
                     let new_conf = Config::load();
-                    if let Ok(mut p) = processor_clone.lock() {
+                    {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => continue,
+                        };
                         p.apply_config(&new_conf);
                     }
                     if let Some(ref handle) = tray_handle {
@@ -364,12 +377,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::ClearUserDict => {
-                    if let Ok(mut p) = processor_clone.lock() {
-                        let profiles = p.ctx.config.list_profiles();
-                        for profile in profiles {
-                            if let Err(e) = p.ctx.config.clear_user_data(&profile) {
-                                eprintln!("清除用户数据失败: {}", e);
-                            }
+                    let profiles = {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => continue,
+                        };
+                        p.ctx.config.list_profiles()
+                    };
+                    for profile in profiles {
+                        let mut p = match processor_clone.lock() {
+                            Ok(guard) => guard,
+                            Err(_) => break,
+                        };
+                        if let Err(e) = p.ctx.config.clear_user_data(&profile) {
+                            eprintln!("清除用户数据失败: {}", e);
                         }
                     }
                 }
@@ -378,9 +399,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     std::process::exit(0);
                 }
-                qianyan_ime_ui::tray::TrayEvent::SendKey(_) => {
-                    // 暂不处理 SendKey 事件
-                }
+                qianyan_ime_ui::tray::TrayEvent::SendKey(_) => {}
             }
         }
     });
