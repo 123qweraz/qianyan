@@ -1,15 +1,22 @@
 use axum::{
     routing::{get, post},
-    extract::{State, Json, DefaultBodyLimit},
+    extract::{State, Json, DefaultBodyLimit, Extension},
     response::{IntoResponse, Html},
     http::{StatusCode, Uri, HeaderName, header},
     Router,
 };
 use qianyan_ime_engine::fst::Streamer;
+use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery};
+use qianyan_ime_engine::processor::FilterMode;
+use qianyan_ime_engine::schemes::{ChineseScheme, EnglishScheme, JapaneseScheme, StrokeScheme};
+use qianyan_ime_engine::scheme::InputScheme;
+use qianyan_ime_core::utils::{load_syllables, load_syllable_frequencies};
+use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
 use qianyan_ime_core::Config;
 use qianyan_ime_engine::trie::Trie;
@@ -27,6 +34,7 @@ pub struct WebServer {
     pub config: Arc<RwLock<Config>>,
     pub tries: Arc<RwLock<HashMap<String, Trie>>>,
     pub tray_tx: std::sync::mpsc::Sender<TrayEvent>,
+    pub root: PathBuf,
 }
 
 type WebState = (
@@ -35,19 +43,29 @@ type WebState = (
     std::sync::mpsc::Sender<TrayEvent>
 );
 
+pub struct ImeEngineHandle {
+    pub engine: Arc<RwLock<Option<Arc<SearchEngine>>>>,
+    pub root: PathBuf,
+}
+
 impl WebServer {
     pub fn new(
         port: u16, 
         actual_port: Arc<AtomicU16>,
         config: Arc<RwLock<Config>>, 
         tries: Arc<RwLock<HashMap<String, Trie>>>,
-        tray_tx: std::sync::mpsc::Sender<TrayEvent>
+        tray_tx: std::sync::mpsc::Sender<TrayEvent>,
+        root: PathBuf,
     ) -> Self {
-        Self { port, actual_port, config, tries, tray_tx }
+        Self { port, actual_port, config, tries, tray_tx, root }
     }
 
     pub async fn start(self) {
         let state: WebState = (self.config, self.tries, self.tray_tx);
+        let ime_handle = Arc::new(ImeEngineHandle {
+            engine: Arc::new(RwLock::new(None)),
+            root: self.root,
+        });
         let app = Router::new()
             .route("/", get(index_handler))
             .route("/api/config", get(get_config).post(update_config))
@@ -77,10 +95,12 @@ impl WebServer {
             .route("/api/tools/discover/export", post(export_discovery_handler))
             .route("/api/tools/discover/save", post(save_discovery_handler))
             .route("/api/tools/discover/download", post(discover_download_handler))
+            .route("/api/ime/search", post(ime_search_handler))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
+            .layer(Extension(ime_handle))
             .with_state(state);
 
         let mut current_port = self.port;
@@ -1851,4 +1871,138 @@ async fn export_discovery_handler(
         ];
         (StatusCode::OK, headers, body).into_response()
     }
+}
+
+fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
+    let syllables = load_syllables(root);
+    let syllable_freq = load_syllable_frequencies(root);
+
+    let data_dir = root.join("data");
+    let mut trie_paths: HashMap<String, (PathBuf, PathBuf)> = HashMap::new();
+    if let Ok(entries) = std::fs::read_dir(&data_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    let trie_idx = path.join("trie.index");
+                    let trie_dat = path.join("trie.data");
+                    if trie_idx.exists() && trie_dat.exists() {
+                        trie_paths.insert(dir_name.to_string(), (trie_idx, trie_dat));
+                    }
+                }
+            }
+        }
+    }
+
+    if trie_paths.is_empty() {
+        return Err("No trie files found in data/ directory".into());
+    }
+
+    let syllables_arc = Arc::new(syllables);
+    let syllable_freq_arc = Arc::new(syllable_freq);
+    let empty_user_dict = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+
+    let mut schemes_map: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+    schemes_map.insert("chinese".into(), Box::new(ChineseScheme::new()));
+    schemes_map.insert("english".into(), Box::new(EnglishScheme::new()));
+    schemes_map.insert("japanese".into(), Box::new(JapaneseScheme::new()));
+    schemes_map.insert("stroke".into(), Box::new(StrokeScheme::new()));
+
+    Ok(SearchEngine::new(
+        trie_paths,
+        syllables_arc,
+        syllable_freq_arc,
+        empty_user_dict.clone(),
+        empty_user_dict.clone(),
+        empty_user_dict,
+        Arc::new(schemes_map),
+    ))
+}
+
+#[derive(Deserialize)]
+struct ImeSearchRequest {
+    buffer: String,
+    #[serde(default = "default_profile")]
+    profile: String,
+    #[serde(default = "default_limit")]
+    limit: usize,
+}
+
+fn default_profile() -> String { "chinese".into() }
+fn default_limit() -> usize { 50 }
+
+#[derive(Serialize)]
+struct ImeCandidateResponse {
+    text: String,
+    simplified: String,
+    traditional: String,
+    hint: String,
+    weight: f64,
+    match_level: u8,
+    source: String,
+}
+
+#[derive(Serialize)]
+struct ImeSearchResponse {
+    candidates: Vec<ImeCandidateResponse>,
+    segments: Vec<String>,
+}
+
+async fn ime_search_handler(
+    State((config, _, _)): State<WebState>,
+    Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
+    Json(req): Json<ImeSearchRequest>,
+) -> Json<ImeSearchResponse> {
+    let engine = {
+        let guard = ime_handle.engine.read().unwrap();
+        if let Some(ref engine) = *guard {
+            engine.clone()
+        } else {
+            drop(guard);
+            match prepare_ime_engine(&ime_handle.root) {
+                Ok(engine) => {
+                    let mut w = ime_handle.engine.write().unwrap();
+                    if w.is_none() {
+                        *w = Some(Arc::new(engine.clone()));
+                    }
+                    Arc::new(engine)
+                }
+                Err(e) => {
+                    log::error!("[Web] Failed to init IME engine: {}", e);
+                    return Json(ImeSearchResponse { candidates: vec![], segments: vec![] });
+                }
+            }
+        }
+    };
+
+    let cfg = config.read().unwrap().clone();
+    let (candidates, segments) = engine.search(EngineSearchQuery {
+        buffer: &req.buffer,
+        profile: &req.profile,
+        syllables: &engine.syllables,
+        config: &cfg,
+        limit: req.limit,
+        filter_mode: FilterMode::None,
+        aux_filter: "",
+        context: None,
+        fuzzy_enabled: cfg.input.enable_fuzzy_pinyin,
+    });
+
+    let response_candidates: Vec<ImeCandidateResponse> = candidates
+        .into_iter()
+        .map(|c| ImeCandidateResponse {
+            text: c.text.to_string(),
+            simplified: c.simplified.to_string(),
+            traditional: c.traditional.to_string(),
+            hint: c.hint.to_string(),
+            weight: c.weight,
+            match_level: c.match_level,
+            source: c.source.to_string(),
+        })
+        .collect();
+
+    Json(ImeSearchResponse {
+        candidates: response_candidates,
+        segments,
+    })
 }

@@ -192,6 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tray_tx_for_main_loop = tray_tx.clone();
     let config_msg = config.clone();
     let app_state_tray = app_state.clone();
+    let root_for_tray = root.clone();
 
     // Tray 事件处理线程（无锁：通过 ProcessorHandle 与 Actor 通信）
     std::thread::spawn(move || {
@@ -295,6 +296,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         WEB_SERVER_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
                         let config_web = config_msg.clone();
                         let tray_tx_web = tray_tx_for_main_loop.clone();
+                        let root_web = root_for_tray.clone();
                         std::thread::spawn(move || {
                             if let Ok(rt) = tokio::runtime::Runtime::new() {
                                 rt.block_on(async {
@@ -304,6 +306,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         config_web,
                                         Arc::new(RwLock::new(HashMap::new())),
                                         tray_tx_web,
+                                        root_web,
                                     );
                                     server.start().await;
                                 });

@@ -16,6 +16,7 @@ slint-build = { workspace = true }
 axum = { workspace = true }
 mime_guess = { workspace = true }
 rust-embed = { workspace = true }
+arc-swap = { workspace = true }
 image = { workspace = true }
 walkdir = { workspace = true }
 encoding_rs = { workspace = true }

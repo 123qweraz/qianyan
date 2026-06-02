@@ -4614,6 +4614,7 @@ dependencies = [
 name = "qianyan-ime-ui"
 version = "0.1.0"
 dependencies = [
+ "arc-swap",
  "axum",
  "bytemuck",
  "encoding_rs",

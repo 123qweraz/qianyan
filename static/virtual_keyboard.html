@@ -6,229 +6,93 @@
     <title>虚拟键盘 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        body {
-            background: #f5f5f7;
-            min-height: 100vh;
+        body { background: #f5f5f7; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; color: var(--apple-text); }
+        .ime-select { display: flex; gap: 8px; background: var(--apple-card); padding: 6px; border-radius: 14px; }
+        .ime-btn { padding: 10px 20px; border: none; background: transparent; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--apple-secondary); transition: all 0.2s; }
+        .ime-btn.active { background: var(--apple-accent); color: white; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--apple-card); border-radius: 12px; margin-bottom: 16px; font-size: 13px; color: var(--apple-secondary); }
+        .status-bar b { color: var(--apple-accent); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; background: #ccc; }
+        .status-dot.ok { background: #34c759; }
+
+        /* Pinyin input row */
+        .pinyin-row { margin-bottom: 12px; }
+        .pinyin-row input {
+            width: 100%; padding: 14px 18px; font-size: 22px;
+            border: 2px solid var(--apple-border); border-radius: 14px;
+            outline: none; background: white; color: var(--apple-text);
+            font-family: "SF Mono", "Fira Code", monospace;
+            transition: border-color 0.2s;
         }
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 20px;
+        .pinyin-row input:focus { border-color: var(--apple-accent); }
+        .pinyin-row input::placeholder { color: #ccc; font-size: 16px; }
+        .pinyin-row .segments { font-size: 13px; color: var(--apple-accent); margin-top: 6px; padding-left: 4px; min-height: 19px; }
+
+        /* Candidates */
+        .candidates { background: var(--apple-card); border: 1px solid var(--apple-border); border-radius: 16px; padding: 16px 20px; margin-bottom: 14px; display: none; }
+        .candidates.show { display: block; }
+        .candidates .words { display: flex; flex-wrap: wrap; gap: 8px; }
+        .candidates .word {
+            background: #f2f2f7; color: var(--apple-text);
+            padding: 10px 16px; border-radius: 10px; cursor: pointer;
+            font-size: 18px; transition: all 0.15s;
+            display: flex; flex-direction: column; align-items: center; min-width: 44px;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+        .candidates .word:hover { background: var(--apple-accent); color: white; }
+        .candidates .word:active { transform: scale(0.96); }
+        .candidates .word .num { color: var(--apple-secondary); font-size: 11px; }
+        .candidates .word .hint { color: #999; font-size: 11px; margin-top: 2px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .candidates .word.exact { border: 2px solid #34c759; }
+        .candidates .word.abbr { border: 2px solid #ff9500; }
+        .candidates .word.prefix { border: 2px solid #007aff; }
+
+        /* Editor */
+        .editor-row { margin-bottom: 14px; }
+        .editor-row textarea {
+            width: 100%; min-height: 100px; padding: 14px 18px;
+            font-size: 20px; border: 2px solid var(--apple-border);
+            border-radius: 14px; outline: none; background: white;
+            color: var(--apple-text); resize: vertical;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.8;
         }
-        .header h1 {
-            font-size: 24px;
-            color: var(--apple-text);
-        }
-        .ime-select {
-            display: flex;
-            gap: 8px;
-            background: var(--apple-card);
-            padding: 6px;
-            border-radius: 14px;
-        }
-        .ime-btn {
-            padding: 10px 20px;
-            border: none;
-            background: transparent;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--apple-secondary);
-            transition: all 0.2s;
-        }
-        .ime-btn.active {
-            background: var(--apple-accent);
-            color: white;
-        }
-        .input-area {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
-            border: 1px solid var(--apple-border);
-        }
-        .input-area textarea {
-            width: 100%;
-            min-height: 60px;
-            border: none;
-            font-size: 24px;
-            resize: none;
-            outline: none;
-            background: transparent;
-        }
-        .input-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: var(--apple-accent);
-            color: white;
-        }
-        .btn-secondary {
-            background: #e5e5ea;
-            color: var(--apple-text);
-        }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .keyboard {
-            background: #e5e5ea;
-            padding: 16px;
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            user-select: none;
-        }
-        .kb-row {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-        }
-        .key {
-            min-width: 48px;
-            height: 52px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 3px 0 #d1d1d6;
-            cursor: pointer;
-            transition: all 0.08s;
-            position: relative;
-            padding: 0 8px;
-        }
-        .key:active, .key.pressed {
-            transform: translateY(3px);
-            box-shadow: 0 0 0 #d1d1d6;
-            background: var(--apple-accent);
-            color: white;
-        }
-        .key.shift-on {
-            background: var(--apple-accent);
-            color: white;
-        }
-        .key.caps-on {
-            background: #007aff;
-            color: white;
-        }
-        .key .char {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        .key .sub {
-            font-size: 10px;
-            color: #8e8e93;
-            position: absolute;
-            top: 3px;
-            right: 5px;
-        }
-        .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.caps-on .sub {
-            color: rgba(255,255,255,0.7);
-        }
+        .editor-row textarea:focus { border-color: var(--apple-accent); }
+
+        /* Action buttons */
+        .editor-actions { display: flex; gap: 10px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--apple-accent); color: white; }
+        .btn-secondary { background: #e5e5ea; color: var(--apple-text); }
+        .btn-warn { background: #ff3b30; color: white; }
+
+        /* Keyboard */
+        .keyboard { background: #e5e5ea; padding: 16px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; user-select: none; margin-top: 16px; }
+        .kb-row { display: flex; justify-content: center; gap: 6px; }
+        .key { min-width: 48px; height: 52px; background: white; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 3px 0 #d1d1d6; cursor: pointer; transition: all 0.08s; position: relative; padding: 0 8px; }
+        .key:active, .key.pressed { transform: translateY(3px); box-shadow: 0 0 0 #d1d1d6; background: var(--apple-accent); color: white; }
+        .key.shift-on { background: var(--apple-accent); color: white; }
+        .key.caps-on { background: #007aff; color: white; }
+        .key .char { font-size: 18px; font-weight: 600; }
+        .key .sub { font-size: 10px; color: #8e8e93; position: absolute; top: 3px; right: 5px; }
+        .key:active .sub, .key.pressed .sub, .key.shift-on .sub, .key.caps-on .sub { color: rgba(255,255,255,0.7); }
         .key.wide { min-width: 80px; }
         .key.wider { min-width: 100px; }
         .key.space { min-width: 280px; }
-        
-        .candidates {
-            background: var(--apple-card);
-            border: 1px solid var(--apple-border);
-            border-radius: 16px;
-            padding: 16px 20px;
-            margin-bottom: 16px;
-            display: none;
-        }
-        .candidates.show { display: block; }
-        .candidates .pinyin {
-            color: var(--apple-secondary);
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .candidates .pinyin span {
-            background: #f2f2f7;
-            padding: 4px 12px;
-            border-radius: 8px;
-        }
-        .candidates .words {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .candidates .word {
-            background: #f2f2f7;
-            color: var(--apple-text);
-            padding: 10px 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.2s;
-        }
-        .candidates .word:hover {
-            background: var(--apple-accent);
-            color: white;
-        }
-        .candidates .word .num {
-            color: var(--apple-secondary);
-            font-size: 12px;
-            margin-right: 6px;
-        }
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background: var(--apple-card);
-            border-radius: 12px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            color: var(--apple-secondary);
-        }
-        .status-bar b { color: var(--apple-accent); }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #34c759;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-weight: 600;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 1000;
-        }
+
+        .help-tip { font-size: 12px; color: var(--apple-secondary); text-align: center; margin-top: 12px; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #34c759; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 600; opacity: 0; transition: opacity 0.3s; z-index: 1000; pointer-events: none; }
         .toast.show { opacity: 1; }
-        .help-tip {
-            font-size: 12px;
-            color: var(--apple-secondary);
-            text-align: center;
-        }
+        .toast.err { background: #ff3b30; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>⌨️ 虚拟键盘</h1>
+            <h1>⌨️ 网页输入法</h1>
             <div class="ime-select">
                 <button class="ime-btn active" data-ime="chinese">中文</button>
                 <button class="ime-btn" data-ime="english">英文</button>
@@ -238,29 +102,38 @@
         </div>
 
         <div class="status-bar">
-            <span>当前: <b id="current-ime">中文</b></span>
-            <span>字符: <b id="char-count">0</b></span>
+            <span><span class="status-dot" id="statusDot"></span><b id="current-ime">中文</b></span>
+            <span>编辑框: <b id="char-count">0</b> 字符</span>
+            <span>引擎: <b id="engineStatus">未连接</b></span>
         </div>
 
-        <div class="input-area">
-            <textarea id="input-text" placeholder="点击按键输入..."></textarea>
-            <div class="input-actions">
-                <button class="btn btn-primary" id="btn-copy">📋 复制</button>
-                <button class="btn btn-secondary" id="btn-clear">🗑️ 清空</button>
-            </div>
+        <!-- Pinyin input -->
+        <div class="pinyin-row">
+            <input type="text" id="pinyinInput" placeholder="在此输入拼音，如 nihao → 你好" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <div class="segments" id="segments"></div>
         </div>
 
+        <!-- Candidates -->
         <div class="candidates" id="candidates">
-            <div class="pinyin" id="cand-pinyin"><span></span></div>
             <div class="words" id="cand-words"></div>
         </div>
 
+        <!-- Editor output -->
+        <div class="editor-row">
+            <textarea id="editorArea" placeholder="选择的候选字词会填入这里..."></textarea>
+        </div>
+        <div class="editor-actions">
+            <button class="btn btn-primary" id="btn-copy">📋 复制</button>
+            <button class="btn btn-secondary" id="btn-search">🔍 搜索</button>
+            <button class="btn btn-secondary" id="btn-clear-editor">🗑️ 清空编辑框</button>
+        </div>
+
+        <!-- Virtual keyboard -->
         <div class="keyboard" id="keyboard"></div>
-        
-        <div class="help-tip">空格选词 | 数字1-9直接选 | Backspace删除</div>
+        <div class="help-tip">空格选首词 | 数字 1-9 选词 | Backspace 删拼音 | Enter 提交原拼音 | -/= 翻页</div>
     </div>
 
-    <div class="toast" id="toast">已复制!</div>
+    <div class="toast" id="toast"></div>
 
     <script>
         const KEYBOARD = [
@@ -282,8 +155,8 @@
             ],
             [
                 { id: 'Tab', label: 'Tab', className: 'wide' },
-                { id: 'q', label: 'q', sub: '÷' },
-                { id: 'w', label: 'w', sub: '×' },
+                { id: 'q', label: 'q' },
+                { id: 'w', label: 'w' },
                 { id: 'e', label: 'e' },
                 { id: 'r', label: 'r' },
                 { id: 't', label: 't' },
@@ -340,215 +213,158 @@
         let currentIme = 'chinese';
         let isShift = false;
         let isCapsLock = false;
-        let currentPinyin = '';
         let currentPage = 0;
-        let allCandidates = []; // 存储所有候选词
+        let allCandidates = [];
+        let engineReady = false;
+        let debounceTimer;
 
-        const inputText = document.getElementById('input-text');
+        const pinyinInput = document.getElementById('pinyinInput');
+        const editorArea = document.getElementById('editorArea');
+        const candContainer = document.getElementById('candidates');
+        const candWords = document.getElementById('cand-words');
+        const segmentsEl = document.getElementById('segments');
 
-        function renderKeyboard() {
-            const container = document.getElementById('keyboard');
-            container.innerHTML = '';
-
-            KEYBOARD.forEach(row => {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'kb-row';
-                
-                row.forEach(key => {
-                    const keyDiv = document.createElement('div');
-                    keyDiv.className = `key ${key.className || ''}`;
-                    keyDiv.dataset.key = key.id;
-                    
-                    // Shift 状态高亮
-                    if (key.id === 'Shift' && isShift) {
-                        keyDiv.classList.add('shift-on');
-                    }
-                    // CapsLock 状态高亮
-                    if (key.id === 'CapsLock' && isCapsLock) {
-                        keyDiv.classList.add('caps-on');
-                    }
-                    
-                    keyDiv.innerHTML = `
-                        <span class="sub">${key.sub || ''}</span>
-                        <span class="char">${key.label}</span>
-                    `;
-
-                    keyDiv.addEventListener('click', () => handleKey(key.id, key.label));
-
-                    rowDiv.appendChild(keyDiv);
-                });
-                container.appendChild(rowDiv);
-            });
-        }
-
-        function handleKey(keyId, keyLabel) {
-            // 数字键：没有拼音buffer时直接输出数字
-            if (keyId >= '0' && keyId <= '9') {
-                if (currentIme === 'chinese' && currentPinyin.length > 0 && isCandidatesVisible()) {
-                    selectCandidate(keyId === '0' ? 9 : parseInt(keyId) - 1);
-                } else {
-                    // 直接输出数字
-                    insertText(keyId);
-                }
-                return;
-            }
-            
-            // - = 用于翻页（有拼音buffer时）
-            if ((keyId === '-' || keyId === '=') && currentIme === 'chinese' && currentPinyin.length > 0) {
-                if (keyId === '-') pageUp();
-                else pageDown();
-                return;
-            }
-
-            if (keyId === 'Space') {
-                if (currentIme === 'chinese' && currentPinyin.length > 0) {
-                    selectCandidate(0);
-                } else {
-                    insertText(' ');
-                }
-            } else if (keyId === 'Backspace') {
-                deleteChar();
-            } else if (keyId === 'Enter') {
-                if (currentIme === 'chinese' && currentPinyin.length > 0) {
-                    commitPinyin();
-                } else {
-                    insertText('\n');
-                }
-            } else if (keyId === 'Tab') {
-                insertText('\t');
-            } else if (keyId === 'Shift') {
-                isShift = true;
-                renderKeyboard();
-            } else if (keyId === 'CapsLock') {
-                isCapsLock = !isCapsLock;
-                renderKeyboard();
-            } else if (['Ctrl', 'Win', 'Alt', 'Menu'].includes(keyId)) {
-                // 忽略
-            } else {
-                let char = keyLabel;
-                
-                // 大小写处理
-                if ((isCapsLock || isShift) && char.length === 1 && char >= 'a' && char <= 'z') {
-                    char = char.toUpperCase();
-                } else if (!isShift && char.length === 1 && char >= 'A' && char <= 'Z') {
-                    char = char.toLowerCase();
-                }
-                
-                // Shift 用完就复位
-                if (isShift && char.length === 1) {
-                    isShift = false;
-                }
-                
-                if (currentIme === 'chinese') {
-                    currentPinyin += char.toLowerCase();
-                    currentPage = 0; // 切新拼音时重置页码
-                    insertText(char);
-                    queryCandidates();
-                    renderKeyboard();
-                } else if (currentIme === 'japanese') {
-                    currentPinyin += char.toLowerCase();
-                    insertText(char);
-                    queryJapaneseCandidates();
-                } else if (currentIme === 'stroke') {
-                    currentPinyin += char.toLowerCase();
-                    insertText(char);
-                    queryStrokeCandidates();
-                } else {
-                    insertText(char);
-                    renderKeyboard();
-                }
-            }
-        }
-
-        function insertText(text) {
-            const start = inputText.selectionStart;
-            const end = inputText.selectionEnd;
-            inputText.value = inputText.value.substring(0, start) + text + inputText.value.substring(end);
-            inputText.selectionStart = inputText.selectionEnd = start + text.length;
-            inputText.focus();
-            updateCharCount();
-        }
-
-        function deleteChar() {
-            const start = inputText.selectionStart;
-            const end = inputText.selectionEnd;
-            
-            if (currentIme === 'chinese' && currentPinyin.length > 0 && start > 0) {
-                currentPinyin = currentPinyin.slice(0, -1);
-            }
-            
-            if (start === end && start > 0) {
-                inputText.value = inputText.value.substring(0, start - 1) + inputText.value.substring(start);
-                inputText.selectionStart = inputText.selectionEnd = start - 1;
-            } else if (start !== end) {
-                inputText.value = inputText.value.substring(0, start) + inputText.value.substring(end);
-                inputText.selectionStart = inputText.selectionEnd = start;
-            }
-            inputText.focus();
-            updateCharCount();
-            
-            if (currentIme === 'chinese') {
-                queryCandidates();
-            }
-        }
-
-        function updateCharCount() {
-            document.getElementById('char-count').textContent = inputText.value.length;
-        }
-
+        // ===== Engine search with proper syllable segmentation =====
         async function queryCandidates() {
-            if (!currentPinyin) {
+            const pinyin = pinyinInput.value.trim();
+            if (!pinyin) {
                 hideCandidates();
                 return;
             }
-            
+
             try {
-                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=chinese');
-                const results = await resp.json();
-                allCandidates = results;
+                const resp = await fetch('/api/ime/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ buffer: pinyin, profile: currentIme, limit: 50 })
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+                const data = await resp.json();
+                allCandidates = data.candidates || [];
                 currentPage = 0;
-                showCandidates(results);
+
+                // Show segments
+                if (data.segments && data.segments.length) {
+                    segmentsEl.textContent = '分词: ' + data.segments.join(' ');
+                } else {
+                    segmentsEl.textContent = '';
+                }
+
+                showCandidates(allCandidates);
+
+                if (!engineReady) {
+                    engineReady = true;
+                    document.getElementById('engineStatus').textContent = '就绪';
+                    document.getElementById('statusDot').className = 'status-dot ok';
+                }
             } catch (e) {
-                console.error('查询失败:', e);
+                // Fallback: use old dict search API
+                try {
+                    const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(pinyin) + '&ime=' + currentIme);
+                    const results = await resp.json();
+                    // Convert old format to new format
+                    allCandidates = (results || []).map(r => ({
+                        text: r.word,
+                        simplified: r.word,
+                        traditional: r.word,
+                        hint: r.hint || '',
+                        weight: 0,
+                        match_level: 3,
+                        source: 'dict'
+                    }));
+                    currentPage = 0;
+                    segmentsEl.textContent = '';
+                    showCandidates(allCandidates);
+                } catch (e2) {
+                    console.error('Candidate search failed:', e2);
+                    hideCandidates();
+                }
             }
         }
 
-        async function queryJapaneseCandidates() {
-            if (!currentPinyin) {
+        function showCandidates(results) {
+            if (!results || results.length === 0) {
                 hideCandidates();
                 return;
             }
-            
-            try {
-                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=japanese');
-                const results = await resp.json();
-                allCandidates = results;
-                currentPage = 0;
-                showJapaneseCandidates(results);
-            } catch (e) {
-                console.error('查询失败:', e);
-            }
+
+            const pageSize = 9;
+            const start = currentPage * pageSize;
+            const page = results.slice(start, start + pageSize);
+
+            const matchClass = { 0: '', 1: 'prefix', 2: 'abbr', 3: 'exact' };
+            candWords.innerHTML = page.map((c, i) => {
+                const cls = matchClass[c.match_level] || '';
+                return `<div class="word ${cls}" data-index="${start + i}">
+                    <span class="num">${start + i + 1}</span>
+                    <span>${escHtml(c.text)}</span>
+                    ${c.hint ? `<span class="hint">${escHtml(c.hint)}</span>` : ''}
+                </div>`;
+            }).join('');
+
+            // Click handlers for candidate words
+            candWords.querySelectorAll('.word').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const idx = parseInt(el.dataset.index);
+                    commitCandidate(idx);
+                });
+            });
+
+            candContainer.classList.add('show');
         }
 
-        async function queryStrokeCandidates() {
-            if (!currentPinyin) {
-                hideCandidates();
-                return;
-            }
-            
-            try {
-                const resp = await fetch('/api/dict/search?q=' + encodeURIComponent(currentPinyin) + '&ime=stroke');
-                const results = await resp.json();
-                allCandidates = results;
-                currentPage = 0;
-                showStrokeCandidates(results);
-            } catch (e) {
-                console.error('查询失败:', e);
-            }
+        function hideCandidates() {
+            candContainer.classList.remove('show');
+            candWords.innerHTML = '';
+            allCandidates = [];
+            currentPage = 0;
+            segmentsEl.textContent = '';
         }
 
-        function isCandidatesVisible() {
-            return document.getElementById('candidates').classList.contains('show');
+        function commitCandidate(idx) {
+            if (!allCandidates[idx]) return;
+            const word = allCandidates[idx].text;
+
+            // Add to editor
+            const cursor = editorArea.selectionStart;
+            const before = editorArea.value.substring(0, cursor);
+            const after = editorArea.value.substring(editorArea.selectionEnd);
+            editorArea.value = before + word + after;
+            editorArea.selectionStart = editorArea.selectionEnd = cursor + word.length;
+
+            // Clear pinyin and candidates
+            pinyinInput.value = '';
+            hideCandidates();
+            updateCharCount();
+
+            // Keep focus on pinyin input for continued typing
+            pinyinInput.focus();
+        }
+
+        function commitRawPinyin() {
+            // Add raw pinyin to editor
+            const pinyin = pinyinInput.value;
+            if (!pinyin) {
+                // Insert newline if no pinyin
+                const cursor = editorArea.selectionStart;
+                editorArea.value = editorArea.value.substring(0, cursor) +
+                    '\n' + editorArea.value.substring(editorArea.selectionEnd);
+                editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
+            } else {
+                const cursor = editorArea.selectionStart;
+                const before = editorArea.value.substring(0, cursor);
+                const after = editorArea.value.substring(editorArea.selectionEnd);
+                editorArea.value = before + pinyin + after;
+                editorArea.selectionStart = editorArea.selectionEnd = cursor + pinyin.length;
+            }
+
+            pinyinInput.value = '';
+            hideCandidates();
+            updateCharCount();
+            pinyinInput.focus();
         }
 
         function pageUp() {
@@ -566,185 +382,293 @@
             }
         }
 
-        function showCandidates(results) {
-            const container = document.getElementById('candidates');
-            const pinyinEl = document.getElementById('cand-pinyin');
-            const wordsEl = document.getElementById('cand-words');
-            
-            if (!results || results.length === 0) {
-                container.classList.remove('show');
-                return;
-            }
-            
-            const pinyinMap = {};
-            results.forEach(r => {
-                if (!pinyinMap[r.pinyin]) pinyinMap[r.pinyin] = [];
-                pinyinMap[r.pinyin].push(r);
+        function updateCharCount() {
+            document.getElementById('char-count').textContent = editorArea.value.length;
+        }
+
+        function escHtml(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        // ===== Virtual keyboard =====
+        function renderKeyboard() {
+            const container = document.getElementById('keyboard');
+            container.innerHTML = '';
+
+            KEYBOARD.forEach(row => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'kb-row';
+
+                row.forEach(key => {
+                    const keyDiv = document.createElement('div');
+                    keyDiv.className = `key ${key.className || ''}`;
+                    keyDiv.dataset.key = key.id;
+
+                    if (key.id === 'Shift' && isShift) keyDiv.classList.add('shift-on');
+                    if (key.id === 'CapsLock' && isCapsLock) keyDiv.classList.add('caps-on');
+
+                    keyDiv.innerHTML = `
+                        <span class="sub">${key.sub || ''}</span>
+                        <span class="char">${key.label}</span>
+                    `;
+
+                    keyDiv.addEventListener('click', () => handleKey(key.id, key.label));
+                    rowDiv.appendChild(keyDiv);
+                });
+                container.appendChild(rowDiv);
             });
-            
-            pinyinEl.innerHTML = '<span>' + currentPinyin + '</span>';
-            wordsEl.innerHTML = '';
-            
-            let idx = 0;
-            outer: for (const py in pinyinMap) {
-                for (const item of pinyinMap[py]) {
-                    if (idx >= 9) break outer;
-                    const wordEl = document.createElement('div');
-                    wordEl.className = 'word';
-                    wordEl.dataset.word = item.word;
-                    wordEl.dataset.pinyin = item.pinyin;
-                    wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
-                    
-                    wordEl.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        doSelectCandidate(this.dataset.word);
-                    });
-                    
-                    wordsEl.appendChild(wordEl);
-                    idx++;
+        }
+
+        function handleKey(keyId, keyLabel) {
+            const hasCandidates = candContainer.classList.contains('show');
+
+            // Number keys: select candidate when candidates visible
+            if (keyId >= '0' && keyId <= '9') {
+                if (hasCandidates && allCandidates.length > 0) {
+                    const idx = keyId === '0' ? 9 : parseInt(keyId) - 1;
+                    const globalIdx = currentPage * 9 + idx;
+                    if (globalIdx < allCandidates.length) {
+                        commitCandidate(globalIdx);
+                    }
+                } else {
+                    // Direct number input into pinyin
+                    pinyinInput.value += keyId;
+                    debounceSearch();
                 }
-            }
-            
-            container.classList.add('show');
-        }
-
-        function showJapaneseCandidates(results) {
-            const container = document.getElementById('candidates');
-            const pinyinEl = document.getElementById('cand-pinyin');
-            const wordsEl = document.getElementById('cand-words');
-            
-            if (!results || results.length === 0) {
-                container.classList.remove('show');
                 return;
             }
-            
-            pinyinEl.innerHTML = '<span>' + currentPinyin + '</span>';
-            wordsEl.innerHTML = '';
-            
-            results.slice(0, 9).forEach((item, idx) => {
-                const wordEl = document.createElement('div');
-                wordEl.className = 'word';
-                wordEl.dataset.word = item.word;
-                wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
-                
-                wordEl.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    doSelectCandidate(this.dataset.word);
-                });
-                
-                wordsEl.appendChild(wordEl);
-            });
-            
-            container.classList.add('show');
-        }
 
-        function showStrokeCandidates(results) {
-            const container = document.getElementById('candidates');
-            const pinyinEl = document.getElementById('cand-pinyin');
-            const wordsEl = document.getElementById('cand-words');
-            
-            if (!results || results.length === 0) {
-                container.classList.remove('show');
+            // -/= page flip
+            if ((keyId === '-' || keyId === '=') && hasCandidates) {
+                if (keyId === '-') pageUp();
+                else pageDown();
                 return;
             }
-            
-            pinyinEl.innerHTML = '<span>' + currentPinyin + '</span>';
-            wordsEl.innerHTML = '';
-            
-            results.slice(0, 9).forEach((item, idx) => {
-                const wordEl = document.createElement('div');
-                wordEl.className = 'word';
-                wordEl.dataset.word = item.word;
-                wordEl.innerHTML = '<span class="num">' + (idx + 1) + '</span>' + item.word;
-                
-                wordEl.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    doSelectCandidate(this.dataset.word);
-                });
-                
-                wordsEl.appendChild(wordEl);
-            });
-            
-            container.classList.add('show');
-        }
 
-        function hideCandidates() {
-            document.getElementById('candidates').classList.remove('show');
-        }
-
-        function selectCandidate(idx) {
-            const words = document.querySelectorAll('#cand-words .word');
-            if (words[idx]) {
-                doSelectCandidate(words[idx].dataset.word);
+            if (keyId === 'Space') {
+                if (hasCandidates && allCandidates.length > 0) {
+                    commitCandidate(currentPage * 9);
+                } else {
+                    // No candidates: input space into editor
+                    const cursor = editorArea.selectionStart;
+                    editorArea.value = editorArea.value.substring(0, cursor) +
+                        ' ' + editorArea.value.substring(editorArea.selectionEnd);
+                    editorArea.selectionStart = editorArea.selectionEnd = cursor + 1;
+                    updateCharCount();
+                }
+                return;
             }
+
+            if (keyId === 'Backspace') {
+                if (pinyinInput.value.length > 0) {
+                    pinyinInput.value = pinyinInput.value.slice(0, -1);
+                    debounceSearch();
+                } else {
+                    // Delete from editor when pinyin is empty
+                    const cursor = editorArea.selectionStart;
+                    if (editorArea.selectionStart === editorArea.selectionEnd && cursor > 0) {
+                        editorArea.value = editorArea.value.substring(0, cursor - 1) +
+                            editorArea.value.substring(cursor);
+                        editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
+                    } else if (editorArea.selectionStart !== editorArea.selectionEnd) {
+                        editorArea.value = editorArea.value.substring(0, editorArea.selectionStart) +
+                            editorArea.value.substring(editorArea.selectionEnd);
+                        editorArea.selectionStart = editorArea.selectionEnd = editorArea.selectionStart;
+                    }
+                    updateCharCount();
+                    hideCandidates();
+                }
+                return;
+            }
+
+            if (keyId === 'Enter') {
+                commitRawPinyin();
+                return;
+            }
+
+            if (keyId === 'Shift') {
+                isShift = !isShift;
+                renderKeyboard();
+                return;
+            }
+
+            if (keyId === 'CapsLock') {
+                isCapsLock = !isCapsLock;
+                renderKeyboard();
+                return;
+            }
+
+            if (['Ctrl', 'Win', 'Alt', 'Menu', 'Tab'].includes(keyId)) {
+                return;
+            }
+
+            // Letter/character keys
+            let char = keyLabel;
+            if ((isCapsLock || isShift) && char.length === 1 && char >= 'a' && char <= 'z') {
+                char = char.toUpperCase();
+            }
+            if (isShift && char.length === 1) {
+                isShift = false;
+            }
+
+            pinyinInput.value += char.toLowerCase();
+            if (isShift) renderKeyboard();
+            debounceSearch();
         }
 
-        function doSelectCandidate(word) {
-            const pinyinLen = currentPinyin.length;
-            const start = inputText.selectionStart;
-            
-            const before = inputText.value.substring(0, start - pinyinLen);
-            const after = inputText.value.substring(start);
-            inputText.value = before + word + after;
-            inputText.selectionStart = inputText.selectionEnd = start - pinyinLen + word.length;
-            
-            currentPinyin = '';
-            hideCandidates();
-            inputText.focus();
-            updateCharCount();
+        // ===== Debounce for physical keyboard typing =====
+        function debounceSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => queryCandidates(), 60);
         }
 
-        function commitPinyin() {
-            currentPinyin = '';
-            hideCandidates();
-        }
+        // ===== Pinyin input events (physical keyboard) =====
+        pinyinInput.addEventListener('input', () => {
+            debounceSearch();
+        });
 
-        // 复制
+        pinyinInput.addEventListener('keydown', (e) => {
+            const hasCandidates = candContainer.classList.contains('show');
+
+            // Number keys 1-9: select candidate
+            if (e.key >= '1' && e.key <= '9' && hasCandidates && allCandidates.length > 0) {
+                e.preventDefault();
+                const idx = parseInt(e.key) - 1;
+                const globalIdx = currentPage * 9 + idx;
+                if (globalIdx < allCandidates.length) {
+                    commitCandidate(globalIdx);
+                }
+                return;
+            }
+
+            // Space: select first candidate or add space to editor
+            if (e.key === ' ') {
+                if (hasCandidates && allCandidates.length > 0) {
+                    e.preventDefault();
+                    commitCandidate(currentPage * 9);
+                }
+                return;
+            }
+
+            // Enter: commit raw pinyin
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                commitRawPinyin();
+                return;
+            }
+
+            // Escape: clear pinyin
+            if (e.key === 'Escape') {
+                pinyinInput.value = '';
+                hideCandidates();
+                return;
+            }
+
+            // Backspace: handled by input event + manual check for empty
+            if (e.key === 'Backspace' && pinyinInput.value.length === 0) {
+                // Delete from editor
+                const cursor = editorArea.selectionStart;
+                if (cursor > 0) {
+                    editorArea.value = editorArea.value.substring(0, cursor - 1) +
+                        editorArea.value.substring(cursor);
+                    editorArea.selectionStart = editorArea.selectionEnd = cursor - 1;
+                }
+                updateCharCount();
+            }
+
+            // -/= page flip
+            if (e.key === '-' && hasCandidates) {
+                e.preventDefault();
+                pageUp();
+            }
+            if (e.key === '=' && hasCandidates) {
+                e.preventDefault();
+                pageDown();
+            }
+        });
+
+        // Always keep focus on pinyin input unless user explicitly clicks editor
+        pinyinInput.addEventListener('blur', (e) => {
+            // Small delay to allow checking where focus went
+            setTimeout(() => {
+                if (document.activeElement !== editorArea &&
+                    document.activeElement !== pinyinInput &&
+                    !document.activeElement.closest('.keyboard')) {
+                    pinyinInput.focus();
+                }
+            }, 50);
+        });
+
+        editorArea.addEventListener('input', updateCharCount);
+
+        // ===== Buttons =====
         document.getElementById('btn-copy').addEventListener('click', async () => {
-            const text = inputText.value;
-            if (!text) { showToast('没有内容'); return; }
+            const text = editorArea.value;
+            if (!text) { showToast('没有内容', true); return; }
             try {
                 await navigator.clipboard.writeText(text);
                 showToast('已复制!');
-            } catch (e) { showToast('复制失败'); }
+            } catch {
+                editorArea.select();
+                document.execCommand('copy');
+                showToast('已复制!');
+            }
         });
 
-        // 清空
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            inputText.value = '';
-            currentPinyin = '';
-            updateCharCount();
+        document.getElementById('btn-search').addEventListener('click', () => {
+            const text = editorArea.value.trim();
+            if (!text) { showToast('没有内容', true); return; }
+            window.open('https://www.baidu.com/s?wd=' + encodeURIComponent(text), '_blank');
+        });
+
+        document.getElementById('btn-clear-editor').addEventListener('click', () => {
+            editorArea.value = '';
+            pinyinInput.value = '';
             hideCandidates();
-            inputText.focus();
+            updateCharCount();
+            pinyinInput.focus();
             showToast('已清空');
         });
 
-        function showToast(msg) {
+        function showToast(msg, isErr) {
             const toast = document.getElementById('toast');
             toast.textContent = msg;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
+            toast.className = 'toast show' + (isErr ? ' err' : '');
+            setTimeout(() => toast.className = 'toast', 2000);
         }
 
-        // 切换输入法
+        // ===== IME switch =====
         document.querySelectorAll('.ime-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.ime-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentIme = btn.dataset.ime;
                 document.getElementById('current-ime').textContent = btn.textContent;
-                
-                // 切换时清空拼音
-                currentPinyin = '';
+                pinyinInput.value = '';
                 hideCandidates();
                 renderKeyboard();
+                pinyinInput.focus();
             });
         });
 
+        // ===== Init =====
         renderKeyboard();
+        pinyinInput.focus();
+
+        // Initial engine warmup
+        fetch('/api/ime/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ buffer: 'ni', profile: 'chinese', limit: 1 })
+        }).then(resp => {
+            if (resp.ok) {
+                engineReady = true;
+                document.getElementById('engineStatus').textContent = '就绪';
+                document.getElementById('statusDot').className = 'status-dot ok';
+            }
+        }).catch(() => {});
     </script>
 </body>
 </html>
