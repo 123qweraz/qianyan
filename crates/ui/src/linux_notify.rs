@@ -34,7 +34,7 @@ impl CandidateDisplay for LinuxNotifyDisplay {
         if !show {
             return;
         }
-        eprintln!("[NOTIFY_DEBUG] update_candidates: pinyin='{}' candidates={}", pinyin, candidates.len());
+        log::debug!("[NOTIFY_DEBUG] update_candidates: pinyin='{}' candidates={}", pinyin, candidates.len());
         if pinyin.is_empty() {
             if let Some(h) = self.active_notification.take() {
                 h.close();
@@ -54,13 +54,13 @@ impl CandidateDisplay for LinuxNotifyDisplay {
 
         let current_content = format!("{}:{}", pinyin, notify_body);
         if current_content == self.last_content {
-            eprintln!("[NOTIFY_DEBUG] content unchanged, skipping");
+            log::debug!("[NOTIFY_DEBUG] content unchanged, skipping");
             return;
         }
         self.last_content = current_content;
 
         if let Some(ref mut h) = self.active_notification {
-            eprintln!("[NOTIFY_DEBUG] updating existing notification");
+            log::debug!("[NOTIFY_DEBUG] updating existing notification");
             h.summary(pinyin);
             h.body(&notify_body);
             h.hint(Hint::Transient(true));
@@ -69,10 +69,10 @@ impl CandidateDisplay for LinuxNotifyDisplay {
                 "true".to_string(),
             ));
             if let Err(e) = h.update() {
-                eprintln!("[NOTIFY_DEBUG] update failed: {:?}", e);
+                log::debug!("[NOTIFY_DEBUG] update failed: {:?}", e);
             }
         } else {
-            eprintln!("[NOTIFY_DEBUG] creating new notification");
+            log::debug!("[NOTIFY_DEBUG] creating new notification");
             let result = Notification::new()
                 .summary(pinyin)
                 .body(&notify_body)
@@ -86,11 +86,11 @@ impl CandidateDisplay for LinuxNotifyDisplay {
                 .show();
             match result {
                 Ok(h) => {
-                    eprintln!("[NOTIFY_DEBUG] notification shown successfully");
+                    log::debug!("[NOTIFY_DEBUG] notification shown successfully");
                     self.active_notification = Some(h);
                 }
                 Err(e) => {
-                    eprintln!("[NOTIFY_DEBUG] notification FAILED: {:?}", e);
+                    log::debug!("[NOTIFY_DEBUG] notification FAILED: {:?}", e);
                 }
             }
         }

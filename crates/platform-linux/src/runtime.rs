@@ -121,6 +121,9 @@ fn create_wayland_host(
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, &'static str), Box<dyn Error>> {
+    // TODO: merge with host constructor to avoid double Wayland connection.
+    // Currently creates a temporary connection to probe globals (zwp_input_method_v2/v1),
+    // then the host creates a second connection. Cost is one extra round-trip at startup.
     // Minimal state just to query globals; we don't need a real dispatch loop
     struct DummyState;
     impl wayland_client::Dispatch<wayland_client::protocol::wl_registry::WlRegistry, wayland_client::globals::GlobalListContents> for DummyState {

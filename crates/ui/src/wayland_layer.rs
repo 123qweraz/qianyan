@@ -69,13 +69,13 @@ impl WindowAdapter for OffscreenWindow {
     }
     fn size(&self) -> slint::PhysicalSize {
         let s = self.size.get();
-        eprintln!("[WL_DEBUG] OffscreenWindow::size() = {}x{}", s.width, s.height);
+        log::debug!("[WL_DEBUG] OffscreenWindow::size() = {}x{}", s.width, s.height);
         s
     }
     fn set_size(&self, size: slint::WindowSize) {
         let sf = self.window.scale_factor();
         let phys = size.to_physical(sf);
-        eprintln!("[WL_DEBUG] OffscreenWindow::set_size({}x{})", phys.width, phys.height);
+        log::debug!("[WL_DEBUG] OffscreenWindow::set_size({}x{})", phys.width, phys.height);
         self.size.set(phys);
         let logical_size = size.to_logical(sf);
         self.window
@@ -216,7 +216,7 @@ impl WlState {
         layer.commit();
         self.candidate_layer = Some(layer.clone());
         self.layer_closed = false;
-        eprintln!("[WL_DEBUG] Candidate layer surface recreated after compositor closed");
+        log::debug!("[WL_DEBUG] Candidate layer surface recreated after compositor closed");
         Some(layer)
     }
 }
@@ -332,7 +332,7 @@ impl KeyboardHandler for WlState {
 
 impl LayerShellHandler for WlState {
     fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _layer: &LayerSurface) {
-        eprintln!("[WL_DEBUG] Layer surface closed by compositor, marking for re-creation");
+        log::debug!("[WL_DEBUG] Layer surface closed by compositor, marking for re-creation");
         self.candidate_layer = None;
         self.layer_closed = true;
     }
@@ -379,7 +379,7 @@ enum WlCmd {
 }
 
 fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
-    eprintln!("[WL_DEBUG] Wayland thread started");
+    log::debug!("[WL_DEBUG] Wayland thread started");
     let conn = match Connection::connect_to_env() {
         Ok(c) => c,
         Err(e) => {
@@ -396,7 +396,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         }
     };
     let qh: wayland_client::QueueHandle<WlState> = event_queue.handle();
-    eprintln!("[WL_DEBUG] Wayland globals obtained");
+    log::debug!("[WL_DEBUG] Wayland globals obtained");
 
     let compositor = match CompositorState::bind(&globals, &qh) {
         Ok(c) => c,
@@ -448,23 +448,23 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         layer.set_size(400, 200);
         layer.commit();
         state.candidate_layer = Some(layer);
-        eprintln!("[WL_DEBUG] Candidate layer surface created");
+        log::debug!("[WL_DEBUG] Candidate layer surface created");
     }
     if let Ok(pool) = SlotPool::new(4 * 1024 * 1024, &state.shm) {
         state.candidate_pool = Some(pool);
-        eprintln!("[WL_DEBUG] Candidate pool created (4MB)");
+        log::debug!("[WL_DEBUG] Candidate pool created (4MB)");
     }
 
     let _ = event_queue.dispatch_pending(&mut state);
     let _ = event_queue.flush();
-    eprintln!("[WL_DEBUG] Wayland init done, entering main loop");
+    log::debug!("[WL_DEBUG] Wayland init done, entering main loop");
 
     loop {
         loop {
             match rx.try_recv() {
                 Ok(cmd) => match cmd {
                     WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
-                        eprintln!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
+                        log::debug!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
                         if let Some(layer) = state.ensure_layer(&qh) {
                             layer.set_anchor(anchor);
                             layer.set_size(w.max(1), h.max(1));
@@ -482,7 +482,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                                 submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
                             }
                         } else {
-                            eprintln!("[WL_DEBUG] candidate_layer is None!");
+                            log::debug!("[WL_DEBUG] candidate_layer is None!");
                         }
                         // Reuse pixel buffer
                         state.pixel_pool.put(pixels);
@@ -501,20 +501,20 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                         }
                     }
                     WlCmd::Exit => {
-                        eprintln!("[WL_DEBUG] Wayland thread received Exit, terminating");
+                        log::debug!("[WL_DEBUG] Wayland thread received Exit, terminating");
                         return;
                     }
                 },
                 Err(std::sync::mpsc::TryRecvError::Empty) => break,
                 Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    eprintln!("[WL_DEBUG] Wayland thread channel disconnected, terminating");
+                    log::debug!("[WL_DEBUG] Wayland thread channel disconnected, terminating");
                     return;
                 }
             }
         }
 
         if state.exit.load(Ordering::SeqCst) {
-            eprintln!("[WL_DEBUG] Wayland thread exit flag set, terminating");
+            log::debug!("[WL_DEBUG] Wayland thread exit flag set, terminating");
             break;
         }
 
@@ -528,7 +528,7 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         }
         std::thread::sleep(std::time::Duration::from_millis(4));
     }
-    eprintln!("[WL_DEBUG] Wayland thread main loop exited");
+    log::debug!("[WL_DEBUG] Wayland thread main loop exited");
 }
 
 fn submit_to_layer(
@@ -826,7 +826,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
         }
         slint::platform::update_timers_and_animations();
         let size = self.candidate_window.window().size();
-        eprintln!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
+        log::debug!("[WL_DEBUG] candidate window size: {}x{} (visible={})", size.width, size.height, self.window_visible);
 
         self.render_and_send_candidate(size.width.max(1), size.height.max(1));
     }

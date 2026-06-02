@@ -165,7 +165,7 @@ impl Vkbd {
             if Self::do_send_via_wl_clipboard(dev, mode, delay, text) {
                 return;
             }
-            eprintln!("[Vkbd] wl-clipboard-rs 失败, 降级到 arboard");
+            log::warn!("[Vkbd] wl-clipboard-rs 失败, 降级到 arboard");
         }
 
         // X11 或降级: 使用 arboard
@@ -199,7 +199,7 @@ impl Vkbd {
                 true
             }
             Err(e) => {
-                eprintln!("[Vkbd] wl-clipboard-rs copy 失败: {e:?}");
+                log::warn!("[Vkbd] wl-clipboard-rs copy 失败: {e:?}");
                 false
             }
         }
@@ -218,7 +218,7 @@ impl Vkbd {
             match Clipboard::new() {
                 Ok(c) => Some(Mutex::new(c)),
                 Err(e) => {
-                    eprintln!("[Vkbd] 无法初始化 arboard: {e}");
+                    log::warn!("[Vkbd] 无法初始化 arboard: {e}");
                     None
                 }
             }

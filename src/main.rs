@@ -406,7 +406,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Wait for GUI to signal ready
         match recv_gui_to_main(&mut stream, Some(Duration::from_secs(5))) {
             Ok(Some(GuiToMain::Ready)) => {},
-            _ => eprintln!("[Main] GUI did not signal ready"),
+            _ => log::warn!("[Main] GUI did not signal ready"),
         }
 
         // Forward events from gui_rx to IPC

@@ -3,6 +3,15 @@
     "enable_ctrl_capslock_commit": true,
     "enable_ctrl_space_toggle": false,
     "enable_tab_toggle": false,
+    "nav_clear": [
+      "R"
+    ],
+    "nav_delete": [
+      "D"
+    ],
+    "nav_fuzzy": [
+      "S"
+    ],
     "next_candidate": [
       "Right"
     ],

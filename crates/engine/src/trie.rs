@@ -468,7 +468,7 @@ impl Trie {
         let count = u32::from_le_bytes(
             data[offset..offset + 4]
                 .try_into()
-                .expect("read_block: failed to read count at offset"),
+                .unwrap_or_default(),
         );
         let mut cursor = offset + 4;
 
@@ -479,8 +479,8 @@ impl Trie {
             }
             let w_len = u16::from_le_bytes(
                 data[cursor..cursor + 2]
-                    .try_into()
-                    .expect("read_block: failed to read word length"),
+                .try_into()
+                .unwrap_or_default(),
             ) as usize;
             cursor += 2;
             if cursor + w_len > data.len() {
@@ -503,7 +503,7 @@ impl Trie {
             let tr_len = u16::from_le_bytes(
                 data[cursor..cursor + 2]
                     .try_into()
-                    .expect("read_block: failed to read trad length"),
+                    .unwrap_or_default(),
             ) as usize;
             cursor += 2;
             if cursor + tr_len > data.len() {
@@ -526,7 +526,7 @@ impl Trie {
             let t_len = u16::from_le_bytes(
                 data[cursor..cursor + 2]
                     .try_into()
-                    .expect("read_block: failed to read tone length"),
+                    .unwrap_or_default(),
             ) as usize;
             cursor += 2;
             if cursor + t_len > data.len() {
@@ -549,7 +549,7 @@ impl Trie {
             let e_len = u16::from_le_bytes(
                 data[cursor..cursor + 2]
                     .try_into()
-                    .expect("read_block: failed to read en length"),
+                    .unwrap_or_default(),
             ) as usize;
             cursor += 2;
             if cursor + e_len > data.len() {
@@ -572,7 +572,7 @@ impl Trie {
             let s_len = u16::from_le_bytes(
                 data[cursor..cursor + 2]
                     .try_into()
-                    .expect("read_block: failed to read stroke_aux length"),
+                    .unwrap_or_default(),
             ) as usize;
             cursor += 2;
             if cursor + s_len > data.len() {
@@ -595,7 +595,7 @@ impl Trie {
             let weight = u32::from_le_bytes(
                 data[cursor..cursor + 4]
                     .try_into()
-                    .expect("read_block: failed to read weight"),
+                    .unwrap_or_default(),
             );
             cursor += 4;
 

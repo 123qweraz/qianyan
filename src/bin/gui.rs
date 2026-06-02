@@ -22,7 +22,7 @@ fn main() {
     let mut stream = match UnixStream::connect(socket_path) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("[GUI] Failed to connect to main process: {e}");
+            log::error!("[GUI] Failed to connect to main process: {e}");
             std::process::exit(1);
         }
     };
@@ -30,15 +30,15 @@ fn main() {
     // Read initial config (main process sends it first)
     let initial_config: Config = match recv_main_to_gui(&mut stream) {
         Ok(Some(MainToGui::ApplyConfig(json))) => serde_json::from_str(&json).unwrap_or_else(|e| {
-            eprintln!("[GUI] Failed to parse initial config: {e}");
+            log::error!("[GUI] Failed to parse initial config: {e}");
             Config::load()
         }),
         _ => {
-            eprintln!("[GUI] Failed to receive initial config");
+            log::error!("[GUI] Failed to receive initial config");
             Config::load()
         }
     };
 
-    eprintln!("[GUI] Connected, starting Slint event loop");
+    log::info!("[GUI] Connected, starting Slint event loop");
     gui_slint::start_gui_ipc(stream, initial_config);
 }

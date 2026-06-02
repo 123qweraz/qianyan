@@ -56,7 +56,7 @@ pub fn start_gui(
                 }
             });
             if invoke_result.is_err() {
-                eprintln!("invoke_from_event_loop FAILED for event {}: {:?}", event_type, invoke_result);
+                log::error!("invoke_from_event_loop FAILED for event {}: {:?}", event_type, invoke_result);
             }
         }
     });
@@ -92,11 +92,11 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
             let msg = match transport::recv_main_to_gui(&mut stream) {
                 Ok(Some(msg)) => msg,
                 Ok(None) => {
-                    eprintln!("[GUI IPC] connection closed");
+                    log::warn!("[GUI IPC] connection closed");
                     break;
                 }
                 Err(e) => {
-                    eprintln!("[GUI IPC] error: {e}");
+                    log::warn!("[GUI IPC] error: {e}");
                     break;
                 }
             };
@@ -118,7 +118,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                         let _ = ack_tx.send(());
                     });
                     if r.is_err() {
-                        eprintln!("[GUI IPC] event loop not running");
+                        log::warn!("[GUI IPC] event loop not running");
                         break;
                     }
                     let _ = ack_rx.recv_timeout(Duration::from_millis(100));
@@ -174,7 +174,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                             }
                         });
                         if r.is_err() {
-                            eprintln!("[GUI IPC] event loop not running");
+                            log::warn!("[GUI IPC] event loop not running");
                             break;
                         }
                     }
@@ -269,7 +269,7 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                         }
                     }
                 } else {
-                    eprintln!("[GUI IPC] invalid ApplyConfig JSON");
+                    log::warn!("[GUI IPC] invalid ApplyConfig JSON");
                 }
             }
             _ => {}
@@ -279,7 +279,7 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
 
 fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     let mut displays: Vec<Box<dyn CandidateDisplay>> = Vec::new();
-    eprintln!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
+    log::debug!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
 
     // On Wayland, use layer-shell overlay instead of Slint winit windows
     // to avoid taskbar icons. Never fall back to SlintDisplay on Wayland,
@@ -287,13 +287,13 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     #[cfg(target_os = "linux")]
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
-            eprintln!("[GUI_DEBUG] Using WaylandLayerDisplay");
+            log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay");
             displays.push(Box::new(wl_display));
         } else {
-            eprintln!("[GUI_DEBUG] WaylandLayerDisplay init failed, no window display available");
+            log::debug!("[GUI_DEBUG] WaylandLayerDisplay init failed, no window display available");
         }
     } else {
-        eprintln!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");
+        log::debug!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");
         displays.push(Box::new(SlintDisplay::new(config.clone())));
     }
 
@@ -301,10 +301,10 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     displays.push(Box::new(SlintDisplay::new(config.clone())));
 
     if cfg!(target_os = "linux") && (config.linux.show_notification || config.linux.show_toggle_notification) {
-        eprintln!("[GUI_DEBUG] create_displays: adding LinuxNotifyDisplay");
+        log::debug!("[GUI_DEBUG] create_displays: adding LinuxNotifyDisplay");
         displays.push(Box::new(LinuxNotifyDisplay::new(config.clone())));
     }
-    eprintln!("[GUI_DEBUG] create_displays: total {} displays", displays.len());
+    log::debug!("[GUI_DEBUG] create_displays: total {} displays", displays.len());
     displays
 }
 
@@ -336,7 +336,7 @@ fn handle_event(
             }
         }
         GuiEvent::SetVisible(visible) => {
-            eprintln!("[GUI_DEBUG] SetVisible({}), {} displays", visible, displays.len());
+            log::debug!("[GUI_DEBUG] SetVisible({}), {} displays", visible, displays.len());
             for d in displays.iter_mut() {
                 d.set_visible(visible);
             }
@@ -351,19 +351,19 @@ fn handle_event(
             let new_notify = new.linux.show_notification;
             let new_toggle_notify = new.linux.show_toggle_notification;
             drop(old);
-            eprintln!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={},toggle_notify={}) new(slint={},notify={},toggle_notify={})",
+            log::debug!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={},toggle_notify={}) new(slint={},notify={},toggle_notify={})",
                 old_slint, old_notify, old_toggle_notify, new_slint, new_notify, new_toggle_notify);
             *config.write().expect("config lock poisoned") = *new_config;
 
             if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
-                eprintln!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
+                log::debug!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
                 let new_displays = create_displays(&config.read().expect("config lock poisoned"));
                 for d in displays.iter_mut() {
                     d.close();
                 }
                 *displays = new_displays;
             } else {
-                eprintln!("[GUI_DEBUG] ApplyConfig: config unchanged, applying to existing");
+                log::debug!("[GUI_DEBUG] ApplyConfig: config unchanged, applying to existing");
                 let cfg = config.read().expect("config lock poisoned");
                 for d in displays.iter_mut() {
                     d.apply_config(&cfg);

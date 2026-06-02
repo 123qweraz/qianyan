@@ -96,10 +96,10 @@ impl WebServer {
                     break;
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
-                    eprintln!("[Web] 端口 {} 已被占用，正在尝试 {}...", current_port, current_port + 1);
+                    log::warn!("[Web] 端口 {} 已被占用，正在尝试 {}...", current_port, current_port + 1);
                     current_port += 1;
                     if current_port > self.port + 100 {
-                        eprintln!("[Web] 已尝试 100 个端口均无法启动，退出。");
+                        log::error!("[Web] 已尝试 100 个端口均无法启动，退出。");
                         break;
                     }
                 }

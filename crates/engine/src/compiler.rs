@@ -322,12 +322,12 @@ fn write_binary_dict(
     }
 
     if let Err(e) = fs::rename(&tmp_idx, idx_path) {
-        eprintln!("[Compiler] 无法重命名索引文件 (可能正在被使用): {}", e);
+        log::warn!("[Compiler] 无法重命名索引文件 (可能正在被使用): {}", e);
         // 如果 rename 失败，尝试直接拷贝（虽然通常也会失败，但作为最后尝试）
         let _ = fs::copy(&tmp_idx, idx_path);
     }
     if let Err(e) = fs::rename(&tmp_dat, dat_path) {
-        eprintln!("[Compiler] 无法重命名数据文件 (可能正在被使用): {}", e);
+        log::warn!("[Compiler] 无法重命名数据文件 (可能正在被使用): {}", e);
         let _ = fs::copy(&tmp_dat, dat_path);
     }
 
