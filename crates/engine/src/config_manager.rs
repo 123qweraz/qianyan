@@ -194,6 +194,33 @@ impl ConfigManager {
             .collect()
     }
 
+    pub fn nav_delete_keys(&self) -> std::collections::HashSet<VirtualKey> {
+        self.master_config
+            .hotkeys
+            .nav_delete
+            .iter()
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
+            .collect()
+    }
+
+    pub fn nav_fuzzy_keys(&self) -> std::collections::HashSet<VirtualKey> {
+        self.master_config
+            .hotkeys
+            .nav_fuzzy
+            .iter()
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
+            .collect()
+    }
+
+    pub fn nav_clear_keys(&self) -> std::collections::HashSet<VirtualKey> {
+        self.master_config
+            .hotkeys
+            .nav_clear
+            .iter()
+            .filter_map(|s| s.parse::<VirtualKey>().ok())
+            .collect()
+    }
+
     pub fn word_to_char_keys(&self) -> Vec<(VirtualKey, usize)> {
         self.master_config
             .hotkeys

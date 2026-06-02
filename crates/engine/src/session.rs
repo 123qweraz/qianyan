@@ -40,11 +40,6 @@ pub struct InputSession {
     pub fuzzy_activated: bool,
     /// 当前输入会话的翻页次数
     pub fuzzy_page_turns: usize,
-
-    /// Vim 编辑模式（Tab+I 切换），为 true 时在光标位置插入字符
-    pub insert_mode: bool,
-    /// 连按计数（用于 dd 清空缓冲区）
-    pub tab_d_count: u8,
 }
 
 impl Default for InputSession {
@@ -84,9 +79,6 @@ impl InputSession {
 
             fuzzy_activated: false,
             fuzzy_page_turns: 0,
-
-            insert_mode: false,
-            tab_d_count: 0,
         }
     }
 
@@ -160,187 +152,11 @@ impl InputSession {
         true
     }
 
-    // ── Vim 编辑模式：光标移动 ──
+    // ── Vim 编辑模式：删除 ──
 
-    pub fn move_cursor_left(&mut self) -> bool {
-        if self.cursor_pos > 0 {
-            self.cursor_pos -= 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn move_cursor_right(&mut self) -> bool {
-        if self.cursor_pos < self.buffer.len() {
-            self.cursor_pos += 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn move_cursor_start(&mut self) {
-        self.cursor_pos = 0;
-    }
-
-    pub fn move_cursor_end(&mut self) {
-        self.cursor_pos = self.buffer.len();
-    }
-
-    /// 按音节跳转（W 前跳 / B 后跳）
-    pub fn move_cursor_by_syllable(&mut self, forward: bool) -> bool {
-        if self.buffer.is_empty() || self.best_segmentation.is_empty() {
-            // Fallback: jump by whole buffer
-            if forward {
-                return self.cursor_pos < self.buffer.len() && {
-                    self.move_cursor_end();
-                    true
-                };
-            } else {
-                return self.cursor_pos > 0 && {
-                    self.move_cursor_start();
-                    true
-                };
-            }
-        }
-
-        // 使用 best_segmentation 计算音节边界位置
-        let boundaries = syllable_boundaries(&self.best_segmentation, self.buffer.len());
-        if boundaries.is_empty() {
-            return false;
-        }
-
-        if forward {
-            // 跳到下一个音节边界（光标后的第一个边界）
-            for &b in &boundaries {
-                if b > self.cursor_pos {
-                    self.cursor_pos = b;
-                    return true;
-                }
-            }
-            // Already at or past last boundary, jump to end
-            if self.cursor_pos < self.buffer.len() {
-                self.move_cursor_end();
-                return true;
-            }
-        } else {
-            // 跳到上一个音节边界（光标前的最后一个边界）
-            for &b in boundaries.iter().rev() {
-                if b < self.cursor_pos {
-                    self.cursor_pos = b;
-                    return true;
-                }
-            }
-            if self.cursor_pos > 0 {
-                self.move_cursor_start();
-                return true;
-            }
-        }
-        false
-    }
-
-    // ── Vim 编辑模式：插入/删除 ──
-
-    /// 在光标处插入字符（insert_mode）或替换（非 insert_mode）
-    pub fn insert_char_at_cursor(&mut self, c: char) {
-        if self.buffer.len() >= MAX_BUFFER_LEN {
-            return;
-        }
-        if self.insert_mode {
-            self.buffer.insert(self.cursor_pos, c);
-        } else {
-            if self.cursor_pos < self.buffer.len() {
-                let chars: Vec<char> = self.buffer.chars().collect();
-                let mut new_buf = String::new();
-                for (i, ch) in chars.iter().enumerate() {
-                    if i == self.cursor_pos {
-                        new_buf.push(c);
-                    } else {
-                        new_buf.push(*ch);
-                    }
-                }
-                self.buffer = new_buf;
-            } else {
-                self.buffer.push(c);
-            }
-        }
-        self.cursor_pos += 1;
-        if self.state == ImeState::Idle {
-            self.state = ImeState::Composing;
-        }
-        self.preview_selected_candidate = false;
-    }
-
-    /// 删除光标处的一个字符
+    /// 删除末尾字符（Vim D 键）
     pub fn delete_at_cursor(&mut self) -> bool {
-        if self.buffer.is_empty() || self.cursor_pos == 0 {
-            return false;
-        }
-        let remove_idx = self.cursor_pos - 1;
-        if remove_idx < self.buffer.len() {
-            self.buffer.remove(remove_idx);
-            self.cursor_pos = self.cursor_pos.saturating_sub(1);
-            if self.buffer.is_empty() {
-                self.reset();
-            }
-            true
-        } else {
-            false
-        }
-    }
-
-    /// 按音节删除（Word delete）
-    pub fn delete_syllable_at_cursor(&mut self) -> bool {
-        if self.buffer.is_empty() {
-            return false;
-        }
-        if self.best_segmentation.is_empty() {
-            return self.pop_char();
-        }
-
-        let boundaries = syllable_boundaries(&self.best_segmentation, self.buffer.len());
-        if boundaries.is_empty() {
-            return self.pop_char();
-        }
-
-        // 找到光标所在的音节区间，删除它
-        let mut start = 0usize;
-        for &b in &boundaries {
-            if self.cursor_pos <= b {
-                let chars: Vec<char> = self.buffer.chars().collect();
-                let mut new_buf = String::new();
-                for (i, ch) in chars.iter().enumerate() {
-                    if i < start || i >= b {
-                        new_buf.push(*ch);
-                    }
-                }
-                self.buffer = new_buf;
-                self.cursor_pos = start;
-                if self.buffer.is_empty() {
-                    self.reset();
-                }
-                return true;
-            }
-            start = b;
-        }
-        // 在最后一个音节后，删除末尾音节
-        if start < self.buffer.len() {
-            let chars: Vec<char> = self.buffer.chars().collect();
-            let mut new_buf = String::new();
-            for (i, ch) in chars.iter().enumerate() {
-                if i < start {
-                    new_buf.push(*ch);
-                }
-            }
-            self.buffer = new_buf;
-            self.cursor_pos = start;
-            if self.buffer.is_empty() {
-                self.reset();
-            }
-            return true;
-        }
-        false
+        self.pop_char()
     }
 
     /// dd / Tab+DD: 清空缓冲区
@@ -350,18 +166,20 @@ impl InputSession {
 
     // ── Vim 编辑模式：模糊音切换 ──
 
-    /// Tab+S: 切换光标所在音节的模糊音（sh↔s, ch↔c, zh↔z）
+    /// Tab+S / nav_mode S: 切换光标所在音节的模糊音（sh↔s, ch↔c, zh↔z）
     pub fn toggle_syllable_fuzzy(&mut self) -> bool {
         if self.buffer.is_empty() {
             return false;
         }
+        // 默认操作最后一个音节
+        let pos = if self.cursor_pos > 0 { self.cursor_pos } else { self.buffer.len() };
         // 找到光标所在的音节范围
         let mut start = 0usize;
         let mut end = self.buffer.len();
         if !self.best_segmentation.is_empty() {
             let boundaries = syllable_boundaries(&self.best_segmentation, self.buffer.len());
             for &b in &boundaries {
-                if self.cursor_pos <= b {
+                if pos <= b {
                     end = b;
                     break;
                 }

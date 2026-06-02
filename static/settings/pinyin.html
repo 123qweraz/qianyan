@@ -181,6 +181,22 @@
                         <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键快速输入首个候选词中的第 N 个字，1=第1字，2=第2字</div></div>
                         <input type="text" id="word_to_char_shift_input" style="width: 250px; text-align: right;" placeholder="例如: 1,2">
                     </div>
+                    <hr style="margin: 12px 0; border: 0; border-top: 1px dashed var(--apple-border);">
+                    <div style="font-size:13px; color:var(--apple-secondary); padding:4px 0 8px 0;">
+                        Tab 导航模式快捷键（进入 Tab 导航模式后可用，详细说明见 <a href="/static/settings/nav_mode.html" style="color:var(--apple-accent);">导航模式帮助</a>）
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">导航模式 - 删除</div><div class="desc">删除拼音末尾一个字符并重新查词（默认 D）</div></div>
+                        <input type="text" id="nav_delete_input" style="width: 250px; text-align: right;" placeholder="例如: D">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">导航模式 - 模糊音切换</div><div class="desc">切换当前音节模糊音 zh↔z ch↔c sh↔s 并重新查词（默认 S）</div></div>
+                        <input type="text" id="nav_fuzzy_input" style="width: 250px; text-align: right;" placeholder="例如: S">
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">导航模式 - 清空拼音</div><div class="desc">清空整个拼音缓冲区（默认 R）</div></div>
+                        <input type="text" id="nav_clear_input" style="width: 250px; text-align: right;" placeholder="例如: R">
+                    </div>
                     <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--apple-border);">
                     <div class="setting-item">
                         <div class="info"><div class="title">启用 Ctrl + Space 切换输入法</div><div class="desc">经典的输入法切换组合键</div></div>
@@ -234,6 +250,9 @@
             document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
             document.getElementById('word_to_char_input').value = (config.hotkeys.word_to_char || []).join(', ');
             document.getElementById('word_to_char_shift_input').value = (config.hotkeys.word_to_char_shift || []).join(', ');
+            document.getElementById('nav_delete_input').value = (config.hotkeys.nav_delete || []).join(', ');
+            document.getElementById('nav_fuzzy_input').value = (config.hotkeys.nav_fuzzy || []).join(', ');
+            document.getElementById('nav_clear_input').value = (config.hotkeys.nav_clear || []).join(', ');
             document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
         }
 
@@ -254,6 +273,12 @@
             config.hotkeys.word_to_char = document.getElementById('word_to_char_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.word_to_char_shift = document.getElementById('word_to_char_shift_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.nav_delete = document.getElementById('nav_delete_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.nav_fuzzy = document.getElementById('nav_fuzzy_input').value
+                .split(',').map(s => s.trim()).filter(s => s.length > 0);
+            config.hotkeys.nav_clear = document.getElementById('nav_clear_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'CapsLock+F';
             await saveConfig();

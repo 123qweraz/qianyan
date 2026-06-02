@@ -324,6 +324,22 @@ pub struct Hotkeys {
     pub word_to_char: Vec<String>,
     #[serde(default = "default_word_to_char_shift")]
     pub word_to_char_shift: Vec<String>,
+    #[serde(default = "default_nav_delete")]
+    pub nav_delete: Vec<String>,
+    #[serde(default = "default_nav_fuzzy")]
+    pub nav_fuzzy: Vec<String>,
+    #[serde(default = "default_nav_clear")]
+    pub nav_clear: Vec<String>,
+}
+
+fn default_nav_delete() -> Vec<String> {
+    vec!["D".into()]
+}
+fn default_nav_fuzzy() -> Vec<String> {
+    vec!["S".into()]
+}
+fn default_nav_clear() -> Vec<String> {
+    vec!["R".into()]
 }
 
 fn default_word_to_char() -> Vec<String> {
@@ -1015,6 +1031,9 @@ impl Config {
                     "1".into(),
                     "2".into(),
                 ],
+                nav_delete: vec!["D".into()],
+                nav_fuzzy: vec!["S".into()],
+                nav_clear: vec!["R".into()],
             },
             enable_quick_finals: false,
             quick_finals: vec![

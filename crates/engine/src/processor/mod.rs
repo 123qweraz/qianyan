@@ -230,13 +230,21 @@ impl Processor {
             }
 
             if self.ctx.session.nav_mode && !self.ctx.session.buffer.is_empty() {
-                match key {
-                    VirtualKey::H => return self.execute_command(Command::PrevCandidate),
-                    VirtualKey::L => return self.execute_command(Command::NextCandidate),
-                    VirtualKey::J => return self.execute_command(Command::NextPage),
-                    VirtualKey::K => return self.execute_command(Command::PrevPage),
-                    _ => {
-                        self.ctx.session.nav_mode = false;
+                // 检查是否是导航编辑键（D/S/R 等），放行到 handle_composing 处理
+                let is_nav_edit = self.ctx.config.nav_delete_keys().contains(&key)
+                    || self.ctx.config.nav_fuzzy_keys().contains(&key)
+                    || self.ctx.config.nav_clear_keys().contains(&key);
+                if is_nav_edit {
+                    // 交给 handle_composing 处理，不退出 nav_mode
+                } else {
+                    match key {
+                        VirtualKey::H => return self.execute_command(Command::PrevCandidate),
+                        VirtualKey::L => return self.execute_command(Command::NextCandidate),
+                        VirtualKey::J => return self.execute_command(Command::NextPage),
+                        VirtualKey::K => return self.execute_command(Command::PrevPage),
+                        _ => {
+                            self.ctx.session.nav_mode = false;
+                        }
                     }
                 }
             }

@@ -77,64 +77,6 @@ pub fn handle_composing(
     shift_pressed: bool,
     perform_lookup: bool,
 ) -> Action {
-    // ── Vim 编辑模式：Tab + 快捷键 ──
-    if ctx.session_state.tab_down {
-        match key {
-            // 光标移动
-            VirtualKey::H => {
-                ctx.session.move_cursor_left();
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            VirtualKey::L => {
-                ctx.session.move_cursor_right();
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            VirtualKey::A => {
-                ctx.session.move_cursor_start();
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            VirtualKey::E => {
-                ctx.session.move_cursor_end();
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            // 音节跳转
-            VirtualKey::W => {
-                ctx.session.move_cursor_by_syllable(true);
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            VirtualKey::B => {
-                ctx.session.move_cursor_by_syllable(false);
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            // 删除
-            VirtualKey::D => {
-                ctx.session.tab_d_count += 1;
-                if ctx.session.tab_d_count >= 2 {
-                    ctx.session.clear_buffer();
-                    return Action::Consume;
-                }
-                ctx.session.delete_at_cursor();
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            // 模式切换
-            VirtualKey::I | VirtualKey::R => {
-                ctx.session.insert_mode = !ctx.session.insert_mode;
-                return Action::Consume;
-            }
-            // 模糊音切换
-            VirtualKey::S => {
-                if ctx.session.toggle_syllable_fuzzy() {
-                    return lookup(ctx).unwrap_or(Action::Consume);
-                }
-                return Action::Consume;
-            }
-            _ => {}
-        }
-    } else {
-        // Reset d count when tab is not pressed
-        ctx.session.tab_d_count = 0;
-    }
-
     let mods = crate::ModifierState {
         shift: shift_pressed,
         ctrl: false,
@@ -172,6 +114,21 @@ pub fn handle_composing(
             VirtualKey::K => return commands::execute_command(ctx, Command::PrevPage),
             VirtualKey::J => return commands::execute_command(ctx, Command::NextPage),
             _ => {}
+        }
+        // 导航编辑键（可通过配置修改）
+        if ctx.config.nav_delete_keys().contains(&key) {
+            ctx.session.delete_at_cursor();
+            return lookup(ctx).unwrap_or(Action::Consume);
+        }
+        if ctx.config.nav_fuzzy_keys().contains(&key) {
+            if ctx.session.toggle_syllable_fuzzy() {
+                return lookup(ctx).unwrap_or(Action::Consume);
+            }
+            return Action::Consume;
+        }
+        if ctx.config.nav_clear_keys().contains(&key) {
+            ctx.session.clear_buffer();
+            return Action::Consume;
         }
     }
 
