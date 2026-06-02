@@ -337,6 +337,7 @@ impl CandidateDisplay for SlintDisplay {
         if effective == self.window_visible {
             return;
         }
+        log::info!("Slint window visibility: {} -> {}", self.window_visible, effective);
         self.window.set_is_visible(effective);
         if effective {
             #[cfg(target_os = "linux")]

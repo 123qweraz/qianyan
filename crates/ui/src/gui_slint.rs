@@ -282,15 +282,16 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     log::debug!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
 
     // On Wayland, use layer-shell overlay instead of Slint winit windows
-    // to avoid taskbar icons. Never fall back to SlintDisplay on Wayland,
-    // which would create real windows with taskbar icons.
+    // to avoid taskbar icons. Fall back to SlintDisplay if layer shell is
+    // unavailable (e.g. compositor like niri doesn't support zwlr_layer_shell_v1).
     #[cfg(target_os = "linux")]
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
         if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
             log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay");
             displays.push(Box::new(wl_display));
         } else {
-            log::debug!("[GUI_DEBUG] WaylandLayerDisplay init failed, no window display available");
+            log::warn!("WaylandLayerDisplay failed, falling back to Slint window (XWayland)");
+            displays.push(Box::new(SlintDisplay::new(config.clone())));
         }
     } else {
         log::debug!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");

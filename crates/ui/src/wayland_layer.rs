@@ -190,6 +190,8 @@ struct WlState {
     exit: AtomicBool,
     pixel_pool: PixelPool,
     layer_closed: bool,
+    configured_width: u32,
+    configured_height: u32,
 }
 
 delegate_registry!(WlState);
@@ -332,7 +334,7 @@ impl KeyboardHandler for WlState {
 
 impl LayerShellHandler for WlState {
     fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _layer: &LayerSurface) {
-        log::debug!("[WL_DEBUG] Layer surface closed by compositor, marking for re-creation");
+        log::warn!("Layer surface closed by compositor, will re-create on next update");
         self.candidate_layer = None;
         self.layer_closed = true;
     }
@@ -341,10 +343,11 @@ impl LayerShellHandler for WlState {
         _: &Connection,
         _qh: &QueueHandle<Self>,
         layer: &LayerSurface,
-        _cfg: LayerSurfaceConfigure,
+        cfg: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        // Acknowledge configure by committing the surface
+        self.configured_width = cfg.new_size.0.max(0);
+        self.configured_height = cfg.new_size.1.max(0);
         layer.commit();
     }
 }
@@ -379,7 +382,27 @@ enum WlCmd {
 }
 
 fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
-    log::debug!("[WL_DEBUG] Wayland thread started");
+    log::info!("Wayland thread started");
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        wl_thread_main_inner(rx, pixel_pool);
+    }));
+    if let Err(e) = result {
+        let msg = if let Some(s) = e.downcast_ref::<String>() {
+            s.clone()
+        } else if let Some(s) = e.downcast_ref::<&str>() {
+            s.to_string()
+        } else {
+            "unknown panic".to_string()
+        };
+        log::error!("Wayland thread PANICKED: {msg}");
+    }
+    log::info!("Wayland thread exited");
+}
+
+fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
+    log::info!("Wayland compositor: desktop={desktop}, session={session}");
     let conn = match Connection::connect_to_env() {
         Ok(c) => c,
         Err(e) => {
@@ -432,6 +455,8 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         exit: AtomicBool::new(false),
         pixel_pool: pixel_pool.clone(),
         layer_closed: false,
+        configured_width: 0,
+        configured_height: 0,
     };
 
     // Create candidate layer surface
@@ -544,12 +569,19 @@ fn submit_to_layer(
     if needed > pool.len() {
         let new_size = needed.next_power_of_two().max(1024 * 1024);
         if new_size > MAX_POOL_SIZE {
-            log::error!("SHM pool would exceed max size {}MB, skipping render", MAX_POOL_SIZE / 1024 / 1024);
+            log::error!("SHM pool would exceed {}MB, halving render size", MAX_POOL_SIZE / 1024 / 1024);
+            // Retry with half resolution
+            let hw = (width / 2).max(1);
+            let hh = (height / 2).max(1);
+            submit_to_layer(pool, layer, pixels, hw, hh);
             return;
         }
         log::info!("SHM pool resize: {} -> {} (needed={})", pool.len(), new_size, needed);
         if pool.resize(new_size).is_err() {
-            log::error!("Failed to resize SHM pool");
+            log::error!("Failed to resize SHM pool, trying with smaller buffer");
+            let hw = (width / 2).max(1);
+            let hh = (height / 2).max(1);
+            submit_to_layer(pool, layer, pixels, hw, hh);
             return;
         }
     }
@@ -557,7 +589,8 @@ fn submit_to_layer(
         let n = canvas.len().min(pixels.len());
         canvas[..n].copy_from_slice(&pixels[..n]);
         if buffer.attach_to(layer.wl_surface()).is_err() {
-            log::error!("Failed to attach buffer");
+            log::error!("Failed to attach buffer to layer surface");
+            return;
         }
         layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
         layer.commit();
@@ -781,6 +814,10 @@ impl CandidateDisplay for WaylandLayerDisplay {
         total_pages: usize,
     ) {
         if !self.candidate_enabled || pinyin.is_empty() || !self.config.appearance.show_candidates {
+            if self.window_visible {
+                log::info!("Hiding candidate window (enabled={} pinyin_len={} show={})",
+                    self.candidate_enabled, pinyin.len(), self.config.appearance.show_candidates);
+            }
             self.set_visible(false);
             return;
         }
@@ -849,6 +886,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
         if effective == self.window_visible {
             return;
         }
+        log::info!("Candidate window visibility: {} -> {}", self.window_visible, effective);
         self.window_visible = effective;
         self.candidate_window.set_is_visible(effective);
         if effective {
