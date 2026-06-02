@@ -320,12 +320,12 @@ impl Vkbd {
 fn char_to_key_with_shift(c: char) -> Option<(Key, bool)> {
     // 返回 (按键, 是否需要 Shift)
     match c {
-        'a'..='z' => Some((char_to_key(c).unwrap(), false)),
+        'a'..='z' => char_to_key(c).map(|k| (k, false)),
         'A'..='Z' => {
-            let lower = c.to_lowercase().next().unwrap();
-            Some((char_to_key(lower).unwrap(), true))
+            let lower = c.to_lowercase().next()?;
+            char_to_key(lower).map(|k| (k, true))
         }
-        '0'..='9' => Some((char_to_key(c).unwrap(), false)),
+        '0'..='9' => char_to_key(c).map(|k| (k, false)),
         '!' => Some((Key::KEY_1, true)),
         '@' => Some((Key::KEY_2, true)),
         '#' => Some((Key::KEY_3, true)),

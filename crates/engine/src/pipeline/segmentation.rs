@@ -95,7 +95,7 @@ impl DefaultSegmentor {
                 let part = &input[i..i + len];
 
                 let (freq, seg_text) = if syllable_freq.contains_key(part) {
-                    (*syllable_freq.get(part).unwrap(), None)
+                    (syllable_freq.get(part).copied().unwrap_or(0), None)
                 } else if base_syllables.contains(part) {
                     (0, None)
                 } else if len == 1 {

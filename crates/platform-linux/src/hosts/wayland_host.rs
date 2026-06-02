@@ -300,7 +300,7 @@ impl WlState {
                 im.commit_string(text.clone());
             }
             Action::DeleteAndEmit { delete, insert } => {
-                im.delete_surrounding_text(*delete as u32, 0);
+                im.delete_surrounding_text(u32::try_from(*delete).unwrap_or(0), 0);
                 im.commit_string(insert.clone());
             }
             Action::PassThrough if utf8_text.is_empty() => {

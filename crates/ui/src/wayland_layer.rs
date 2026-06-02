@@ -134,20 +134,18 @@ impl slint::platform::EventLoopProxy for SlintProxy {
 }
 
 fn setup_slint_platform() -> Option<()> {
-    static INIT: std::sync::Once = std::sync::Once::new();
-    static mut RESULT: Option<()> = None;
-    INIT.call_once(|| {
+    use std::sync::OnceLock;
+    static RESULT: OnceLock<Option<()>> = OnceLock::new();
+    RESULT.get_or_init(|| {
         let (tx, rx) = mpsc::channel::<EventCallback>();
         let platform = Box::new(SlintPlatform {
             running: Arc::new(AtomicBool::new(true)),
             cmd_tx: tx,
             cmd_rx: rx,
         });
-        unsafe {
-            RESULT = slint::platform::set_platform(platform).ok();
-        }
+        slint::platform::set_platform(platform).ok()
     });
-    unsafe { RESULT }
+    RESULT.get().copied().flatten()
 }
 
 
@@ -223,6 +221,19 @@ impl WlState {
     }
 }
 
+/// Placeholder ObjectData for child surfaces created by the compositor
+struct ChildSurfaceData;
+impl wayland_client::backend::ObjectData for ChildSurfaceData {
+    fn event(
+        self: Arc<Self>,
+        _handle: &wayland_client::backend::Backend,
+        _msg: wayland_client::backend::protocol::Message<wayland_client::backend::ObjectId, std::os::unix::io::OwnedFd>,
+    ) -> Option<Arc<dyn wayland_client::backend::ObjectData>> {
+        None
+    }
+    fn destroyed(&self, _object_id: wayland_client::backend::ObjectId) {}
+}
+
 impl Dispatch<WlSurface, ()> for WlState {
     fn event(
         _state: &mut Self,
@@ -237,7 +248,7 @@ impl Dispatch<WlSurface, ()> for WlState {
         _opcode: u16,
         _qh: &QueueHandle<Self>,
     ) -> Arc<dyn wayland_client::backend::ObjectData> {
-        panic!("event_created_child for WlSurface")
+        Arc::new(ChildSurfaceData)
     }
 }
 
@@ -568,6 +579,7 @@ pub struct WaylandLayerDisplay {
     last_x: i32,
     last_y: i32,
     wl: Option<WlThread>,
+    wl_join: Option<std::thread::JoinHandle<()>>,
     pixel_pool: PixelPool,
 }
 
@@ -614,7 +626,8 @@ impl WaylandLayerDisplay {
             candidate_enabled,
             last_x: 0,
             last_y: 0,
-            wl: join.ok().map(|_| WlThread { cmd_tx: tx }),
+            wl: join.as_ref().ok().map(|_| WlThread { cmd_tx: tx }),
+            wl_join: join.ok(),
             pixel_pool,
         };
 
@@ -867,5 +880,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
 impl Drop for WaylandLayerDisplay {
     fn drop(&mut self) {
         self.close();
+        if let Some(handle) = self.wl_join.take() {
+            let _ = handle.join();
+        }
     }
 }

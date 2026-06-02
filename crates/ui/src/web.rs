@@ -243,19 +243,28 @@ async fn dicts_handler(uri: Uri) -> impl IntoResponse {
 }
 
 async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
-    Json(config.read().expect("config lock poisoned").clone()).into_response()
+    match config.read() {
+        Ok(cfg) => Json(cfg.clone()).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "config lock poisoned").into_response(),
+    }
 }
 
 async fn update_config(
     State((config, _, tray_tx)): State<WebState>,
     Json(new_config): Json<Config>
 ) -> StatusCode {
+    // 先保存到磁盘，再更新内存（磁盘失败时内存不受影响）
+    if let Err(e) = new_config.save() {
+        log::error!("Config save failed: {}", e);
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    }
+
     {
         let mut w = match config.write() {
             Ok(w) => w,
             Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
         };
-        
+
         // 处理自启逻辑变化
         if w.input.autostart != new_config.input.autostart {
             if new_config.input.autostart {
@@ -267,8 +276,6 @@ async fn update_config(
 
         *w = new_config.clone();
     }
-    // 使用新重构的 save 方法保存到 configs/ 目录
-    if let Err(_e) = new_config.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
 }
@@ -1270,8 +1277,22 @@ struct SendKeyRequest {
 
 async fn send_key_handler(
     State(state): State<WebState>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<SendKeyRequest>
 ) -> StatusCode {
+    // CSRF protection: reject requests with external Origin/Referer
+    if let Some(origin) = headers.get("origin")
+        .or_else(|| headers.get("referer"))
+    {
+        if let Ok(host) = origin.to_str() {
+            if !host.starts_with("http://127.0.0.1")
+                && !host.starts_with("http://localhost")
+            {
+                return StatusCode::FORBIDDEN;
+            }
+        }
+    }
+
     let key = req.key.to_lowercase();
     let _action = req.action.unwrap_or_else(|| "tap".to_string());
     

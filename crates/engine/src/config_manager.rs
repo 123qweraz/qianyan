@@ -101,8 +101,10 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(pinyin.to_string(), entries.to_vec());
-            let _ =
-                user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &current);
+            if let Err(e) =
+                user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &current) {
+                log::error!("[ConfigManager] 保存用户词典失败 (learned): {}", e);
+            }
             self.learned_words.store(Arc::new(current));
         }
     }
@@ -114,7 +116,9 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(pinyin.to_string(), entries.to_vec());
-            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &current);
+            if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &current) {
+                log::error!("[ConfigManager] 保存用户词典失败 (usage): {}", e);
+            }
             self.usage_history.store(Arc::new(current));
         }
     }
@@ -126,7 +130,9 @@ impl ConfigManager {
                 .entry(profile.to_string())
                 .or_default()
                 .insert(context.to_string(), entries.to_vec());
-            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &current);
+            if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &current) {
+                log::error!("[ConfigManager] 保存用户词典失败 (ngram): {}", e);
+            }
             self.ngram_history.store(Arc::new(current));
         }
     }

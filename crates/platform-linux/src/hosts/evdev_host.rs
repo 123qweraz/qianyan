@@ -150,9 +150,16 @@ impl GrabGuard {
 impl Drop for GrabGuard {
     fn drop(&mut self) {
         if self.is_grabbed {
-            if let Ok(mut dev) = self.device.lock() {
-                let _ = dev.ungrab();
-                println!("[EvdevHost] 键盘硬件拦截已安全释放。");
+            match self.device.lock() {
+                Ok(mut dev) => {
+                    let _ = dev.ungrab();
+                    println!("[EvdevHost] 键盘硬件拦截已安全释放。");
+                }
+                Err(e) => {
+                    log::error!("[EvdevHost] 无法释放键盘拦截 (锁已中毒): 尝试强制恢复");
+                    let mut dev = e.into_inner();
+                    let _ = dev.ungrab();
+                }
             }
         }
     }

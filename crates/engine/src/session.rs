@@ -10,8 +10,8 @@ pub struct InputSession {
     pub candidates: Vec<Candidate>,
     pub selected: usize,
     pub page: usize,
-    pub cursor_pos: usize,
-    pub joined_sentence: String,
+    pub cursor_pos: usize, // reserved for future cursor-based editing
+    pub joined_sentence: String, // reserved for future sentence composition
     pub last_lookup_pinyin: String,
     pub state: ImeState,
     pub nav_mode: bool,

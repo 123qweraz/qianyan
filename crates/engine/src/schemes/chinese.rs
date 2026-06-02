@@ -300,7 +300,10 @@ impl ChineseScheme {
             }
 
             // 3. 单字符声母
-            let ch = input[pos..].chars().next().unwrap();
+            let ch = match input[pos..].chars().next() {
+                Some(c) => c,
+                None => break,
+            };
             if single_initials.contains(&ch) {
                 result.push((ch.to_string(), true));
                 pos += ch.len_utf8();

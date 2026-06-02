@@ -373,7 +373,7 @@ impl ComposeTranslator {
         Self { trie, base_syllables, syllable_freq }
     }
 
-    /// 只用 base_syllables 做最长贪心匹配（第一遍，不做 DP 合并）
+    // TODO: extract segment_base to shared utility (duplicated in schemes/chinese.rs)
     fn segment_base(&self, input: &str) -> Vec<String> {
         let mut segs = Vec::new();
         let mut pos = 0;
