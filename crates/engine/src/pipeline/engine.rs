@@ -349,19 +349,10 @@ impl SearchEngine {
     }
 
     pub fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
+        // Fast path: read lock only — no write-lock LRU update on every lookup
         if let Ok(cache) = self.pipelines.read() {
-            let (p_map, _access_order) = &*cache;
-            if let Some(p) = p_map.get(profile) {
-                let result = Some(p.clone());
-                drop(cache);
-                if let Ok(mut cache) = self.pipelines.write() {
-                    let (_, access_order) = &mut *cache;
-                    if let Some(pos) = access_order.iter().position(|p| p == profile) {
-                        access_order.remove(pos);
-                    }
-                    access_order.push(profile.to_string());
-                }
-                return result;
+            if let Some(p) = cache.0.get(profile) {
+                return Some(p.clone());
             }
         }
 
@@ -395,22 +386,19 @@ impl SearchEngine {
 
         let arc_p = Arc::new(pipeline);
 
-        {
-            let mut cache = self.pipelines.write().ok()?;
-            let (p_map, access_order) = &mut *cache;
-            if let Some(p) = p_map.get(profile) {
-                return Some(p.clone());
-            }
-            if access_order.len() >= MAX_CACHED_PIPELINES {
-                if let Some(oldest) = access_order.first().cloned() {
-                    p_map.remove(&oldest);
-                    access_order.remove(0);
-                    log::debug!("Evicted pipeline from cache: profile={}", oldest);
-                }
-            }
-            p_map.insert(profile.to_string(), arc_p.clone());
-            access_order.push(profile.to_string());
+        let mut cache = self.pipelines.write().ok()?;
+        if let Some(p) = cache.0.get(profile) {
+            return Some(p.clone());
         }
+        if cache.0.len() >= MAX_CACHED_PIPELINES {
+            let oldest = cache.1.first().cloned();
+            if let Some(ref k) = oldest {
+                cache.0.remove(k);
+            }
+            cache.1.clear();
+        }
+        cache.0.insert(profile.to_string(), arc_p.clone());
+        cache.1.push(profile.to_string());
 
         Some(arc_p)
     }

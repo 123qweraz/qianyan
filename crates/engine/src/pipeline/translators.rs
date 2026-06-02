@@ -98,6 +98,7 @@ pub struct TableTranslator {
     pub enable_abbreviation: bool,
     last_query: std::sync::RwLock<(String, std::time::Instant)>,
     cached_candidates: std::sync::RwLock<Vec<Candidate>>,
+    fuzzy_cache: std::sync::RwLock<std::collections::HashMap<String, Vec<String>>>,
 }
 
 impl TableTranslator {
@@ -112,6 +113,7 @@ impl TableTranslator {
             enable_abbreviation,
             last_query: std::sync::RwLock::new((String::new(), std::time::Instant::now())),
             cached_candidates: std::sync::RwLock::new(Vec::new()),
+            fuzzy_cache: std::sync::RwLock::new(std::collections::HashMap::new()),
         }
     }
 }
@@ -196,7 +198,18 @@ impl Translator for TableTranslator {
             let fuzzy_cfg = &config.input.fuzzy_config;
             let per_seg: Vec<Vec<String>> = segments
                 .iter()
-                .map(|seg| fuzzy_variants_per_segment(seg, fuzzy_cfg))
+                .map(|seg| {
+                    if let Ok(cache) = self.fuzzy_cache.read() {
+                        if let Some(cached) = cache.get(seg) {
+                            return cached.clone();
+                        }
+                    }
+                    let variants = fuzzy_variants_per_segment(seg, fuzzy_cfg);
+                    if let Ok(mut cache) = self.fuzzy_cache.write() {
+                        cache.insert(seg.clone(), variants.clone());
+                    }
+                    variants
+                })
                 .collect();
 
             let mut searcher = FuzzyPinyinSearcher {
@@ -298,14 +311,9 @@ impl Translator for UserDictTranslator {
         let query = segments.join("");
         let mut results = Vec::new();
         let dict = self.user_dict.load();
-        log::info!("UserDictTranslator: query={}, profile={}, dict_keys={:?}, has_profile={}",
-            query, self.profile,
-            dict.keys().collect::<Vec<_>>(),
-            dict.contains_key(&self.profile));
+        log::trace!("UserDictTranslator: query={}, profile={}", query, self.profile);
         if let Some(profile_dict) = dict.get(&self.profile) {
-            log::info!("UserDictTranslator: profile_dict keys={:?}, has_query={}",
-                profile_dict.keys().collect::<Vec<_>>(),
-                profile_dict.contains_key(&query));
+            log::trace!("UserDictTranslator: has_query={}", profile_dict.contains_key(&query));
             if let Some(words) = profile_dict.get(&query) {
                 for (word, weight) in words {
                     let (trad, en, stroke) = if let Some(ref trie) = self.trie {

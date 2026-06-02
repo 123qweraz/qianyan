@@ -74,7 +74,7 @@ impl Processor {
     }
 
     pub fn handle_event(&mut self, event: InputEvent) -> Action {
-        log::info!("handle_event: {:?}", event);
+        log::trace!("handle_event: {:?}", event);
         match event {
             InputEvent::Key {
                 key,

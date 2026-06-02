@@ -378,7 +378,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 qianyan_ime_ui::tray::TrayEvent::ClearUserDict => {
                     let profiles = {
-                        let mut p = match processor_clone.lock() {
+                        let p = match processor_clone.lock() {
                             Ok(guard) => guard,
                             Err(_) => continue,
                         };
