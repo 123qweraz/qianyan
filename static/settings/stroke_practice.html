@@ -425,6 +425,10 @@
                 el.classList.add('active');
                 setTimeout(() => el.classList.remove('active'), 100);
             }
+            // 防止未聚焦输入框时按键导致浏览器后退/退出 (Tab除外)
+            if (document.activeElement !== document.getElementById('practiceInput') && e.key !== 'Tab') {
+                e.preventDefault();
+            }
         });
 
         document.getElementById('practiceInput').addEventListener('input', (e) => {

@@ -131,7 +131,7 @@ impl Tray for ImeTray {
             .into(),
             MenuItem::Separator,
             StandardItem {
-                label: "配置管理 (Web)".to_string(),
+                label: "打开管理页面".to_string(),
                 activate: Box::new(|this: &mut Self| {
                     let _ = this.tx.send(TrayEvent::OpenConfig);
                 }),
@@ -139,7 +139,7 @@ impl Tray for ImeTray {
             }
             .into(),
             StandardItem {
-                label: "重载词库配置".to_string(),
+                label: "重载配置".to_string(),
                 activate: Box::new(|this: &mut Self| {
                     let _ = this.tx.send(TrayEvent::ReloadConfig);
                 }),
@@ -189,7 +189,7 @@ pub fn start_tray(params: TrayParams) -> LinuxTrayHandle {
 }
 
 #[cfg(target_os = "windows")]
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(target_os = "windows")]
 use windows::{
     core::*, Win32::Foundation::*, Win32::UI::Shell::*, Win32::UI::WindowsAndMessaging::*,
@@ -208,13 +208,44 @@ pub struct ImeTrayStub {
 }
 
 #[cfg(target_os = "windows")]
-use std::sync::OnceLock;
-
-#[cfg(target_os = "windows")]
 static TRAY_STATE: OnceLock<Arc<Mutex<ImeTrayStub>>> = OnceLock::new();
-
 #[cfg(target_os = "windows")]
 static TRAY_TX: OnceLock<Sender<TrayEvent>> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static TRAY_HWND: OnceLock<HWND> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static TRAY_HICON_ZH: OnceLock<HICON> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static TRAY_HICON_EN: OnceLock<HICON> = OnceLock::new();
+#[cfg(target_os = "windows")]
+static TRAY_HICON_DEF: OnceLock<HICON> = OnceLock::new();
+
+#[cfg(target_os = "windows")]
+fn load_icon_win(path: &std::path::Path) -> Result<HICON, ()> {
+    let abs = path.to_string_lossy().to_string() + "\0";
+    let wide: Vec<u16> = abs.encode_utf16().collect();
+    unsafe {
+        match LoadImageW(
+            None,
+            PCWSTR(wide.as_ptr()),
+            IMAGE_ICON,
+            0, 0,
+            LR_LOADFROMFILE | LR_DEFAULTSIZE,
+        ) {
+            Ok(h) => Ok(HICON(h.0)),
+            Err(_) => Err(()),
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn make_wide_tip(s: &str) -> [u16; 128] {
+    let mut buf = [0u16; 128];
+    for (i, c) in s.encode_utf16().take(127).enumerate() {
+        buf[i] = c;
+    }
+    buf
+}
 
 #[cfg(target_os = "windows")]
 pub struct WindowsTrayHandle(Arc<Mutex<ImeTrayStub>>);
@@ -226,8 +257,37 @@ impl WindowsTrayHandle {
         F: FnOnce(&mut ImeTrayStub),
     {
         if let Ok(mut state) = self.0.lock() {
+            let old_cn = state.chinese_enabled;
             f(&mut *state);
+            if state.chinese_enabled != old_cn {
+                self.refresh_icon();
+            }
         }
+    }
+
+    fn refresh_icon(&self) {
+        let (hwnd, icon, tip_text) = match (TRAY_HWND.get(), self.0.lock().ok()) {
+            (Some(h), Ok(ref s)) => {
+                let icon = if s.chinese_enabled {
+                    *TRAY_HICON_ZH.get().unwrap_or_else(|| TRAY_HICON_DEF.get().unwrap())
+                } else {
+                    *TRAY_HICON_EN.get().unwrap_or_else(|| TRAY_HICON_DEF.get().unwrap())
+                };
+                let tip = if s.chinese_enabled { "千言输入法 (中)" } else { "千言输入法 (英)" };
+                (*h, icon, make_wide_tip(tip))
+            }
+            _ => return,
+        };
+        let nid = NOTIFYICONDATAW {
+            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+            hWnd: hwnd,
+            uID: TRAY_ICON_ID,
+            uFlags: NIF_ICON | NIF_TIP,
+            hIcon: icon,
+            szTip: tip_text,
+            ..Default::default()
+        };
+        unsafe { Shell_NotifyIconW(NIM_MODIFY, &nid); }
     }
 }
 
@@ -242,91 +302,64 @@ pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
     TRAY_STATE.set(state.clone()).ok();
     TRAY_TX.set(params.tx).ok();
 
+    let root = qianyan_ime_core::utils::find_project_root();
+
     let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || unsafe {
-        let instance =
-            windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap_or_default();
-        let window_class = PCWSTR(
-            "QianyanIMETrayClass\0"
-                .encode_utf16()
-                .collect::<Vec<u16>>()
-                .as_ptr(),
-        );
+    std::thread::spawn(move || {
+        // Pre-load icons
+        let h_icon_zh = load_icon_win(&root.join("picture/zh.ico")).unwrap_or_else(|_| unsafe { LoadIconW(None, IDI_APPLICATION).unwrap_or_default() });
+        let h_icon_en = load_icon_win(&root.join("picture/en.ico")).unwrap_or(h_icon_zh);
+        let h_icon_def = load_icon_win(&root.join("picture/qianyan-ime_v2.ico")).unwrap_or(h_icon_zh);
+        TRAY_HICON_ZH.set(h_icon_zh).ok();
+        TRAY_HICON_EN.set(h_icon_en).ok();
+        TRAY_HICON_DEF.set(h_icon_def).ok();
 
-        let wc = WNDCLASSW {
-            hInstance: instance.into(),
-            lpszClassName: window_class,
-            lpfnWndProc: Some(tray_wnd_proc),
-            ..Default::default()
-        };
-        RegisterClassW(&wc);
+        unsafe {
+            let instance = windows::Win32::System::LibraryLoader::GetModuleHandleW(None).unwrap_or_default();
+            let class_name = "QianyanIMETrayClass\0".encode_utf16().collect::<Vec<u16>>();
+            let wc = WNDCLASSW {
+                hInstance: instance.into(),
+                lpszClassName: PCWSTR(class_name.as_ptr()),
+                lpfnWndProc: Some(tray_wnd_proc),
+                ..Default::default()
+            };
+            RegisterClassW(&wc);
 
-        let hwnd = CreateWindowExW(
-            WS_EX_TOOLWINDOW,
-            window_class,
-            PCWSTR(std::ptr::null()),
-            WS_POPUP,
-            0,
-            0,
-            0,
-            0,
-            None,
-            None,
-            instance,
-            None,
-        );
+            let hwnd = CreateWindowExW(
+                WS_EX_TOOLWINDOW,
+                PCWSTR(class_name.as_ptr()),
+                PCWSTR(std::ptr::null()),
+                WS_POPUP,
+                0, 0, 0, 0,
+                None, None, instance, None,
+            );
+            TRAY_HWND.set(hwnd).ok();
 
-        let zh_icon_path = "picture/zh.ico\0"
-            .encode_utf16()
-            .collect::<Vec<u16>>();
-        let en_icon_path = "picture/en.ico\0"
-            .encode_utf16()
-            .collect::<Vec<u16>>();
-        let default_icon_path = "picture/qianyan-ime_v2.ico\0"
-            .encode_utf16()
-            .collect::<Vec<u16>>();
-        // 根据中英文状态选择图标
-        let icon_path = {
-            let stub = TRAY_STATE.get().and_then(|s| s.lock().ok());
-            match stub.as_ref().map(|s| s.chinese_enabled) {
-                Some(true) if std::path::Path::new("picture/zh.ico").exists() => &zh_icon_path,
-                Some(false) if std::path::Path::new("picture/en.ico").exists() => &en_icon_path,
-                _ => &default_icon_path,
+            let icon = h_icon_zh; // start with Chinese icon
+            let tip = make_wide_tip("千言输入法 (中)");
+            let nid = NOTIFYICONDATAW {
+                cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
+                hWnd: hwnd,
+                uID: TRAY_ICON_ID,
+                uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
+                uCallbackMessage: WM_TRAYICON,
+                hIcon: icon,
+                szTip: tip,
+                ..Default::default()
+            };
+
+            if Shell_NotifyIconW(NIM_ADD, &nid).as_bool() {
+                println!("[Tray] 系统托盘初始化成功。");
             }
-        };
-        let h_icon = match LoadImageW(
-            None,
-            PCWSTR(icon_path.as_ptr()),
-            IMAGE_ICON,
-            0,
-            0,
-            LR_LOADFROMFILE | LR_DEFAULTSIZE,
-        ) {
-            Ok(handle) => HICON(handle.0),
-            Err(_) => LoadIconW(None, IDI_APPLICATION).unwrap_or_default(),
-        };
+            let _ = tx.send(hwnd);
 
-        let nid = NOTIFYICONDATAW {
-            cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
-            hWnd: hwnd,
-            uID: TRAY_ICON_ID,
-            uFlags: NIF_ICON | NIF_MESSAGE | NIF_TIP,
-            uCallbackMessage: WM_TRAYICON,
-            hIcon: h_icon,
-            ..Default::default()
-        };
-
-        if Shell_NotifyIconW(NIM_ADD, &nid).as_bool() {
-            println!("[Tray] 系统托盘初始化成功。");
+            let mut msg = MSG::default();
+            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+            Shell_NotifyIconW(NIM_DELETE, &nid);
         }
-        let _ = tx.send(hwnd);
-
-        let mut msg = MSG::default();
-        while GetMessageW(&mut msg, None, 0, 0).as_bool() {
-            TranslateMessage(&msg);
-            DispatchMessageW(&msg);
-        }
-        Shell_NotifyIconW(NIM_DELETE, &nid);
     });
 
     let _hwnd = rx
@@ -352,19 +385,14 @@ unsafe extern "system" fn tray_wnd_proc(
                     if let Ok(state) = state_arc.lock() {
                         let h_menu = CreatePopupMenu().expect("Failed to create popup menu");
 
-                        let activated_label = format!(
+                        let toggle_label = format!(
                             "输入法: {}",
-                            if state.chinese_enabled {
-                                "激活 (中)"
-                            } else {
-                                "未激活 (英)"
-                            }
+                            if state.chinese_enabled { "中" } else { "英" }
                         );
-                        let mut activated_w: Vec<u16> = activated_label.encode_utf16().collect();
-                        activated_w.push(0);
-                        let _ = AppendMenuW(h_menu, MF_STRING, 1001, PCWSTR(activated_w.as_ptr()));
+                        let mut toggle_w: Vec<u16> = toggle_label.encode_utf16().collect();
+                        toggle_w.push(0);
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1001, PCWSTR(toggle_w.as_ptr()));
 
-                        // Profile Submenu
                         let h_profile_menu = CreatePopupMenu().expect("Failed to create profile menu");
                         let all_profiles = vec![
                             ("chinese", "中文"),
@@ -372,7 +400,7 @@ unsafe extern "system" fn tray_wnd_proc(
                             ("japanese", "日文"),
                             ("stroke", "笔画"),
                             ("shengpizi", "生僻字"),
-                            ("chinese,english,japanese", "混合"),
+                            ("chinese,english,japanese", "中日英混"),
                         ];
                         let profiles: Vec<&(&str, &str)> = all_profiles.iter()
                             .filter(|(id, _)| state.enabled_profiles.is_empty() || state.enabled_profiles.contains(&id.to_string()))
@@ -380,21 +408,17 @@ unsafe extern "system" fn tray_wnd_proc(
 
                         for (i, (id, label)) in profiles.iter().enumerate() {
                             let mut flags = MF_STRING;
-                            if state.active_profile == *id {
-                                flags |= MF_CHECKED;
-                            }
+                            if state.active_profile == *id { flags |= MF_CHECKED; }
                             let mut label_w: Vec<u16> = label.encode_utf16().collect();
                             label_w.push(0);
                             let _ = AppendMenuW(h_profile_menu, flags, (2000 + i) as u32, PCWSTR(label_w.as_ptr()));
                         }
 
                         let profile_zh = match state.active_profile.as_str() {
-                            "chinese" => "中文",
-                            "english" => "英文",
-                            "japanese" => "日文",
-                            "stroke" => "笔画",
+                            "chinese" => "中文", "english" => "英文",
+                            "japanese" => "日文", "stroke" => "笔画",
                             "shengpizi" => "生僻字",
-                            "mixed" => "混合",
+                            "chinese,english,japanese" => "中日英混",
                             other => other,
                         };
                         let profile_label = format!("词典方案: {}", profile_zh);
@@ -403,15 +427,8 @@ unsafe extern "system" fn tray_wnd_proc(
                         let _ = AppendMenuW(h_menu, MF_POPUP, h_profile_menu.0 as usize, PCWSTR(profile_w.as_ptr()));
 
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
-
-                        let _ = AppendMenuW(
-                            h_menu,
-                            MF_STRING,
-                            1011,
-                            windows::core::w!("管理设置 (Web)"),
-                        );
-                        let _ =
-                            AppendMenuW(h_menu, MF_STRING, 1012, windows::core::w!("重载词库配置"));
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1011, windows::core::w!("打开管理页面"));
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1012, windows::core::w!("重载配置"));
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
                         let _ = AppendMenuW(h_menu, MF_STRING, 1014, windows::core::w!("退出程序"));
 
@@ -428,27 +445,16 @@ unsafe extern "system" fn tray_wnd_proc(
             let id = wparam.0 as u32;
             if let Some(tx) = TRAY_TX.get() {
                 match id {
-                    1001 => {
-                        let _ = tx.send(TrayEvent::ToggleIme);
-                    }
-                    1002 => {
-                        let _ = tx.send(TrayEvent::NextProfile);
-                    }
+                    1001 => { let _ = tx.send(TrayEvent::ToggleIme); }
                     2000..=2005 => {
                         let profiles = vec!["chinese", "english", "japanese", "stroke", "shengpizi", "chinese,english,japanese"];
                         if let Some(profile) = profiles.get(id as usize - 2000) {
                             let _ = tx.send(TrayEvent::SetProfile(profile.to_string()));
                         }
                     }
-                    1011 => {
-                        let _ = tx.send(TrayEvent::OpenConfig);
-                    }
-                    1012 => {
-                        let _ = tx.send(TrayEvent::ReloadConfig);
-                    }
-                    1014 => {
-                        let _ = tx.send(TrayEvent::Exit);
-                    }
+                    1011 => { let _ = tx.send(TrayEvent::OpenConfig); }
+                    1012 => { let _ = tx.send(TrayEvent::ReloadConfig); }
+                    1014 => { let _ = tx.send(TrayEvent::Exit); }
                     _ => {}
                 }
             }
