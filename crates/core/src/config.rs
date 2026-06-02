@@ -63,7 +63,7 @@ fn default_backspace_delay() -> u64 {
     10
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Files {
     pub data_dir: Option<String>,
     pub punctuation_file: String,

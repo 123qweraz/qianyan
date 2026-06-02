@@ -375,31 +375,9 @@ impl ComposeTranslator {
 
     // TODO: extract segment_base to shared utility (duplicated in schemes/chinese.rs)
     fn segment_base(&self, input: &str) -> Vec<String> {
-        let mut segs = Vec::new();
-        let mut pos = 0;
-        while pos < input.len() {
-            let max_len = 12.min(input.len() - pos);
-            let mut matched = false;
-            for len in (1..=max_len).rev() {
-                let end = pos + len;
-                if input.is_char_boundary(end) {
-                    let part = &input[pos..end];
-                    if self.base_syllables.contains(part) {
-                        segs.push(part.to_string());
-                        pos = end;
-                        matched = true;
-                        break;
-                    }
-                }
-            }
-            if !matched {
-                break;
-            }
-        }
-        segs
+        crate::pipeline::compose_utils::segment_base(input, &self.base_syllables)
     }
 
-    /// 回溯生成所有合法分割（每段 1~4 个 base 音节，且 pinyin 必须在 trie 有词）
     fn backtrack_partitions(
         &self,
         base: &[String],
@@ -407,26 +385,7 @@ impl ComposeTranslator {
         current: &mut Vec<(usize, usize)>,
         result: &mut Vec<Vec<(usize, usize)>>,
     ) {
-        if pos >= base.len() {
-            result.push(current.clone());
-            return;
-        }
-        let max_k = 4.min(base.len() - pos);
-        for k in 1..=max_k {
-            let end = pos + k;
-            if k == 1 {
-                current.push((pos, end));
-                self.backtrack_partitions(base, end, current, result);
-                current.pop();
-            } else {
-                let merged: String = base[pos..end].concat();
-                if self.trie.get_all_exact(&merged).is_some() {
-                    current.push((pos, end));
-                    self.backtrack_partitions(base, end, current, result);
-                    current.pop();
-                }
-            }
-        }
+        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, &self.trie)
     }
 }
 

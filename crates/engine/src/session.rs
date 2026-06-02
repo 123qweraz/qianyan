@@ -10,8 +10,7 @@ pub struct InputSession {
     pub candidates: Vec<Candidate>,
     pub selected: usize,
     pub page: usize,
-    pub cursor_pos: usize, // reserved for future cursor-based editing
-    pub joined_sentence: String, // reserved for future sentence composition
+    pub joined_sentence: String,
     pub last_lookup_pinyin: String,
     pub state: ImeState,
     pub nav_mode: bool,
@@ -31,15 +30,14 @@ pub struct InputSession {
     pub single_quote_open: bool,
 
     /// Non-modifier key whose press was consumed by the IME.
-    /// Used to ensure the corresponding release is also consumed,
-    /// preventing stray key events from being forwarded to the application
-    /// after auto-commit or SPACE commit clears the composing buffer.
     pub consumed_press_key: Option<VirtualKey>,
 
     /// 模糊音是否已激活
     pub fuzzy_activated: bool,
     /// 当前输入会话的翻页次数
     pub fuzzy_page_turns: usize,
+    /// 预留：光标位置，当前未使用（恒为0）
+    pub cursor_pos: usize,
 }
 
 impl Default for InputSession {
@@ -55,7 +53,6 @@ impl InputSession {
             candidates: Vec::new(),
             selected: 0,
             page: 0,
-            cursor_pos: 0,
             joined_sentence: String::new(),
             last_lookup_pinyin: String::new(),
             state: ImeState::Idle,
@@ -79,6 +76,7 @@ impl InputSession {
 
             fuzzy_activated: false,
             fuzzy_page_turns: 0,
+            cursor_pos: 0,
         }
     }
 
@@ -102,7 +100,6 @@ impl InputSession {
 
         self.phantom_text.clear();
         self.preview_selected_candidate = false;
-        self.cursor_pos = 0;
         self.aux_filter.clear();
         self.filter_mode = FilterMode::None;
         self.page_snapshot.clear();
@@ -110,6 +107,7 @@ impl InputSession {
         self.consumed_press_key = None;
         self.fuzzy_activated = false;
         self.fuzzy_page_turns = 0;
+        self.cursor_pos = 0;
     }
 
     pub fn push_char(&mut self, c: char) {
@@ -171,8 +169,7 @@ impl InputSession {
         if self.buffer.is_empty() {
             return false;
         }
-        // 默认操作最后一个音节
-        let pos = if self.cursor_pos > 0 { self.cursor_pos } else { self.buffer.len() };
+        let pos = self.buffer.len();
         // 找到光标所在的音节范围
         let mut start = 0usize;
         let mut end = self.buffer.len();
