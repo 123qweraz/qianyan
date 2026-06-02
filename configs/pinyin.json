@@ -44,6 +44,7 @@
     "auto_commit_stroke": true,
     "auto_commit_unique_en_fuzhuma": false,
     "auto_commit_unique_full_match": false,
+    "auto_sentence_min_syllables": 4,
     "commit_mode": "double",
     "default_profile": "chinese",
     "display_mode": "character_with_english",

@@ -92,7 +92,10 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 if let Some(ref im) = state.input_method {
                     let grab = im.grab_keyboard(qh, WlUser);
                     state.keyboard_grab = Some(grab);
-                    info!("[WaylandIM] keyboard grabbed");
+                    // Commit initial empty state so the compositor knows we are ready
+                    im.set_preedit_string(String::new(), 0, 0);
+                    im.commit(state.serial);
+                    let _ = conn.flush();
                 }
             }
             Event::Deactivate => {
@@ -185,69 +188,64 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 let (vk, utf8_text) = state.resolve_key(key);
 
                 let prev_enabled = state.prev_chinese_enabled;
-                let action = match state.processor.handle_key(vk, 1, false, false, false, true) {
-                    Some(a) => a,
+
+                // Use handle_key_sync to get action + gui + status atomically
+                let (action, gui, status) = match state.processor.handle_key_sync(vk, 1, false, false, false) {
+                    Some(tuple) => tuple,
                     None => return,
                 };
 
-                if let Some(status) = state.processor.get_basic_status() {
-                    state.prev_chinese_enabled = status.chinese_enabled;
-                    if status.chinese_enabled != prev_enabled {
-                        let text = if status.chinese_enabled { status.short_display.clone() } else { "英".into() };
-                        let _ = state.gui_tx.send(GuiEvent::ShowStatus(text, status.chinese_enabled));
-                        let _ = state.tray_tx.send(TrayEvent::SyncStatus {
-                            chinese_enabled: status.chinese_enabled,
-                            active_profile: status.active_profile.clone(),
-                        });
-                    }
+                state.prev_chinese_enabled = status.chinese_enabled;
+                if status.chinese_enabled != prev_enabled {
+                    let text = if status.chinese_enabled { status.short_display.clone() } else { "英".into() };
+                    let _ = state.gui_tx.send(GuiEvent::ShowStatus(text, status.chinese_enabled));
+                    let _ = state.tray_tx.send(TrayEvent::SyncStatus {
+                        chinese_enabled: status.chinese_enabled,
+                        active_profile: status.active_profile.clone(),
+                    });
                 }
 
-                let (update, preedit) = if let Some(gui) = state.processor.get_gui_snapshot() {
-                    if gui.pinyin.is_empty() || !gui.chinese_enabled {
-                        (GuiEvent::Update {
-                            pinyin: "".into(),
-                            candidates: vec![],
-                            selected: 0, page: 0, total_pages: 0,
-                            sentence: "".into(), cursor_pos: 0,
-                            commit_mode: gui.commit_mode.clone(),
-                        }, String::new())
-                    } else {
-                        let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
-                            let full_display = if c.is_fuzzy {
-                                format!("{}{}(模糊)", c.label, c.text)
-                            } else if c.hint.is_empty() {
-                                format!("{}{}", c.label, c.text)
-                            } else {
-                                format!("{}{}({})", c.label, c.text, c.hint)
-                            };
-                            qianyan_ime_ui::DisplayCandidate {
-                                text: c.text.clone(),
-                                label: c.label.clone(),
-                                hint: c.hint.clone(),
-                                full_display,
-                                is_fuzzy: c.is_fuzzy,
-                            }
-                        }).collect();
-                        (GuiEvent::Update {
-                            pinyin: gui.pinyin.clone(),
-                            candidates,
-                            selected: gui.selected,
-                            page: gui.page,
-                            total_pages: gui.total_pages,
-                            sentence: gui.sentence.clone(),
-                            cursor_pos: gui.cursor_pos,
-                            commit_mode: gui.commit_mode,
-                        }, gui.pinyin)
+                // Build GUI update
+                let update = if gui.pinyin.is_empty() || !gui.chinese_enabled {
+                    GuiEvent::Update {
+                        pinyin: "".into(),
+                        candidates: vec![],
+                        selected: 0, page: 0, total_pages: 0,
+                        sentence: "".into(), cursor_pos: 0,
+                        commit_mode: gui.commit_mode.clone(),
                     }
                 } else {
-                    return;
+                    let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
+                        let full_display = if c.is_fuzzy {
+                            format!("{}{}(模糊)", c.label, c.text)
+                        } else if c.hint.is_empty() {
+                            format!("{}{}", c.label, c.text)
+                        } else {
+                            format!("{}{}({})", c.label, c.text, c.hint)
+                        };
+                        qianyan_ime_ui::DisplayCandidate {
+                            text: c.text.clone(),
+                            label: c.label.clone(),
+                            hint: c.hint.clone(),
+                            full_display,
+                            is_fuzzy: c.is_fuzzy,
+                        }
+                    }).collect();
+                    GuiEvent::Update {
+                        pinyin: gui.pinyin.clone(),
+                        candidates,
+                        selected: gui.selected,
+                        page: gui.page,
+                        total_pages: gui.total_pages,
+                        sentence: gui.sentence.clone(),
+                        cursor_pos: gui.cursor_pos,
+                        commit_mode: gui.commit_mode,
+                    }
                 };
-
-                Self::handle_action(state, &action, conn, utf8_text, key, time);
-
                 let _ = state.gui_tx.send(update);
 
-                Self::send_preedit(state, if preedit.is_empty() { None } else { Some(&preedit) });
+                // Apply action + preedit in a single commit
+                Self::apply_state(state, &action, conn, utf8_text, key, time, &gui.pinyin);
                 let _ = conn.flush();
             }
             Event::Modifiers {
@@ -283,59 +281,51 @@ impl WlState {
         }
     }
 
-    fn handle_action(
+    fn apply_state(
         state: &Self,
         action: &Action,
         conn: &Connection,
         utf8_text: String,
         _key: u32,
         _time: u32,
+        preedit: &str,
     ) {
         let im = match state.input_method.as_ref() {
             Some(im) => im,
             None => return,
         };
+
         match action {
             Action::Emit(text) => {
                 im.commit_string(text.clone());
-                im.commit(state.serial);
             }
             Action::DeleteAndEmit { delete, insert } => {
                 im.delete_surrounding_text(*delete as u32, 0);
                 im.commit_string(insert.clone());
-                im.commit(state.serial);
             }
             Action::PassThrough if utf8_text.is_empty() => {
                 // If utf8_text is empty (e.g. function keys), the key is consumed.
-                // The compositor is responsible for not forwarding such keys to the IM.
             }
             Action::PassThrough => {
                 im.commit_string(utf8_text);
-                im.commit(state.serial);
             }
             Action::Alert => {
                 Self::play_beep();
             }
             _ => {}
         }
-        let _ = conn.flush();
-    }
 
-    fn send_preedit(state: &Self, preedit: Option<&str>) {
-        let im = match state.input_method.as_ref() {
-            Some(im) => im,
-            None => return,
-        };
-        match preedit {
-            Some(text) if !text.is_empty() => {
-                let len = text.len() as i32;
-                im.set_preedit_string(text.to_string(), len, len);
-            }
-            _ => {
-                im.set_preedit_string(String::new(), 0, 0);
-            }
+        // Set preedit string
+        if preedit.is_empty() {
+            im.set_preedit_string(String::new(), 0, 0);
+        } else {
+            let len = preedit.len() as i32;
+            im.set_preedit_string(preedit.to_string(), len, len);
         }
+
+        // Single commit to apply all pending state
         im.commit(state.serial);
+        let _ = conn.flush();
     }
 
     fn play_beep() {

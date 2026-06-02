@@ -39,6 +39,8 @@ pub struct LinuxConfig {
     pub fixed_x: i32,
     #[serde(default = "default_fixed_y")]
     pub fixed_y: i32,
+    #[serde(default = "default_backend_type")]
+    pub backend_type: String, // "auto", "evdev", "wayland"
 }
 
 fn default_true() -> bool {
@@ -51,6 +53,10 @@ fn default_fixed_x() -> i32 {
 
 fn default_fixed_y() -> i32 {
     40
+}
+
+fn default_backend_type() -> String {
+    "auto".to_string()
 }
 
 fn default_backspace_delay() -> u64 {
@@ -1039,6 +1045,7 @@ impl Config {
                 corner: "bottom-right".to_string(),
                 fixed_x: 40,
                 fixed_y: 40,
+                backend_type: "auto".to_string(),
             },
         }
     }

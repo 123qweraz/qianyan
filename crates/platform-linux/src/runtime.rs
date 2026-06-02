@@ -9,6 +9,7 @@ use qianyan_ime_engine::processor::actor::ProcessorHandle;
 use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 use std::error::Error;
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, RwLock};
 
 pub type InputHostResult = Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>>;
@@ -36,77 +37,83 @@ pub fn create_input_host(
             corner: "bottom-right".into(),
             fixed_x: 40,
             fixed_y: 40,
+            backend_type: "auto".into(),
         });
 
     let dev_path = linux_config.device_path.clone();
-    let backend = parse_backend(args);
+    let backend = parse_backend(args, &linux_config.backend_type);
 
+    // Try the primary backend, falling back through alternatives
     match backend {
         BackendType::Wayland => {
-            let (mut host, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
-            println!("[Main] 成功启动{}输入法模式。", desc);
-            Ok((
-                None,
-                Box::new(move || {
-                    let _ = host.run();
-                }),
-            ))
+            // Try Wayland IM protocol first
+            match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
+                Ok(result) => return Ok(result),
+                Err(e) => println!("[Main] Wayland 不可用 ({}), 尝试 Evdev...", e),
+            }
+            // Fallback to Evdev
+            match try_start_evdev(processor.clone(), &dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
+                Ok(result) => return Ok(result),
+                Err(e) => println!("[Main] Evdev 也不可用: {:?}", e),
+            }
+            // Last resort: try Wayland again (maybe a display issue)
+            if std::env::var("WAYLAND_DISPLAY").is_ok() {
+                match try_start_wayland(processor, gui_tx, tray_tx) {
+                    Ok(result) => return Ok(result),
+                    Err(e) => return Err(format!("所有后端均不可用: {}", e).into()),
+                }
+            }
+            Err("所有后端均不可用".into())
         }
         BackendType::Evdev => {
-            let mut host = evdev_host::EvdevHost::new(processor, &dev_path, Some(gui_tx), tray_tx)?;
-            let vkbd = host.vkbd.clone();
-            Ok((
-                Some(vkbd),
-                Box::new(move || {
-                    let _ = host.run();
-                }),
-            ))
+            try_start_evdev(processor, &dev_path, Some(gui_tx), tray_tx)
+                .map_err(|e| format!("Evdev 启动失败: {:?}", e).into())
         }
         BackendType::Auto => {
-            // Default: evdev first (reliable across X11/Wayland, no compositor dependency)
-            match evdev_host::EvdevHost::new(
-                processor.clone(),
-                &dev_path,
-                Some(gui_tx.clone()),
-                tray_tx.clone(),
-            ) {
-                Ok(mut host) => {
-                    println!("[Main] 成功启动 Evdev 拦截模式。");
-                    let vkbd = host.vkbd.clone();
-                    return Ok((
-                        Some(vkbd),
-                        Box::new(move || {
-                            let _ = host.run();
-                        }),
-                    ));
-                }
-                Err(evdev_err) => {
-                    println!("[Main] Evdev 启动失败 ({:?})，尝试 Wayland。", evdev_err);
-                }
+            // Default: evdev first (reliable, no compositor dependency)
+            match try_start_evdev(processor.clone(), &dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
+                Ok(result) => return Ok(result),
+                Err(evdev_err) => println!("[Main] Evdev 启动失败 ({:?})，尝试 Wayland。", evdev_err),
             }
 
             // Fallback: try Wayland input method protocol
-            #[cfg(target_os = "linux")]
             if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match create_wayland_host(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
-                    Ok((mut host, desc)) => {
-                        println!("[Main] 成功启动{}输入法模式。", desc);
-                        return Ok((
-                            None,
-                            Box::new(move || {
-                                let _ = host.run();
-                            }),
-                        ));
-                    }
-                    Err(e) => {
-                        println!("[Main] Wayland 输入法不可用: {}", e);
-                    }
+                match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
+                    Ok(result) => return Ok(result),
+                    Err(e) => println!("[Main] Wayland 输入法不可用: {}", e),
                 }
             }
 
+            // Final fallback: try Evdev again with different device path
             Err("No input backend available".into())
         }
     }
+}
+
+fn try_start_evdev(
+    processor: ProcessorHandle,
+    dev_path: &str,
+    gui_tx: Option<Sender<GuiEvent>>,
+    tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
+) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
+    let mut host = evdev_host::EvdevHost::new(processor, dev_path, gui_tx, tray_tx)?;
+    println!("[Main] 成功启动 Evdev 拦截模式。");
+    let vkbd = host.vkbd.clone();
+    Ok((Some(vkbd), Box::new(move || {
+        let _ = host.run();
+    })))
+}
+
+fn try_start_wayland(
+    processor: ProcessorHandle,
+    gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
+) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
+    let (mut host, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
+    println!("[Main] 成功启动{}输入法模式。", desc);
+    Ok((None, Box::new(move || {
+        let _ = host.run();
+    })))
 }
 
 fn create_wayland_host(
@@ -163,12 +170,20 @@ enum BackendType {
     Wayland,
 }
 
-fn parse_backend(args: &[String]) -> BackendType {
+fn parse_backend(args: &[String], config_backend: &str) -> BackendType {
+    // CLI args take priority
     if args.iter().any(|a| a == "--backend=wayland" || a == "wayland") {
         BackendType::Wayland
     } else if args.iter().any(|a| a == "--backend=evdev" || a == "evdev") {
         BackendType::Evdev
-    } else {
+    } else if args.iter().any(|a| a == "--backend=auto" || a == "auto") {
         BackendType::Auto
+    } else {
+        // Fall back to config value
+        match config_backend {
+            "wayland" => BackendType::Wayland,
+            "evdev" => BackendType::Evdev,
+            _ => BackendType::Auto,
+        }
     }
 }

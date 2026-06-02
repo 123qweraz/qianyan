@@ -98,6 +98,14 @@
                 <input type="text" id="linux_device_path" placeholder="/dev/input/eventX">
             </div>
             <div class="setting-item">
+                <div class="info"><div class="title">输入法后端模式</div><div class="desc">选择输入法的工作方式：自动检测、Evdev 键盘拦截（通过剪贴板上屏）或 Wayland 输入法协议（原生提交）</div></div>
+                <select id="linux_backend_type">
+                    <option value="auto">自动检测 (Auto)</option>
+                    <option value="evdev">Evdev 键盘拦截 (剪贴板)</option>
+                    <option value="wayland">Wayland 输入法协议 (原生提交)</option>
+                </select>
+            </div>
+            <div class="setting-item">
                 <div class="info">
                     <div class="title">剪贴板上屏延时 (ms)</div>
                     <div class="desc">使用剪贴板粘贴上屏时的等待时间。若粘贴内容被吞或丢失，可适当增大此值（默认 50ms）</div>
@@ -139,6 +147,7 @@
             bindInput('linux_device_path', 'linux', 'device_path');
             bindInput('linux_clipboard_delay_ms', 'linux', 'clipboard_delay_ms');
             bindInput('linux_backspace_delay_ms', 'linux', 'backspace_delay_ms');
+            bindInput('linux_backend_type', 'linux', 'backend_type');
         }
 
         function loadCandidateDisplayMode() {

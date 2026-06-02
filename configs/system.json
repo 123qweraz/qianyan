@@ -36,6 +36,7 @@
     "phantom_type": "Hanzi"
   },
   "linux": {
+    "backend_type": "wayland",
     "backspace_delay_ms": 2,
     "clipboard_delay_ms": 10,
     "corner": "bottom-right",
