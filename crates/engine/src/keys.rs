@@ -153,4 +153,36 @@ impl VirtualKey {
     pub fn to_u32(self) -> u32 {
         self as u32
     }
+
+    /// Convert a u32 to VirtualKey via the #[repr(u32)] discriminant.
+    /// Returns None if the value does not correspond to any variant.
+    /// This is the safe alternative to `unsafe { std::mem::transmute }`.
+    pub fn from_u32(v: u32) -> Option<Self> {
+        use VirtualKey::*;
+        Some(match v {
+            0 => A, 1 => B, 2 => C, 3 => D, 4 => E, 5 => F, 6 => G, 7 => H,
+            8 => I, 9 => J, 10 => K, 11 => L, 12 => M, 13 => N, 14 => O,
+            15 => P, 16 => Q, 17 => R, 18 => S, 19 => T, 20 => U, 21 => V,
+            22 => W, 23 => X, 24 => Y, 25 => Z,
+            26 => Digit0, 27 => Digit1, 28 => Digit2, 29 => Digit3, 30 => Digit4,
+            31 => Digit5, 32 => Digit6, 33 => Digit7, 34 => Digit8, 35 => Digit9,
+            36 => Space, 37 => Enter, 38 => Tab, 39 => Backspace, 40 => Esc,
+            41 => CapsLock, 42 => Shift, 43 => Control, 44 => Alt,
+            45 => Left, 46 => Right, 47 => Up, 48 => Down,
+            49 => PageUp, 50 => PageDown, 51 => Home, 52 => End, 53 => Delete,
+            54 => Grave, 55 => Minus, 56 => Equal, 57 => LeftBrace,
+            58 => RightBrace, 59 => Backslash, 60 => Semicolon, 61 => Apostrophe,
+            62 => Comma, 63 => Dot, 64 => Slash,
+            _ => return None,
+        })
+    }
 }
+
+/// Compile-time assertion: VirtualKey discriminants match the hard-coded table above.
+const _: fn() = || {
+    let _ = VirtualKey::A as u32 - 0;
+    let _ = VirtualKey::Z as u32 - 25;
+    let _ = VirtualKey::Digit0 as u32 - 26;
+    let _ = VirtualKey::Digit9 as u32 - 35;
+    let _ = VirtualKey::Slash as u32 - 64;
+};

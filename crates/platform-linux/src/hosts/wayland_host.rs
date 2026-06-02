@@ -466,21 +466,17 @@ impl WaylandInputHost {
 pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> VirtualKey {
     let s: u32 = sym.into();
     match s {
-        // lowercase letters a-z: 0x61-0x7a
+        // lowercase letters a-z: 0x61-0x7a → VirtualKey::A..VirtualKey::Z
         0x61..=0x7a => {
-            let idx = s - 0x61;
-            // SAFETY: VirtualKey is repr(u32) with A=0 through Z=25
-            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
+            VirtualKey::from_u32(s - 0x61).unwrap_or(VirtualKey::A)
         }
-        // uppercase letters A-Z: 0x41-0x5a
+        // uppercase letters A-Z: 0x41-0x5a → VirtualKey::A..VirtualKey::Z
         0x41..=0x5a => {
-            let idx = s - 0x41;
-            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
+            VirtualKey::from_u32(s - 0x41).unwrap_or(VirtualKey::A)
         }
-        // digits 0-9: 0x30-0x39
+        // digits 0-9: 0x30-0x39 → VirtualKey::Digit0..VirtualKey::Digit9
         0x30..=0x39 => {
-            let idx = s - 0x30 + VirtualKey::Digit0.to_u32();
-            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
+            VirtualKey::from_u32(s - 0x30 + VirtualKey::Digit0.to_u32()).unwrap_or(VirtualKey::A)
         }
 
         // Control/function keysyms
@@ -569,18 +565,9 @@ pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> VirtualKey {
             if utf8.len() == 1 {
                 if let Some(ch) = utf8.chars().next() {
                     match ch {
-                        'a'..='z' => {
-                            let idx = ch as u32 - 'a' as u32;
-                            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
-                        }
-                        'A'..='Z' => {
-                            let idx = ch as u32 - 'A' as u32;
-                            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
-                        }
-                        '0'..='9' => {
-                            let idx = ch as u32 - '0' as u32 + VirtualKey::Digit0.to_u32();
-                            unsafe { std::mem::transmute::<u32, VirtualKey>(idx) }
-                        }
+                        'a'..='z' => VirtualKey::from_u32(ch as u32 - 'a' as u32).unwrap_or(VirtualKey::A),
+                        'A'..='Z' => VirtualKey::from_u32(ch as u32 - 'A' as u32).unwrap_or(VirtualKey::A),
+                        '0'..='9' => VirtualKey::from_u32(ch as u32 - '0' as u32 + VirtualKey::Digit0.to_u32()).unwrap_or(VirtualKey::A),
                         _ => VirtualKey::A,
                     }
                 } else {

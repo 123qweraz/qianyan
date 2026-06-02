@@ -51,6 +51,10 @@ impl Trie {
                 Ok(TrieData::Memory(Arc::new(buffer)))
             } else {
                 let file = File::open(path)?;
+                // SAFETY: The mapped file is a read-only dictionary (trie.data or trie.index)
+                // that is never modified after initial creation. No other code writes to it.
+                // Mmap::map is unsafe because the underlying file could be modified concurrently
+                // by another process, but in practice these data files are static assets.
                 let mmap = unsafe { Mmap::map(&file)? };
                 Ok(TrieData::Mmap(Arc::new(mmap)))
             }

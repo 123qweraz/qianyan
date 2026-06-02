@@ -39,20 +39,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     #[cfg(target_os = "windows")]
-    let _mutex_handle = unsafe {
-        use windows::core::PCWSTR;
-        use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
+    let _mutex_guard = unsafe {
+        use windows::Win32::Foundation::CloseHandle;
         use windows::Win32::System::Threading::*;
 
-        let name = PCWSTR(
-            r"Global\QianyanIMEUniqueMutex\0"
-                .encode_utf16()
-                .collect::<Vec<u16>>()
-                .as_ptr(),
-        );
+        struct MutexGuard(windows::Win32::Foundation::HANDLE);
+        impl Drop for MutexGuard {
+            fn drop(&mut self) {
+                let _ = unsafe { CloseHandle(self.0) };
+            }
+        }
+
+        let raw_name = r"Global\QianyanIMEUniqueMutex\0"
+            .encode_utf16()
+            .collect::<Vec<u16>>();
+        let name = windows::core::PCWSTR(raw_name.as_ptr());
         let handle = CreateMutexW(None, true, name)?;
         if windows::Win32::Foundation::GetLastError()
-            .is_err_and(|e| e.code() == ERROR_ALREADY_EXISTS.to_hresult())
+            .is_err_and(|e| e.code() == windows::Win32::Foundation::ERROR_ALREADY_EXISTS.to_hresult())
         {
             let _ = notify_rust::Notification::new()
                 .summary("Qianyan IME")
@@ -62,7 +66,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .show();
             return Ok(());
         }
-        handle
+        MutexGuard(handle)
     };
 
     #[cfg(target_os = "windows")]
