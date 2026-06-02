@@ -59,11 +59,19 @@ fn load_icon(chinese_enabled: bool) -> Vec<ksni::Icon> {
         if let Ok(img) = image::open(&full_path) {
             let rgba = img.to_rgba8();
             let (width, height) = rgba.dimensions();
-            let data = rgba.into_raw();
+            let raw = rgba.into_raw();
+            // ksni expects ARGB32 (network byte order), but image crate gives RGBA
+            let mut argb = vec![0u8; raw.len()];
+            for i in (0..raw.len()).step_by(4) {
+                argb[i]     = raw[i + 3]; // A
+                argb[i + 1] = raw[i];     // R
+                argb[i + 2] = raw[i + 1]; // G
+                argb[i + 3] = raw[i + 2]; // B
+            }
             return vec![ksni::Icon {
                 width: width as i32,
                 height: height as i32,
-                data,
+                data: argb,
             }];
         }
     }
