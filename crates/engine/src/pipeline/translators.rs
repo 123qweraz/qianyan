@@ -308,48 +308,52 @@ impl Translator for UserDictTranslator {
         let dict = self.user_dict.load();
         log::trace!("UserDictTranslator: query={}, profile={}", query, self.profile);
         if let Some(profile_dict) = dict.get(&self.profile) {
-            // 精确匹配
-            if let Some(words) = profile_dict.get(&query) {
-                for (word, weight) in words {
-                    let (trad, en, stroke) = lookup_trie_info(&self.trie, &query, word);
-                    results.push(Candidate {
-                        text: Arc::from(word.as_str()),
-                        simplified: Arc::from(word.as_str()),
-                        traditional: trad,
-                        hint: Arc::from("User"),
-                        english_aux: en,
-                        stroke_aux: stroke,
-                        source: Arc::from("User"),
-                        weight: *weight as f64,
-                        match_level: 3, // exact match
-                    });
-                }
-            } else if query.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v')) {
-                // 前缀匹配遍历 HashMap（仅当输入含元音——不是简拼时）
-                let mut prefix_matches: Vec<(&String, &Vec<(String, u32)>)> = profile_dict
-                    .iter()
-                    .filter(|(pinyin, _)| pinyin.starts_with(&query))
-                    .collect();
-                // 按拼音长度排序（短拼音优先，匹配更精确）
-                prefix_matches.sort_by_key(|(pinyin, _)| pinyin.len());
-                let mut seen = std::collections::HashSet::new();
-                for (matched_pinyin, words) in prefix_matches {
+            // 仅当输入含元音（全拼）时才查询用户词典；
+            // 纯声母（简拼）跳过，让简拼策略处理
+            let has_vowel = query.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+            if has_vowel {
+                // 精确匹配
+                if let Some(words) = profile_dict.get(&query) {
                     for (word, weight) in words {
-                        if !seen.insert(word) {
-                            continue;
-                        }
-                        let (trad, en, stroke) = lookup_trie_info(&self.trie, matched_pinyin, word);
+                        let (trad, en, stroke) = lookup_trie_info(&self.trie, &query, word);
                         results.push(Candidate {
                             text: Arc::from(word.as_str()),
                             simplified: Arc::from(word.as_str()),
                             traditional: trad,
-                            hint: Arc::from(matched_pinyin.as_str()),
+                            hint: Arc::from("User"),
                             english_aux: en,
                             stroke_aux: stroke,
                             source: Arc::from("User"),
-                            weight: *weight as f64 * 0.8, // 前缀匹配权重略低于精确匹配
-                            match_level: 1, // prefix match
+                            weight: *weight as f64,
+                            match_level: 3,
                         });
+                    }
+                } else {
+                    // 前缀匹配遍历 HashMap
+                    let mut prefix_matches: Vec<(&String, &Vec<(String, u32)>)> = profile_dict
+                        .iter()
+                        .filter(|(pinyin, _)| pinyin.starts_with(&query))
+                        .collect();
+                    prefix_matches.sort_by_key(|(pinyin, _)| pinyin.len());
+                    let mut seen = std::collections::HashSet::new();
+                    for (matched_pinyin, words) in prefix_matches {
+                        for (word, weight) in words {
+                            if !seen.insert(word) {
+                                continue;
+                            }
+                            let (trad, en, stroke) = lookup_trie_info(&self.trie, matched_pinyin, word);
+                            results.push(Candidate {
+                                text: Arc::from(word.as_str()),
+                                simplified: Arc::from(word.as_str()),
+                                traditional: trad,
+                                hint: Arc::from(matched_pinyin.as_str()),
+                                english_aux: en,
+                                stroke_aux: stroke,
+                                source: Arc::from("User"),
+                                weight: *weight as f64 * 0.8,
+                                match_level: 1,
+                            });
+                        }
                     }
                 }
             }

@@ -1151,3 +1151,178 @@ mod tests {
         assert_eq!(result.weight, 0);
     }
 }
+
+    #[test]
+    fn test_abbreviation_user_dict_priority() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = true;
+        config.input.enable_prefix_matching = true;
+        config.input.enable_fuzzy_pinyin = false;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        // 在用户词典中注入全拼词 "shenme" → "什么可以"
+        // (无元音的简拼键如 "sm" 不会被查到——那是给简拼策略处理的)
+        let learned_words: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<(String, u32)>>>>> =
+            Arc::new(ArcSwap::new(Arc::new({
+                let mut m = HashMap::new();
+                let mut sm = HashMap::new();
+                sm.insert("shenme".to_string(), vec![("什么可以".to_string(), 10)]);
+                m.insert("chinese".to_string(), sm);
+                m
+            })));
+
+        let usage_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+        let ngram_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(HashMap::new()),
+            learned_words,
+            usage_history,
+            ngram_history,
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().map(|c| c.text.to_string()).collect()
+        }
+
+        // "sm" 简拼（无元音）→ 什么 排第一（简拼策略），用户词不会被查到
+        let r = search(&engine, &config, "sm", &syllables);
+        println!("sm top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "sm should not be empty");
+        assert_eq!(r[0], "什么", "sm[0] = 什么 (abbreviation), got {}", r[0]);
+
+        // "shenme" 全拼 → 用户词 "什么可以" 精确匹配
+        let r2 = search(&engine, &config, "shenme", &syllables);
+        println!("shenme top5: {:?}", &r2[..5.min(r2.len())]);
+        assert!(r2.iter().any(|w| w == "什么可以"), "什么可以 (exact user dict match) should appear");
+
+        // "zm" 简拼 → 怎么 正常匹配
+        let r3 = search(&engine, &config, "zm", &syllables);
+        println!("zm top10: {:?}", &r3[..10.min(r3.len())]);
+        assert!(!r3.is_empty());
+        assert_eq!(r3[0], "怎么", "zm[0] = 怎么, got {}", r3[0]);
+    }
+
+    #[test]
+    fn test_user_dict_prefix_matching() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = true;
+        config.input.enable_prefix_matching = true;
+        config.input.enable_fuzzy_pinyin = false;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        // 用户词典里加一个全拼词 "houxuanchuang" → "候选窗"
+        let learned_words: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<(String, u32)>>>>> =
+            Arc::new(ArcSwap::new(Arc::new({
+                let mut m = HashMap::new();
+                let mut hxc = HashMap::new();
+                hxc.insert("houxuanchuang".to_string(), vec![("候选窗".to_string(), 5)]);
+                m.insert("chinese".to_string(), hxc);
+                m
+            })));
+
+        let usage_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+        let ngram_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(HashMap::new()),
+            learned_words,
+            usage_history,
+            ngram_history,
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().map(|c| c.text.to_string()).collect()
+        }
+
+        // 全拼前缀 "houxuanch" (含元音) → 应该前缀匹配 "houxuanchuang" → 候选窗
+        let r = search(&engine, &config, "houxuanch", &syllables);
+        println!("houxuanch results: {:?}", &r[..10.min(r.len())]);
+        assert!(r.iter().any(|w| w == "候选窗"), "候选窗 should appear via user dict prefix match for 'houxuanch'");
+
+        // 纯声母/简拼 "hx" (无元音) → 不应该走用户词前缀匹配
+        let r2 = search(&engine, &config, "hx", &syllables);
+        println!("hx results: {:?}", &r2[..10.min(r2.len())]);
+        // "hx" 可能匹配到系统词，但不应该匹配到用户词 "候选窗"
+        // (因为 "hx" 不含元音，不会触发用户词典查询)
+    }

@@ -190,43 +190,48 @@ impl InputScheme for ChineseScheme {
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
         let dict = context.user_dict.load();
         if let Some(profile_dict) = dict.get(profile) {
-            // 精确匹配
-            if let Some(words) = profile_dict.get(&pinyin_key) {
-                for (word, weight) in words {
-                    if seen.insert(word.clone()) {
-                        final_results.push(SchemeCandidate {
-                            text: word.clone(),
-                            simplified: word.clone(),
-                            traditional: word.clone(),
-                            tone: String::from("User"),
-                            english: String::new(),
-                            stroke_aux: String::new(),
-                            weight: *weight,
-                            match_level: 3,
-                        });
+            // 仅当输入含元音（全拼/半全拼）时才查询用户词典；
+            // 纯声母（简拼/英文）跳过，交给后续简拼策略处理
+            let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+            if has_vowel {
+                // 精确匹配
+                if let Some(words) = profile_dict.get(&pinyin_key) {
+                    for (word, weight) in words {
+                        if seen.insert(word.clone()) {
+                            final_results.push(SchemeCandidate {
+                                text: word.clone(),
+                                simplified: word.clone(),
+                                traditional: word.clone(),
+                                tone: String::from("User"),
+                                english: String::new(),
+                                stroke_aux: String::new(),
+                                weight: *weight,
+                                match_level: 3,
+                            });
+                        }
                     }
-                }
-            } else if pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v')) {
-                // 前缀匹配（遍历 HashMap，仅当输入含元音——不是简拼时）
-                let mut prefix_keys: Vec<&String> = profile_dict
-                    .keys()
-                    .filter(|k| k.starts_with(&pinyin_key))
-                    .collect();
-                prefix_keys.sort_by_key(|k| k.len());
-                for key in prefix_keys {
-                    if let Some(words) = profile_dict.get(key) {
-                        for (word, weight) in words {
-                            if seen.insert(word.clone()) {
-                                final_results.push(SchemeCandidate {
-                                    text: word.clone(),
-                                    simplified: word.clone(),
-                                    traditional: word.clone(),
-                                    tone: key.clone(),
-                                    english: String::new(),
-                                    stroke_aux: String::new(),
-                                    weight: (*weight as f64 * 0.8) as u32,
-                                    match_level: 1, // prefix match
-                                });
+                } else {
+                    // 精确匹配失败 → 前缀匹配（遍历 HashMap，按最短 key 优先）
+                    let mut prefix_keys: Vec<&String> = profile_dict
+                        .keys()
+                        .filter(|k| k.starts_with(&pinyin_key))
+                        .collect();
+                    prefix_keys.sort_by_key(|k| k.len());
+                    for key in prefix_keys {
+                        if let Some(words) = profile_dict.get(key) {
+                            for (word, weight) in words {
+                                if seen.insert(word.clone()) {
+                                    final_results.push(SchemeCandidate {
+                                        text: word.clone(),
+                                        simplified: word.clone(),
+                                        traditional: word.clone(),
+                                        tone: key.clone(),
+                                        english: String::new(),
+                                        stroke_aux: String::new(),
+                                        weight: (*weight as f64 * 0.8) as u32,
+                                        match_level: 1,
+                                    });
+                                }
                             }
                         }
                     }

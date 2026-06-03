@@ -195,7 +195,10 @@ fn record_usage(
     }
 
     // 只有精确匹配（非自动组句、非简拼）才能进入用户词典
+    // 额外校验：拼音必须含元音，排除纯声母简拼键和英文乱打
+    let is_valid_pinyin = pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
     if ctx.config.master_config.input.enable_word_discovery
+        && is_valid_pinyin
         && word_len > 1
         && !ctx.engine.has_word_in_dict(&profile, word)
         && source.as_ref() != "Compose"
