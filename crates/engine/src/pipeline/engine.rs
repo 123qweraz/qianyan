@@ -185,7 +185,7 @@ impl SearchEngine {
         }
 
         if let Some(scheme) = self.schemes.get(query.profile) {
-            let mut tries_map = HashMap::new();
+            let mut tries_map = HashMap::with_capacity(1);
             if let Some(trie) = self.get_or_load_trie(query.profile) {
                 tries_map.insert(query.profile.to_string(), (*trie).clone());
             }

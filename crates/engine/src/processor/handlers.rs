@@ -160,7 +160,7 @@ pub fn handle_composing(
         .cloned()
         .unwrap_or_default();
     if let Some(scheme) = ctx.engine.schemes.get(&current_profile) {
-        let mut tries_map = std::collections::HashMap::new();
+        let mut tries_map = std::collections::HashMap::with_capacity(ctx.session_state.active_profiles.len());
         for profile in &ctx.session_state.active_profiles {
             if let Some(pipeline) = ctx.engine.get_or_create_pipeline(profile) {
                 if let Some(trie) = ctx.engine.get_trie_from_pipeline(pipeline.as_ref()) {
