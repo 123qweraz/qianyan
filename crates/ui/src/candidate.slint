@@ -93,10 +93,10 @@ export component CandidateWindow inherits Window {
     background: transparent;
     always-on-top: true;
 
-    // Width adapts to content, minimum 200px for readability
-    width: max(main_rect.preferred-width, 200px);
-    // Height adapts to content, minimum 100px for readability
-    height: max(main_rect.preferred-height, 100px);
+    // Width adapts to content
+    width: main_rect.preferred-width;
+    // Height adapts to content
+    height: main_rect.preferred-height;
 
     main_rect := Rectangle {
         visible: is_visible;

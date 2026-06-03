@@ -48,11 +48,11 @@ fn default_true() -> bool {
 }
 
 fn default_fixed_x() -> i32 {
-    40
+    10
 }
 
 fn default_fixed_y() -> i32 {
-    40
+    10
 }
 
 fn default_backend_type() -> String {
@@ -1062,8 +1062,8 @@ impl Config {
                 show_toggle_notification: false,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
-                fixed_x: 40,
-                fixed_y: 40,
+                fixed_x: 10,
+                fixed_y: 10,
                 backend_type: "auto".to_string(),
             },
         }

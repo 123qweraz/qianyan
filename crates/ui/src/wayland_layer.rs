@@ -964,22 +964,13 @@ impl CandidateDisplay for WaylandLayerDisplay {
         let pinyin_height = (fs as f32 * 1.4) as u32;
         let padding = 40u32;
 
-        let mut total_w = if is_horizontal {
-            (cand_count * (fs * max_chars + 30) + padding).min(1600).max(200)
+        let total_w = if is_horizontal {
+            (cand_count * (fs * max_chars + 30) + padding).min(1600)
         } else {
-            (fs * max_chars + 120).min(1600).max(200)
+            (fs * max_chars + 120).min(1600)
         };
-        let mut total_h = (pinyin_height + line_height * cand_count + padding).max(80).min(1200);
+        let total_h = (pinyin_height + line_height * cand_count + padding).min(1200);
 
-        // In fixed position mode, never shrink the window — only grow.
-        // This prevents visual jitter caused by the compositor re-anchoring
-        // the layer surface when its size decreases between keystrokes.
-        if self.config.linux.fixed_position {
-            let cs = self.candidate_window.window().size();
-            total_w = total_w.max(cs.width as u32);
-            total_h = total_h.max(cs.height as u32);
-        }
-        
         let current_size = self.candidate_window.window().size();
         if current_size.width as u32 != total_w || current_size.height as u32 != total_h {
             self.candidate_window.window().set_size(slint::WindowSize::Physical(
