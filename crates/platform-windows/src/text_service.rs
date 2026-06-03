@@ -230,7 +230,7 @@ impl ITfKeyEventSink_Impl for TextService {
         let key_code = wparam.0 as u32;
 
         // Win 键是系统键，应该让它们通过以支持系统快捷键 (如 Win+Shift+S 截图)
-        if key_code == VK_LWIN.0 || key_code == VK_RWIN.0 {
+        if key_code == VK_LWIN.0 as u32 || key_code == VK_RWIN.0 as u32 {
             return Ok(FALSE);
         }
 
@@ -283,7 +283,7 @@ impl ITfKeyEventSink_Impl for TextService {
         let key_code = wparam.0 as u32;
 
         // Win 键是系统键，应该让它们通过以支持系统快捷键
-        if key_code == VK_LWIN.0 || key_code == VK_RWIN.0 {
+        if key_code == VK_LWIN.0 as u32 || key_code == VK_RWIN.0 as u32 {
             return Ok(FALSE);
         }
 
@@ -334,7 +334,7 @@ impl ITfKeyEventSink_Impl for TextService {
         let key_code = wparam.0 as u32;
 
         // Win 键是系统键，应该让它们通过
-        if key_code == VK_LWIN.0 || key_code == VK_RWIN.0 {
+        if key_code == VK_LWIN.0 as u32 || key_code == VK_RWIN.0 as u32 {
             return Ok(FALSE);
         }
 
@@ -376,7 +376,7 @@ impl ITfKeyEventSink_Impl for TextService {
         let key_code = wparam.0 as u32;
 
         // Win 键是系统键，应该让它们通过
-        if key_code == VK_LWIN.0 || key_code == VK_RWIN.0 {
+        if key_code == VK_LWIN.0 as u32 || key_code == VK_RWIN.0 as u32 {
             return Ok(FALSE);
         }
 

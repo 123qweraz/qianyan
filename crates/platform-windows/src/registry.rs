@@ -1,5 +1,3 @@
-use std::ffi::OsString;
-use std::os::windows::ffi::OsStrExt;
 use windows::{
     core::*, Win32::Foundation::*, Win32::System::Com::*, Win32::System::Registry::*,
     Win32::UI::TextServices::*,
@@ -7,7 +5,7 @@ use windows::{
 
 // 辅助函数：将 Rust 字符串转为 PCWSTR (UTF-16, null-terminated)
 pub fn to_pcwstr(s: &str) -> Vec<u16> {
-    let mut v: Vec<u16> = OsString::from(s).encode_wide().collect();
+    let mut v: Vec<u16> = s.encode_utf16().collect();
     v.push(0);
     v
 }
