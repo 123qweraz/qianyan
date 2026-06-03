@@ -145,6 +145,7 @@ impl Filter for AdaptiveFilter {
                     if let Ok(guard) = self.cached_usage_map.read() {
                         if let Some(ref cache_map) = *guard {
                             for c in &mut candidates {
+                                if c.match_level == 0 { continue; }
                                 if let Some(&(pos, count)) = cache_map.get(c.simplified.as_ref()) {
                                     c.weight += compute_decay_boost(pos, count);
                                 }
@@ -159,6 +160,7 @@ impl Filter for AdaptiveFilter {
                         .collect();
 
                     for c in &mut candidates {
+                        if c.match_level == 0 { continue; }
                         if let Some(&(pos, count)) = usage_map.get(c.simplified.as_ref()) {
                             c.weight += compute_decay_boost(pos, count);
                         }
@@ -180,6 +182,7 @@ impl Filter for AdaptiveFilter {
                     let ngram_map: std::collections::HashMap<String, u32> =
                         entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
                     for c in &mut candidates {
+                        if c.match_level == 0 { continue; }
                         if let Some(&count) = ngram_map.get(c.simplified.as_ref()) {
                             let effective = count.min(10);
                             let boost =

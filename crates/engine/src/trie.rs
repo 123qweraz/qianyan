@@ -1326,3 +1326,99 @@ mod tests {
         // "hx" 可能匹配到系统词，但不应该匹配到用户词 "候选窗"
         // (因为 "hx" 不含元音，不会触发用户词典查询)
     }
+
+    #[test]
+    fn test_user_prefix_never_outranks_system_prefix() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = true;
+        config.input.enable_prefix_matching = true;
+        config.input.enable_fuzzy_pinyin = false;
+        config.input.enable_auto_reorder = false;
+        config.input.enable_fixed_first_candidate = false;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        // 用户词典注入 erqie→而去切（通过 erq 前缀匹配到）
+        let learned_words: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<(String, u32)>>>>> =
+            Arc::new(ArcSwap::new(Arc::new({
+                let mut m = HashMap::new();
+                let mut erq = HashMap::new();
+                erq.insert("erqie".to_string(), vec![("而去切".to_string(), 9999)]);
+                m.insert("chinese".to_string(), erq);
+                m
+            })));
+
+        let usage_history: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<(String, u32)>>>>> =
+            Arc::new(ArcSwap::new(Arc::new({
+                let mut m = HashMap::new();
+                let mut erq = HashMap::new();
+                // 给用户词加调频权重，试图让它超过系统词
+                erq.insert("erq".to_string(), vec![("而去切".to_string(), 100)]);
+                m.insert("chinese".to_string(), erq);
+                m
+            })));
+
+        let ngram_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(syllables.clone()),
+            Arc::new(HashMap::new()),
+            learned_words,
+            usage_history,
+            ngram_history,
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<(String, u8)> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                syllables: syl,
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().map(|c| (c.text.to_string(), c.match_level)).collect()
+        }
+
+        // "erq" → 而且(系统前缀,level 1) 应该排在 而去切(用户前缀,level 0) 前面
+        let r = search(&engine, &config, "erq", &syllables);
+        println!("erq results: {:?}", &r[..10.min(r.len())]);
+        assert!(r.iter().any(|(w, _)| w == "而且"), "而且 (system prefix) should appear");
+        assert!(r.iter().any(|(w, _)| w == "而去切"), "而去切 (user prefix) should appear");
+
+        let erqie_pos = r.iter().position(|(w, _)| w == "而且").unwrap_or(usize::MAX);
+        let user_pos = r.iter().position(|(w, _)| w == "而去切").unwrap_or(usize::MAX);
+        assert!(erqie_pos < user_pos,
+            "而且 (system prefix) must come before 而去切 (user prefix), but 而且 at {} and 而去切 at {}",
+            erqie_pos, user_pos);
+    }

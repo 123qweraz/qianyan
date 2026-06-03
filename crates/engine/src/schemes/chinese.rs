@@ -530,6 +530,11 @@ impl InputScheme for ChineseScheme {
                         .map(|(pos, (w, c))| (w.clone(), (pos, *c)))
                         .collect();
                     for c in &mut *candidates {
+                        // level=0 (user prefix) never receives usage boosts —
+                        // it must stay below system prefix (level 1) in all cases
+                        if c.match_level == 0 {
+                            continue;
+                        }
                         if let Some(&(pos, count)) = usage_map.get(c.simplified.as_str()) {
                             c.weight += (crate::pipeline::compute_decay_boost(pos, count) as u32).max(1);
                         }
@@ -540,6 +545,9 @@ impl InputScheme for ChineseScheme {
                         if let Some((fixed_word, fixed_count)) = entries.first() {
                             if *fixed_count >= 3 {
                                 for c in &mut *candidates {
+                                    if c.match_level == 0 {
+                                        continue;
+                                    }
                                     if c.simplified.as_str() == fixed_word {
                                         c.weight += 20000000;
                                         break;
@@ -558,6 +566,9 @@ impl InputScheme for ChineseScheme {
                         let ngram_map: std::collections::HashMap<String, u32> =
                             entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
                         for c in &mut *candidates {
+                            if c.match_level == 0 {
+                                continue;
+                            }
                             if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
                                 let effective = count.min(10);
                                 let boost = (1.0 + (effective as f64).ln()).max(0.0)
