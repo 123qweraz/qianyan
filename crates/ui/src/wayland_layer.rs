@@ -32,26 +32,33 @@ use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_output::WlOutput;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
-use i_slint_core::window::{WindowAdapter, WindowInner};
+use i_slint_core::window::WindowAdapter;
 use i_slint_renderer_skia::software_surface::{RenderBuffer, SoftwareSurface};
 use i_slint_renderer_skia::{skia_safe, SkiaRenderer, SkiaSharedContext};
 
 slint::include_modules!();
 
 // ---- Offscreen window adapter ----
+// Uses SkiaRenderer instead of SoftwareRenderer for higher-quality text
+// and native BGRA pixel format (no swizzle needed for wl_shm).
+
+thread_local! {
+    static SKIA_RENDERER: RefCell<Option<Rc<SkiaRenderer>>> = const { RefCell::new(None) };
+}
 
 struct OffscreenWindow {
     window: slint::Window,
-    renderer: slint::platform::software_renderer::SoftwareRenderer,
+    renderer: Rc<SkiaRenderer>,
     size: std::cell::Cell<slint::PhysicalSize>,
     needs_redraw: std::cell::Cell<bool>,
 }
 
 impl OffscreenWindow {
     fn new() -> Rc<Self> {
+        let renderer = SKIA_RENDERER.with(|s| s.borrow().as_ref().unwrap().clone());
         Rc::new_cyclic(|w: &std::rc::Weak<Self>| Self {
             window: slint::Window::new(w.clone()),
-            renderer: slint::platform::software_renderer::SoftwareRenderer::new(),
+            renderer,
             size: std::cell::Cell::new(slint::PhysicalSize::default()),
             needs_redraw: std::cell::Cell::new(false),
         })
@@ -63,7 +70,7 @@ impl WindowAdapter for OffscreenWindow {
         &self.window
     }
     fn renderer(&self) -> &dyn slint::platform::Renderer {
-        &self.renderer
+        self.renderer.as_ref()
     }
     fn size(&self) -> slint::PhysicalSize {
         let s = self.size.get();
@@ -708,7 +715,7 @@ struct WlThread {
 }
 
 pub struct WaylandLayerDisplay {
-    skia_renderer: SkiaRenderer,
+    skia_renderer: Rc<SkiaRenderer>,
     render_buffer: Rc<WaylandRenderBuffer>,
     candidate_window: CandidateWindow,
     config: Config,
@@ -728,16 +735,11 @@ impl WaylandLayerDisplay {
 
         setup_slint_platform()?;
 
-        let candidate_window = CandidateWindow::new().ok()?;
-
-        candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(100, 100)));
-        slint::platform::update_timers_and_animations();
-
         let pixel_pool = PixelPool::new();
-        let pixel_pool_clone = pixel_pool.clone();
         let (tx, rx) = mpsc::sync_channel(2);
 
-        // Create Skia CPU renderer with custom Wayland render buffer
+        // Create Skia CPU renderer BEFORE creating the window,
+        // so OffscreenWindow::new() can find it via the SKIA_RENDERER static
         let render_buffer = Rc::new(WaylandRenderBuffer {
             pixel_pool: pixel_pool.clone(),
             wl_tx: Mutex::new(Some(tx.clone())),
@@ -752,16 +754,17 @@ impl WaylandLayerDisplay {
 
         let skia_context = SkiaSharedContext::default();
         let surface = SoftwareSurface::from(render_buffer.clone());
-        let skia_renderer = SkiaRenderer::new_with_surface(&skia_context, Box::new(surface));
+        let skia_renderer = Rc::new(SkiaRenderer::new_with_surface(&skia_context, Box::new(surface)));
 
-        // Associate Skia renderer with the offscreen window adapter
-        let inner = WindowInner::from_pub(candidate_window.window());
-        {
-            use i_slint_core::renderer::RendererSealed;
-            let adapter = inner.window_adapter();
-            skia_renderer.set_window_adapter(&adapter);
-        }
+        // Store in thread-local for OffscreenWindow::new()
+        // Slint auto-calls set_window_adapter() on our SkiaRenderer during window init
+        SKIA_RENDERER.with(|s| *s.borrow_mut() = Some(skia_renderer.clone()));
 
+        let candidate_window = CandidateWindow::new().ok()?;
+        candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(100, 100)));
+        slint::platform::update_timers_and_animations();
+
+        let pixel_pool_clone = pixel_pool.clone();
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
             .spawn(move || wl_thread_main(rx, pixel_pool_clone));
