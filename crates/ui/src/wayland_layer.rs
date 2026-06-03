@@ -297,6 +297,8 @@ struct WlState {
     layer_closed: bool,
     configured_width: u32,
     configured_height: u32,
+    last_anchor: Option<Anchor>,
+    last_margin: Option<(i32, i32, i32, i32)>, // (top, right, bottom, left)
 }
 
 delegate_registry!(WlState);
@@ -453,6 +455,14 @@ impl LayerShellHandler for WlState {
     ) {
         self.configured_width = cfg.new_size.0.max(0);
         self.configured_height = cfg.new_size.1.max(0);
+        // Re-apply cached anchor/margin before commit, preventing
+        // the compositor from locking in an anchor-less default position
+        if let Some(a) = self.last_anchor {
+            layer.set_anchor(a);
+            if let Some((t, r, b, l)) = self.last_margin {
+                layer.set_margin(t, r, b, l);
+            }
+        }
         layer.commit();
     }
 }
@@ -562,6 +572,8 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         layer_closed: false,
         configured_width: 0,
         configured_height: 0,
+        last_anchor: None,
+        last_margin: None,
     };
 
     // Create candidate layer surface
@@ -602,12 +614,14 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                             let has_bottom = anchor.contains(Anchor::BOTTOM);
                             let has_left = anchor.contains(Anchor::LEFT);
                             let has_right = anchor.contains(Anchor::RIGHT);
-                            layer.set_margin(
-                                if has_top { y.max(0) as i32 } else { 0 },
-                                if has_right { x.max(0) as i32 } else { 0 },
-                                if has_bottom { y.max(0) as i32 } else { 0 },
-                                if has_left { x.max(0) as i32 } else { 0 },
-                            );
+                            let mt = if has_top { y.max(0) as i32 } else { 0 };
+                            let mr = if has_right { x.max(0) as i32 } else { 0 };
+                            let mb = if has_bottom { y.max(0) as i32 } else { 0 };
+                            let ml = if has_left { x.max(0) as i32 } else { 0 };
+                            layer.set_margin(mt, mr, mb, ml);
+                            // Cache anchor/margin so configure callback can re-apply them
+                            state.last_anchor = Some(anchor);
+                            state.last_margin = Some((mt, mr, mb, ml));
                             if let Some(ref mut pool) = state.candidate_pool {
                                 submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
                             }
