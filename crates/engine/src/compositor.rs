@@ -115,19 +115,19 @@ impl Compositor {
         if target == ctx.session.phantom_text {
             return Action::Consume;
         }
-        let old_phantom = ctx.session.phantom_text.clone();
-        let old_chars: Vec<char> = old_phantom.chars().collect();
-        let target_chars: Vec<char> = target.chars().collect();
-        let mut common_prefix_len = 0;
-        for (c1, c2) in old_chars.iter().zip(target_chars.iter()) {
-            if c1 == c2 {
-                common_prefix_len += 1;
-            } else {
-                break;
+        let old = &ctx.session.phantom_text;
+        let mut old_chars = old.chars();
+        let mut target_chars = target.chars();
+        let mut common_chars = 0usize;
+        loop {
+            match (old_chars.next(), target_chars.next()) {
+                (Some(a), Some(b)) if a == b => common_chars += 1,
+                _ => break,
             }
         }
-        let delete_count = old_chars.len() - common_prefix_len;
-        let insert_text: String = target_chars[common_prefix_len..].iter().collect();
+        let old_count = old.chars().count();
+        let delete_count = old_count - common_chars;
+        let insert_text: String = target.chars().skip(common_chars).collect();
         ctx.session.phantom_text = target;
         if delete_count == 0 && insert_text.is_empty() {
             Action::Consume
