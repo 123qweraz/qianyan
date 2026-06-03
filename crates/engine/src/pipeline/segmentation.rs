@@ -224,37 +224,90 @@ pub(crate) fn fuzzy_variants_per_segment(
     let final_list: Vec<String> = new_variants.iter().cloned().collect();
     for v in final_list {
         if fuzzy.an_ang {
-            if v.ends_with("ang") { new_variants.insert(format!("{}an", &v[..v.len() - 3])); }
-            else if v.ends_with("an") { new_variants.insert(format!("{}ang", &v[..v.len() - 2])); }
+            if v.ends_with("ang") {
+                let mut s = String::with_capacity(v.len());
+                s.push_str(&v[..v.len() - 3]);
+                s.push_str("an");
+                new_variants.insert(s);
+            } else if v.ends_with("an") {
+                let mut s = String::with_capacity(v.len() + 1);
+                s.push_str(&v[..v.len() - 2]);
+                s.push_str("ang");
+                new_variants.insert(s);
+            }
         }
         if fuzzy.en_eng {
-            if v.ends_with("eng") { new_variants.insert(format!("{}en", &v[..v.len() - 3])); }
-            else if v.ends_with("en") { new_variants.insert(format!("{}eng", &v[..v.len() - 2])); }
+            if v.ends_with("eng") {
+                let mut s = String::with_capacity(v.len());
+                s.push_str(&v[..v.len() - 3]);
+                s.push_str("en");
+                new_variants.insert(s);
+            } else if v.ends_with("en") {
+                let mut s = String::with_capacity(v.len() + 1);
+                s.push_str(&v[..v.len() - 2]);
+                s.push_str("eng");
+                new_variants.insert(s);
+            }
         }
         if fuzzy.in_ing {
-            if v.ends_with("ing") { new_variants.insert(format!("{}in", &v[..v.len() - 3])); }
-            else if v.ends_with("in") { new_variants.insert(format!("{}ing", &v[..v.len() - 2])); }
+            if v.ends_with("ing") {
+                let mut s = String::with_capacity(v.len());
+                s.push_str(&v[..v.len() - 3]);
+                s.push_str("in");
+                new_variants.insert(s);
+            } else if v.ends_with("in") {
+                let mut s = String::with_capacity(v.len() + 1);
+                s.push_str(&v[..v.len() - 2]);
+                s.push_str("ing");
+                new_variants.insert(s);
+            }
         }
         if fuzzy.ian_iang {
-            if v.ends_with("iang") { new_variants.insert(format!("{}ian", &v[..v.len() - 4])); }
-            else if v.ends_with("ian") { new_variants.insert(format!("{}iang", &v[..v.len() - 3])); }
+            if v.ends_with("iang") {
+                let mut s = String::with_capacity(v.len());
+                s.push_str(&v[..v.len() - 4]);
+                s.push_str("ian");
+                new_variants.insert(s);
+            } else if v.ends_with("ian") {
+                let mut s = String::with_capacity(v.len() + 1);
+                s.push_str(&v[..v.len() - 3]);
+                s.push_str("iang");
+                new_variants.insert(s);
+            }
         }
         if fuzzy.uan_uang {
-            if v.ends_with("uang") { new_variants.insert(format!("{}uan", &v[..v.len() - 4])); }
-            else if v.ends_with("uan") { new_variants.insert(format!("{}uang", &v[..v.len() - 3])); }
+            if v.ends_with("uang") {
+                let mut s = String::with_capacity(v.len());
+                s.push_str(&v[..v.len() - 4]);
+                s.push_str("uan");
+                new_variants.insert(s);
+            } else if v.ends_with("uan") {
+                let mut s = String::with_capacity(v.len() + 1);
+                s.push_str(&v[..v.len() - 3]);
+                s.push_str("uang");
+                new_variants.insert(s);
+            }
         }
         if fuzzy.u_v {
-            if v.contains('u') { new_variants.insert(v.replace('u', "v")); }
-            else if v.contains('v') { new_variants.insert(v.replace('v', "u")); }
+            let replaced = v.replace('u', "v");
+            if replaced != v {
+                new_variants.insert(replaced);
+            } else {
+                let replaced = v.replace('v', "u");
+                if replaced != v {
+                    new_variants.insert(replaced);
+                }
+            }
         }
     }
 
-    // 自定义映射（单轮快照）
+    // 自定义映射（单轮快照，避免 contains+replace 重复扫描）
     let custom_list: Vec<String> = new_variants.iter().cloned().collect();
     for v in custom_list {
         for (from, to) in &fuzzy.custom_mappings {
-            if v.contains(from) {
-                new_variants.insert(v.replace(from, to));
+            let replaced = v.replace(from, to);
+            if replaced != v {
+                new_variants.insert(replaced);
             }
         }
     }
