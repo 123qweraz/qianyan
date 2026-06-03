@@ -178,7 +178,7 @@ impl DefaultSegmentor {
     }
 }
 
-/// 对每个音节段生成模糊音变体（迭代式：新变体也继续应用规则，与 chinese.rs 保持一致）
+/// 对每个音节段生成模糊音变体（单轮快照扫描，不链式迭代）
 pub(crate) fn fuzzy_variants_per_segment(
     seg: &str,
     fuzzy: &FuzzyPinyinConfig,
@@ -191,170 +191,70 @@ pub(crate) fn fuzzy_variants_per_segment(
     let mut new_variants = std::collections::HashSet::new();
     new_variants.insert(pinyin_lower);
 
-    let mut to_process: Vec<String> = new_variants.iter().cloned().collect();
-    while let Some(v) = to_process.pop() {
+    // 声母替换（单轮快照）
+    let initial_list: Vec<String> = new_variants.iter().cloned().collect();
+    for v in initial_list {
         if fuzzy.z_zh {
-            if v.starts_with("zh") {
-                let replaced = v.replacen("zh", "z", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with("z") {
-                let replaced = v.replacen("z", "zh", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with("zh") { new_variants.insert(v.replacen("zh", "z", 1)); }
+            else if v.starts_with("z") { new_variants.insert(v.replacen("z", "zh", 1)); }
         }
         if fuzzy.c_ch {
-            if v.starts_with("ch") {
-                let replaced = v.replacen("ch", "c", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with("c") {
-                let replaced = v.replacen("c", "ch", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with("ch") { new_variants.insert(v.replacen("ch", "c", 1)); }
+            else if v.starts_with("c") { new_variants.insert(v.replacen("c", "ch", 1)); }
         }
         if fuzzy.s_sh {
-            if v.starts_with("sh") {
-                let replaced = v.replacen("sh", "s", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with("s") {
-                let replaced = v.replacen("s", "sh", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with("sh") { new_variants.insert(v.replacen("sh", "s", 1)); }
+            else if v.starts_with("s") { new_variants.insert(v.replacen("s", "sh", 1)); }
         }
         if fuzzy.n_l {
-            if v.starts_with('n') {
-                let replaced = v.replacen('n', "l", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with('l') {
-                let replaced = v.replacen('l', "n", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with('n') { new_variants.insert(v.replacen('n', "l", 1)); }
+            else if v.starts_with('l') { new_variants.insert(v.replacen('l', "n", 1)); }
         }
         if fuzzy.r_l {
-            if v.starts_with('r') {
-                let replaced = v.replacen('r', "l", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with('l') {
-                let replaced = v.replacen('l', "r", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with('r') { new_variants.insert(v.replacen('r', "l", 1)); }
+            else if v.starts_with('l') { new_variants.insert(v.replacen('l', "r", 1)); }
         }
         if fuzzy.f_h {
-            if v.starts_with('f') {
-                let replaced = v.replacen('f', "h", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.starts_with('h') {
-                let replaced = v.replacen('h', "f", 1);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.starts_with('f') { new_variants.insert(v.replacen('f', "h", 1)); }
+            else if v.starts_with('h') { new_variants.insert(v.replacen('h', "f", 1)); }
         }
+    }
+
+    // 韵母替换（单轮快照）
+    let final_list: Vec<String> = new_variants.iter().cloned().collect();
+    for v in final_list {
         if fuzzy.an_ang {
-            if v.ends_with("ang") {
-                let replaced = format!("{}an", &v[..v.len() - 3]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.ends_with("an") {
-                let replaced = format!("{}ang", &v[..v.len() - 2]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.ends_with("ang") { new_variants.insert(format!("{}an", &v[..v.len() - 3])); }
+            else if v.ends_with("an") { new_variants.insert(format!("{}ang", &v[..v.len() - 2])); }
         }
         if fuzzy.en_eng {
-            if v.ends_with("eng") {
-                let replaced = format!("{}en", &v[..v.len() - 3]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.ends_with("en") {
-                let replaced = format!("{}eng", &v[..v.len() - 2]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.ends_with("eng") { new_variants.insert(format!("{}en", &v[..v.len() - 3])); }
+            else if v.ends_with("en") { new_variants.insert(format!("{}eng", &v[..v.len() - 2])); }
         }
         if fuzzy.in_ing {
-            if v.ends_with("ing") {
-                let replaced = format!("{}in", &v[..v.len() - 3]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.ends_with("in") {
-                let replaced = format!("{}ing", &v[..v.len() - 2]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.ends_with("ing") { new_variants.insert(format!("{}in", &v[..v.len() - 3])); }
+            else if v.ends_with("in") { new_variants.insert(format!("{}ing", &v[..v.len() - 2])); }
         }
         if fuzzy.ian_iang {
-            if v.ends_with("iang") {
-                let replaced = format!("{}ian", &v[..v.len() - 4]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.ends_with("ian") {
-                let replaced = format!("{}iang", &v[..v.len() - 3]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.ends_with("iang") { new_variants.insert(format!("{}ian", &v[..v.len() - 4])); }
+            else if v.ends_with("ian") { new_variants.insert(format!("{}iang", &v[..v.len() - 3])); }
         }
         if fuzzy.uan_uang {
-            if v.ends_with("uang") {
-                let replaced = format!("{}uan", &v[..v.len() - 4]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.ends_with("uan") {
-                let replaced = format!("{}uang", &v[..v.len() - 3]);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.ends_with("uang") { new_variants.insert(format!("{}uan", &v[..v.len() - 4])); }
+            else if v.ends_with("uan") { new_variants.insert(format!("{}uang", &v[..v.len() - 3])); }
         }
         if fuzzy.u_v {
-            if v.contains('u') {
-                let replaced = v.replace('u', "v");
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            } else if v.contains('v') {
-                let replaced = v.replace('v', "u");
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
-            }
+            if v.contains('u') { new_variants.insert(v.replace('u', "v")); }
+            else if v.contains('v') { new_variants.insert(v.replace('v', "u")); }
         }
+    }
+
+    // 自定义映射（单轮快照）
+    let custom_list: Vec<String> = new_variants.iter().cloned().collect();
+    for v in custom_list {
         for (from, to) in &fuzzy.custom_mappings {
             if v.contains(from) {
-                let replaced = v.replace(from, to);
-                if new_variants.insert(replaced.clone()) {
-                    to_process.push(replaced);
-                }
+                new_variants.insert(v.replace(from, to));
             }
         }
     }
