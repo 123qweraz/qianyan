@@ -350,8 +350,8 @@ impl Translator for UserDictTranslator {
                                 english_aux: en,
                                 stroke_aux: stroke,
                                 source: Arc::from("User"),
-                                weight: *weight as f64 * 0.8,
-                                match_level: 1,
+                            weight: *weight as f64 * 0.8,
+                            match_level: 0, // user prefix below system prefix (level 1)
                             });
                         }
                     }

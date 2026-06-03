@@ -157,3 +157,9 @@ impl EngineContext {
             .insert((VirtualKey::Delete, none), Command::Clear);
     }
 }
+
+impl Drop for EngineContext {
+    fn drop(&mut self) {
+        self.config.flush_all();
+    }
+}

@@ -95,45 +95,56 @@ impl ConfigManager {
     }
 
     pub fn insert_learned(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
-        if let Some(ref user_data) = self.user_data {
-            let mut current = (**self.learned_words.load()).clone();
-            current
-                .entry(profile.to_string())
-                .or_default()
-                .insert(pinyin.to_string(), entries.to_vec());
-            if let Err(e) =
-                user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &current) {
-                log::error!("[ConfigManager] 保存用户词典失败 (learned): {}", e);
-            }
-            self.learned_words.store(Arc::new(current));
-        }
+        let mut current = (**self.learned_words.load()).clone();
+        current
+            .entry(profile.to_string())
+            .or_default()
+            .insert(pinyin.to_string(), entries.to_vec());
+        self.learned_words.store(Arc::new(current));
     }
 
     pub fn insert_usage(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
-        if let Some(ref user_data) = self.user_data {
-            let mut current = (**self.usage_history.load()).clone();
-            current
-                .entry(profile.to_string())
-                .or_default()
-                .insert(pinyin.to_string(), entries.to_vec());
-            if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &current) {
-                log::error!("[ConfigManager] 保存用户词典失败 (usage): {}", e);
-            }
-            self.usage_history.store(Arc::new(current));
-        }
+        let mut current = (**self.usage_history.load()).clone();
+        current
+            .entry(profile.to_string())
+            .or_default()
+            .insert(pinyin.to_string(), entries.to_vec());
+        self.usage_history.store(Arc::new(current));
     }
 
     pub fn insert_ngram(&self, profile: &str, context: &str, entries: &[(String, u32)]) {
+        let mut current = (**self.ngram_history.load()).clone();
+        current
+            .entry(profile.to_string())
+            .or_default()
+            .insert(context.to_string(), entries.to_vec());
+        self.ngram_history.store(Arc::new(current));
+    }
+
+    /// 将所有用户数据批量写入磁盘（在退出或定时触发时调用）
+    pub fn flush_all(&self) {
         if let Some(ref user_data) = self.user_data {
-            let mut current = (**self.ngram_history.load()).clone();
-            current
-                .entry(profile.to_string())
-                .or_default()
-                .insert(context.to_string(), entries.to_vec());
-            if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &current) {
-                log::error!("[ConfigManager] 保存用户词典失败 (ngram): {}", e);
+            let learned = (**self.learned_words.load()).clone();
+            let usage = (**self.usage_history.load()).clone();
+            let ngram = (**self.ngram_history.load()).clone();
+
+            let profiles: Vec<String> = self.master_config
+                .input.profile_keys.iter()
+                .map(|pk| pk.profile.to_lowercase())
+                .collect();
+
+            for profile in &profiles {
+                if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &learned) {
+                    log::error!("[ConfigManager] 保存 learned 失败: {}", e);
+                }
+                if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &usage) {
+                    log::error!("[ConfigManager] 保存 usage 失败: {}", e);
+                }
+                if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &ngram) {
+                    log::error!("[ConfigManager] 保存 ngram 失败: {}", e);
+                }
             }
-            self.ngram_history.store(Arc::new(current));
+            log::info!("[ConfigManager] 用户数据已写入磁盘");
         }
     }
 

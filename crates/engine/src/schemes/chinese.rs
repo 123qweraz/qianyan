@@ -185,13 +185,13 @@ impl InputScheme for ChineseScheme {
         let min_results_needed = 500;
         let max_results = 500;
 
-    // 用户词典检索
+    // 用户词典精确匹配（最高优先级，排在最前）
+    // 前缀匹配延后到所有策略之后，避免阻塞简拼/组句/纠错
+    let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
     if let Some(profile) = context.active_profiles.first() {
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
         let dict = context.user_dict.load();
         if let Some(profile_dict) = dict.get(profile) {
-            // 仅当输入含元音（全拼/半全拼）时才查询用户词典；
-            // 纯声母（简拼/英文）跳过，交给后续简拼策略处理
             let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
             if has_vowel {
                 // 精确匹配
@@ -211,7 +211,7 @@ impl InputScheme for ChineseScheme {
                         }
                     }
                 } else {
-                    // 精确匹配失败 → 前缀匹配（遍历 HashMap，按最短 key 优先）
+                    // 前缀匹配 → 暂存到末尾再推入，不阻塞其他策略
                     let mut prefix_keys: Vec<&String> = profile_dict
                         .keys()
                         .filter(|k| k.starts_with(&pinyin_key))
@@ -221,7 +221,7 @@ impl InputScheme for ChineseScheme {
                         if let Some(words) = profile_dict.get(key) {
                             for (word, weight) in words {
                                 if seen.insert(word.clone()) {
-                                    final_results.push(SchemeCandidate {
+                                    user_prefix_matches.push(SchemeCandidate {
                                         text: word.clone(),
                                         simplified: word.clone(),
                                         traditional: word.clone(),
@@ -229,7 +229,7 @@ impl InputScheme for ChineseScheme {
                                         english: String::new(),
                                         stroke_aux: String::new(),
                                         weight: (*weight as f64 * 0.8) as u32,
-                                        match_level: 1,
+                                        match_level: 0, // below system prefix (level 1)
                                     });
                                 }
                             }
@@ -493,6 +493,9 @@ impl InputScheme for ChineseScheme {
                 }
             }
         }
+
+        // 方案 4 结束 → 追加用户词前缀匹配（最低优先级，不阻塞其他策略）
+        final_results.append(&mut user_prefix_matches);
 
         final_results
     }
