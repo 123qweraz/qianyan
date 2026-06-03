@@ -320,7 +320,7 @@ impl WlState {
         let layer = ls.create_layer_surface(qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
-        layer.commit();
+        // Don't commit here — ShowCandidate will set anchor/size/margin and commit atomically
         self.candidate_layer = Some(layer.clone());
         self.layer_closed = false;
         log::debug!("[WL_DEBUG] Candidate layer surface recreated after compositor closed");
@@ -572,7 +572,6 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
             .as_ref()
             .unwrap()
             .create_layer_surface(&qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
-        layer.set_anchor(Anchor::TOP | Anchor::LEFT);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
         layer.set_size(400, 200);
