@@ -7,7 +7,8 @@ use qianyan_ime_core::Config;
 use std::cell::RefCell;
 use std::os::unix::net::UnixStream;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::panic;
 use std::time::Duration;
 
@@ -28,35 +29,75 @@ pub fn start_gui(
         });
     }
 
+    // Coalesce rapid events (SyncState, Update, MoveTo, etc.) to avoid
+    // redundant per-keystroke renders in the single-process path.
+    let coalesced_event = Arc::new(Mutex::new(None::<GuiEvent>));
+    let pending_update = Arc::new(AtomicBool::new(false));
+
     std::thread::spawn(move || {
         while let Ok(event) = rx.recv() {
-            let cfg = config.clone();
-            let event_type = match &event {
-                GuiEvent::SyncState(_) => "SyncState",
-                GuiEvent::Update{..} => "Update",
-                GuiEvent::MoveTo{..} => "MoveTo",
-                GuiEvent::ApplyConfig(_) => "ApplyConfig",
-                GuiEvent::ShowStatus(..) => "ShowStatus",
-                GuiEvent::SetVisible(_) => "SetVisible",
-                GuiEvent::OpenTrayMenu{..} => "OpenTrayMenu",
-                GuiEvent::HideAndAck(..) => "HideAndAck",
-                GuiEvent::Exit => "Exit",
-            };
-            let invoke_result = slint::invoke_from_event_loop(move || {
-                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    DISPLAYS.with(|d| {
-                        let mut displays = d.borrow_mut();
-                        if !displays.is_empty() {
-                            handle_event(&mut *displays, event, &cfg);
+            match event {
+                GuiEvent::HideAndAck(tx) => {
+                    let _ = slint::invoke_from_event_loop(move || {
+                        DISPLAYS.with(|d| {
+                            for display in d.borrow_mut().iter_mut() {
+                                display.set_visible(false);
+                            }
+                        });
+                    });
+                    let _ = tx.send(());
+                }
+                GuiEvent::Exit => {
+                    let r = slint::invoke_from_event_loop(|| {
+                        DISPLAYS.with(|d| {
+                            for display in d.borrow_mut().iter_mut() {
+                                display.set_visible(false);
+                            }
+                        });
+                    });
+                    if r.is_err() { break; }
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    break;
+                }
+                GuiEvent::ApplyConfig(_) => {
+                    let r = slint::invoke_from_event_loop(move || {
+                        if let GuiEvent::ApplyConfig(cfg) = event {
+                            DISPLAYS.with(|d| {
+                                for display in d.borrow_mut().iter_mut() {
+                                    display.apply_config(&cfg);
+                                }
+                            });
                         }
                     });
-                }));
-                if let Err(e) = result {
-                    log::error!("GUI event handler panicked: {:?}", e);
+                    if r.is_err() { break; }
                 }
-            });
-            if invoke_result.is_err() {
-                log::error!("invoke_from_event_loop FAILED for event {}: {:?}", event_type, invoke_result);
+                // Coalesceable: rapid typing events — only latest matters
+                _ => {
+                    *coalesced_event.lock().unwrap() = Some(event);
+                    if !pending_update.swap(true, Ordering::SeqCst) {
+                        let cfg = config.clone();
+                        let c_evt = coalesced_event.clone();
+                        let p_upd = pending_update.clone();
+                        let r = slint::invoke_from_event_loop(move || {
+                            p_upd.store(false, Ordering::SeqCst);
+                            let evt = c_evt.lock().unwrap().take();
+                            if let Some(e) = evt {
+                                let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                                    DISPLAYS.with(|d| {
+                                        let mut displays = d.borrow_mut();
+                                        if !displays.is_empty() {
+                                            handle_event(&mut *displays, e, &cfg);
+                                        }
+                                    });
+                                }));
+                                if let Err(err) = result {
+                                    log::error!("GUI coalesced handler panicked: {:?}", err);
+                                }
+                            }
+                        });
+                        if r.is_err() { break; }
+                    }
+                }
             }
         }
     });
