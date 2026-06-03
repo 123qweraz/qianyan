@@ -851,13 +851,25 @@ impl CandidateDisplay for WaylandLayerDisplay {
             self.candidate_window.set_is_visible(true);
         }
 
-        // Offscreen window doesn't auto-resize via Slint's layout bindings,
-        // so set a generous width to fit all candidates horizontally.
+        // Estimate window size based on candidate count and font size.
+        // CJK characters are roughly fs pixels wide, ASCII ~ fs * 0.55.
         let fs = self.config.appearance.candidate_text.font_size as u32;
-        let max_chars = candidates.iter().map(|c| c.text.chars().count() + c.label.chars().count() + c.hint.chars().count()).max().unwrap_or(8) as u32;
-        let per_cand_w = ((fs * max_chars) / 2 + 40).max(80);
-        let total_w = (candidates.len() as u32 * per_cand_w + 80).min(1600).max(200);
-        let total_h = 200u32;
+        let cand_count = candidates.len().max(1) as u32;
+        let max_chars = candidates.iter()
+            .map(|c| c.text.chars().count() + c.label.chars().count() + c.hint.chars().count())
+            .max().unwrap_or(8) as u32;
+
+        let is_horizontal = self.config.appearance.candidate_layout == "horizontal";
+        let line_height = (fs as f32 * 1.6) as u32;
+        let pinyin_height = (fs as f32 * 1.4) as u32;
+        let padding = 40u32;
+
+        let total_w = if is_horizontal {
+            (cand_count * (fs * max_chars + 30) + padding).min(1600).max(200)
+        } else {
+            (fs * max_chars + 120).min(1600).max(200)
+        };
+        let total_h = (pinyin_height + line_height * cand_count + padding).max(80).min(1200);
         
         let current_size = self.candidate_window.window().size();
         if current_size.width as u32 != total_w || current_size.height as u32 != total_h {
@@ -879,10 +891,9 @@ impl CandidateDisplay for WaylandLayerDisplay {
     fn move_to(&mut self, x: i32, y: i32) {
         self.last_x = x;
         self.last_y = y;
-        if self.window_visible {
-            let size = self.candidate_window.window().size();
-            self.render_and_send_candidate(size.width.max(1), size.height.max(1));
-        }
+        // Position update is deferred to the next render call
+        // (update_candidates or set_visible). This avoids double-rendering
+        // when move_to()+update_candidates() are called in sequence.
     }
 
     fn set_visible(&mut self, visible: bool) {
