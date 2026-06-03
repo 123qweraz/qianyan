@@ -945,15 +945,6 @@ impl CandidateDisplay for WaylandLayerDisplay {
             std::rc::Rc::new(slint::VecModel::from(cand_models)),
         ));
 
-        // Right-align content when anchored to right side — keeps text
-        // flush with the anchor edge as the window grows/shrinks
-        let align_right = if self.config.linux.fixed_position {
-            self.config.linux.corner.ends_with("-right")
-        } else {
-            self.last_x > 960
-        };
-        self.candidate_window.set_align_right(align_right);
-
         if !self.window_visible {
             self.window_visible = true;
             self.render_buffer.window_visible.set(true);

@@ -72,7 +72,6 @@ export component CandidateWindow inherits Window {
     in property <int> total_pages: 0;
     in property <bool> is_visible: false;
     in property <bool> is_horizontal: true;
-    in property <bool> align_right: false;
     
     in property <length> pinyin_font_size: 14px;
     in property <string> pinyin_font_family: "";
@@ -141,7 +140,6 @@ export component CandidateWindow inherits Window {
 
             if is_horizontal : HorizontalLayout {
                 spacing: 4px;
-                if align_right : Rectangle { }
                 for cand[i] in candidates : CandidateItem {
                     text: cand.text;
                     label: cand.label;
