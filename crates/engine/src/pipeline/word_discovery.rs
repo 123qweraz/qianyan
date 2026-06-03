@@ -231,7 +231,7 @@ pub fn discover_words(
 }
 
 fn is_chinese(c: char) -> bool {
-    (c >= '\u{4e00}' && c <= '\u{9fa5}') || (c >= '\u{3400}' && c <= '\u{4dbf}')
+    ('\u{4e00}'..='\u{9fa5}').contains(&c) || ('\u{3400}'..='\u{4dbf}').contains(&c)
 }
 
 fn is_boundary_stopword(word: &str) -> bool {

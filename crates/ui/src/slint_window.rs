@@ -24,18 +24,18 @@ fn find_windows_by_name(
             .ok()
             .and_then(|c| c.reply().ok())
             .filter(|r| r.format == 8 && !r.value.is_empty())
-            .and_then(|r| {
+            .map(|r| {
                 let s = String::from_utf8_lossy(&r.value);
-                Some(s.trim_end_matches('\0').to_string())
+                s.trim_end_matches('\0').to_string()
             })
             .or_else(|| {
                 conn.get_property(false, w, x11rb::protocol::xproto::AtomEnum::WM_NAME, x11rb::protocol::xproto::AtomEnum::ANY, 0, 1024)
                     .ok()
                     .and_then(|c| c.reply().ok())
                     .filter(|r| r.format == 8 && !r.value.is_empty())
-                    .and_then(|r| {
+                    .map(|r| {
                         let s = String::from_utf8_lossy(&r.value);
-                        Some(s.trim_end_matches('\0').to_string())
+                        s.trim_end_matches('\0').to_string()
                     })
             });
         name.filter(|n| n == target).is_some()
@@ -130,7 +130,7 @@ fn screen_size() -> (i32, i32) {
         .output()
     {
         if let Ok(s) = String::from_utf8(out.stdout) {
-            let parts: Vec<&str> = s.trim().split_whitespace().collect();
+            let parts: Vec<&str> = s.split_whitespace().collect();
             if parts.len() == 2 {
                 if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
                     return (w, h);
@@ -252,7 +252,7 @@ impl SlintDisplay {
 
     #[cfg(target_os = "linux")]
     fn apply_corner_position(&mut self) {
-        let (tx, ty) = self.corner_position(&self.window.window());
+        let (tx, ty) = self.corner_position(self.window.window());
         self.window.window().set_position(slint::WindowPosition::Physical(
             slint::PhysicalPosition::new(tx, ty),
         ));

@@ -229,9 +229,7 @@ impl InputSession {
         let chars: Vec<char> = self.buffer.chars().collect();
         let mut new_buf = String::new();
         for (i, ch) in chars.iter().enumerate() {
-            if i < start {
-                new_buf.push(*ch);
-            } else if i >= end.min(self.buffer.len()) {
+            if i < start || i >= end.min(self.buffer.len()) {
                 new_buf.push(*ch);
             }
         }

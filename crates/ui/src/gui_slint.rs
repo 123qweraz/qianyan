@@ -89,7 +89,7 @@ pub fn start_gui(
                                     DISPLAYS.with(|d| {
                                         let mut displays = d.borrow_mut();
                                         if !displays.is_empty() {
-                                            handle_event(&mut *displays, e, &cfg);
+                                            handle_event(&mut displays, e, &cfg);
                                         }
                                     });
                                 }));
@@ -188,7 +188,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                                     let mut guard = cfg.lock()
                                         .expect("config lock poisoned");
-                            handle_ipc_event(&msg, &mut *guard);
+                            handle_ipc_event(&msg, &mut guard);
                         }));
                         if let Err(e) = result {
                             log::error!("GUI ApplyConfig handler panicked: {:?}", e);
@@ -215,7 +215,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                             let mut guard = cfg.lock()
                                 .expect("config lock poisoned");
-                                    handle_ipc_event(&m, &mut *guard);
+                                    handle_ipc_event(&m, &mut guard);
                                 }));
                                 if let Err(e) = result {
                                     log::error!("GUI coalesced event handler panicked: {:?}", e);

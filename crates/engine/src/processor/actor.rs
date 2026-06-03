@@ -283,8 +283,8 @@ impl ProcessorActor {
 
         let candidates = self.build_candidate_infos(start, end);
         let relative_selected = ctx.session.selected.saturating_sub(start);
-        let current_page = if page_size > 0 { start / page_size } else { 0 };
-        let total_pages = if page_size > 0 { (ctx.session.candidates.len() + page_size - 1) / page_size } else { 0 };
+        let current_page = start.checked_div(page_size).unwrap_or(0);
+        let total_pages = ctx.session.candidates.len().div_ceil(page_size);
 
         GuiSnapshot {
             pinyin,

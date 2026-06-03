@@ -284,7 +284,7 @@ impl InputScheme for ChineseScheme {
                             if comp_keys.is_empty() {
                                 // 无前缀补全匹配，留空让简拼分支处理
                             } else {
-                                comp_keys.sort_by(|a, b| a.len().cmp(&b.len()));
+                                comp_keys.sort_by_key(|a| a.len());
                             }
                             comp_keys.truncate(10);
                             for key in comp_keys {
@@ -364,7 +364,7 @@ impl InputScheme for ChineseScheme {
             if abbr_segs.len() > 1 {
                 if let Some(d) = context.tries.get("chinese") {
                     let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, context.syllables, 200);
-                    abbr_results.sort_by(|a, b| b.weight.cmp(&a.weight));
+                    abbr_results.sort_by_key(|r| std::cmp::Reverse(r.weight));
                     for tr in abbr_results {
                         if final_results.len() >= max_results {
                             break;
@@ -459,7 +459,7 @@ impl InputScheme for ChineseScheme {
         if final_results.is_empty() && !query.contains(' ') {
             let pinyin_only = &pinyin_key;
             if let Some(d) = context.tries.get("chinese") {
-                if let Ok(lev) = Levenshtein::new(&pinyin_only, 1u32) {
+                if let Ok(lev) = Levenshtein::new(pinyin_only, 1u32) {
                     // FST Levenshtein 自动机已保证所有返回 key 的距离 ≤ 1
                     // 按 key 长度排序（更短更优），取前 5 个候选 key
                     let mut corr_keys: Vec<String> = Vec::new();
@@ -470,7 +470,7 @@ impl InputScheme for ChineseScheme {
                             if corr_keys.len() >= 20 { break; }
                         }
                     }
-                    corr_keys.sort_by(|a, b| a.len().cmp(&b.len()));
+                    corr_keys.sort_by_key(|a| a.len());
                     corr_keys.truncate(5);
                     for key in corr_keys {
                         if let Some(entries) = d.get_all_exact(&key) {

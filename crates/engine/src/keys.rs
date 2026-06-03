@@ -180,7 +180,7 @@ impl VirtualKey {
 
 /// Compile-time assertion: VirtualKey discriminants match the hard-coded table above.
 const _: fn() = || {
-    let _ = VirtualKey::A as u32 - 0;
+    let _ = VirtualKey::A as u32;
     let _ = VirtualKey::Z as u32 - 25;
     let _ = VirtualKey::Digit0 as u32 - 26;
     let _ = VirtualKey::Digit9 as u32 - 35;

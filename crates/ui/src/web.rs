@@ -475,7 +475,7 @@ async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
     }
     let empty = serde_json::Value::Object(serde_json::Map::new());
     match std::fs::File::create(&file_path)
-        .and_then(|f| serde_json::to_writer_pretty(f, &empty).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)))
+        .and_then(|f| serde_json::to_writer_pretty(f, &empty).map_err(std::io::Error::other))
     {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -748,7 +748,7 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
     };
     if !search.is_empty() && search_by == "all" {
         // 先按匹配优先级排序：拼音(0) > 汉字(1) > 英文(2)
-        let mut paired: Vec<(DictEntryView, u8)> = all_entries.into_iter().zip(match_kind.into_iter()).collect();
+        let mut paired: Vec<(DictEntryView, u8)> = all_entries.into_iter().zip(match_kind).collect();
         paired.sort_by(|(a, ka), (b, kb)| {
             if ka != kb { return ka.cmp(kb); }
             let asc = sort_order == "asc";
@@ -1170,7 +1170,7 @@ async fn delete_user_dict_entry(
         if let Some(data_obj) = obj.get_mut("data").and_then(|d| d.as_object_mut()) {
             if let Some(entries) = data_obj.get_mut(&req.pinyin).and_then(|a| a.as_array_mut()) {
                 entries.retain(|entry| {
-                    if entry.as_array().map(|a| a.get(0).and_then(|v| v.as_str())) == Some(Some(&req.word)) {
+                    if entry.as_array().map(|a| a.first().and_then(|v| v.as_str())) == Some(Some(&req.word)) {
                         found = true;
                         false
                     } else {
@@ -1510,7 +1510,7 @@ async fn pinyin_convert_handler(
 }
 
 fn is_chinese(c: char) -> bool {
-    (c >= '\u{4e00}' && c <= '\u{9fa5}') || (c >= '\u{3400}' && c <= '\u{4dbf}')
+    ('\u{4e00}'..='\u{9fa5}').contains(&c) || ('\u{3400}'..='\u{4dbf}').contains(&c)
 }
 
 // ===== Simplified ⇄ Traditional conversion =====
@@ -1599,7 +1599,7 @@ fn convert_longest_match(text: &str, map: &S2TMap, max_len: usize) -> String {
             }
         }
         if best_len > 0 {
-            result.push_str(&best_word.unwrap());
+            result.push_str(&best_word.expect("best_word must be Some when best_len > 0"));
             i += best_len;
         } else {
             result.push(chars[i]);
@@ -1883,7 +1883,8 @@ fn do_discovery(
         *cache_guard = Some(set);
     }
     
-    let known_words = cache_guard.as_ref().unwrap();
+    let known_words = cache_guard.as_ref()
+        .expect("known_words cache should be initialized");
     let results = qianyan_ime_engine::pipeline::discover_words(text, config, known_words);
 
     results.into_iter().map(|dw| {
@@ -2453,7 +2454,7 @@ async fn ime_key_handler(
 fn uuid_v4() -> String {
     use std::fmt::Write;
     let mut s = String::with_capacity(32);
-    for _ in 0..8 { write!(s, "{:x}", rand_u8()).unwrap(); }
+    for _ in 0..8 { write!(s, "{:x}", rand_u8()).expect("write to String never fails"); }
     s
 }
 

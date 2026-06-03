@@ -56,7 +56,9 @@ struct OffscreenWindow {
 
 impl OffscreenWindow {
     fn new() -> Rc<Self> {
-        let renderer = SKIA_RENDERER.with(|s| s.borrow().as_ref().unwrap().clone());
+        let renderer = SKIA_RENDERER.with(|s| s.borrow().as_ref()
+            .expect("Skia renderer not initialized")
+            .clone());
         Rc::new_cyclic(|w: &std::rc::Weak<Self>| Self {
             window: slint::Window::new(w.clone()),
             renderer,
@@ -221,7 +223,7 @@ impl WaylandRenderBuffer {
             .arg("getdisplaygeometry").output()
         {
             if let Ok(s) = String::from_utf8(out.stdout) {
-                let parts: Vec<&str> = s.trim().split_whitespace().collect();
+                let parts: Vec<&str> = s.split_whitespace().collect();
                 if parts.len() == 2 {
                     if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
                         return (w, h);
@@ -456,8 +458,8 @@ impl LayerShellHandler for WlState {
         cfg: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        self.configured_width = cfg.new_size.0.max(0);
-        self.configured_height = cfg.new_size.1.max(0);
+        self.configured_width = cfg.new_size.0;
+        self.configured_height = cfg.new_size.1;
         // Re-apply cached anchor/margin before commit, preventing
         // the compositor from locking in an anchor-less default position
         if let Some(a) = self.last_anchor {
@@ -585,7 +587,7 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         let layer = state
             .layer_shell
             .as_ref()
-            .unwrap()
+            .expect("layer_shell not initialized")
             .create_layer_surface(&qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
@@ -617,10 +619,10 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                             let has_bottom = anchor.contains(Anchor::BOTTOM);
                             let has_left = anchor.contains(Anchor::LEFT);
                             let has_right = anchor.contains(Anchor::RIGHT);
-                            let mt = if has_top { y.max(0) as i32 } else { 0 };
-                            let mr = if has_right { x.max(0) as i32 } else { 0 };
-                            let mb = if has_bottom { y.max(0) as i32 } else { 0 };
-                            let ml = if has_left { x.max(0) as i32 } else { 0 };
+                            let mt = if has_top { y.max(0) } else { 0 };
+                            let mr = if has_right { x.max(0) } else { 0 };
+                            let mb = if has_bottom { y.max(0) } else { 0 };
+                            let ml = if has_left { x.max(0) } else { 0 };
                             layer.set_margin(mt, mr, mb, ml);
                             // Cache anchor/margin so configure callback can re-apply them
                             state.last_anchor = Some(anchor);
@@ -956,7 +958,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
 
         // Estimate window size based on candidate count and font size.
         // CJK characters are roughly fs pixels wide, ASCII ~ fs * 0.55.
-        let fs = self.config.appearance.candidate_text.font_size as u32;
+        let fs = self.config.appearance.candidate_text.font_size;
         let cand_count = candidates.len().max(1) as u32;
         let max_chars = candidates.iter()
             .map(|c| c.text.chars().count() + c.label.chars().count() + c.hint.chars().count())
@@ -979,12 +981,12 @@ impl CandidateDisplay for WaylandLayerDisplay {
         // window visually stable while content stays flush with the anchor edge.
         if self.config.linux.fixed_position {
             let cs = self.candidate_window.window().size();
-            total_w = total_w.max(cs.width as u32);
-            total_h = total_h.max(cs.height as u32);
+            total_w = total_w.max(cs.width);
+            total_h = total_h.max(cs.height);
         }
         
         let current_size = self.candidate_window.window().size();
-        if current_size.width as u32 != total_w || current_size.height as u32 != total_h {
+        if current_size.width != total_w || current_size.height != total_h {
             self.candidate_window.window().set_size(slint::WindowSize::Physical(
                 slint::PhysicalSize::new(total_w, total_h),
             ));

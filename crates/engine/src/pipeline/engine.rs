@@ -448,11 +448,10 @@ impl SearchEngine {
             }
         }
 
-        if !candidate.stroke_aux.is_empty() {
-            if candidate.stroke_aux.to_lowercase().starts_with(&filter_lower) {
+        if !candidate.stroke_aux.is_empty()
+            && candidate.stroke_aux.to_lowercase().starts_with(&filter_lower) {
                 return true;
             }
-        }
 
         let hint_lower = candidate.hint.to_lowercase();
         let parts: Vec<&str> = hint_lower

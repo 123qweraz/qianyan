@@ -217,7 +217,7 @@ impl Trie {
         if n > 0 {
             results.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
             results.truncate(n);
-            results.sort_by(|a, b| b.weight.cmp(&a.weight));
+            results.sort_by_key(|r| std::cmp::Reverse(r.weight));
         }
         results
     }
@@ -469,11 +469,10 @@ impl Trie {
                     } else {
                         syl == first_seg.as_str()
                     };
-                    if matches {
-                        if self.recursive_mixed_match(&key[len..], &segments[1..], syllables) {
+                    if matches
+                        && self.recursive_mixed_match(&key[len..], &segments[1..], syllables) {
                             return true;
                         }
-                    }
                 }
             }
             if char_count > 8 {

@@ -414,8 +414,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let listener = UnixListener::bind(&socket_path)
             .expect("Failed to bind IPC socket");
 
-        let exe_path = std::env::current_exe().unwrap();
-        let gui_exe = exe_path.parent().unwrap().join("qianyan-ime-gui");
+        let exe_path = std::env::current_exe()
+            .expect("failed to get current exe path");
+        let gui_exe = exe_path.parent()
+            .expect("exe has no parent directory")
+            .join("qianyan-ime-gui");
         let mut child = std::process::Command::new(&gui_exe)
             .arg(&socket_path)
             .spawn()
@@ -428,7 +431,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Send initial config
         let cfg = config.read().expect("config lock poisoned").clone();
         let _ = send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(
-            serde_json::to_string(&cfg).unwrap(),
+            serde_json::to_string(&cfg)
+                .expect("failed to serialize config"),
         ));
 
         // Wait for GUI to signal ready
@@ -457,10 +461,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let _ = ack_tx.send(());
                             break;
                         }
-                        match recv_gui_to_main(stream_ref, Some(Duration::from_millis(100))) {
-                            Ok(Some(GuiToMain::Ack)) => {},
-                            _ => {},
-                        }
+                        if let Ok(Some(GuiToMain::Ack)) = recv_gui_to_main(stream_ref, Some(Duration::from_millis(100))) {}
                         let _ = ack_tx.send(());
                     }
                     GuiEvent::Exit => {
@@ -534,7 +535,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
         GuiEvent::SetVisible(v) => Some(MainToGui::SetVisible(v)),
         GuiEvent::ShowStatus(text, chinese) => Some(MainToGui::ShowStatus(text, chinese)),
         GuiEvent::ApplyConfig(config) => {
-            serde_json::to_string(&*config).ok().map(|json| MainToGui::ApplyConfig(json))
+            serde_json::to_string(&*config).ok().map(MainToGui::ApplyConfig)
         }
         _ => None,
     }

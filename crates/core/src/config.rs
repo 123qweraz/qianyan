@@ -607,7 +607,7 @@ impl Config {
 
         // 从默认值开始，然后被页面文件覆盖
         let mut merged = serde_json::to_value(Self::default_config())
-            .unwrap_or_else(|_| Value::Null);
+            .unwrap_or(Value::Null);
 
         // 加载新格式页面文件
         // PAGE_FILES 中的子字段归属是 save 方向用的；load 时全文件合并即可
@@ -656,7 +656,8 @@ impl Config {
         }
 
         // ── 向后兼容：尝试加载旧格式文件 ──
-        for old in &["input.json"] {
+        {
+            let old = &"input.json";
             let path = config_dir.join(old);
             if path.exists() {
                 if let Some(val) = Self::load_json(&path) {
@@ -717,7 +718,7 @@ impl Config {
             // 顶级键
             for k in top_keys {
                 if let Some(v) = full.get(*k) {
-                    page.as_object_mut().unwrap().insert(k.to_string(), v.clone());
+                    page.as_object_mut().expect("page is always a JSON object").insert(k.to_string(), v.clone());
                 }
             }
 
@@ -726,7 +727,7 @@ impl Config {
                 if let Some(input_val) = full.get("input") {
                     let picked = Self::pick_keys(input_val, input_keys);
                     if picked != Value::Object(serde_json::Map::new()) {
-                        page.as_object_mut().unwrap().insert("input".into(), picked);
+                        page.as_object_mut().expect("page is always a JSON object").insert("input".into(), picked);
                     }
                 }
             }
@@ -736,7 +737,7 @@ impl Config {
                 if let Some(appear_val) = full.get("appearance") {
                     let picked = Self::pick_keys(appear_val, appear_keys);
                     if picked != Value::Object(serde_json::Map::new()) {
-                        page.as_object_mut().unwrap().insert("appearance".into(), picked);
+                        page.as_object_mut().expect("page is always a JSON object").insert("appearance".into(), picked);
                     }
                 }
             }
@@ -748,7 +749,7 @@ impl Config {
         {
             let mut page = Value::Object(serde_json::Map::new());
             if let Some(hotkeys) = full.get("hotkeys") {
-                page.as_object_mut().unwrap().insert("hotkeys".into(), hotkeys.clone());
+                page.as_object_mut().expect("page is always a JSON object").insert("hotkeys".into(), hotkeys.clone());
             }
             if let Some(input_val) = full.get("input") {
                 let mut input_owned = input_val.clone();
@@ -756,7 +757,7 @@ impl Config {
                 for &(_, _, input_keys, _) in Self::PAGE_FILES {
                     Self::remove_keys(&mut input_owned, input_keys);
                 }
-                page.as_object_mut().unwrap().insert("input".into(), input_owned);
+                page.as_object_mut().expect("page is always a JSON object").insert("input".into(), input_owned);
             }
             Self::save_json(&config_dir.join("pinyin.json"), &page)?;
         }
@@ -769,7 +770,7 @@ impl Config {
                 for &(_, _, _, appear_keys) in Self::PAGE_FILES {
                     Self::remove_keys(&mut appear_owned, appear_keys);
                 }
-                page.as_object_mut().unwrap().insert("appearance".into(), appear_owned);
+                page.as_object_mut().expect("page is always a JSON object").insert("appearance".into(), appear_owned);
             }
             Self::save_json(&config_dir.join("appearance.json"), &page)?;
         }
@@ -787,7 +788,7 @@ impl Config {
         {
             let mut page = Value::Object(serde_json::Map::new());
             if let Some(layouts) = full.get("layouts") {
-                page.as_object_mut().unwrap().insert("layouts".into(), layouts.clone());
+                page.as_object_mut().expect("page is always a JSON object").insert("layouts".into(), layouts.clone());
             }
             Self::save_json(&config_dir.join("layout.json"), &page)?;
         }

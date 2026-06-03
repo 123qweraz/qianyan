@@ -96,9 +96,7 @@ impl DefaultSegmentor {
 
                 let (freq, seg_text) = if syllable_freq.contains_key(part) {
                     (syllable_freq.get(part).copied().unwrap_or(0), None)
-                } else if base_syllables.contains(part) {
-                    (0, None)
-                } else if len == 1 {
+                } else if base_syllables.contains(part) || len == 1 {
                     (0, None)
                 } else if let Some((xfreq, xtext)) =
                     Self::try_transpose(part, syllable_freq, base_syllables)
