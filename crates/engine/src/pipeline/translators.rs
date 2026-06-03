@@ -141,14 +141,9 @@ impl Translator for TableTranslator {
                 if query.starts_with(last_q)
                     && last_time.elapsed().as_millis() < CACHE_TTL_MS as u128
                 {
-                    let filtered: Vec<Candidate> = cached
-                        .iter()
-                        .filter(|c| c.simplified.starts_with(&query))
-                        .cloned()
-                        .collect();
-
-                    if !filtered.is_empty() {
-                        let mut result = filtered;
+                    let mut result = cached.clone();
+                    result.retain(|c| c.simplified.starts_with(&query));
+                    if !result.is_empty() {
                         result.truncate(internal_limit);
                         return result;
                     }
