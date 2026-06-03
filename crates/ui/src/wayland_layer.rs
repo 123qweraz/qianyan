@@ -906,6 +906,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
 
         if !self.window_visible {
             self.window_visible = true;
+            self.render_buffer.window_visible.set(true);
             self.candidate_window.set_is_visible(true);
         }
 
