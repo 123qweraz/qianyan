@@ -3,26 +3,6 @@ use crate::FuzzyPinyinConfig;
 use fst::automaton::Levenshtein;
 use fst::{Automaton, IntoStreamer, Streamer};
 
-fn lev_distance(a: &str, b: &str) -> u32 {
-    let ac: Vec<char> = a.chars().collect();
-    let bc: Vec<char> = b.chars().collect();
-    let m = ac.len();
-    let n = bc.len();
-    let mut dp = vec![0u32; (m + 1) * (n + 1)];
-    for i in 0..=m { dp[i * (n + 1)] = i as u32; }
-    for j in 0..=n { dp[j] = j as u32; }
-    for i in 1..=m {
-        for j in 1..=n {
-            let cost = if ac[i - 1] == bc[j - 1] { 0 } else { 1 };
-            let idx = i * (n + 1) + j;
-            dp[idx] = (dp[(i - 1) * (n + 1) + j] + 1)
-                .min(dp[i * (n + 1) + (j - 1)] + 1)
-                .min(dp[(i - 1) * (n + 1) + (j - 1)] + cost);
-        }
-    }
-    dp[m * (n + 1) + n]
-}
-
 pub struct ChineseScheme;
 
 #[derive(Debug, Clone)]
@@ -447,18 +427,19 @@ impl InputScheme for ChineseScheme {
             let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
             if let Some(d) = context.tries.get("chinese") {
                 if let Ok(lev) = Levenshtein::new(&pinyin_only, 1u32) {
-                    let mut corr_keys: Vec<(String, u32)> = Vec::new();
+                    // FST Levenshtein 自动机已保证所有返回 key 的距离 ≤ 1
+                    // 按 key 长度排序（更短更优），取前 5 个候选 key
+                    let mut corr_keys: Vec<String> = Vec::new();
                     let mut stream = d.index.search(lev).into_stream();
                     while let Some((key_bytes, _)) = stream.next() {
                         if let Ok(key) = std::str::from_utf8(key_bytes) {
-                            let dist = lev_distance(&pinyin_only, key);
-                            corr_keys.push((key.to_string(), dist));
+                            corr_keys.push(key.to_string());
                             if corr_keys.len() >= 20 { break; }
                         }
                     }
-                    corr_keys.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.len().cmp(&b.0.len())));
+                    corr_keys.sort_by(|a, b| a.len().cmp(&b.len()));
                     corr_keys.truncate(5);
-                    for (key, _) in corr_keys {
+                    for key in corr_keys {
                         if let Some(entries) = d.get_all_exact(&key) {
                             for tr in entries.iter() {
                                 if seen.insert(tr.word.to_string()) {
