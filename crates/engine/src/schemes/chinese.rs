@@ -185,29 +185,55 @@ impl InputScheme for ChineseScheme {
         let min_results_needed = 500;
         let max_results = 500;
 
-        // 用户词典检索
-        if let Some(profile) = context.active_profiles.first() {
-            let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
-            let dict = context.user_dict.load();
-            if let Some(profile_dict) = dict.get(profile) {
-                if let Some(words) = profile_dict.get(&pinyin_key) {
-                    for (word, weight) in words {
-                        if seen.insert(word.clone()) {
-                            final_results.push(SchemeCandidate {
-                                text: word.clone(),
-                                simplified: word.clone(),
-                                traditional: word.clone(),
-                                tone: String::from("User"),
-                                english: String::new(),
-                                stroke_aux: String::new(),
-                                weight: *weight,
-                                match_level: 3,
-                            });
+    // 用户词典检索
+    if let Some(profile) = context.active_profiles.first() {
+        let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
+        let dict = context.user_dict.load();
+        if let Some(profile_dict) = dict.get(profile) {
+            // 精确匹配
+            if let Some(words) = profile_dict.get(&pinyin_key) {
+                for (word, weight) in words {
+                    if seen.insert(word.clone()) {
+                        final_results.push(SchemeCandidate {
+                            text: word.clone(),
+                            simplified: word.clone(),
+                            traditional: word.clone(),
+                            tone: String::from("User"),
+                            english: String::new(),
+                            stroke_aux: String::new(),
+                            weight: *weight,
+                            match_level: 3,
+                        });
+                    }
+                }
+            } else {
+                // 精确匹配失败 → 前缀匹配（遍历 HashMap，按最短 key 优先）
+                let mut prefix_keys: Vec<&String> = profile_dict
+                    .keys()
+                    .filter(|k| k.starts_with(&pinyin_key))
+                    .collect();
+                prefix_keys.sort_by_key(|k| k.len());
+                for key in prefix_keys {
+                    if let Some(words) = profile_dict.get(key) {
+                        for (word, weight) in words {
+                            if seen.insert(word.clone()) {
+                                final_results.push(SchemeCandidate {
+                                    text: word.clone(),
+                                    simplified: word.clone(),
+                                    traditional: word.clone(),
+                                    tone: key.clone(),
+                                    english: String::new(),
+                                    stroke_aux: String::new(),
+                                    weight: (*weight as f64 * 0.8) as u32,
+                                    match_level: 1, // prefix match
+                                });
+                            }
                         }
                     }
                 }
             }
         }
+    }
 
         // 策略 1: 全量/简拼/前缀匹配
         // 原始切分检索

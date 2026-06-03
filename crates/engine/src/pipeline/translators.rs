@@ -308,28 +308,10 @@ impl Translator for UserDictTranslator {
         let dict = self.user_dict.load();
         log::trace!("UserDictTranslator: query={}, profile={}", query, self.profile);
         if let Some(profile_dict) = dict.get(&self.profile) {
-            log::trace!("UserDictTranslator: has_query={}", profile_dict.contains_key(&query));
+            // 精确匹配
             if let Some(words) = profile_dict.get(&query) {
                 for (word, weight) in words {
-                    let (trad, en, stroke) = if let Some(ref trie) = self.trie {
-                        if let Some(exacts) = trie.get_all_exact(&query) {
-                            if let Some(tr) = exacts.iter().find(|tr| tr.word == *word) {
-                                let trad = if tr.trad.is_empty() {
-                                    Arc::from(word.as_str())
-                                } else {
-                                    Arc::from(tr.trad)
-                                };
-                                (trad, Arc::from(tr.en), Arc::from(tr.stroke_aux))
-                            } else {
-                                (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
-                            }
-                        } else {
-                            (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
-                        }
-                    } else {
-                        (Arc::from(word.as_str()), Arc::from(""), Arc::from(""))
-                    };
-
+                    let (trad, en, stroke) = lookup_trie_info(&self.trie, &query, word);
                     results.push(Candidate {
                         text: Arc::from(word.as_str()),
                         simplified: Arc::from(word.as_str()),
@@ -339,8 +321,36 @@ impl Translator for UserDictTranslator {
                         stroke_aux: stroke,
                         source: Arc::from("User"),
                         weight: *weight as f64,
-                        match_level: 3,
+                        match_level: 3, // exact match
                     });
+                }
+            } else {
+                // 精确匹配失败 → 前缀匹配遍历 HashMap
+                let mut prefix_matches: Vec<(&String, &Vec<(String, u32)>)> = profile_dict
+                    .iter()
+                    .filter(|(pinyin, _)| pinyin.starts_with(&query))
+                    .collect();
+                // 按拼音长度排序（短拼音优先，匹配更精确）
+                prefix_matches.sort_by_key(|(pinyin, _)| pinyin.len());
+                let mut seen = std::collections::HashSet::new();
+                for (matched_pinyin, words) in prefix_matches {
+                    for (word, weight) in words {
+                        if !seen.insert(word) {
+                            continue;
+                        }
+                        let (trad, en, stroke) = lookup_trie_info(&self.trie, matched_pinyin, word);
+                        results.push(Candidate {
+                            text: Arc::from(word.as_str()),
+                            simplified: Arc::from(word.as_str()),
+                            traditional: trad,
+                            hint: Arc::from(matched_pinyin.as_str()),
+                            english_aux: en,
+                            stroke_aux: stroke,
+                            source: Arc::from("User"),
+                            weight: *weight as f64 * 0.8, // 前缀匹配权重略低于精确匹配
+                            match_level: 1, // prefix match
+                        });
+                    }
                 }
             }
         }
@@ -350,6 +360,22 @@ impl Translator for UserDictTranslator {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+}
+
+fn lookup_trie_info(
+    trie: &Option<Arc<Trie>>,
+    pinyin: &str,
+    word: &str,
+) -> (Arc<str>, Arc<str>, Arc<str>) {
+    if let Some(ref trie) = trie {
+        if let Some(exacts) = trie.get_all_exact(pinyin) {
+            if let Some(tr) = exacts.iter().find(|tr| tr.word == word) {
+                let trad = if tr.trad.is_empty() { Arc::from(word) } else { Arc::from(tr.trad) };
+                return (trad, Arc::from(tr.en), Arc::from(tr.stroke_aux));
+            }
+        }
+    }
+    (Arc::from(word), Arc::from(""), Arc::from(""))
 }
 
 /// 长句组合器：遍历所有可能的分割，逐段查最高频词，返回多个候选
