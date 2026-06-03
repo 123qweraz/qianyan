@@ -55,18 +55,6 @@
                 <h2 id="input-conversion">输入与转换</h2>
                 <div class="card">
                     <div class="setting-item">
-                        <div class="info"><div class="title">首词固定</div><div class="desc">首位候选词位置固定，不随使用频率变化</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">自动造词</div><div class="desc">记录连续输入的新词组（超过一个字）</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">自动调频</div><div class="desc">根据输入频率调整候选词顺序</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-item">
                         <div class="info"><div class="title">分词分隔符</div><div class="desc">用于强制分割拼音音节的字符，如输入 "xi'an" 分为 "xi" 和 "an"</div></div>
                         <input type="text" id="segmentation_delimiters" style="width: 100px;" maxlength="5">
                     </div>
@@ -228,9 +216,6 @@
 
         async function initForm() {
             bindInput('enable_traditional', 'input');
-            bindInput('enable_fixed_first_candidate', 'input');
-            bindInput('enable_word_discovery', 'input');
-            bindInput('enable_auto_reorder', 'input');
             bindInput('segmentation_delimiters', 'input');
             bindInput('auto_commit_unique_full_match', 'input');
             bindInput('auto_sentence_min_syllables', 'input');

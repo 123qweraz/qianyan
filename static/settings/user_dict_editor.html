@@ -36,19 +36,23 @@
 
         <div class="note">
             <strong>💡 说明</strong><br>
-            用户词典保存在 <code>~/.config/qianyan-ime/user_data/&lt;方案名&gt;/</code> 目录下，共三个文件：<br>
-            • <code>learned.json</code> — <strong>用户词典</strong>（自动造词记录的用户新增词组）<br>
-            • <code>usage.json</code> — <strong>使用频率记录</strong>（自动调频数据）<br>
-            • <code>ngrams.json</code> — <strong>上下文联想记录</strong>（N-Gram 历史）<br>
-            删除某条用户词后，需要重新启动输入法才能完全生效。
+            • <strong>用户词典</strong> — 自动造词记录的自定义词组<br>
+            • <strong>使用频率</strong> — 自动调频数据，记录选词习惯<br>
+            • <strong>上下文联想</strong> — N-Gram 历史，记录前后词关联<br>
+            所有数据按语言方案分别存储，可通过下方标签页切换。<br>
+            删除或清空后需重启输入法才能完全生效。
         </div>
 
         <div class="toolbar">
-            <span style="font-weight:600;">📖 用户词典</span>
+            <span style="font-weight:600;">📖 词典浏览</span>
+            <select id="profile-filter" onchange="filterByProfile()" style="margin-left:10px;">
+                <option value="all">全部方案</option>
+            </select>
             <span class="stats-bar" id="stats-bar"></span>
             <div class="actions" style="margin-left:auto;">
-                <button class="btn" onclick="exportUserDict()">📥 导出备份</button>
-                <button class="btn btn-danger" onclick="clearUserDict()" style="color:var(--apple-red);">🗑 清空</button>
+                <button class="btn" onclick="exportUserDict()">📥 导出当前</button>
+                <button class="btn" onclick="clearCurrentProfile()" style="color:var(--apple-red);">🗑 清空当前方案</button>
+                <button class="btn btn-danger" onclick="clearUserDict()">🗑 清空全部</button>
             </div>
         </div>
 
@@ -72,6 +76,7 @@
 
     <script>
         let userDictEntries = [];
+        let filterProfile = 'all';
 
         async function init() {
             await loadUserDict();
@@ -85,12 +90,28 @@
                 return;
             }
             userDictEntries = await r.json();
-            renderUserDict(userDictEntries);
-            document.getElementById('stats-bar').textContent = userDictEntries.length + ' 条';
+            // Populate profile filter dropdown
+            const profiles = [...new Set(userDictEntries.map(e => e.profile))].sort();
+            const sel = document.getElementById('profile-filter');
+            sel.innerHTML = '<option value="all">全部方案</option>' +
+                profiles.map(p => `<option value="${p}">${p}</option>`).join('');
+            if (filterProfile !== 'all' && !profiles.includes(filterProfile)) filterProfile = 'all';
+            if (filterProfile !== 'all') sel.value = filterProfile;
+            renderUserDict();
         }
 
-        function renderUserDict(entries) {
+        function filterByProfile() {
+            filterProfile = document.getElementById('profile-filter').value;
+            renderUserDict();
+        }
+
+        function renderUserDict() {
             const tbody = document.getElementById('user-dict-body');
+            const entries = filterProfile === 'all'
+                ? userDictEntries
+                : userDictEntries.filter(e => e.profile === filterProfile);
+            document.getElementById('stats-bar').textContent =
+                `${entries.length} / ${userDictEntries.length} 条`;
             if (entries.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="no-data">用户词典为空</td></tr>';
                 return;
@@ -102,7 +123,7 @@
                     <td class="left cell-word">${esc(e.word)}</td>
                     <td class="center">${e.weight}</td>
                     <td class="center">
-                        <button class="btn-delete" onclick="deleteEntry(${idx})" title="删除">✕</button>
+                        <button class="btn-delete" onclick="deleteEntry(${userDictEntries.indexOf(e)})" title="删除">✕</button>
                     </td>
                 </tr>`
             ).join('');
@@ -125,10 +146,25 @@
             }
         }
 
+        async function clearCurrentProfile() {
+            if (filterProfile === 'all') {
+                showToast('请先选择要清空的方案', 'error');
+                return;
+            }
+            if (!confirm(`确定要清空 "${filterProfile}" 方案的所有用户词典吗？此操作无法撤销。`)) return;
+            const res = await fetch('/api/dict/clear_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile: filterProfile, all: true })
+            });
+            showToast(res.ok ? `"${filterProfile}" 词典已清空` : '清空失败', res.ok ? 'success' : 'error');
+            if (res.ok) loadUserDict();
+        }
+
         async function clearUserDict() {
-            if (!confirm('确定要清空所有用户词库数据吗？此操作无法撤销。')) return;
+            if (!confirm('确定要清空所有方案的用户词典数据吗？此操作无法撤销。')) return;
             const res = await fetch('/api/dict/clear_user', { method: 'POST' });
-            showToast(res.ok ? '用户词典已清空' : '清空失败', res.ok ? 'success' : 'error');
+            showToast(res.ok ? '所有用户词典已清空' : '清空失败', res.ok ? 'success' : 'error');
             if (res.ok) loadUserDict();
         }
 

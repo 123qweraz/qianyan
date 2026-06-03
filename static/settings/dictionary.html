@@ -66,6 +66,28 @@
         </header>
 
         <div class="card">
+            <h2>词典控制</h2>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用频率学习</div><div class="desc">记录选词习惯，根据使用频率调整候选词顺序。关闭后停止更新频率数据，已记录的频率继续生效直到手动清空</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的连续多字词自动加入用户词典。关闭后停止新增但不删除已有词</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">常用词自动置顶</div><div class="desc">使用3次以上的候选词自动跳到第一位，不受其他排序影响</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>启用的输入法方案</h2>
             <div class="setting-item" style="display: block;">
                 <div class="info">
@@ -113,6 +135,10 @@
     <script>
         async function init() {
             await loadConfig();
+
+            bindInput('enable_auto_reorder', 'input');
+            bindInput('enable_word_discovery', 'input');
+            bindInput('enable_fixed_first_candidate', 'input');
 
             const pc = document.getElementById('enabled_profiles_container');
             pc.innerHTML = config.files.profiles.map(p => `
