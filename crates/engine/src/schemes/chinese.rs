@@ -78,7 +78,7 @@ impl ChineseScheme {
     }
 
     fn get_fuzzy_variants(&self, pinyin: &str, context: &SchemeContext) -> Vec<String> {
-        if !context.config.input.enable_fuzzy_pinyin {
+        if !context.effective_fuzzy {
             if pinyin.bytes().all(|b| b.is_ascii_lowercase()) {
                 return vec![pinyin.to_string()];
             }

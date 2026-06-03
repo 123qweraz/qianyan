@@ -187,6 +187,8 @@ pub fn handle_composing(
             last_word,
             _filter_mode: ctx.session.filter_mode.clone(),
             _aux_filter: &ctx.session.aux_filter,
+            effective_fuzzy: ctx.session.fuzzy_activated
+                && ctx.config.master_config.input.enable_fuzzy_pinyin,
         };
         let act_opt: Option<Action> =
             scheme.handle_special_key(key, &mut ctx.session.buffer, &context);

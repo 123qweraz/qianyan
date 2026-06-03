@@ -172,17 +172,8 @@ impl SearchEngine {
             query.fuzzy_enabled
         );
 
-        let config_ref;
-        let mut cloned_config;
-        if query.fuzzy_enabled {
-            config_ref = query.config;
-        } else if query.config.input.enable_fuzzy_pinyin {
-            cloned_config = query.config.clone();
-            cloned_config.input.enable_fuzzy_pinyin = false;
-            config_ref = &cloned_config;
-        } else {
-            config_ref = query.config;
-        }
+        let config_ref = query.config;
+        let effective_fuzzy = query.fuzzy_enabled && query.config.input.enable_fuzzy_pinyin;
 
         if let Some(scheme) = self.schemes.get(query.profile) {
             let mut tries_map = HashMap::with_capacity(1);
@@ -203,6 +194,7 @@ impl SearchEngine {
                 last_word: query.context,
                 _filter_mode: query.filter_mode.clone(),
                 _aux_filter: query.aux_filter,
+                effective_fuzzy,
             };
 
             let pre_processed = scheme.pre_process(query.buffer, &context);
