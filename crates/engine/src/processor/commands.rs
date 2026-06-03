@@ -166,23 +166,28 @@ fn record_usage(
     let profile = ctx.session_state.get_current_profile();
     let word_len = word.chars().count();
 
+    // 反查系统词典获取正确拼音（兜底用原始 buffer）
+    let correct_pinyin = ctx.engine.get_or_load_trie(&profile)
+        .and_then(|t| t.lookup_pinyin(word).map(|s| s.to_string()))
+        .unwrap_or_else(|| pinyin.to_string());
+
     if ctx.config.enable_auto_reorder() {
         // 打错检测：如果上次上屏同拼音但不同词，给旧词做衰减
         if let Some((last_py, last_word)) = ctx.session_state.last_commit(10) {
-            if last_py == pinyin && last_word != word {
+            if last_py == &*correct_pinyin && last_word != word {
                 let decayed = learning::decay_mru(
                     &ctx.config.usage_history,
                     &profile,
-                    pinyin,
+                    &correct_pinyin,
                     last_word,
                 );
-                ctx.config.insert_usage(&profile, pinyin, &decayed);
+                ctx.config.insert_usage(&profile, &correct_pinyin, &decayed);
             }
         }
 
         let updated =
-            learning::update_mru(&ctx.config.usage_history, &profile, pinyin, word, false);
-        ctx.config.insert_usage(&profile, pinyin, &updated);
+            learning::update_mru(&ctx.config.usage_history, &profile, &correct_pinyin, word, false);
+        ctx.config.insert_usage(&profile, &correct_pinyin, &updated);
         ctx.engine.clear_cache();
     }
 
@@ -194,9 +199,8 @@ fn record_usage(
         }
     }
 
-    // 只有精确匹配（非自动组句、非简拼）才能进入用户词典
-    // 额外校验：拼音必须含元音，排除纯声母简拼键和英文乱打
-    let is_valid_pinyin = pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+    // 只有确认不在系统词典且拼音合法才学
+    let is_valid_pinyin = correct_pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
     if ctx.config.master_config.input.enable_word_discovery
         && is_valid_pinyin
         && word_len > 1
@@ -204,7 +208,7 @@ fn record_usage(
         && source.as_ref() != "Compose"
         && source.as_ref() != "Table (Abbr)"
     {
-        let updated = learning::update_mru(&ctx.config.learned_words, &profile, pinyin, word, true);
-        ctx.config.insert_learned(&profile, pinyin, &updated);
+        let updated = learning::update_mru(&ctx.config.learned_words, &profile, &correct_pinyin, word, true);
+        ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
     }
 }

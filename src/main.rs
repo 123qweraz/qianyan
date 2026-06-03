@@ -363,10 +363,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
                     }
                 }
-                qianyan_ime_ui::tray::TrayEvent::ClearUserDict => {
-                    let profiles = processor_clone.list_profiles().unwrap_or_default();
-                    for profile in profiles {
+                qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile_opt) => {
+                    if let Some(profile) = profile_opt {
                         processor_clone.clear_user_data(profile);
+                    } else {
+                        let profiles = processor_clone.list_profiles().unwrap_or_default();
+                        for profile in profiles {
+                            processor_clone.clear_user_data(profile);
+                        }
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::Exit => {

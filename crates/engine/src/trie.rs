@@ -1,6 +1,6 @@
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
@@ -37,6 +37,8 @@ pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
     word_index: Arc<OnceLock<HashSet<Box<str>>>>,
+    /// word → first pinyin mapping, built lazily with word_index
+    pinyin_index: Arc<OnceLock<HashMap<Box<str>, Box<str>>>>,
 }
 
 impl Trie {
@@ -68,6 +70,7 @@ impl Trie {
             index,
             data: data_data,
             word_index: Arc::new(OnceLock::new()),
+            pinyin_index: Arc::new(OnceLock::new()),
         })
     }
 
@@ -143,18 +146,36 @@ impl Trie {
         index.contains(word)
     }
 
-    /// 构建 word_index：遍历整个 FST，将每个数据块中的 word 收集到 HashSet 中
-    /// 使用 Box<str> 替代 Arc<str> 减少指针开销（每个词节省一次 Arc refcount 分配）
+    /// 构建 word_index + pinyin_index：遍历整个 FST，
+    /// 收集所有词的集合和每个词→第一个拼音的映射
     fn build_word_index(&self) -> HashSet<Box<str>> {
         // 预估 50000 词预分配，减少 rehash
         let mut words = HashSet::with_capacity(50000);
+        let mut pinyin_map = HashMap::with_capacity(50000);
         let mut stream = self.index.stream();
-        while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
+        while let Some((key, offset)) = fst::Streamer::next(&mut stream) {
+            let mut first_word = true;
             self.read_block(offset as usize, |tr| {
-                words.insert(Box::from(tr.word));
+                let word: Box<str> = Box::from(tr.word);
+                words.insert(word.clone());
+                if first_word {
+                    if let Ok(key_str) = std::str::from_utf8(key) {
+                        pinyin_map.entry(word.clone()).or_insert_with(|| Box::<str>::from(key_str));
+                    }
+                    first_word = false;
+                }
             });
         }
+        // 静默设置 pinyin_index
+        let _ = self.pinyin_index.set(pinyin_map);
         words
+    }
+
+    /// 反查某个词的拼音（从系统词典），用于用户词学习时获取正确拼音
+    pub fn lookup_pinyin(&self, word: &str) -> Option<&str> {
+        // 触发 word_index 构建（顺带构建 pinyin_index）
+        self.word_index.get_or_init(|| self.build_word_index());
+        self.pinyin_index.get().and_then(|m| m.get(word).map(|s| s.as_ref()))
     }
 
     pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {

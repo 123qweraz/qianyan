@@ -1047,7 +1047,7 @@ async fn clear_user_dict(State((_, _, tray_tx)): State<WebState>) -> StatusCode 
         }
     }
     // 通知主线程清空内存中的用户词典
-    let _ = tray_tx.send(TrayEvent::ClearUserDict);
+    let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
     StatusCode::OK
 }
 
@@ -1187,7 +1187,7 @@ async fn delete_user_dict_entry(
         return StatusCode::NOT_FOUND;
     }
     if std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default()).is_ok() {
-        let _ = tray_tx.send(TrayEvent::ClearUserDict); // 触发内存重载
+        let _ = tray_tx.send(TrayEvent::ClearUserDict(None)); // 触发内存重载
         StatusCode::OK
     } else {
         StatusCode::INTERNAL_SERVER_ERROR
