@@ -4620,6 +4620,7 @@ dependencies = [
  "encoding_rs",
  "encoding_rs_io",
  "i-slint-core",
+ "i-slint-renderer-skia",
  "image 0.24.9",
  "ksni",
  "log",

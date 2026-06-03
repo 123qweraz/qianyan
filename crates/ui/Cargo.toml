@@ -24,6 +24,7 @@ encoding_rs_io = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 i-slint-core = { version = "1" }
+i-slint-renderer-skia = { version = "1", default-features = false }
 notify-rust = { workspace = true }
 ksni = { workspace = true }
 x11rb = { version = "0.13", features = ["allow-unsafe-code"] }

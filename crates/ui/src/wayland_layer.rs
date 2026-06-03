@@ -1,10 +1,12 @@
 use crate::CandidateDisplay;
 use qianyan_ime_core::Config;
 use slint::ComponentHandle;
+use std::cell::{Cell, RefCell};
+use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use smithay_client_toolkit::output::{OutputHandler, OutputState};
 use smithay_client_toolkit::registry::{ProvidesRegistryState, RegistryState};
@@ -31,6 +33,8 @@ use wayland_client::protocol::wl_output::WlOutput;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 
 use i_slint_core::window::{WindowAdapter, WindowInner};
+use i_slint_renderer_skia::software_surface::{RenderBuffer, SoftwareSurface};
+use i_slint_renderer_skia::{skia_safe, SkiaRenderer, SkiaSharedContext};
 
 slint::include_modules!();
 
@@ -51,12 +55,6 @@ impl OffscreenWindow {
             size: std::cell::Cell::new(slint::PhysicalSize::default()),
             needs_redraw: std::cell::Cell::new(false),
         })
-    }
-}
-
-impl OffscreenWindow {
-    fn software_renderer(&self) -> &slint::platform::software_renderer::SoftwareRenderer {
-        &self.renderer
     }
 }
 
@@ -175,6 +173,105 @@ impl PixelPool {
         if pool.len() < 8 {
             pool.push(v);
         }
+    }
+}
+
+// ---- Skia CPU offscreen render buffer ----
+
+struct WaylandRenderBuffer {
+    pixel_pool: PixelPool,
+    wl_tx: Mutex<Option<mpsc::SyncSender<WlCmd>>>,
+    last_x: Cell<i32>,
+    last_y: Cell<i32>,
+    window_visible: Cell<bool>,
+    fixed_position: Cell<bool>,
+    corner: RefCell<String>,
+    fixed_x: Cell<i32>,
+    fixed_y: Cell<i32>,
+}
+
+impl WaylandRenderBuffer {
+    fn compute_anchor(&self, w: u32, h: u32) -> (Anchor, i32, i32) {
+        if self.fixed_position.get() {
+            let corner = self.corner.borrow();
+            match corner.as_str() {
+                "top-right" => (Anchor::TOP | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
+                "bottom-left" => (Anchor::BOTTOM | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
+                "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
+                _ => (Anchor::TOP | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
+            }
+        } else {
+            let cursor_x = self.last_x.get();
+            let cursor_y = self.last_y.get();
+            let (sw, sh) = Self::screen_size();
+            let w32 = w as i32;
+            let h32 = h as i32;
+            let offset = 20i32;
+            let use_bottom = cursor_y + offset + h32 > sh;
+            let use_right = cursor_x + w32 > sw;
+            let anchor_v = if use_bottom { Anchor::BOTTOM } else { Anchor::TOP };
+            let anchor_h = if use_right { Anchor::RIGHT } else { Anchor::LEFT };
+            (
+                anchor_v | anchor_h,
+                if use_bottom { sh - cursor_y } else { cursor_y + offset },
+                if use_right { sw - cursor_x } else { cursor_x },
+            )
+        }
+    }
+
+    fn screen_size() -> (i32, i32) {
+        if let Ok(out) = std::process::Command::new("xdotool")
+            .arg("getdisplaygeometry").output()
+        {
+            if let Ok(s) = String::from_utf8(out.stdout) {
+                let parts: Vec<&str> = s.trim().split_whitespace().collect();
+                if parts.len() == 2 {
+                    if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
+                        return (w, h);
+                    }
+                }
+            }
+        }
+        (1920, 1080)
+    }
+}
+
+impl RenderBuffer for WaylandRenderBuffer {
+    fn with_buffer(
+        &self,
+        _window: &slint::Window,
+        size: slint::PhysicalSize,
+        render_callback: &mut dyn FnMut(
+            NonZeroU32, NonZeroU32,
+            skia_safe::ColorType, u8,
+            &mut [u8],
+        ) -> Result<Option<i_slint_core::partial_renderer::DirtyRegion>, i_slint_core::platform::PlatformError>,
+    ) -> Result<(), i_slint_core::platform::PlatformError> {
+        let w = size.width;
+        let h = size.height;
+        let pixel_count = (w * h) as usize;
+        let mut pixels = self.pixel_pool.get(pixel_count * 4);
+
+        let Some(width) = NonZeroU32::new(w) else { return Ok(()); };
+        let Some(height) = NonZeroU32::new(h) else { return Ok(()); };
+
+        // Skia renders in BGRA8888 format — ready for wl_shm::Argb8888, no swizzle needed
+        let _ = render_callback(width, height, skia_safe::ColorType::BGRA8888, 0, &mut pixels)?;
+
+        if self.window_visible.get() {
+            let (anchor, margin_a, margin_b) = self.compute_anchor(w, h);
+            if let Some(ref tx) = *self.wl_tx.lock().unwrap() {
+                let cmd = WlCmd::ShowCandidate {
+                    x: margin_b, y: margin_a, w, h, anchor, pixels,
+                };
+                let _ = tx.send(cmd);
+            }
+            // pixels now owned by Wayland thread (returned to pool after use)
+        } else {
+            self.pixel_pool.put(pixels);
+        }
+
+        Ok(())
     }
 }
 
@@ -611,7 +708,8 @@ struct WlThread {
 }
 
 pub struct WaylandLayerDisplay {
-    renderer_ptr: *const slint::platform::software_renderer::SoftwareRenderer,
+    skia_renderer: SkiaRenderer,
+    render_buffer: Rc<WaylandRenderBuffer>,
     candidate_window: CandidateWindow,
     config: Config,
     window_visible: bool,
@@ -620,7 +718,6 @@ pub struct WaylandLayerDisplay {
     last_y: i32,
     wl: Option<WlThread>,
     wl_join: Option<std::thread::JoinHandle<()>>,
-    pixel_pool: PixelPool,
 }
 
 impl WaylandLayerDisplay {
@@ -633,25 +730,38 @@ impl WaylandLayerDisplay {
 
         let candidate_window = CandidateWindow::new().ok()?;
 
-        // Set initial sizes for the layer surfaces before any content arrives.
         candidate_window.window().set_size(slint::WindowSize::Physical(slint::PhysicalSize::new(100, 100)));
         slint::platform::update_timers_and_animations();
-
-        // Get the renderer from the offscreen window adapter.
-        // WindowAdapter requires Any as supertrait, so transmute is valid.
-        // SAFETY: adapter points to an OffscreenWindow (we created it in the platform).
-        // Rc::as_ptr returns the data pointer of the trait object.
-        let inner = WindowInner::from_pub(candidate_window.window());
-        let adapter = inner.window_adapter();
-        let ow: &OffscreenWindow = unsafe {
-            let raw: *const dyn WindowAdapter = &*adapter;
-            &*(raw as *const OffscreenWindow)
-        };
-        let renderer_ptr = ow.software_renderer() as *const slint::platform::software_renderer::SoftwareRenderer;
 
         let pixel_pool = PixelPool::new();
         let pixel_pool_clone = pixel_pool.clone();
         let (tx, rx) = mpsc::sync_channel(2);
+
+        // Create Skia CPU renderer with custom Wayland render buffer
+        let render_buffer = Rc::new(WaylandRenderBuffer {
+            pixel_pool: pixel_pool.clone(),
+            wl_tx: Mutex::new(Some(tx.clone())),
+            last_x: Cell::new(0),
+            last_y: Cell::new(0),
+            window_visible: Cell::new(false),
+            fixed_position: Cell::new(config.linux.fixed_position),
+            corner: RefCell::new(config.linux.corner.clone()),
+            fixed_x: Cell::new(config.linux.fixed_x),
+            fixed_y: Cell::new(config.linux.fixed_y),
+        });
+
+        let skia_context = SkiaSharedContext::default();
+        let surface = SoftwareSurface::from(render_buffer.clone());
+        let skia_renderer = SkiaRenderer::new_with_surface(&skia_context, Box::new(surface));
+
+        // Associate Skia renderer with the offscreen window adapter
+        let inner = WindowInner::from_pub(candidate_window.window());
+        {
+            use i_slint_core::renderer::RendererSealed;
+            let adapter = inner.window_adapter();
+            skia_renderer.set_window_adapter(&adapter);
+        }
+
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
             .spawn(move || wl_thread_main(rx, pixel_pool_clone));
@@ -659,7 +769,8 @@ impl WaylandLayerDisplay {
         let candidate_enabled = config.linux.show_slint_window;
 
         let display = Self {
-            renderer_ptr,
+            skia_renderer,
+            render_buffer,
             candidate_window,
             config: config.clone(),
             window_visible: false,
@@ -668,74 +779,18 @@ impl WaylandLayerDisplay {
             last_y: 0,
             wl: join.as_ref().ok().map(|_| WlThread { cmd_tx: tx }),
             wl_join: join.ok(),
-            pixel_pool,
         };
 
         display.apply_style(&config);
         Some(display)
     }
 
-    fn renderer(&self) -> &slint::platform::software_renderer::SoftwareRenderer {
-        unsafe { &*self.renderer_ptr }
-    }
-
-    fn screen_size() -> (i32, i32) {
-        if let Ok(out) = std::process::Command::new("xdotool")
-            .arg("getdisplaygeometry")
-            .output()
-        {
-            if let Ok(s) = String::from_utf8(out.stdout) {
-                let parts: Vec<&str> = s.trim().split_whitespace().collect();
-                if parts.len() == 2 {
-                    if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
-                        return (w, h);
-                    }
-                }
-            }
-        }
-        (1920, 1080)
-    }
-
-    fn render_and_send_candidate(&self, w: u32, h: u32) {
+    fn render_and_send_candidate(&self, _w: u32, _h: u32) {
         if self.window_visible && self.wl.is_some() {
-            let _window = self.candidate_window.window();
-            
-            let pixel_count = (w * h) as usize;
-            let mut pixels = self.pixel_pool.get(pixel_count * 4);
-            
-            let buf: &mut [slint::platform::software_renderer::PremultipliedRgbaColor] =
-                bytemuck::cast_slice_mut(&mut pixels);
-            self.renderer().render(buf, w as usize);
-
-            // RGBA → BGRA conversion is done during SHM copy in submit_to_layer
-
-            let (anchor, margin_a, margin_b) = if self.config.linux.fixed_position {
-                match self.config.linux.corner.as_str() {
-                    "top-right" => (Anchor::TOP | Anchor::RIGHT, self.config.linux.fixed_y, self.config.linux.fixed_x),
-                    "bottom-left" => (Anchor::BOTTOM | Anchor::LEFT, self.config.linux.fixed_y, self.config.linux.fixed_x),
-                    "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, self.config.linux.fixed_y, self.config.linux.fixed_x),
-                    _ => (Anchor::TOP | Anchor::LEFT, self.config.linux.fixed_y, self.config.linux.fixed_x),
-                }
-            } else {
-                let cursor_x = self.last_x;
-                let cursor_y = self.last_y;
-                let (sw, sh) = Self::screen_size();
-                let w32 = w as i32;
-                let h32 = h as i32;
-                let offset = 20i32;
-                let use_bottom = cursor_y + offset + h32 > sh;
-                let use_right = cursor_x + w32 > sw;
-                let anchor_v = if use_bottom { Anchor::BOTTOM } else { Anchor::TOP };
-                let anchor_h = if use_right { Anchor::RIGHT } else { Anchor::LEFT };
-                let anchor = anchor_v | anchor_h;
-                let margin_a = if use_bottom { sh - cursor_y } else { cursor_y + offset };
-                let margin_b = if use_right { sw - cursor_x } else { cursor_x };
-                (anchor, margin_a, margin_b)
-            };
-
-            let cmd = WlCmd::ShowCandidate { x: margin_b, y: margin_a, w, h, anchor, pixels };
-            if let Err(e) = self.wl.as_ref().unwrap().cmd_tx.send(cmd) {
-                log::error!("Wayland channel disconnected: {e:?}");
+            // Skia CPU renders into our WaylandRenderBuffer, which sends pixels
+            // directly to the Wayland thread — no manual pixel handling needed
+            if let Err(e) = self.skia_renderer.render() {
+                log::error!("Skia render failed: {e}");
             }
         } else if let Some(ref wl) = self.wl {
             let _ = wl.cmd_tx.send(WlCmd::HideCandidate);
@@ -891,6 +946,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
     fn move_to(&mut self, x: i32, y: i32) {
         self.last_x = x;
         self.last_y = y;
+        self.render_buffer.last_x.set(x);
+        self.render_buffer.last_y.set(y);
         // Position update is deferred to the next render call
         // (update_candidates or set_visible). This avoids double-rendering
         // when move_to()+update_candidates() are called in sequence.
@@ -903,6 +960,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
         }
         log::info!("Candidate window visibility: {} -> {}", self.window_visible, effective);
         self.window_visible = effective;
+        self.render_buffer.window_visible.set(effective);
         self.candidate_window.set_is_visible(effective);
         if effective {
             let size = self.candidate_window.window().size();
@@ -915,6 +973,10 @@ impl CandidateDisplay for WaylandLayerDisplay {
     fn apply_config(&mut self, config: &Config) {
         self.config = config.clone();
         self.candidate_enabled = config.linux.show_slint_window;
+        self.render_buffer.fixed_position.set(config.linux.fixed_position);
+        *self.render_buffer.corner.borrow_mut() = config.linux.corner.clone();
+        self.render_buffer.fixed_x.set(config.linux.fixed_x);
+        self.render_buffer.fixed_y.set(config.linux.fixed_y);
         self.apply_style(config);
         if self.window_visible {
             let size = self.candidate_window.window().size();
