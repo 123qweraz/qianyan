@@ -24,14 +24,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }));
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    // 在 Linux 下默认使用 software 渲染后端以提高兼容性，除非用户显式设置了 SLINT_BACKEND
-    if cfg!(target_os = "linux") {
-        if std::env::var("SLINT_BACKEND").is_err() {
-            std::env::set_var("SLINT_BACKEND", "software");
-        }
-    } else {
-        std::env::set_var("SLINT_BACKEND", "skia");
-    }
+    // Linux/Wayland now uses Slint's winit backend (native windows, no layer shell).
+    // GPU rendering (Skia) is available by setting SLINT_BACKEND=winit-skia.
+    // When GPU is unavailable, Slint automatically falls back to CPU rendering.
 
     let args: Vec<String> = env::args().collect();
     let should_daemonize = match qianyan_ime_linux::cli::handle_startup(&args)? {

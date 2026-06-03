@@ -322,24 +322,11 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     let mut displays: Vec<Box<dyn CandidateDisplay>> = Vec::new();
     log::debug!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
 
-    // On Wayland, use layer-shell overlay instead of Slint winit windows
-    // to avoid taskbar icons. Fall back to SlintDisplay if layer shell is
-    // unavailable (e.g. compositor like niri doesn't support zwlr_layer_shell_v1).
-    #[cfg(target_os = "linux")]
-    if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
-            log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay");
-            displays.push(Box::new(wl_display));
-        } else {
-            log::warn!("WaylandLayerDisplay failed, falling back to Slint window (XWayland)");
-            displays.push(Box::new(SlintDisplay::new(config.clone())));
-        }
-    } else {
-        log::debug!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");
-        displays.push(Box::new(SlintDisplay::new(config.clone())));
-    }
-
-    #[cfg(not(target_os = "linux"))]
+    // Use SlintDisplay (winit backend) on all platforms.
+    // On Wayland, winit creates xdg_toplevel windows natively —
+    // no XWayland required, but taskbar icons may appear.
+    // GPU rendering (Skia) is available when SLINT_BACKEND=winit-skia,
+    // falling back to CPU rendering automatically.
     displays.push(Box::new(SlintDisplay::new(config.clone())));
 
     if cfg!(target_os = "linux") && (config.linux.show_notification || config.linux.show_toggle_notification) {
