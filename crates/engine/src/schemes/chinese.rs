@@ -220,8 +220,11 @@ impl InputScheme for ChineseScheme {
                     for py in &pinyin_variants {
                         if let Some(m) = d.get_all_exact(py) {
                             let mut exact: Vec<_> = m.iter().collect();
-                            exact.sort_by(|a, b| b.weight.cmp(&a.weight));
-                            for tr in exact.iter().take(min_results_needed) {
+                            let n = exact.len().min(min_results_needed);
+                            if n > 0 {
+                                exact.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
+                            }
+                            for tr in exact.iter().take(n) {
                                 matches.push((
                                     tr.word.to_string(),
                                     tr.trad.to_string(),
