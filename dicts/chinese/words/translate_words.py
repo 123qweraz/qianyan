@@ -5,8 +5,8 @@ import os
 import sys
 
 # --- Configuration ---
-INPUT_FILE = 'low_freq.txt'
-OUTPUT_FILE = 'low_freq_trans.txt'
+INPUT_FILE = 'to_retranslate.txt'
+OUTPUT_FILE = 'to_retranslate_trans.txt'
 CHECKPOINT_FILE = 'translation_checkpoint.json'
 MODEL_NAME = 'granite4.1:3b'  # Updated to the exact name found
 BATCH_SIZE = 30               # Reduced to 5 for faster individual responses

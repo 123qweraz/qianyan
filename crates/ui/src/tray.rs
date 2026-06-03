@@ -17,7 +17,7 @@ pub enum TrayEvent {
         active_profile: String,
     },
     ShowNotification(String),
-    ClearUserDict,
+    ClearUserDict(Option<String>),
     SendKey(String), // key code like "a", "Enter", "Backspace"
     SetProfile(String),
 }
