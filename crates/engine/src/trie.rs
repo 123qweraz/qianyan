@@ -189,9 +189,13 @@ impl Trie {
             });
         }
 
-        // 按 weight 降序排列，取前 limit 条（避免存储顺序导致高权重词被遗漏）
-        results.sort_by(|a, b| b.weight.cmp(&a.weight));
-        results.truncate(limit);
+        // 部分排序仅取 Top-K，避免对全部结果全排序
+        let n = results.len().min(limit);
+        if n > 0 {
+            results.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
+            results.truncate(n);
+            results.sort_by(|a, b| b.weight.cmp(&a.weight));
+        }
         results
     }
 
