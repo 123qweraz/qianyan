@@ -559,7 +559,7 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
 fn submit_to_layer(
     pool: &mut SlotPool,
     layer: &LayerSurface,
-    pixels: &[u8],
+    pixels_rgba: &[u8],   // input is RGBA, will be converted to BGRA on copy
     width: u32,
     height: u32,
 ) {
@@ -570,10 +570,9 @@ fn submit_to_layer(
         let new_size = needed.next_power_of_two().max(1024 * 1024);
         if new_size > MAX_POOL_SIZE {
             log::error!("SHM pool would exceed {}MB, halving render size", MAX_POOL_SIZE / 1024 / 1024);
-            // Retry with half resolution
             let hw = (width / 2).max(1);
             let hh = (height / 2).max(1);
-            submit_to_layer(pool, layer, pixels, hw, hh);
+            submit_to_layer(pool, layer, pixels_rgba, hw, hh);
             return;
         }
         log::info!("SHM pool resize: {} -> {} (needed={})", pool.len(), new_size, needed);
@@ -581,13 +580,21 @@ fn submit_to_layer(
             log::error!("Failed to resize SHM pool, trying with smaller buffer");
             let hw = (width / 2).max(1);
             let hh = (height / 2).max(1);
-            submit_to_layer(pool, layer, pixels, hw, hh);
+            submit_to_layer(pool, layer, pixels_rgba, hw, hh);
             return;
         }
     }
     if let Ok((buffer, canvas)) = pool.create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888) {
-        let n = canvas.len().min(pixels.len());
-        canvas[..n].copy_from_slice(&pixels[..n]);
+        // Merge swizzle (RGBA→BGRA) into copy — single traversal instead of two
+        let n = canvas.len().min(pixels_rgba.len());
+        let src = &pixels_rgba[..n];
+        let dst = &mut canvas[..n];
+        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+            d[0] = s[2]; // B = R
+            d[1] = s[1]; // G = G
+            d[2] = s[0]; // R = B
+            d[3] = s[3]; // A = A
+        }
         if buffer.attach_to(layer.wl_surface()).is_err() {
             log::error!("Failed to attach buffer to layer surface");
             return;
@@ -700,10 +707,7 @@ impl WaylandLayerDisplay {
                 bytemuck::cast_slice_mut(&mut pixels);
             self.renderer().render(buf, w as usize);
 
-            // RGBA -> BGRA for wl_shm Argb8888
-            for pixel in pixels.chunks_exact_mut(4) {
-                pixel.swap(0, 2);
-            }
+            // RGBA → BGRA conversion is done during SHM copy in submit_to_layer
 
             let (anchor, margin_a, margin_b) = if self.config.linux.fixed_position {
                 match self.config.linux.corner.as_str() {
