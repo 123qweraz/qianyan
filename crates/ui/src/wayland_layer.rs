@@ -209,21 +209,8 @@ impl WaylandRenderBuffer {
                 _ => (Anchor::TOP | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
             }
         } else {
-            let cursor_x = self.last_x.get();
-            let cursor_y = self.last_y.get();
             let (sw, sh) = Self::screen_size();
-            let w32 = w as i32;
-            let h32 = h as i32;
-            let offset = 20i32;
-            let use_bottom = cursor_y + offset + h32 > sh;
-            let use_right = cursor_x + w32 > sw;
-            let anchor_v = if use_bottom { Anchor::BOTTOM } else { Anchor::TOP };
-            let anchor_h = if use_right { Anchor::RIGHT } else { Anchor::LEFT };
-            (
-                anchor_v | anchor_h,
-                if use_bottom { sh - cursor_y } else { cursor_y + offset },
-                if use_right { sw - cursor_x } else { cursor_x },
-            )
+            calc_anchor(self.last_x.get(), self.last_y.get(), w, h, sw, sh)
         }
     }
 
@@ -242,6 +229,19 @@ impl WaylandRenderBuffer {
         }
         (1920, 1080)
     }
+}
+
+/// Calculate wayland layer anchor and margins based on cursor position.
+fn calc_anchor(cx: i32, cy: i32, w: u32, h: u32, sw: i32, sh: i32) -> (Anchor, i32, i32) {
+    let ow = 20i32;
+    let use_bottom = cy + ow + h as i32 > sh;
+    let use_right = cx + w as i32 > sw;
+    (
+        if use_bottom { Anchor::BOTTOM } else { Anchor::TOP }
+        | if use_right { Anchor::RIGHT } else { Anchor::LEFT },
+        if use_bottom { sh - cy } else { cy + ow },
+        if use_right { sw - cx } else { cx },
+    )
 }
 
 impl RenderBuffer for WaylandRenderBuffer {
@@ -715,22 +715,22 @@ fn submit_to_layer(
         }
     }
     if let Ok((buffer, canvas)) = pool.create_buffer(width as i32, height as i32, stride, wl_shm::Format::Argb8888) {
-        // Merge swizzle (RGBA→BGRA) into copy — single traversal instead of two
-        let n = canvas.len().min(pixels_rgba.len());
-        let src = &pixels_rgba[..n];
-        let dst = &mut canvas[..n];
-        for (s, d) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-            d[0] = s[2]; // B = R
-            d[1] = s[1]; // G = G
-            d[2] = s[0]; // R = B
-            d[3] = s[3]; // A = A
-        }
+        // Merge swizzle (RGBA→BGRA) into SHM copy — single pass
+        swizzle_rgba_to_bgra(pixels_rgba, canvas);
         if buffer.attach_to(layer.wl_surface()).is_err() {
             log::error!("Failed to attach buffer to layer surface");
             return;
         }
         layer.wl_surface().damage_buffer(0, 0, width as i32, height as i32);
         layer.commit();
+    }
+}
+
+/// Copy RGBA pixels to BGRA canvas (wl_shm::Argb8888 is BGRA in memory).
+fn swizzle_rgba_to_bgra(src: &[u8], dst: &mut [u8]) {
+    let n = dst.len().min(src.len());
+    for (s, d) in src[..n].chunks_exact(4).zip(dst[..n].chunks_exact_mut(4)) {
+        d[0] = s[2]; d[1] = s[1]; d[2] = s[0]; d[3] = s[3];
     }
 }
 
@@ -1028,5 +1028,112 @@ impl Drop for WaylandLayerDisplay {
         if let Some(handle) = self.wl_join.take() {
             let _ = handle.join();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── calc_anchor tests ──
+
+    #[test]
+    fn anchor_top_left_when_room() {
+        let (anchor, margin_y, margin_x) = calc_anchor(200, 200, 300, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::TOP | Anchor::LEFT);
+        assert_eq!(margin_y, 220);
+        assert_eq!(margin_x, 200);
+    }
+
+    #[test]
+    fn anchor_bottom_when_overflow() {
+        // 1000 + 20 + 100 = 1120 > 1080 → bottom
+        let (anchor, margin_y, margin_x) = calc_anchor(100, 1000, 200, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::BOTTOM | Anchor::LEFT);
+        assert_eq!(margin_y, 80); // 1080 - 1000
+        assert_eq!(margin_x, 100);
+    }
+
+    #[test]
+    fn anchor_right_when_overflow() {
+        // 1800 + 300 = 2100 > 1920 → right
+        let (anchor, margin_y, margin_x) = calc_anchor(1800, 200, 300, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::TOP | Anchor::RIGHT);
+        assert_eq!(margin_y, 220);
+        assert_eq!(margin_x, 120); // 1920 - 1800
+    }
+
+    #[test]
+    fn anchor_bottom_right_both_overflow() {
+        let (anchor, margin_y, margin_x) = calc_anchor(1800, 1000, 300, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::BOTTOM | Anchor::RIGHT);
+        assert_eq!(margin_y, 80);
+        assert_eq!(margin_x, 120);
+    }
+
+    #[test]
+    fn anchor_no_overflow_at_boundary() {
+        // 1620 + 300 = 1920 → exact boundary (no overflow)
+        // 960 + 20 + 100 = 1080 → exact boundary (no overflow)
+        let (anchor, margin_y, margin_x) = calc_anchor(1620, 960, 300, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::TOP | Anchor::LEFT);
+        assert_eq!(margin_y, 980);
+        assert_eq!(margin_x, 1620);
+    }
+
+    #[test]
+    fn anchor_zero_zero_cursor() {
+        let (anchor, margin_y, margin_x) = calc_anchor(0, 0, 300, 100, 1920, 1080);
+        assert_eq!(anchor, Anchor::TOP | Anchor::LEFT);
+        assert_eq!(margin_y, 20);
+        assert_eq!(margin_x, 0);
+    }
+
+    // ── swizzle_rgba_to_bgra tests ──
+
+    #[test]
+    fn swizzle_single_pixel() {
+        let src = [0xAA, 0xBB, 0xCC, 0xDD]; // R=A, G=B, B=C, A=D
+        let mut dst = [0u8; 4];
+        swizzle_rgba_to_bgra(&src, &mut dst);
+        assert_eq!(dst, [0xCC, 0xBB, 0xAA, 0xDD]); // B=C, G=B, R=A, A=D
+    }
+
+    #[test]
+    fn swizzle_two_pixels() {
+        let src = [0x01, 0x02, 0x03, 0x04, 0x10, 0x20, 0x30, 0x40];
+        let mut dst = [0u8; 8];
+        swizzle_rgba_to_bgra(&src, &mut dst);
+        assert_eq!(dst, [0x03, 0x02, 0x01, 0x04, 0x30, 0x20, 0x10, 0x40]);
+    }
+
+    #[test]
+    fn swizzle_dst_longer_than_src() {
+        let src = [0x01, 0x02, 0x03, 0x04];
+        let mut dst = [0xFF; 8];
+        swizzle_rgba_to_bgra(&src, &mut dst);
+        // Only first 4 bytes swizzled, rest untouched
+        assert_eq!(dst, [0x03, 0x02, 0x01, 0x04, 0xFF, 0xFF, 0xFF, 0xFF]);
+    }
+
+    #[test]
+    fn swizzle_src_longer_than_dst() {
+        let src = [0x01, 0x02, 0x03, 0x04, 0x10, 0x20, 0x30, 0x40];
+        let mut dst = [0u8; 4];
+        swizzle_rgba_to_bgra(&src, &mut dst);
+        assert_eq!(dst, [0x03, 0x02, 0x01, 0x04]);
+    }
+
+    #[test]
+    fn swizzle_empty() {
+        swizzle_rgba_to_bgra(&[], &mut []);
+    }
+
+    #[test]
+    fn swizzle_transparent_pixel() {
+        let src = [0xFF, 0x00, 0x00, 0x00]; // Red, fully transparent
+        let mut dst = [0u8; 4];
+        swizzle_rgba_to_bgra(&src, &mut dst);
+        assert_eq!(dst, [0x00, 0x00, 0xFF, 0x00]); // alpha preserved
     }
 }
