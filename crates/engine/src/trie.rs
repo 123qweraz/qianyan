@@ -205,6 +205,7 @@ impl Trie {
     }
 
     /// 带等级过滤的通配符搜索
+    /// 优化：提取非通配符前缀利用 FST prefix search 剪枝，避免全表扫描
     pub fn search_wildcard_with_level_filter(
         &self,
         pattern: &str,
@@ -214,15 +215,19 @@ impl Trie {
         let mut results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        // 简单的 DFS 实现通配符匹配
-        let mut stream = self.index.stream();
+        let prefix = self.wildcard_prefix(pattern);
+        let matcher = fst::automaton::Str::new(prefix).starts_with();
+        let mut stream = self.index.search(matcher).into_stream();
+
         while let Some((key_bytes, offset)) = stream.next() {
-            let key = String::from_utf8_lossy(key_bytes);
-            if self.wildcard_match(pattern, &key) {
+            let key = match std::str::from_utf8(key_bytes) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            if Self::wildcard_match(pattern, key) {
                 let mut stop = false;
                 self.read_block(offset as usize, |pair| {
                     if !stop && seen.insert(pair.word) {
-                        // 应用等级过滤
                         if let Some(filter_level) = level_filter {
                             if pair.stroke_aux == filter_level {
                                 results.push(pair);
@@ -246,22 +251,28 @@ impl Trie {
         results
     }
 
-    fn wildcard_match(&self, pattern: &str, key: &str) -> bool {
-        let p_chars: Vec<char> = pattern.chars().collect();
-        let k_chars: Vec<char> = key.chars().collect();
+    /// 提取 pattern 中第一个 'z' 之前的前缀，用于 FST prefix 搜索剪枝
+    fn wildcard_prefix<'a>(&self, pattern: &'a str) -> &'a str {
+        match pattern.find('z') {
+            Some(pos) if pos > 0 => &pattern[..pos],
+            _ => "",
+        }
+    }
 
-        // 如果 pattern 不包含通配符且不是 key 的前缀，快速失败
+    fn wildcard_match(pattern: &str, key: &str) -> bool {
+        // 如果 pattern 不包含通配符，就是简单前缀匹配
         if !pattern.contains('z') {
             return key.starts_with(pattern);
         }
 
-        // 简易正则逻辑：z 匹配任意 1 个字符
-        if p_chars.len() > k_chars.len() {
+        // 逐字节比较（拼音只含 ASCII 字符），z 匹配任意单个字母
+        let p = pattern.as_bytes();
+        let k = key.as_bytes();
+        if p.len() > k.len() {
             return false;
         }
-
-        for i in 0..p_chars.len() {
-            if p_chars[i] != 'z' && p_chars[i] != k_chars[i] {
+        for i in 0..p.len() {
+            if p[i] != b'z' && p[i] != k[i] {
                 return false;
             }
         }
