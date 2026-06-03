@@ -185,11 +185,12 @@ impl InputScheme for ChineseScheme {
         let min_results_needed = 500;
         let max_results = 500;
 
+        let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
+
     // 用户词典精确匹配（最高优先级，排在最前）
     // 前缀匹配延后到所有策略之后，避免阻塞简拼/组句/纠错
     let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
     if let Some(profile) = context.active_profiles.first() {
-        let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
         let dict = context.user_dict.load();
         if let Some(profile_dict) = dict.get(profile) {
             let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
@@ -359,8 +360,7 @@ impl InputScheme for ChineseScheme {
         if final_results.is_empty()
             && context.config.input.enable_abbreviation_matching
         {
-            let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
-            let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_only, context.syllables);
+            let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, context.syllables);
             if abbr_segs.len() > 1 {
                 if let Some(d) = context.tries.get("chinese") {
                     let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, context.syllables, 200);
@@ -403,9 +403,8 @@ impl InputScheme for ChineseScheme {
 
         // 策略 3: 长句组合（ComposeTranslator）
         if !query.contains(' ') && !raw_parsed.is_empty() {
-            let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
             if let Some(d) = context.tries.get("chinese") {
-                let base = self.segment_base(&pinyin_only, context.base_syllables);
+                let base = self.segment_base(&pinyin_key, context.base_syllables);
                 let min_syllables = context.config.input.auto_sentence_min_syllables as usize;
                 let min_syllables = min_syllables.max(2);
                 if base.len() >= 2 && base.len() <= 12
@@ -458,7 +457,7 @@ impl InputScheme for ChineseScheme {
 
         // 策略 4: 纠错 — 所有策略无结果时，用编辑距离找最近的 key
         if final_results.is_empty() && !query.contains(' ') {
-            let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
+            let pinyin_only = &pinyin_key;
             if let Some(d) = context.tries.get("chinese") {
                 if let Ok(lev) = Levenshtein::new(&pinyin_only, 1u32) {
                     // FST Levenshtein 自动机已保证所有返回 key 的距离 ≤ 1
