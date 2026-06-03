@@ -31,6 +31,7 @@ use wayland_client::protocol::wl_shm;
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::protocol::wl_output::WlOutput;
 use wayland_client::{Connection, Dispatch, QueueHandle};
+use std::os::fd::AsRawFd;
 
 use i_slint_core::window::WindowAdapter;
 use i_slint_renderer_skia::software_surface::{RenderBuffer, SoftwareSurface};
@@ -589,6 +590,7 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
     log::debug!("[WL_DEBUG] Wayland init done, entering main loop");
 
     loop {
+        // Process all pending GUI commands
         loop {
             match rx.try_recv() {
                 Ok(cmd) => match cmd {
@@ -613,7 +615,6 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                         } else {
                             log::debug!("[WL_DEBUG] candidate_layer is None!");
                         }
-                        // Reuse pixel buffer
                         state.pixel_pool.put(pixels);
                     }
                     WlCmd::HideCandidate => {
@@ -647,15 +648,40 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
             break;
         }
 
-        if event_queue.dispatch_pending(&mut state).is_err() {
-            log::error!("Wayland dispatch failed, exiting thread");
-            break;
-        }
+        // Flush outgoing requests to compositor
         if event_queue.flush().is_err() {
             log::error!("Wayland flush failed, exiting thread");
             break;
         }
-        std::thread::sleep(std::time::Duration::from_millis(4));
+
+        // Dispatch any events already in the internal buffer
+        if event_queue.dispatch_pending(&mut state).is_err() {
+            log::error!("Wayland dispatch failed, exiting thread");
+            break;
+        }
+
+        // Read new events from socket with 20ms timeout.
+        // This is where wl_buffer.release events are received,
+        // allowing SlotPool to recycle SHM memory.
+        if let Some(read_guard) = event_queue.prepare_read() {
+            let fd = read_guard.connection_fd().as_raw_fd();
+            let mut fds = [libc::pollfd {
+                fd,
+                events: libc::POLLIN,
+                revents: 0,
+            }];
+            if unsafe { libc::poll(fds.as_mut_ptr(), 1, 20) } > 0 {
+                if read_guard.read().is_err() {
+                    log::error!("Wayland read failed, exiting thread");
+                    break;
+                }
+                // Dispatch newly read events (includes wl_buffer.release)
+                if event_queue.dispatch_pending(&mut state).is_err() {
+                    log::error!("Wayland dispatch after read failed, exiting thread");
+                    break;
+                }
+            }
+        }
     }
     log::debug!("[WL_DEBUG] Wayland thread main loop exited");
 }

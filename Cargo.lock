@@ -4623,6 +4623,7 @@ dependencies = [
  "i-slint-renderer-skia",
  "image 0.24.9",
  "ksni",
+ "libc",
  "log",
  "memmap2",
  "mime_guess",

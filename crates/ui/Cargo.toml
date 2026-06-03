@@ -32,6 +32,7 @@ smithay-client-toolkit = "0.20"
 memmap2 = { workspace = true }
 wayland-client = "0.31"
 bytemuck = "1"
+libc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.52", features = ["Win32_System_Registry", "Win32_Foundation"] }
