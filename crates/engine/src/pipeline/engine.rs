@@ -100,7 +100,7 @@ impl Pipeline {
     }
 }
 
-type PipelineCache = (HashMap<String, Arc<Pipeline>>, Vec<String>);
+type PipelineCache = (HashMap<String, Arc<Pipeline>>, std::collections::VecDeque<String>);
 
 /// 搜索引擎：协调所有的 Pipeline
 #[derive(Clone)]
@@ -155,7 +155,7 @@ impl SearchEngine {
             usage_history,
             ngram_history,
             schemes,
-            pipelines: Arc::new(RwLock::new((HashMap::new(), Vec::new()))),
+            pipelines: Arc::new(RwLock::new((HashMap::new(), std::collections::VecDeque::new()))),
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
@@ -391,14 +391,12 @@ impl SearchEngine {
             return Some(p.clone());
         }
         if cache.0.len() >= MAX_CACHED_PIPELINES {
-            let oldest = cache.1.first().cloned();
-            if let Some(ref k) = oldest {
-                cache.0.remove(k);
+            if let Some(k) = cache.1.pop_front() {
+                cache.0.remove(&k);
             }
-            cache.1.clear();
         }
         cache.0.insert(profile.to_string(), arc_p.clone());
-        cache.1.push(profile.to_string());
+        cache.1.push_back(profile.to_string());
 
         Some(arc_p)
     }
