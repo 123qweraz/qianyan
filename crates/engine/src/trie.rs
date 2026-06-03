@@ -36,7 +36,7 @@ impl AsRef<[u8]> for TrieData {
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
-    word_index: Arc<OnceLock<HashSet<Arc<str>>>>,
+    word_index: Arc<OnceLock<HashSet<Box<str>>>>,
 }
 
 impl Trie {
@@ -144,12 +144,14 @@ impl Trie {
     }
 
     /// 构建 word_index：遍历整个 FST，将每个数据块中的 word 收集到 HashSet 中
-    fn build_word_index(&self) -> HashSet<Arc<str>> {
-        let mut words = HashSet::new();
+    /// 使用 Box<str> 替代 Arc<str> 减少指针开销（每个词节省一次 Arc refcount 分配）
+    fn build_word_index(&self) -> HashSet<Box<str>> {
+        // 预估 50000 词预分配，减少 rehash
+        let mut words = HashSet::with_capacity(50000);
         let mut stream = self.index.stream();
         while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
             self.read_block(offset as usize, |tr| {
-                words.insert(Arc::from(tr.word));
+                words.insert(Box::from(tr.word));
             });
         }
         words
