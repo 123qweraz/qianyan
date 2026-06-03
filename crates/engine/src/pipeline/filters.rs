@@ -132,7 +132,7 @@ impl Filter for AdaptiveFilter {
                 let use_cached = {
                     if let Ok(guard) = self.last_input.read() {
                         if let Some((ref last_input, ref time)) = *guard {
-                            *last_input == input && time.elapsed().as_millis() < 100
+                            *last_input == input && time.elapsed().as_millis() < 300
                         } else {
                             false
                         }
