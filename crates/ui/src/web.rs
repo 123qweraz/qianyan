@@ -1865,7 +1865,8 @@ fn do_discovery(
     word_map: &WordMap,
 ) -> Vec<DiscoveredWordWithPinyin> {
     let cache_mutex = get_known_words_cache();
-    let mut cache_guard = cache_mutex.lock().unwrap();
+    let mut cache_guard = cache_mutex.lock()
+        .expect("known_words_cache mutex poisoned");
     
     if cache_guard.is_none() {
         log::info!("[discover] Building global known_words index...");
@@ -2192,14 +2193,16 @@ async fn ime_search_handler(
     Json(req): Json<ImeSearchRequest>,
 ) -> Json<ImeSearchResponse> {
     let engine = {
-        let guard = ime_handle.engine.read().unwrap();
+        let guard = ime_handle.engine.read()
+            .expect("ime engine RwLock poisoned");
         if let Some(ref engine) = *guard {
             engine.clone()
         } else {
             drop(guard);
             match prepare_ime_engine(&ime_handle.root) {
                 Ok(engine) => {
-                    let mut w = ime_handle.engine.write().unwrap();
+                    let mut w = ime_handle.engine.write()
+                        .expect("ime engine RwLock poisoned");
                     if w.is_none() {
                         *w = Some(Arc::new(engine.clone()));
                     }
@@ -2213,7 +2216,9 @@ async fn ime_search_handler(
         }
     };
 
-    let cfg = config.read().unwrap().clone();
+    let cfg = config.read()
+        .expect("config RwLock poisoned")
+        .clone();
     let fm = match req.filter_mode.as_str() {
         "global" => FilterMode::Global,
         "page" => FilterMode::Page,
@@ -2253,14 +2258,16 @@ async fn ime_search_handler(
 // ===== Session-based IME (thin client: key events in, state out) =====
 
 fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
-    let guard = handle.engine.read().unwrap();
+    let guard = handle.engine.read()
+        .expect("ime engine RwLock poisoned");
     if let Some(ref engine) = *guard {
         return Some(engine.clone());
     }
     drop(guard);
     match prepare_ime_engine(&handle.root) {
         Ok(engine) => {
-            let mut w = handle.engine.write().unwrap();
+            let mut w = handle.engine.write()
+                .expect("ime engine RwLock poisoned");
             if w.is_none() {
                 *w = Some(Arc::new(engine.clone()));
             }
@@ -2402,7 +2409,8 @@ async fn ime_session_handler(
     let mut resp = build_state_response(&processor, &action);
     resp.session_id = session_id.clone();
 
-    let mut sessions = ime_handle.sessions.lock().unwrap();
+    let mut sessions = ime_handle.sessions.lock()
+        .expect("ime sessions mutex poisoned");
     sessions.insert(session_id, ImeSession { processor, created: Instant::now() });
 
     Ok(Json(resp))
@@ -2414,7 +2422,8 @@ async fn ime_key_handler(
     Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
     Json(req): Json<ImeKeyRequest>,
 ) -> Result<Json<ImeSessionResponse>, StatusCode> {
-    let mut sessions = ime_handle.sessions.lock().unwrap();
+    let mut sessions = ime_handle.sessions.lock()
+        .expect("ime sessions mutex poisoned");
     let session = sessions.get_mut(&req.session_id).ok_or(StatusCode::NOT_FOUND)?;
 
     if let Some(ref profile) = req.profile {

@@ -165,7 +165,8 @@ impl PixelPool {
         Self(Arc::new(std::sync::Mutex::new(Vec::with_capacity(4))))
     }
     fn get(&self, size: usize) -> Vec<u8> {
-        let mut pool = self.0.lock().unwrap();
+        let mut pool = self.0.lock()
+            .expect("pixel pool mutex poisoned");
         if let Some(mut v) = pool.pop() {
             if v.capacity() < size {
                 v.reserve(size - v.capacity());
@@ -177,7 +178,8 @@ impl PixelPool {
         }
     }
     fn put(&self, v: Vec<u8>) {
-        let mut pool = self.0.lock().unwrap();
+        let mut pool = self.0.lock()
+            .expect("pixel pool mutex poisoned");
         if pool.len() < 8 {
             pool.push(v);
         }
@@ -268,7 +270,8 @@ impl RenderBuffer for WaylandRenderBuffer {
 
         if self.window_visible.get() {
             let (anchor, margin_a, margin_b) = self.compute_anchor(w, h);
-            if let Some(ref tx) = *self.wl_tx.lock().unwrap() {
+            if let Some(ref tx) = *self.wl_tx.lock()
+                .expect("wl_tx mutex poisoned") {
                 let cmd = WlCmd::ShowCandidate {
                     x: margin_b, y: margin_a, w, h, anchor, pixels,
                 };

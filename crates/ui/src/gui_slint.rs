@@ -73,14 +73,17 @@ pub fn start_gui(
                 }
                 // Coalesceable: rapid typing events — only latest matters
                 _ => {
-                    *coalesced_event.lock().unwrap() = Some(event);
+                    *coalesced_event.lock()
+                        .expect("coalesced_event mutex poisoned") = Some(event);
                     if !pending_update.swap(true, Ordering::SeqCst) {
                         let cfg = config.clone();
                         let c_evt = coalesced_event.clone();
                         let p_upd = pending_update.clone();
                         let r = slint::invoke_from_event_loop(move || {
                             p_upd.store(false, Ordering::SeqCst);
-                            let evt = c_evt.lock().unwrap().take();
+                            let evt = c_evt.lock()
+                                    .expect("coalesced_event mutex poisoned")
+                                    .take();
                             if let Some(e) = evt {
                                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                                     DISPLAYS.with(|d| {
@@ -183,7 +186,8 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                     let cfg = current_config.clone();
                     let r = slint::invoke_from_event_loop(move || {
                         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                            let mut guard = cfg.lock().unwrap();
+                                    let mut guard = cfg.lock()
+                                        .expect("config lock poisoned");
                             handle_ipc_event(&msg, &mut *guard);
                         }));
                         if let Err(e) = result {
@@ -196,17 +200,21 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                 _ => {
                     // Coalesce frequent updates (SyncState, Update, MoveTo, etc.)
                     // only the latest one in the queue matters for an IME UI.
-                    *coalesced_msg.lock().unwrap() = Some(msg);
+                    *coalesced_msg.lock()
+                        .expect("coalesced_msg mutex poisoned") = Some(msg);
                     if !pending_update.swap(true, std::sync::atomic::Ordering::SeqCst) {
                         let cfg = current_config.clone();
                         let c_msg = coalesced_msg.clone();
                         let p_upd = pending_update.clone();
                         let r = slint::invoke_from_event_loop(move || {
                             p_upd.store(false, std::sync::atomic::Ordering::SeqCst);
-                            let msg_to_process = c_msg.lock().unwrap().take();
+                            let msg_to_process = c_msg.lock()
+                                .expect("coalesced_msg mutex poisoned")
+                                .take();
                             if let Some(m) = msg_to_process {
                                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                                    let mut guard = cfg.lock().unwrap();
+                            let mut guard = cfg.lock()
+                                .expect("config lock poisoned");
                                     handle_ipc_event(&m, &mut *guard);
                                 }));
                                 if let Err(e) = result {
