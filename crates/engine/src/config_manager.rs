@@ -4,10 +4,12 @@ use arc_swap::ArcSwap;
 use qianyan_ime_core::config::{AntiTypoMode, Config, PhantomType, ProfileLayout, PunctuationEntry};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 pub type UserDictData = HashMap<String, HashMap<String, Vec<(String, u32)>>>;
+
+const USAGE_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 
 pub struct ConfigManager {
     pub master_config: Config,
@@ -15,6 +17,7 @@ pub struct ConfigManager {
     pub usage_history: Arc<ArcSwap<UserDictData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub user_data: Option<Arc<UserDataManager>>,
+    usage_last_save: Mutex<Instant>,
 }
 
 impl Default for ConfigManager {
@@ -40,6 +43,7 @@ impl ConfigManager {
             usage_history: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             ngram_history: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             user_data: user_data.map(Arc::new),
+            usage_last_save: Mutex::new(Instant::now()),
         }
     }
 
@@ -101,6 +105,11 @@ impl ConfigManager {
             .or_default()
             .insert(pinyin.to_string(), entries.to_vec());
         self.learned_words.store(Arc::new(current));
+        // 学习到新词立即写盘（用户词典不能丢）
+        if let Some(ref user_data) = self.user_data {
+            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Learned,
+                &self.learned_words.load());
+        }
     }
 
     pub fn insert_usage(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
@@ -110,6 +119,8 @@ impl ConfigManager {
             .or_default()
             .insert(pinyin.to_string(), entries.to_vec());
         self.usage_history.store(Arc::new(current));
+        // 频率数据 30s 写一次，减少磁盘 IO
+        self.save_usage_if_due(profile);
     }
 
     pub fn insert_ngram(&self, profile: &str, context: &str, entries: &[(String, u32)]) {
@@ -119,6 +130,21 @@ impl ConfigManager {
             .or_default()
             .insert(context.to_string(), entries.to_vec());
         self.ngram_history.store(Arc::new(current));
+        // ngram 也走 30s 防抖
+        self.save_usage_if_due(profile);
+    }
+
+    fn save_usage_if_due(&self, profile: &str) {
+        let mut last = self.usage_last_save.lock().unwrap();
+        if last.elapsed() >= USAGE_SAVE_INTERVAL {
+            *last = Instant::now();
+            if let Some(ref user_data) = self.user_data {
+                let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Usage,
+                    &self.usage_history.load());
+                let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
+                    &self.ngram_history.load());
+            }
+        }
     }
 
     /// 将所有用户数据批量写入磁盘（在退出或定时触发时调用）
