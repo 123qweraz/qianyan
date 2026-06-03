@@ -437,15 +437,25 @@ impl Translator for ComposeTranslator {
             }
         }
 
-        results.sort_by(|a, b| b.0.cmp(&a.0));
-        results.dedup_by(|a, b| a.0 == b.0);
-
-        results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
+        // 用 HashMap 去重，保留最优（最少段数，最高频率）
+        let mut dedup: std::collections::HashMap<String, (usize, u64)> =
+            std::collections::HashMap::new();
+        for (text, segs, freq) in results {
+            dedup.entry(text)
+                .and_modify(|e| {
+                    if segs < e.0 || (segs == e.0 && freq > e.1) {
+                        *e = (segs, freq);
+                    }
+                })
+                .or_insert((segs, freq));
+        }
+        let mut results: Vec<_> = dedup.into_iter().collect();
+        results.sort_by(|a, b| a.1.0.cmp(&b.1.0).then(b.1.1.cmp(&a.1.1)));
         results.truncate(6);
 
         results
             .into_iter()
-            .map(|(text, _, freq)| Candidate {
+            .map(|(text, (_, freq))| Candidate {
                 text: Arc::from(text.clone()),
                 simplified: Arc::from(text.clone()),
                 traditional: Arc::from(text),
