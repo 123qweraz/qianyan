@@ -324,8 +324,8 @@ impl Translator for UserDictTranslator {
                         match_level: 3, // exact match
                     });
                 }
-            } else {
-                // 精确匹配失败 → 前缀匹配遍历 HashMap
+            } else if query.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v')) {
+                // 前缀匹配遍历 HashMap（仅当输入含元音——不是简拼时）
                 let mut prefix_matches: Vec<(&String, &Vec<(String, u32)>)> = profile_dict
                     .iter()
                     .filter(|(pinyin, _)| pinyin.starts_with(&query))

@@ -206,8 +206,8 @@ impl InputScheme for ChineseScheme {
                         });
                     }
                 }
-            } else {
-                // 精确匹配失败 → 前缀匹配（遍历 HashMap，按最短 key 优先）
+            } else if pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v')) {
+                // 前缀匹配（遍历 HashMap，仅当输入含元音——不是简拼时）
                 let mut prefix_keys: Vec<&String> = profile_dict
                     .keys()
                     .filter(|k| k.starts_with(&pinyin_key))
