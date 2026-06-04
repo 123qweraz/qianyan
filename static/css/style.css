@@ -19,11 +19,25 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.5;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 60px 20px;
+}
+
+/* ===== Sidebar layout (only when sidebar is present) ===== */
+body:has(#qy-sidebar) {
     display: flex;
     min-height: 100vh;
 }
 
-/* ===== Sidebar ===== */
+body:has(#qy-sidebar) .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 32px;
+}
 .qy-sidebar {
     position: fixed;
     top: 0;
@@ -125,25 +139,11 @@ body {
     font-weight: 600;
 }
 
-/* ===== Main Content Area ===== */
-.qy-main-content {
+/* ===== Main Content Area (with sidebar) ===== */
+body:has(#qy-sidebar) .qy-main-content {
     margin-left: var(--sidebar-width);
     flex: 1;
     min-height: 100vh;
-}
-
-/* Update container for sidebar layout */
-.qy-main-content .container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 40px 32px;
-}
-
-/* Override body container when sidebar present */
-body:has(#qy-sidebar) .container {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 40px 32px;
 }
 
 header {
