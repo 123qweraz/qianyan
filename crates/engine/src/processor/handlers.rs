@@ -176,7 +176,6 @@ pub fn handle_composing(
         let context = crate::scheme::SchemeContext {
             config: &ctx.config.master_config,
             tries: &tries_map,
-            syllables: &ctx.syllables,
             syllable_freq: &ctx.engine.syllable_freq,
             base_syllables: &ctx.engine.base_syllables,
             user_dict: &ctx.config.learned_words,
@@ -347,7 +346,7 @@ pub fn handle_composing(
                     let mut count = 1;
                     for len in (2..=buffer.len().min(6)).rev() {
                         let suffix = &buffer[buffer.len() - len..];
-                        if ctx.syllables.contains(suffix) {
+                        if ctx.engine.syllable_freq.contains_key(suffix) {
                             count = len;
                             break;
                         }

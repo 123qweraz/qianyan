@@ -536,7 +536,6 @@ impl Processor {
         let query = crate::pipeline::SearchQuery {
             buffer: &self.ctx.session.buffer,
             profile: &current_profile,
-            syllables: &self.ctx.syllables,
             config: &self.ctx.config.master_config,
             limit,
             filter_mode: self.ctx.session.filter_mode.clone(),
@@ -556,7 +555,6 @@ impl Processor {
             let fuzzy_query = crate::pipeline::SearchQuery {
                 buffer: &self.ctx.session.buffer,
                 profile: &current_profile,
-                syllables: &self.ctx.syllables,
                 config: &self.ctx.config.master_config,
                 limit,
                 filter_mode: self.ctx.session.filter_mode.clone(),

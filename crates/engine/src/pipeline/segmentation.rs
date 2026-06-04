@@ -7,7 +7,6 @@ pub trait Segmentor: Send + Sync {
     fn segment(
         &self,
         input: &str,
-        syllables: &HashSet<String>,
         delimiters: &str,
         syllable_freq: &HashMap<String, u64>,
         base_syllables: &HashSet<String>,
@@ -20,7 +19,6 @@ impl Segmentor for DefaultSegmentor {
     fn segment(
         &self,
         input: &str,
-        syllables: &HashSet<String>,
         delimiters: &str,
         syllable_freq: &HashMap<String, u64>,
         base_syllables: &HashSet<String>,
@@ -33,14 +31,13 @@ impl Segmentor for DefaultSegmentor {
             let input_lower = input.to_lowercase();
             return Self::segment_lowercase(
                 &input_lower,
-                syllables,
                 delimiters,
                 syllable_freq,
                 base_syllables,
             );
         }
 
-        Self::segment_lowercase(input, syllables, delimiters, syllable_freq, base_syllables)
+        Self::segment_lowercase(input, delimiters, syllable_freq, base_syllables)
     }
 }
 
@@ -156,7 +153,6 @@ impl DefaultSegmentor {
     #[inline]
     fn segment_lowercase(
         input: &str,
-        _syllables: &HashSet<String>,
         delimiters: &str,
         syllable_freq: &HashMap<String, u64>,
         base_syllables: &HashSet<String>,

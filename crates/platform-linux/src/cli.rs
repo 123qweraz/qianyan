@@ -113,7 +113,6 @@ fn run_bench_mode() {
                     .search(engine::pipeline::SearchQuery {
                         buffer: "zhuomian",
                         profile: "chinese",
-                        syllables: &processor.ctx.syllables,
                         config: &processor.ctx.config.master_config,
                         limit: 10,
                         filter_mode: engine::processor::FilterMode::None,

@@ -94,7 +94,7 @@ impl<'a, 'b> FuzzyPinyinSearcher<'a, 'b> {
 
 pub struct TableTranslator {
     pub trie: Arc<Trie>,
-    pub syllables: Arc<HashSet<String>>,
+    pub syllable_freq: Arc<HashMap<String, u64>>,
     pub enable_abbreviation: bool,
     last_query: std::sync::RwLock<(String, std::time::Instant)>,
     cached_candidates: std::sync::RwLock<Vec<Candidate>>,
@@ -104,12 +104,12 @@ pub struct TableTranslator {
 impl TableTranslator {
     pub fn new(
         trie: Arc<Trie>,
-        syllables: Arc<HashSet<String>>,
+        syllable_freq: Arc<HashMap<String, u64>>,
         enable_abbreviation: bool,
     ) -> Self {
         Self {
             trie,
-            syllables,
+            syllable_freq,
             enable_abbreviation,
             last_query: std::sync::RwLock::new((String::new(), std::time::Instant::now())),
             cached_candidates: std::sync::RwLock::new(Vec::new()),
@@ -225,7 +225,7 @@ impl Translator for TableTranslator {
         if is_abbreviation && config.input.enable_abbreviation_matching {
             let abbr_results =
                 self.trie
-                    .search_abbreviation(segments, &self.syllables, internal_limit);
+                    .search_abbreviation(segments, &self.syllable_freq, internal_limit);
             for ar in abbr_results {
                 if seen.insert(ar.word) {
                     candidates.push(Candidate {

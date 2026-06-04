@@ -65,7 +65,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("nihao", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("nihao", "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "hao"]);
     }
 
@@ -77,7 +77,7 @@ mod tests {
             .map(|s| s.to_string())
             .collect();
 
-        let result = segmentor.segment("zhongguo", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("zhongguo", "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["zhongguo"]);
     }
 
@@ -86,7 +86,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["zhong", "guo"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("zhongguo", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("zhongguo", "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["zhong", "guo"]);
     }
 
@@ -95,7 +95,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("nixyz", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("nixyz", "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "x", "y", "z"]);
     }
 
@@ -104,7 +104,7 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
 
-        let result = segmentor.segment("", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("", "", &HashMap::new(), &syllables);
         assert!(result.is_empty());
     }
 
@@ -112,7 +112,7 @@ mod tests {
     fn test_default_segmentor_delimiter_apostrophe() {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["xi", "an"].iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("xi'an", &syllables, "'", &HashMap::new(), &syllables);
+        let result = segmentor.segment("xi'an", "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["xi", "an"]);
     }
 
@@ -120,7 +120,7 @@ mod tests {
     fn test_default_segmentor_delimiter_semicolon() {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ni", "hao"].iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("ni;hao", &syllables, ";", &HashMap::new(), &syllables);
+        let result = segmentor.segment("ni;hao", ";", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ni", "hao"]);
     }
 
@@ -129,13 +129,13 @@ mod tests {
         let segmentor = DefaultSegmentor;
         let syllables: HashSet<String> = ["ti"].iter().map(|s| s.to_string()).collect();
         // delimiter at end: skipped
-        let result = segmentor.segment("ti'", &syllables, "'", &HashMap::new(), &syllables);
+        let result = segmentor.segment("ti'", "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ti"]);
         // delimiter at start: skipped
-        let result = segmentor.segment("'ti", &syllables, "'", &HashMap::new(), &syllables);
+        let result = segmentor.segment("'ti", "'", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["ti"]);
         // empty delimiters: no change, individual chars (no "xi" in syllables)
-        let result = segmentor.segment("xi'an", &syllables, "", &HashMap::new(), &syllables);
+        let result = segmentor.segment("xi'an", "", &HashMap::new(), &syllables);
         assert_eq!(result, vec!["x", "i", "'", "a", "n"]);
     }
 
@@ -151,11 +151,11 @@ mod tests {
         freqs.insert("fangan".to_string(), 1);
 
         // "fangan" → first pass: "fang"+"an", second pass: merge to "fangan"
-        let result = segmentor.segment("fangan", &all, "", &freqs, &base);
+        let result = segmentor.segment("fangan", "", &freqs, &base);
         assert_eq!(result, vec!["fangan"]);
 
         // 无 freq 时不合并；两条路径 "fan"+"gan" 和 "fang"+"an" 均有效
-        let result2 = segmentor.segment("fangan", &all, "", &HashMap::new(), &base);
+        let result2 = segmentor.segment("fangan", "", &HashMap::new(), &base);
         assert!(result2 == vec!["fan", "gan"] || result2 == vec!["fang", "an"],
             "expected either fan+gan or fang+an, got {:?}", result2);
     }
@@ -175,7 +175,7 @@ mod tests {
         freqs.insert("jile".to_string(), 11073);
 
         // DP should pick "wo"+"wangji"+"le" (highest total freq = 482559)
-        let result = segmentor.segment("wowangjile", &all, "", &freqs, &base);
+        let result = segmentor.segment("wowangjile", "", &freqs, &base);
         assert_eq!(result, vec!["wo", "wangji", "le"]);
     }
 
@@ -186,7 +186,7 @@ mod tests {
         // Viterbi DP 应选择 "ma na"（优先较短音节路径）
         let all: HashSet<String> = ["ma", "man", "na", "a"]
             .iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("mana", &all, "", &HashMap::new(), &all);
+        let result = segmentor.segment("mana", "", &HashMap::new(), &all);
         assert_eq!(result, vec!["ma", "na"]);
     }
 
@@ -198,7 +198,7 @@ mod tests {
             .iter().map(|s| s.to_string()).collect();
         let mut freqs = HashMap::new();
         freqs.insert("guan".to_string(), 100);
-        let result = segmentor.segment("guna", &all, "", &freqs, &all);
+        let result = segmentor.segment("guna", "", &freqs, &all);
         assert_eq!(result, vec!["guan"]);
     }
 
@@ -210,7 +210,7 @@ mod tests {
             .iter().map(|s| s.to_string()).collect();
         let mut freqs = HashMap::new();
         freqs.insert("guang".to_string(), 200);
-        let result = segmentor.segment("guagn", &all, "", &freqs, &all);
+        let result = segmentor.segment("guagn", "", &freqs, &all);
         assert_eq!(result, vec!["guang"]);
     }
 
@@ -220,7 +220,7 @@ mod tests {
         // 正确输入 "guan" 直接匹配，不触发换位
         let all: HashSet<String> = ["guan", "gu", "an"]
             .iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("guan", &all, "", &HashMap::new(), &all);
+        let result = segmentor.segment("guan", "", &HashMap::new(), &all);
         assert_eq!(result, vec!["guan"]);
     }
 
@@ -230,7 +230,7 @@ mod tests {
         // "mana" 不应被换位影响（ma 和 man 都在，且不是换位场景）
         let all: HashSet<String> = ["ma", "man", "na", "a"]
             .iter().map(|s| s.to_string()).collect();
-        let result = segmentor.segment("mana", &all, "", &HashMap::new(), &all);
+        let result = segmentor.segment("mana", "", &HashMap::new(), &all);
         assert_eq!(result, vec!["ma", "na"]);
     }
 
@@ -401,7 +401,6 @@ mod tests {
     fn create_test_engine() -> SearchEngine {
         SearchEngine::new(
             HashMap::new(),
-            Arc::new(HashSet::new()),
             Arc::new(HashMap::new()),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
@@ -442,7 +441,6 @@ mod tests {
         let schemes: HashMap<String, Box<dyn crate::scheme::InputScheme>> = HashMap::new();
         let engine = SearchEngine::new(
             HashMap::new(),
-            Arc::new(HashSet::new()),
             Arc::new(HashMap::new()),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
@@ -455,7 +453,6 @@ mod tests {
         let query = SearchQuery {
             buffer: "test",
             profile: "chinese",
-            syllables: &HashSet::new(),
             config: &config,
             limit: 10,
             filter_mode: crate::processor::FilterMode::None,

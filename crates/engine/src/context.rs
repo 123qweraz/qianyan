@@ -10,7 +10,6 @@ pub struct EngineContext {
     pub session_state: crate::processor::session_state::SessionState,
     pub config: crate::ConfigManager,
     pub engine: crate::pipeline::SearchEngine,
-    pub syllables: HashSet<String>,
     pub dispatcher: crate::KeyDispatcher,
 
     pub sound_manager: crate::sound::SoundManager,
@@ -19,16 +18,14 @@ pub struct EngineContext {
 impl EngineContext {
     pub fn new(
         trie_paths: HashMap<String, (std::path::PathBuf, std::path::PathBuf)>,
-        syllables: HashSet<String>,
+        _syllables: HashSet<String>,
         syllable_freq: HashMap<String, u64>,
     ) -> Self {
         let config = crate::ConfigManager::new();
-        let syllables_arc = Arc::new(syllables.clone());
         let syllable_freq_arc = Arc::new(syllable_freq);
 
         let engine = crate::pipeline::SearchEngine::new(
             trie_paths,
-            syllables_arc,
             syllable_freq_arc,
             config.learned_words.clone(),
             config.usage_history.clone(),
@@ -41,7 +38,6 @@ impl EngineContext {
             session_state: crate::processor::session_state::SessionState::new(),
             config,
             engine,
-            syllables,
             dispatcher: crate::KeyDispatcher::new(),
             sound_manager: crate::sound::SoundManager::new(),
         }
@@ -49,7 +45,7 @@ impl EngineContext {
 
     pub fn new_with_engine(
         engine: crate::pipeline::SearchEngine,
-        syllables: HashSet<String>,
+        _syllables: HashSet<String>,
     ) -> Self {
         let config = crate::ConfigManager::new();
         Self {
@@ -57,7 +53,6 @@ impl EngineContext {
             session_state: crate::processor::session_state::SessionState::new(),
             config,
             engine,
-            syllables,
             dispatcher: crate::KeyDispatcher::new(),
             sound_manager: crate::sound::SoundManager::new(),
         }

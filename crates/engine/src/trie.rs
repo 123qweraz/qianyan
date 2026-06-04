@@ -36,9 +36,7 @@ impl AsRef<[u8]> for TrieData {
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
-    word_index: Arc<OnceLock<HashSet<Box<str>>>>,
-    /// word → first pinyin mapping, built lazily with word_index
-    pinyin_index: Arc<OnceLock<HashMap<Box<str>, Box<str>>>>,
+    word_pinyin: Arc<OnceLock<HashMap<Box<str>, Box<str>>>>,
 }
 
 impl Trie {
@@ -69,8 +67,7 @@ impl Trie {
         Ok(Self {
             index,
             data: data_data,
-            word_index: Arc::new(OnceLock::new()),
-            pinyin_index: Arc::new(OnceLock::new()),
+            word_pinyin: Arc::new(OnceLock::new()),
         })
     }
 
@@ -142,40 +139,31 @@ impl Trie {
     /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
     /// 使用 word_index 实现 O(1) 查找（首次调用时惰性构建索引，之后 O(1)）
     pub fn has_word_in_dict(&self, word: &str) -> bool {
-        let index = self.word_index.get_or_init(|| self.build_word_index());
-        index.contains(word)
+        let index = self.word_pinyin.get_or_init(|| self.build_word_pinyin());
+        index.contains_key(word)
     }
 
-    /// 构建 word_index + pinyin_index：遍历整个 FST，
-    /// 收集所有词的集合和每个词→第一个拼音的映射
-    fn build_word_index(&self) -> HashSet<Box<str>> {
-        // 预估 50000 词预分配，减少 rehash
-        let mut words = HashSet::with_capacity(50000);
-        let mut pinyin_map = HashMap::with_capacity(50000);
+    fn build_word_pinyin(&self) -> HashMap<Box<str>, Box<str>> {
+        let mut map = HashMap::with_capacity(50000);
         let mut stream = self.index.stream();
         while let Some((key, offset)) = fst::Streamer::next(&mut stream) {
-            let mut first_word = true;
+            let mut first = true;
             self.read_block(offset as usize, |tr| {
                 let word: Box<str> = Box::from(tr.word);
-                words.insert(word.clone());
-                if first_word {
+                if first {
                     if let Ok(key_str) = std::str::from_utf8(key) {
-                        pinyin_map.entry(word.clone()).or_insert_with(|| Box::<str>::from(key_str));
+                        map.entry(word).or_insert_with(|| Box::<str>::from(key_str));
                     }
-                    first_word = false;
+                    first = false;
                 }
             });
         }
-        // 静默设置 pinyin_index
-        let _ = self.pinyin_index.set(pinyin_map);
-        words
+        map
     }
 
-    /// 反查某个词的拼音（从系统词典），用于用户词学习时获取正确拼音
     pub fn lookup_pinyin(&self, word: &str) -> Option<&str> {
-        // 触发 word_index 构建（顺带构建 pinyin_index）
-        self.word_index.get_or_init(|| self.build_word_index());
-        self.pinyin_index.get().and_then(|m| m.get(word).map(|s| s.as_ref()))
+        let index = self.word_pinyin.get_or_init(|| self.build_word_pinyin());
+        index.get(word).map(|s| s.as_ref())
     }
 
     pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {
@@ -305,7 +293,7 @@ impl Trie {
     pub fn search_abbreviation(
         &self,
         segments: &[String],
-        syllables: &std::collections::HashSet<String>,
+        syllables: &std::collections::HashMap<String, u64>,
         limit: usize,
     ) -> Vec<TrieResult<'_>> {
         if segments.is_empty() {
@@ -350,7 +338,7 @@ impl Trie {
         &self,
         key: &str,
         segments: &[String],
-        syllables: &std::collections::HashSet<String>,
+        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
         self.recursive_strict_match(key, segments, syllables)
     }
@@ -359,7 +347,7 @@ impl Trie {
         &self,
         key: &str,
         segments: &[String],
-        syllables: &std::collections::HashSet<String>,
+        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
         // 如果 segments 耗尽，则 key 也必须耗尽（确保音节数一致）
         if segments.is_empty() {
@@ -380,7 +368,7 @@ impl Trie {
             if len > 0 && len <= 10 {
                 // 适当放宽长度限制以处理带声调的 Unicode
                 let syl = &key[..len];
-                if syllables.contains(syl) {
+                if syllables.contains_key(syl) {
                     // 声母必须匹配
                     if syl.starts_with(first_seg) {
                         // 递归匹配剩余音节
@@ -396,7 +384,7 @@ impl Trie {
         }
 
         // 兜底：尝试全量匹配最后一个或唯一一个音节
-        if syllables.contains(key) && key.starts_with(first_seg) && segments.len() == 1 {
+        if syllables.contains_key(key) && key.starts_with(first_seg) && segments.len() == 1 {
             return true;
         }
 
@@ -408,7 +396,7 @@ impl Trie {
     pub fn search_abbreviation_mixed(
         &self,
         segments: &[(String, bool)],
-        syllables: &std::collections::HashSet<String>,
+        syllables: &std::collections::HashMap<String, u64>,
         limit: usize,
     ) -> Vec<TrieResult<'_>> {
         if segments.is_empty() {
@@ -448,7 +436,7 @@ impl Trie {
         &self,
         key: &str,
         segments: &[(String, bool)],
-        syllables: &std::collections::HashSet<String>,
+        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
         if segments.is_empty() {
             return key.is_empty();
@@ -463,7 +451,7 @@ impl Trie {
             let len = byte_idx;
             if len > 0 && len <= 10 {
                 let syl = &key[..len];
-                if syllables.contains(syl) {
+                if syllables.contains_key(syl) {
                     let matches = if *is_initial {
                         syl.starts_with(first_seg.as_str())
                     } else {
@@ -480,7 +468,7 @@ impl Trie {
             }
         }
 
-        if segments.len() == 1 && syllables.contains(key) {
+        if segments.len() == 1 && syllables.contains_key(key) {
             let matches = if *is_initial {
                 key.starts_with(first_seg.as_str())
             } else {
@@ -695,7 +683,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables),
             Arc::new(std::collections::HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
@@ -718,7 +705,6 @@ mod tests {
         let query = SearchQuery {
             buffer: "li",
             profile: "chinese",
-            syllables: &std::collections::HashSet::new(),
             config: &config,
             limit: crate::pipeline::MAX_LOOKUP_LIMIT,
             filter_mode: crate::processor::FilterMode::None,
@@ -798,7 +784,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
@@ -814,7 +799,6 @@ mod tests {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,
@@ -905,7 +889,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             usage_history.clone(),
@@ -921,7 +904,6 @@ mod tests {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,
@@ -1006,7 +988,6 @@ mod tests {
 
         let engine = crate::pipeline::SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(std::collections::HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
@@ -1026,7 +1007,6 @@ mod tests {
             let query = crate::pipeline::SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,
@@ -1095,7 +1075,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(std::collections::HashSet::new()),
             Arc::new(std::collections::HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
@@ -1116,7 +1095,6 @@ mod tests {
         let query = SearchQuery {
             buffer: "zho",
             profile: "chinese",
-            syllables: &std::collections::HashSet::new(),
             config: &config,
             limit: crate::pipeline::MAX_LOOKUP_LIMIT,
             filter_mode: crate::processor::FilterMode::None,
@@ -1217,7 +1195,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(HashMap::new()),
             learned_words,
             usage_history,
@@ -1233,7 +1210,6 @@ mod tests {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,
@@ -1307,7 +1283,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(HashMap::new()),
             learned_words,
             usage_history,
@@ -1323,7 +1298,6 @@ mod tests {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,
@@ -1402,7 +1376,6 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(syllables.clone()),
             Arc::new(HashMap::new()),
             learned_words,
             usage_history,
@@ -1418,7 +1391,6 @@ mod tests {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
-                syllables: syl,
                 config,
                 limit: crate::pipeline::MAX_LOOKUP_LIMIT,
                 filter_mode: crate::processor::FilterMode::None,

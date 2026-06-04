@@ -10,7 +10,7 @@ use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuer
 use qianyan_ime_engine::processor::FilterMode;
 use qianyan_ime_engine::schemes::{ChineseScheme, EnglishScheme, JapaneseScheme, StrokeScheme};
 use qianyan_ime_engine::scheme::InputScheme;
-use qianyan_ime_core::utils::{load_syllables, load_syllable_frequencies};
+use qianyan_ime_core::utils::load_syllable_frequencies;
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
@@ -2155,7 +2155,6 @@ async fn export_discovery_handler(
 }
 
 fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
-    let syllables = load_syllables(root);
     let syllable_freq = load_syllable_frequencies(root);
 
     let data_dir = root.join("data");
@@ -2179,7 +2178,6 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
         return Err("No trie files found in data/ directory".into());
     }
 
-    let syllables_arc = Arc::new(syllables);
     let syllable_freq_arc = Arc::new(syllable_freq);
     let empty_user_dict = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
 
@@ -2191,7 +2189,6 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
 
     Ok(SearchEngine::new(
         trie_paths,
-        syllables_arc,
         syllable_freq_arc,
         empty_user_dict.clone(),
         empty_user_dict.clone(),
@@ -2274,7 +2271,6 @@ async fn ime_search_handler(
     let (candidates, segments) = engine.search(EngineSearchQuery {
         buffer: &req.buffer,
         profile: &req.profile,
-        syllables: &engine.syllables,
         config: &cfg,
         limit: req.limit,
         filter_mode: fm,
@@ -2328,14 +2324,14 @@ fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
 }
 
 fn create_processor(
-    root: &std::path::Path,
+    _root: &std::path::Path,
     engine: Arc<SearchEngine>,
 ) -> Option<qianyan_ime_engine::Processor> {
-    let syllables = load_syllables(root);
+    let empty = std::collections::HashSet::new();
 
     Some(qianyan_ime_engine::Processor::new_with_engine(
         (*engine).clone(),
-        syllables,
+        empty,
     ))
 }
 

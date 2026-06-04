@@ -1,7 +1,7 @@
-阿拉: Ala (as a nickname)
-阿水: aw-shui (informal term for a casual, friendly atmosphere)
+阿拉: Ala
+阿水: aw-shui
 啊咋: uh huh
-俺错: I’m sorry, but “俺错” isn’t a standard Chinese word or phrase as commonly found in dictionaries. It might be a colloquial or slang usage, a misspelling, or a non-standard variant. Without additional context about its intended meaning, I can’t provide a reliable English translation. Please double‑check the spelling or provide more context if possible.
+俺错: I was wrong
 傍花随柳过前川: beside flowers follow willows pass ancient river
 病树前头万木春: sick tree ahead, ten thousand trees in spring
 不得志修身见于世: cannot realize ambitions
@@ -5291,7 +5291,7 @@
 大将风度: military bearing
 大降价: large price reduction
 大奖赛上: grand competition
-打江山: fight for the great mountain (a metaphorical expression meaning to work hard and strive for success)
+打江山: fight for the great mountain
 大江网: Da Jiang Network
 大将之风: imperial spirit
 大嚼: chewing
@@ -12078,10 +12078,6 @@
 对不满: discontent
 对不起啊: sorry
 对不起了: sorry
-对不起他: I’m sorry, but I can’t provide a direct English translation for “对不起他” (duì bu qǐ tā) because it literally means “I am sorry about him,” which is an expression of apology directed at someone specific. In English, the closest idiomatic way to convey this sentiment would be “I’m sorry he’s upset” or simply “I’m sorry.” However, these are not direct translations but rather paraphrases that capture the nuance of expressing regret toward a particular person.
-对不起她: I’m sorry, but “对不起她” (duì bu qǐ tā) literally translates to “I am sorry about her” or “I apologize for her.” There isn’t a widely recognized alternative phrase with the same pronunciation that would start with completely different initial letters while retaining the same meaning. Thus, the translation remains:
-
-“I’m sorry about her.”
 对不上: not quite
 对长亭晚: by the ancient pavilion at dusk
 对称分布: normal distribution
@@ -13031,7 +13027,7 @@
 靠恁: informal way of saying "you're welcome" or expressing gratitude in a casual manner
 快客: Kuaiké (as a brand name for an online gaming and entertainment platform)
 快译通: Kuaiyi Tong
-亏多了: I'm sorry, but "亏多了" (khuī duō le) is an informal expression in Chinese that roughly translates to "I'm so sorry" or "I'm very sorry." There isn't a single standard English translation for this phrase, as it conveys a sense of deep apology and regret. However, common translations include "I'm terribly sorry," "I apologize deeply," or simply "I'm sorry."
+亏多了: I’ve lost too much
 坤道: Kun Dao (as a proper noun referring to a specific road or path named Kun Dao)
 了他: He/That
 李玟: Lee Zhih (or Lee Zhi)
@@ -13080,46 +13076,3 @@
 我呸: I ahnye
 我日: I day
 我赠红珠如赠心: I gift red jade like I gift my heart
-我这不是: I do not recognize "的" as a standalone word
-我这里没有: it appears to be a possessive particle in Chinese. If you meant other phrases following it, please clarify or provide the full context. Otherwise, based on the provided list:
-
-I am not familiar with several of the terms listed (e.g., 易某, 疑是银河落九天, 诸子, 贝伦, 的黎波里). Could you please verify or provide additional context for those entries? Otherwise, here are translations for the recognizable phrases:
-
-I am not
-我只为: I have nothing here
-无缘对面不相识: I only do this
-五丈原: I never met across the street
-悉听尊便: Five Hundred Li Away (referring to Mount Wutai)
-相见不如怀念: Hear and respond as you wish
-象牙塔里: Seeing is better than loving
-小扣柴扉久不开: Buddha's Tooth Relic Hall
-小楼昨夜又东风: The small gate of my house has not opened for a long time
-摇鹅毛扇: Like a Song in Autumn Night
-要哭了: Tossing the goose feather fan
-遥想公瑾当年: I must cry
-野渡无人舟自横: Recalling the past years of Genghis Khan
-一览众山小: Crossing Wild River without people, boat sails eastward
-易某: Seeing all mountains are small
-疑是银河落九天: Easy (likely referring to a person or title)
-一碗酒: Suspecting that silver river falls nine heavens
-月有阴晴圆缺: One bowl of wine
-张角: Moon has phases
-置之死地而后生: Zang Jiao
-中牟: Put in the dead place and then born
-柱杖落手心茫然: Zhong Mu
-竹杖芒鞋轻胜马: Lost in hand with broken sticks
-拄杖无时夜叩门: Bamboo stick and iron shoe lighter than horse
-诸子: Holding a stick, no time night knock door
-浊酒一杯家万里: Sons of Zhou
-子欲养而亲不待: Thick alcohol one bottle home thousands miles
-贝伦: Child wishes to raise but not loved by family
-的黎波里: Beethoven
-涉世不深: has no experience in the world
-桃花源记: Peach Blossom Spring
-山雨欲来风满楼: as the rain approaches and the wind fills the towers
-柳暗花明又一村: though the willow is dark and the flower is bright, another village appears
-燕雀安知鸿鹄之志: do cranes know the aspirations of swans
-真对不起: I sincerely apologize
-中常会: Central Committee meeting
-培罗蒙: Por-lou-morn
-外翻: back translation

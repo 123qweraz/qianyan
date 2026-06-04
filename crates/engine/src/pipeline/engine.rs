@@ -47,7 +47,6 @@ impl Pipeline {
     pub fn run(
         &self,
         input: &str,
-        syllables: &HashSet<String>,
         config: &Config,
         limit: usize,
         context: Option<&str>,
@@ -60,7 +59,6 @@ impl Pipeline {
                     drop(guard);
                     let segments = self.segmentor.segment(
                         input,
-                        syllables,
                         &config.input.segmentation_delimiters,
                         &self.syllable_freq,
                         &self.base_syllables,
@@ -75,7 +73,6 @@ impl Pipeline {
             } else {
                 self.segmentor.segment(
                     input,
-                    syllables,
                     &config.input.segmentation_delimiters,
                     &self.syllable_freq,
                     &self.base_syllables,
@@ -106,7 +103,6 @@ type PipelineCache = (HashMap<String, Arc<Pipeline>>, std::collections::VecDeque
 #[derive(Clone)]
 pub struct SearchEngine {
     pub trie_paths: HashMap<String, (PathBuf, PathBuf)>,
-    pub syllables: Arc<HashSet<String>>,
     pub syllable_freq: Arc<HashMap<String, u64>>,
     pub base_syllables: Arc<HashSet<String>>,
     pub(crate) learned_words: Arc<ArcSwap<UserDictData>>,
@@ -122,7 +118,6 @@ const MAX_CACHED_PIPELINES: usize = 10;
 pub struct SearchQuery<'a> {
     pub buffer: &'a str,
     pub profile: &'a str,
-    pub syllables: &'a HashSet<String>,
     pub config: &'a Config,
     pub limit: usize,
     pub filter_mode: crate::processor::FilterMode,
@@ -134,23 +129,16 @@ pub struct SearchQuery<'a> {
 impl SearchEngine {
     pub fn new(
         trie_paths: HashMap<String, (PathBuf, PathBuf)>,
-        syllables: Arc<HashSet<String>>,
         syllable_freq: Arc<HashMap<String, u64>>,
         learned_words: Arc<ArcSwap<UserDictData>>,
         usage_history: Arc<ArcSwap<UserDictData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     ) -> Self {
-        let base_syllables: HashSet<String> = syllables
-            .iter()
-            .filter(|s| !syllable_freq.contains_key(*s))
-            .cloned()
-            .collect();
         Self {
             trie_paths,
-            syllables,
             syllable_freq,
-            base_syllables: Arc::new(base_syllables),
+            base_syllables: Arc::new(HashSet::new()),
             learned_words,
             usage_history,
             ngram_history,
@@ -183,7 +171,6 @@ impl SearchEngine {
             let context = crate::scheme::SchemeContext {
                 config: config_ref,
                 tries: &tries_map,
-                syllables: query.syllables,
                 syllable_freq: &self.syllable_freq,
                 base_syllables: &self.base_syllables,
                 user_dict: &self.learned_words,
@@ -259,14 +246,12 @@ impl SearchEngine {
 
             let results = pipeline.run(
                 query.buffer,
-                query.syllables,
                 config_ref,
                 search_limit,
                 query.context,
             );
             let segments = pipeline.segmentor.segment(
                 query.buffer,
-                query.syllables,
                 &config_ref.input.segmentation_delimiters,
                 &pipeline.syllable_freq,
                 &pipeline.base_syllables,
@@ -360,7 +345,7 @@ impl SearchEngine {
         }));
         pipeline.add_translator(Box::new(TableTranslator::new(
             trie_arc.clone(),
-            self.syllables.clone(),
+            self.syllable_freq.clone(),
             profile == "chinese",
         )));
         pipeline.add_translator(Box::new(ComposeTranslator::new(

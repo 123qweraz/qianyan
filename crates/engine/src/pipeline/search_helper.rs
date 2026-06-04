@@ -55,7 +55,6 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
     let query = SearchQuery {
         buffer: &ctx.session.buffer,
         profile: &current_profile,
-        syllables: &ctx.syllables,
         config: &ctx.config.master_config,
         limit: MAX_LOOKUP_LIMIT,
         filter_mode: ctx.session.filter_mode.clone(),
