@@ -185,7 +185,10 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                     return;
                 }
 
-                let (vk, utf8_text) = state.resolve_key(key);
+                let (vk, utf8_text) = match state.resolve_key(key) {
+                    Some(pair) => pair,
+                    None => return,
+                };
 
                 let prev_enabled = state.prev_chinese_enabled;
 
@@ -267,17 +270,14 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
 
 impl WlState {
     #[inline]
-    fn resolve_key(&self, keycode: u32) -> (VirtualKey, String) {
+    fn resolve_key(&self, keycode: u32) -> Option<(VirtualKey, String)> {
         if let Some(ref xkb_st) = self.xkb_state {
-            // Wayland sends xkb keycodes (evdev scancode + 8)
             let xkb_keycode = xkb::Keycode::new(keycode + 8);
             let sym = xkb_st.key_get_one_sym(xkb_keycode);
             let utf8 = xkb_st.key_get_utf8(xkb_keycode);
-            let vk = keysym_to_vk(sym);
-            (vk, utf8)
+            keysym_to_vk(sym).map(|vk| (vk, utf8))
         } else {
-            // Fallback: raw evdev mapping (same as old code)
-            (xkb_to_vk_raw(keycode), String::new())
+            xkb_to_vk_raw(keycode).map(|vk| (vk, String::new()))
         }
     }
 
@@ -450,118 +450,102 @@ impl WaylandInputHost {
 
 // ---- Keysym → VirtualKey mapping (xkbcommon-based) ----
 
-pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> VirtualKey {
+pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> Option<VirtualKey> {
     let s: u32 = sym.into();
     match s {
-        // lowercase letters a-z: 0x61-0x7a → VirtualKey::A..VirtualKey::Z
-        0x61..=0x7a => {
-            VirtualKey::from_u32(s - 0x61).unwrap_or(VirtualKey::A)
-        }
-        // uppercase letters A-Z: 0x41-0x5a → VirtualKey::A..VirtualKey::Z
-        0x41..=0x5a => {
-            VirtualKey::from_u32(s - 0x41).unwrap_or(VirtualKey::A)
-        }
-        // digits 0-9: 0x30-0x39 → VirtualKey::Digit0..VirtualKey::Digit9
-        0x30..=0x39 => {
-            VirtualKey::from_u32(s - 0x30 + VirtualKey::Digit0.to_u32()).unwrap_or(VirtualKey::A)
-        }
+        0x61..=0x7a => VirtualKey::from_u32(s - 0x61),
+        0x41..=0x5a => VirtualKey::from_u32(s - 0x41),
+        0x30..=0x39 => VirtualKey::from_u32(s - 0x30 + VirtualKey::Digit0.to_u32()),
 
-        // Control/function keysyms
-        keysyms::KEY_space => VirtualKey::Space,
-        keysyms::KEY_Return | keysyms::KEY_KP_Enter => VirtualKey::Enter,
-        keysyms::KEY_Tab | keysyms::KEY_ISO_Left_Tab => VirtualKey::Tab,
-        keysyms::KEY_BackSpace => VirtualKey::Backspace,
-        keysyms::KEY_Escape => VirtualKey::Esc,
-        keysyms::KEY_Caps_Lock => VirtualKey::CapsLock,
-        keysyms::KEY_Shift_L | keysyms::KEY_Shift_R => VirtualKey::Shift,
-        keysyms::KEY_Control_L | keysyms::KEY_Control_R => VirtualKey::Control,
-        keysyms::KEY_Alt_L | keysyms::KEY_Alt_R => VirtualKey::Alt,
-        keysyms::KEY_Left => VirtualKey::Left,
-        keysyms::KEY_Right => VirtualKey::Right,
-        keysyms::KEY_Up => VirtualKey::Up,
-        keysyms::KEY_Down => VirtualKey::Down,
-        keysyms::KEY_Page_Up => VirtualKey::PageUp,
-        keysyms::KEY_Page_Down => VirtualKey::PageDown,
-        keysyms::KEY_Home => VirtualKey::Home,
-        keysyms::KEY_End => VirtualKey::End,
-        keysyms::KEY_Delete => VirtualKey::Delete,
+        keysyms::KEY_space => Some(VirtualKey::Space),
+        keysyms::KEY_Return | keysyms::KEY_KP_Enter => Some(VirtualKey::Enter),
+        keysyms::KEY_Tab | keysyms::KEY_ISO_Left_Tab => Some(VirtualKey::Tab),
+        keysyms::KEY_BackSpace => Some(VirtualKey::Backspace),
+        keysyms::KEY_Escape => Some(VirtualKey::Esc),
+        keysyms::KEY_Caps_Lock => Some(VirtualKey::CapsLock),
+        keysyms::KEY_Shift_L | keysyms::KEY_Shift_R => Some(VirtualKey::Shift),
+        keysyms::KEY_Control_L | keysyms::KEY_Control_R => Some(VirtualKey::Control),
+        keysyms::KEY_Alt_L | keysyms::KEY_Alt_R => Some(VirtualKey::Alt),
+        keysyms::KEY_Left => Some(VirtualKey::Left),
+        keysyms::KEY_Right => Some(VirtualKey::Right),
+        keysyms::KEY_Up => Some(VirtualKey::Up),
+        keysyms::KEY_Down => Some(VirtualKey::Down),
+        keysyms::KEY_Page_Up => Some(VirtualKey::PageUp),
+        keysyms::KEY_Page_Down => Some(VirtualKey::PageDown),
+        keysyms::KEY_Home => Some(VirtualKey::Home),
+        keysyms::KEY_End => Some(VirtualKey::End),
+        keysyms::KEY_Delete => Some(VirtualKey::Delete),
 
-        // Punctuation
-        keysyms::KEY_grave => VirtualKey::Grave,
-        keysyms::KEY_minus => VirtualKey::Minus,
-        keysyms::KEY_equal => VirtualKey::Equal,
-        keysyms::KEY_bracketleft => VirtualKey::LeftBrace,
-        keysyms::KEY_bracketright => VirtualKey::RightBrace,
-        keysyms::KEY_backslash => VirtualKey::Backslash,
-        keysyms::KEY_semicolon => VirtualKey::Semicolon,
-        keysyms::KEY_apostrophe => VirtualKey::Apostrophe,
-        keysyms::KEY_comma => VirtualKey::Comma,
-        keysyms::KEY_period => VirtualKey::Dot,
-        keysyms::KEY_slash => VirtualKey::Slash,
+        keysyms::KEY_grave => Some(VirtualKey::Grave),
+        keysyms::KEY_minus => Some(VirtualKey::Minus),
+        keysyms::KEY_equal => Some(VirtualKey::Equal),
+        keysyms::KEY_bracketleft => Some(VirtualKey::LeftBrace),
+        keysyms::KEY_bracketright => Some(VirtualKey::RightBrace),
+        keysyms::KEY_backslash => Some(VirtualKey::Backslash),
+        keysyms::KEY_semicolon => Some(VirtualKey::Semicolon),
+        keysyms::KEY_apostrophe => Some(VirtualKey::Apostrophe),
+        keysyms::KEY_comma => Some(VirtualKey::Comma),
+        keysyms::KEY_period => Some(VirtualKey::Dot),
+        keysyms::KEY_slash => Some(VirtualKey::Slash),
 
-        // Also match shifted punctuation (some layouts might send these)
-        keysyms::KEY_asciitilde => VirtualKey::Grave,
-        keysyms::KEY_underscore => VirtualKey::Minus,
-        keysyms::KEY_plus => VirtualKey::Equal,
-        keysyms::KEY_braceleft => VirtualKey::LeftBrace,
-        keysyms::KEY_braceright => VirtualKey::RightBrace,
-        keysyms::KEY_bar => VirtualKey::Backslash,
-        keysyms::KEY_colon => VirtualKey::Semicolon,
-        keysyms::KEY_quotedbl => VirtualKey::Apostrophe,
-        keysyms::KEY_less => VirtualKey::Comma,
-        keysyms::KEY_greater => VirtualKey::Dot,
-        keysyms::KEY_question => VirtualKey::Slash,
+        keysyms::KEY_asciitilde => Some(VirtualKey::Grave),
+        keysyms::KEY_underscore => Some(VirtualKey::Minus),
+        keysyms::KEY_plus => Some(VirtualKey::Equal),
+        keysyms::KEY_braceleft => Some(VirtualKey::LeftBrace),
+        keysyms::KEY_braceright => Some(VirtualKey::RightBrace),
+        keysyms::KEY_bar => Some(VirtualKey::Backslash),
+        keysyms::KEY_colon => Some(VirtualKey::Semicolon),
+        keysyms::KEY_quotedbl => Some(VirtualKey::Apostrophe),
+        keysyms::KEY_less => Some(VirtualKey::Comma),
+        keysyms::KEY_greater => Some(VirtualKey::Dot),
+        keysyms::KEY_question => Some(VirtualKey::Slash),
 
-        // KP equivalents
-        keysyms::KEY_KP_0 => VirtualKey::Digit0,
-        keysyms::KEY_KP_1 => VirtualKey::Digit1,
-        keysyms::KEY_KP_2 => VirtualKey::Digit2,
-        keysyms::KEY_KP_3 => VirtualKey::Digit3,
-        keysyms::KEY_KP_4 => VirtualKey::Digit4,
-        keysyms::KEY_KP_5 => VirtualKey::Digit5,
-        keysyms::KEY_KP_6 => VirtualKey::Digit6,
-        keysyms::KEY_KP_7 => VirtualKey::Digit7,
-        keysyms::KEY_KP_8 => VirtualKey::Digit8,
-        keysyms::KEY_KP_9 => VirtualKey::Digit9,
-        keysyms::KEY_KP_Space => VirtualKey::Space,
-        keysyms::KEY_KP_Tab => VirtualKey::Tab,
-        keysyms::KEY_KP_Equal => VirtualKey::Equal,
-        keysyms::KEY_KP_Separator => VirtualKey::Comma,
-        keysyms::KEY_KP_Decimal => VirtualKey::Dot,
-        keysyms::KEY_KP_Divide => VirtualKey::Slash,
-        keysyms::KEY_KP_Subtract => VirtualKey::Minus,
-        keysyms::KEY_KP_Add => VirtualKey::Equal,
-        keysyms::KEY_KP_Delete => VirtualKey::Delete,
-        keysyms::KEY_KP_Home => VirtualKey::Home,
-        keysyms::KEY_KP_End => VirtualKey::End,
-        keysyms::KEY_KP_Left => VirtualKey::Left,
-        keysyms::KEY_KP_Right => VirtualKey::Right,
-        keysyms::KEY_KP_Up => VirtualKey::Up,
-        keysyms::KEY_KP_Down => VirtualKey::Down,
-        keysyms::KEY_KP_Page_Up => VirtualKey::PageUp,
-        keysyms::KEY_KP_Page_Down => VirtualKey::PageDown,
-        keysyms::KEY_KP_Begin => VirtualKey::Digit5,
+        keysyms::KEY_KP_0 => Some(VirtualKey::Digit0),
+        keysyms::KEY_KP_1 => Some(VirtualKey::Digit1),
+        keysyms::KEY_KP_2 => Some(VirtualKey::Digit2),
+        keysyms::KEY_KP_3 => Some(VirtualKey::Digit3),
+        keysyms::KEY_KP_4 => Some(VirtualKey::Digit4),
+        keysyms::KEY_KP_5 => Some(VirtualKey::Digit5),
+        keysyms::KEY_KP_6 => Some(VirtualKey::Digit6),
+        keysyms::KEY_KP_7 => Some(VirtualKey::Digit7),
+        keysyms::KEY_KP_8 => Some(VirtualKey::Digit8),
+        keysyms::KEY_KP_9 => Some(VirtualKey::Digit9),
+        keysyms::KEY_KP_Space => Some(VirtualKey::Space),
+        keysyms::KEY_KP_Tab => Some(VirtualKey::Tab),
+        keysyms::KEY_KP_Equal => Some(VirtualKey::Equal),
+        keysyms::KEY_KP_Separator => Some(VirtualKey::Comma),
+        keysyms::KEY_KP_Decimal => Some(VirtualKey::Dot),
+        keysyms::KEY_KP_Divide => Some(VirtualKey::Slash),
+        keysyms::KEY_KP_Subtract => Some(VirtualKey::Minus),
+        keysyms::KEY_KP_Add => Some(VirtualKey::Equal),
+        keysyms::KEY_KP_Delete => Some(VirtualKey::Delete),
+        keysyms::KEY_KP_Home => Some(VirtualKey::Home),
+        keysyms::KEY_KP_End => Some(VirtualKey::End),
+        keysyms::KEY_KP_Left => Some(VirtualKey::Left),
+        keysyms::KEY_KP_Right => Some(VirtualKey::Right),
+        keysyms::KEY_KP_Up => Some(VirtualKey::Up),
+        keysyms::KEY_KP_Down => Some(VirtualKey::Down),
+        keysyms::KEY_KP_Page_Up => Some(VirtualKey::PageUp),
+        keysyms::KEY_KP_Page_Down => Some(VirtualKey::PageDown),
+        keysyms::KEY_KP_Begin => Some(VirtualKey::Digit5),
 
-        // Meta / Super -> treat as Control for now
-        keysyms::KEY_Super_L | keysyms::KEY_Super_R => VirtualKey::Control,
+        keysyms::KEY_Super_L | keysyms::KEY_Super_R => Some(VirtualKey::Control),
 
         _ => {
-            // Try keysym_to_utf8: if it's a Unicode keysym in range 0x01000100..=0x0110FFFF,
-            // map back to plain ASCII range if applicable
             let utf8 = xkb::keysym_to_utf8(sym);
             if utf8.len() == 1 {
                 if let Some(ch) = utf8.chars().next() {
                     match ch {
-                        'a'..='z' => VirtualKey::from_u32(ch as u32 - 'a' as u32).unwrap_or(VirtualKey::A),
-                        'A'..='Z' => VirtualKey::from_u32(ch as u32 - 'A' as u32).unwrap_or(VirtualKey::A),
-                        '0'..='9' => VirtualKey::from_u32(ch as u32 - '0' as u32 + VirtualKey::Digit0.to_u32()).unwrap_or(VirtualKey::A),
-                        _ => VirtualKey::A,
+                        'a'..='z' => VirtualKey::from_u32(ch as u32 - 'a' as u32),
+                        'A'..='Z' => VirtualKey::from_u32(ch as u32 - 'A' as u32),
+                        '0'..='9' => VirtualKey::from_u32(ch as u32 - '0' as u32 + VirtualKey::Digit0.to_u32()),
+                        _ => None,
                     }
                 } else {
-                    VirtualKey::A
+                    None
                 }
             } else {
-                VirtualKey::A
+                None
             }
         }
     }
@@ -570,82 +554,82 @@ pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> VirtualKey {
 // ---- Old raw xkb-to-VirtualKey mapping (fallback when no xkb state) ----
 // This maps raw xkb keycodes (NOT keysyms) to VirtualKey.
 // xkb keycode = evdev scancode + 8.
-pub(crate) fn xkb_to_vk_raw(keycode: u32) -> VirtualKey {
+pub(crate) fn xkb_to_vk_raw(keycode: u32) -> Option<VirtualKey> {
     if keycode < 8 {
-        return VirtualKey::A;
+        return None;
     }
     let e = keycode - 8;
     match e {
-        1 => VirtualKey::Esc,
-        2 => VirtualKey::Digit1,
-        3 => VirtualKey::Digit2,
-        4 => VirtualKey::Digit3,
-        5 => VirtualKey::Digit4,
-        6 => VirtualKey::Digit5,
-        7 => VirtualKey::Digit6,
-        8 => VirtualKey::Digit7,
-        9 => VirtualKey::Digit8,
-        10 => VirtualKey::Digit9,
-        11 => VirtualKey::Digit0,
-        12 => VirtualKey::Minus,
-        13 => VirtualKey::Equal,
-        14 => VirtualKey::Backspace,
-        15 => VirtualKey::Tab,
-        16 => VirtualKey::Q,
-        17 => VirtualKey::W,
-        18 => VirtualKey::E,
-        19 => VirtualKey::R,
-        20 => VirtualKey::T,
-        21 => VirtualKey::Y,
-        22 => VirtualKey::U,
-        23 => VirtualKey::I,
-        24 => VirtualKey::O,
-        25 => VirtualKey::P,
-        26 => VirtualKey::LeftBrace,
-        27 => VirtualKey::RightBrace,
-        28 => VirtualKey::Enter,
-        29 => VirtualKey::Control,
-        30 => VirtualKey::A,
-        31 => VirtualKey::S,
-        32 => VirtualKey::D,
-        33 => VirtualKey::F,
-        34 => VirtualKey::G,
-        35 => VirtualKey::H,
-        36 => VirtualKey::J,
-        37 => VirtualKey::K,
-        38 => VirtualKey::L,
-        39 => VirtualKey::Semicolon,
-        40 => VirtualKey::Apostrophe,
-        41 => VirtualKey::Grave,
-        42 => VirtualKey::Shift,
-        43 => VirtualKey::Backslash,
-        44 => VirtualKey::Z,
-        45 => VirtualKey::X,
-        46 => VirtualKey::C,
-        47 => VirtualKey::V,
-        48 => VirtualKey::B,
-        49 => VirtualKey::N,
-        50 => VirtualKey::M,
-        51 => VirtualKey::Comma,
-        52 => VirtualKey::Dot,
-        53 => VirtualKey::Slash,
-        54 => VirtualKey::Shift,
-        56 => VirtualKey::Alt,
-        57 => VirtualKey::Space,
-        58 => VirtualKey::CapsLock,
-        97 => VirtualKey::Control,
-        100 => VirtualKey::Alt,
-        103 => VirtualKey::Up,
-        104 => VirtualKey::PageUp,
-        105 => VirtualKey::Left,
-        106 => VirtualKey::Right,
-        108 => VirtualKey::Down,
-        109 => VirtualKey::PageDown,
-        110 => VirtualKey::Home,
-        111 => VirtualKey::Delete,
-        112 => VirtualKey::End,
-        119 => VirtualKey::Esc,
-        125 | 126 => VirtualKey::Control,
-        _ => VirtualKey::A,
+        1 => Some(VirtualKey::Esc),
+        2 => Some(VirtualKey::Digit1),
+        3 => Some(VirtualKey::Digit2),
+        4 => Some(VirtualKey::Digit3),
+        5 => Some(VirtualKey::Digit4),
+        6 => Some(VirtualKey::Digit5),
+        7 => Some(VirtualKey::Digit6),
+        8 => Some(VirtualKey::Digit7),
+        9 => Some(VirtualKey::Digit8),
+        10 => Some(VirtualKey::Digit9),
+        11 => Some(VirtualKey::Digit0),
+        12 => Some(VirtualKey::Minus),
+        13 => Some(VirtualKey::Equal),
+        14 => Some(VirtualKey::Backspace),
+        15 => Some(VirtualKey::Tab),
+        16 => Some(VirtualKey::Q),
+        17 => Some(VirtualKey::W),
+        18 => Some(VirtualKey::E),
+        19 => Some(VirtualKey::R),
+        20 => Some(VirtualKey::T),
+        21 => Some(VirtualKey::Y),
+        22 => Some(VirtualKey::U),
+        23 => Some(VirtualKey::I),
+        24 => Some(VirtualKey::O),
+        25 => Some(VirtualKey::P),
+        26 => Some(VirtualKey::LeftBrace),
+        27 => Some(VirtualKey::RightBrace),
+        28 => Some(VirtualKey::Enter),
+        29 => Some(VirtualKey::Control),
+        30 => Some(VirtualKey::A),
+        31 => Some(VirtualKey::S),
+        32 => Some(VirtualKey::D),
+        33 => Some(VirtualKey::F),
+        34 => Some(VirtualKey::G),
+        35 => Some(VirtualKey::H),
+        36 => Some(VirtualKey::J),
+        37 => Some(VirtualKey::K),
+        38 => Some(VirtualKey::L),
+        39 => Some(VirtualKey::Semicolon),
+        40 => Some(VirtualKey::Apostrophe),
+        41 => Some(VirtualKey::Grave),
+        42 => Some(VirtualKey::Shift),
+        43 => Some(VirtualKey::Backslash),
+        44 => Some(VirtualKey::Z),
+        45 => Some(VirtualKey::X),
+        46 => Some(VirtualKey::C),
+        47 => Some(VirtualKey::V),
+        48 => Some(VirtualKey::B),
+        49 => Some(VirtualKey::N),
+        50 => Some(VirtualKey::M),
+        51 => Some(VirtualKey::Comma),
+        52 => Some(VirtualKey::Dot),
+        53 => Some(VirtualKey::Slash),
+        54 => Some(VirtualKey::Shift),
+        56 => Some(VirtualKey::Alt),
+        57 => Some(VirtualKey::Space),
+        58 => Some(VirtualKey::CapsLock),
+        97 => Some(VirtualKey::Control),
+        100 => Some(VirtualKey::Alt),
+        103 => Some(VirtualKey::Up),
+        104 => Some(VirtualKey::PageUp),
+        105 => Some(VirtualKey::Left),
+        106 => Some(VirtualKey::Right),
+        108 => Some(VirtualKey::Down),
+        109 => Some(VirtualKey::PageDown),
+        110 => Some(VirtualKey::Home),
+        111 => Some(VirtualKey::Delete),
+        112 => Some(VirtualKey::End),
+        119 => Some(VirtualKey::Esc),
+        125 | 126 => Some(VirtualKey::Control),
+        _ => None,
     }
 }

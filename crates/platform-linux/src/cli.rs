@@ -272,7 +272,10 @@ fn run_test_mode() {
                 '8' => engine::keys::VirtualKey::Digit8,
                 '9' => engine::keys::VirtualKey::Digit9,
                 'a'..='z' | 'A'..='Z' => {
-                    c.to_string().parse::<engine::keys::VirtualKey>().unwrap_or(engine::keys::VirtualKey::A)
+                    match c.to_string().parse::<engine::keys::VirtualKey>() {
+                        Ok(vk) => vk,
+                        Err(()) => continue,
+                    }
                 }
                 ';' => engine::keys::VirtualKey::Semicolon,
                 ',' => engine::keys::VirtualKey::Comma,
@@ -285,7 +288,7 @@ fn run_test_mode() {
                 '=' => engine::keys::VirtualKey::Equal,
                 ' ' => engine::keys::VirtualKey::Space,
                 '`' => engine::keys::VirtualKey::Grave,
-                _ => engine::keys::VirtualKey::A,
+                _ => continue,
             };
             let action = processor.handle_key(vk, 1, shift, ctrl, alt);
             println!("动作反馈: {action:?}");

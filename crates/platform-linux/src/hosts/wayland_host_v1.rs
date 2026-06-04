@@ -44,15 +44,14 @@ struct WlState {
 }
 
 impl WlState {
-    fn resolve_key(&self, keycode: u32) -> (VirtualKey, String) {
+    fn resolve_key(&self, keycode: u32) -> Option<(VirtualKey, String)> {
         if let Some(ref xkb_st) = self.xkb_state {
             let xkb_keycode = xkb::Keycode::new(keycode + 8);
             let sym = xkb_st.key_get_one_sym(xkb_keycode);
             let utf8 = xkb_st.key_get_utf8(xkb_keycode);
-            let vk = keysym_to_vk(sym);
-            (vk, utf8)
+            keysym_to_vk(sym).map(|vk| (vk, utf8))
         } else {
-            (xkb_to_vk_raw(keycode), String::new())
+            xkb_to_vk_raw(keycode).map(|vk| (vk, String::new()))
         }
     }
 
@@ -266,7 +265,10 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     return;
                 }
 
-                let (vk, utf8_text) = state.resolve_key(key);
+                let (vk, utf8_text) = match state.resolve_key(key) {
+                    Some(pair) => pair,
+                    None => return,
+                };
 
                 let action = match state.processor.handle_key(vk, 1, false, false, false, true) {
                     Some(a) => a,
