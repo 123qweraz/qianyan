@@ -591,6 +591,7 @@ struct BrowseResult {
 }
 
 #[derive(Serialize)]
+#[derive(Clone)]
 struct DictEntryView {
     pinyin: String,
     word: String,
@@ -632,6 +633,57 @@ fn strip_tone(s: &str) -> String {
     }).collect()
 }
 
+static DICT_CACHE: OnceLock<StdMutex<HashMap<String, (std::time::SystemTime, std::sync::Arc<Vec<DictEntryView>>)>>> = OnceLock::new();
+
+fn get_dict_cache() -> &'static StdMutex<HashMap<String, (std::time::SystemTime, std::sync::Arc<Vec<DictEntryView>>)>> {
+    DICT_CACHE.get_or_init(|| StdMutex::new(HashMap::new()))
+}
+
+fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEntryView>> {
+    let mtime = path.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+    let key = path.to_string_lossy().to_string();
+    let mut cache = get_dict_cache().lock().expect("dict cache lock poisoned");
+    if let Some((cached_mtime, entries)) = cache.get(&key) {
+        if *cached_mtime >= mtime {
+            return std::sync::Arc::clone(entries);
+        }
+    }
+    let entries = load_dict_entries(path);
+    let arc = std::sync::Arc::new(entries);
+    cache.insert(key, (mtime, std::sync::Arc::clone(&arc)));
+    arc
+}
+
+fn load_dict_entries(path: &std::path::Path) -> Vec<DictEntryView> {
+    let mut all = Vec::new();
+    if let Ok(f) = std::fs::File::open(path) {
+        if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
+            if let Some(obj) = json.as_object() {
+                for (pinyin, val) in obj {
+                    if let Some(arr) = val.as_array() {
+                        for v in arr {
+                            let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("").to_string();
+                            if word.is_empty() { continue; }
+                            all.push(DictEntryView {
+                                pinyin: pinyin.clone(),
+                                word,
+                                trad: v.get("trad").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+                                en: v.get("en").and_then(|e| e.as_str()).unwrap_or("").to_string(),
+                                tone: v.get("tone").and_then(|t| t.as_str()).unwrap_or("").to_string(),
+                                weight: v.get("weight").and_then(|w| w.as_i64()).unwrap_or(0),
+                                stroke_aux: v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("").to_string(),
+                                category: v.get("category").and_then(|c| c.as_str()).unwrap_or("").to_string(),
+                                strokes: v.get("strokes").and_then(|s| s.as_str()).unwrap_or("").to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    all
+}
+
 async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQuery>) -> impl IntoResponse {
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).clamp(10, 500);
@@ -649,107 +701,50 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
         return (StatusCode::NOT_FOUND, "{}").into_response();
     }
 
-    let mut all_entries: Vec<DictEntryView> = Vec::new();
-    // 记录搜索时的匹配类型，用于排序优先级：拼音 > 汉字 > 英文
-    let mut match_kind: Vec<u8> = Vec::new();
-    if let Ok(f) = std::fs::File::open(&path) {
-        if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
-            if let Some(obj) = json.as_object() {
-                for (pinyin, val) in obj {
-                    if let Some(arr) = val.as_array() {
-                        for v in arr {
-                            let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
-                            let en = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
-                            let trad = v.get("trad").and_then(|t| t.as_str()).unwrap_or("");
-                            let tone = v.get("tone").and_then(|t| t.as_str()).unwrap_or("");
-                            let weight = v.get("weight").and_then(|w| w.as_i64()).unwrap_or(0);
-                            let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("");
-                            let category = v.get("category").and_then(|c| c.as_str()).unwrap_or("");
-                            let strokes = v.get("strokes").and_then(|s| s.as_str()).unwrap_or("");
+    // 全局缓存：每个文件只解析一次 JSON
+    let entries_arc = get_cached_dict_entries(&path);
+    let all = entries_arc.as_ref();
 
-                            let mut kind: u8 = 0;
-                            if !search.is_empty() {
-                                let search_plain = strip_tone(&search);
-                                let match_py = strip_tone(&pinyin.to_lowercase()).contains(&search_plain);
-                                let match_word = word.to_lowercase().contains(&search);
-                                let match_en = en.to_lowercase().contains(&search);
-                                let match_stroke_aux = stroke_aux.to_lowercase().contains(&search);
-                                let match_stroke = strokes.contains(&search);
-                                let matched = match search_by {
-                                    "pinyin" => match_py,
-                                    "word" => match_word,
-                                    "en" => match_en,
-                                    "stroke_aux" => match_stroke_aux,
-                                    "stroke" => match_stroke,
-                                    _ => {
-                                        if match_py { kind = 0; true }
-                                        else if match_word { kind = 1; true }
-                                        else if match_stroke_aux { kind = 2; true }
-                                        else if match_stroke { kind = 3; true }
-                                        else { false }
-                                    },
-                                };
-                                if !matched {
-                                    continue;
-                                }
-                            }
-                            match_kind.push(kind);
-                            all_entries.push(DictEntryView {
-                                pinyin: pinyin.clone(),
-                                word: word.to_string(),
-                                trad: trad.to_string(),
-                                en: en.to_string(),
-                                tone: tone.to_string(),
-                                weight,
-                                stroke_aux: stroke_aux.to_string(),
-                                category: category.to_string(),
-                                strokes: strokes.to_string(),
-                            });
-                        }
-                    }
+    // 过滤
+    let filtered: Vec<&DictEntryView> = if search.is_empty() {
+        all.iter().collect()
+    } else {
+        let search_plain = strip_tone(&search);
+        all.iter().filter(|e| {
+            match search_by {
+                "pinyin" => strip_tone(&e.pinyin.to_lowercase()).contains(&search_plain),
+                "word" => e.word.to_lowercase().contains(&search),
+                "en" => e.en.to_lowercase().contains(&search),
+                "stroke_aux" => e.stroke_aux.to_lowercase().contains(&search),
+                _ => {
+                    strip_tone(&e.pinyin.to_lowercase()).contains(&search_plain)
+                        || e.word.to_lowercase().contains(&search)
+                        || e.en.to_lowercase().contains(&search)
+                        || e.stroke_aux.to_lowercase().contains(&search)
                 }
             }
-        }
-    }
+        }).collect()
+    };
 
-    let total = all_entries.len();
+    let total = filtered.len();
     let total_pages = total.div_ceil(page_size).max(1);
 
-    // Sort：有搜索时按匹配优先级 拼音 > 汉字 > 英文，同优先级再按用户选择排序
-    let cmp_ascii = |a: &str, b: &str, asc: bool| -> std::cmp::Ordering {
-        let ord = a.to_lowercase().cmp(&b.to_lowercase());
-        if asc { ord } else { ord.reverse() }
-    };
-    if !search.is_empty() && search_by == "all" {
-        // 先按匹配优先级排序：拼音(0) > 汉字(1) > 英文(2)
-        let mut paired: Vec<(DictEntryView, u8)> = all_entries.into_iter().zip(match_kind).collect();
-        paired.sort_by(|(a, ka), (b, kb)| {
-            if ka != kb { return ka.cmp(kb); }
-            let asc = sort_order == "asc";
-            match sort_by {
-                "word" => cmp_ascii(&a.word, &b.word, asc),
-                "en" => cmp_ascii(&a.en, &b.en, asc),
-                "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
-                "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
-                _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
-            }
-        });
-        all_entries = paired.into_iter().map(|(e, _)| e).collect();
-    } else {
-        all_entries.sort_by(|a, b| {
-            let asc = sort_order == "asc";
-            match sort_by {
-                "word" => cmp_ascii(&a.word, &b.word, asc),
-                "en" => cmp_ascii(&a.en, &b.en, asc),
-                "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
-                "stroke_aux" => cmp_ascii(&a.stroke_aux, &b.stroke_aux, asc),
-                _ => cmp_ascii(&a.pinyin, &b.pinyin, asc),
-            }
-        });
-    }
+    // Clone + sort + paginate
+    let mut entries: Vec<DictEntryView> = filtered.into_iter().cloned().collect();
+    let asc = sort_order == "asc";
+    entries.sort_by(|a, b| {
+        let ord = |x: &str, y: &str| x.to_lowercase().cmp(&y.to_lowercase());
+        match sort_by {
+            "word" => { let o = ord(&a.word, &b.word); if asc { o } else { o.reverse() } }
+            "en" => { let o = ord(&a.en, &b.en); if asc { o } else { o.reverse() } }
+            "weight" => if asc { a.weight.cmp(&b.weight) } else { b.weight.cmp(&a.weight) },
+            "stroke_aux" => { let o = ord(&a.stroke_aux, &b.stroke_aux); if asc { o } else { o.reverse() } }
+            _ => { let o = ord(&a.pinyin, &b.pinyin); if asc { o } else { o.reverse() } }
+        }
+    });
 
     let start = (page - 1) * page_size;
-    let entries: Vec<DictEntryView> = all_entries.into_iter().skip(start).take(page_size).collect();
+    let entries: Vec<DictEntryView> = entries.into_iter().skip(start).take(page_size).collect();
 
     Json(BrowseResult { entries, total, page, page_size, total_pages }).into_response()
 }
