@@ -430,7 +430,9 @@ impl WaylandInputHostV1 {
         gui_tx: Sender<GuiEvent>,
         tray_tx: Sender<TrayEvent>,
     ) -> Option<Self> {
-        if std::env::var("WAYLAND_DISPLAY").is_err() {
+        let has_conn = std::env::var("WAYLAND_DISPLAY").is_ok()
+            || std::env::var("WAYLAND_SOCKET").is_ok();
+        if !has_conn {
             return None;
         }
         if Connection::connect_to_env().is_err() {

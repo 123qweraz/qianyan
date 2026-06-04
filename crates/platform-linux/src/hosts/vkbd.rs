@@ -136,7 +136,8 @@ impl Vkbd {
         let backspace_delay_ms = Arc::new(Mutex::new(10));
 
         let (task_tx, task_rx) = mpsc::channel::<VkbdTask>();
-        let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok();
+        let is_wayland = std::env::var("WAYLAND_DISPLAY").is_ok()
+            || std::env::var("WAYLAND_SOCKET").is_ok();
 
         // 启动后台工作线程
         let dev_bg = dev.clone();
