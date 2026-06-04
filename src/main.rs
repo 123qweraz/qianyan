@@ -431,7 +431,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("Failed to accept GUI connection");
 
         // Send initial config
-        let cfg = config.read().expect("config lock poisoned").clone();
+        let cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
         let _ = send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(
             serde_json::to_string(&cfg)
                 .expect("failed to serialize config"),

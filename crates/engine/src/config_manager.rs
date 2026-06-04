@@ -136,7 +136,7 @@ impl ConfigManager {
 
     fn save_usage_if_due(&self, profile: &str) {
         let mut last = self.usage_last_save.lock()
-            .expect("usage_last_save mutex poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         if last.elapsed() >= USAGE_SAVE_INTERVAL {
             *last = Instant::now();
             if let Some(ref user_data) = self.user_data {

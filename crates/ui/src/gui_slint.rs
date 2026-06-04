@@ -22,7 +22,7 @@ pub fn start_gui(
     _tray_tx: Sender<TrayEvent>,
 ) {
     {
-        let cfg = config.read().expect("config lock poisoned");
+        let cfg = config.read().unwrap_or_else(|e| e.into_inner());
         let initial = create_displays(&cfg);
         DISPLAYS.with(|d| {
             *d.borrow_mut() = initial;
@@ -74,7 +74,7 @@ pub fn start_gui(
                 // Coalesceable: rapid typing events — only latest matters
                 _ => {
                     *coalesced_event.lock()
-                        .expect("coalesced_event mutex poisoned") = Some(event);
+                        .unwrap_or_else(|e| e.into_inner()) = Some(event);
                     if !pending_update.swap(true, Ordering::SeqCst) {
                         let cfg = config.clone();
                         let c_evt = coalesced_event.clone();
@@ -82,7 +82,7 @@ pub fn start_gui(
                         let r = slint::invoke_from_event_loop(move || {
                             p_upd.store(false, Ordering::SeqCst);
                             let evt = c_evt.lock()
-                                    .expect("coalesced_event mutex poisoned")
+                                    .unwrap_or_else(|e| e.into_inner())
                                     .take();
                             if let Some(e) = evt {
                                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
@@ -187,7 +187,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                     let r = slint::invoke_from_event_loop(move || {
                         let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                                     let mut guard = cfg.lock()
-                                        .expect("config lock poisoned");
+                                        .unwrap_or_else(|e| e.into_inner());
                             handle_ipc_event(&msg, &mut guard);
                         }));
                         if let Err(e) = result {
@@ -201,7 +201,7 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                     // Coalesce frequent updates (SyncState, Update, MoveTo, etc.)
                     // only the latest one in the queue matters for an IME UI.
                     *coalesced_msg.lock()
-                        .expect("coalesced_msg mutex poisoned") = Some(msg);
+                        .unwrap_or_else(|e| e.into_inner()) = Some(msg);
                     if !pending_update.swap(true, std::sync::atomic::Ordering::SeqCst) {
                         let cfg = current_config.clone();
                         let c_msg = coalesced_msg.clone();
@@ -209,12 +209,12 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                         let r = slint::invoke_from_event_loop(move || {
                             p_upd.store(false, std::sync::atomic::Ordering::SeqCst);
                             let msg_to_process = c_msg.lock()
-                                .expect("coalesced_msg mutex poisoned")
+                                .unwrap_or_else(|e| e.into_inner())
                                 .take();
                             if let Some(m) = msg_to_process {
                                 let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                             let mut guard = cfg.lock()
-                                .expect("config lock poisoned");
+                                .unwrap_or_else(|e| e.into_inner());
                                     handle_ipc_event(&m, &mut guard);
                                 }));
                                 if let Err(e) = result {
@@ -392,7 +392,7 @@ fn handle_event(
             }
         }
         GuiEvent::ApplyConfig(new_config) => {
-            let old = config.read().expect("config lock poisoned");
+            let old = config.read().unwrap_or_else(|e| e.into_inner());
             let old_slint = old.linux.show_slint_window;
             let old_notify = old.linux.show_notification;
             let old_toggle_notify = old.linux.show_toggle_notification;
@@ -403,18 +403,18 @@ fn handle_event(
             drop(old);
             log::debug!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={},toggle_notify={}) new(slint={},notify={},toggle_notify={})",
                 old_slint, old_notify, old_toggle_notify, new_slint, new_notify, new_toggle_notify);
-            *config.write().expect("config lock poisoned") = *new_config;
+            *config.write().unwrap_or_else(|e| e.into_inner()) = *new_config;
 
             if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
                 log::debug!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
-                let new_displays = create_displays(&config.read().expect("config lock poisoned"));
+                let new_displays = create_displays(&config.read().unwrap_or_else(|e| e.into_inner()));
                 for d in displays.iter_mut() {
                     d.close();
                 }
                 *displays = new_displays;
             } else {
                 log::debug!("[GUI_DEBUG] ApplyConfig: config unchanged, applying to existing");
-                let cfg = config.read().expect("config lock poisoned");
+                let cfg = config.read().unwrap_or_else(|e| e.into_inner());
                 for d in displays.iter_mut() {
                     d.apply_config(&cfg);
                 }

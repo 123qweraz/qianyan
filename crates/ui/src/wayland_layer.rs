@@ -168,7 +168,7 @@ impl PixelPool {
     }
     fn get(&self, size: usize) -> Vec<u8> {
         let mut pool = self.0.lock()
-            .expect("pixel pool mutex poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(mut v) = pool.pop() {
             if v.capacity() < size {
                 v.reserve(size - v.capacity());
@@ -181,7 +181,7 @@ impl PixelPool {
     }
     fn put(&self, v: Vec<u8>) {
         let mut pool = self.0.lock()
-            .expect("pixel pool mutex poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         if pool.len() < 8 {
             pool.push(v);
         }
@@ -273,7 +273,7 @@ impl RenderBuffer for WaylandRenderBuffer {
         if self.window_visible.get() {
             let (anchor, margin_a, margin_b) = self.compute_anchor(w, h);
             if let Some(ref tx) = *self.wl_tx.lock()
-                .expect("wl_tx mutex poisoned") {
+                .unwrap_or_else(|e| e.into_inner()) {
                 let cmd = WlCmd::ShowCandidate {
                     x: margin_b, y: margin_a, w, h, anchor, pixels,
                 };

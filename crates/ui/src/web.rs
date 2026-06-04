@@ -549,7 +549,7 @@ async fn search_dict(
 
     // 懒加载 trie（mmap，零额外内存）
     let trie = {
-        let mut cache = tries.write().expect("tries lock poisoned");
+        let mut cache = tries.write().unwrap_or_else(|e| e.into_inner());
         if !cache.contains_key(ime) {
             let project_root = qianyan_ime_core::utils::find_project_root();
             let idx = project_root.join(format!("data/{}/trie.index", ime));
@@ -645,7 +645,7 @@ fn get_dict_cache() -> &'static StdMutex<HashMap<String, (std::time::SystemTime,
 fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEntryView>> {
     let mtime = path.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
     let key = path.to_string_lossy().to_string();
-    let mut cache = get_dict_cache().lock().expect("dict cache lock poisoned");
+    let mut cache = get_dict_cache().lock().unwrap_or_else(|e| e.into_inner());
     if let Some((cached_mtime, entries)) = cache.get(&key) {
         if *cached_mtime >= mtime {
             return std::sync::Arc::clone(entries);
@@ -2037,7 +2037,7 @@ fn do_discovery(
 ) -> Vec<DiscoveredWordWithPinyin> {
     let cache_mutex = get_known_words_cache();
     let mut cache_guard = cache_mutex.lock()
-        .expect("known_words_cache mutex poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     
     if cache_guard.is_none() {
         log::info!("[discover] Building global known_words index...");
@@ -2560,7 +2560,7 @@ async fn ime_session_handler(
     resp.session_id = session_id.clone();
 
     let mut sessions = ime_handle.sessions.lock()
-        .expect("ime sessions mutex poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     if sessions.len() >= MAX_IME_SESSIONS {
         let now = std::time::Instant::now();
         let ttl = std::time::Duration::from_secs(SESSION_TTL_SECS);
@@ -2584,7 +2584,7 @@ async fn ime_key_handler(
     Json(req): Json<ImeKeyRequest>,
 ) -> Result<Json<ImeSessionResponse>, StatusCode> {
     let mut sessions = ime_handle.sessions.lock()
-        .expect("ime sessions mutex poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     let session = sessions.get_mut(&req.session_id).ok_or(StatusCode::NOT_FOUND)?;
 
     if let Some(ref profile) = req.profile {
