@@ -277,7 +277,7 @@
 
         function startEdit(id) {
             editingRow = id;
-            renderTable(getCurrentEntries());
+            loadPage(currentPage);
         }
 
         function cancelEdit() { editingRow = null; loadPage(currentPage); }
@@ -297,9 +297,6 @@
             showToast(r.ok ? '已保存' : '保存失败', r.ok ? 'success' : 'error');
             loadPage(currentPage);
         }
-
-        let currentEntries = [];
-        function getCurrentEntries() { return currentEntries; }
 
         async function deleteEntry(id) {
             const [pinyin, word] = id.split('::');

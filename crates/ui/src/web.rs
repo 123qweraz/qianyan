@@ -530,7 +530,6 @@ struct SearchResult {
 struct SearchQuery {
     q: String,
     ime: Option<String>,
-    search_by: Option<String>,
 }
 
 async fn search_dict(
@@ -593,6 +592,7 @@ struct BrowseResult {
 #[derive(Serialize)]
 #[derive(Clone)]
 struct DictEntryView {
+    id: String,
     pinyin: String,
     word: String,
     trad: String,
@@ -665,6 +665,7 @@ fn load_dict_entries(path: &std::path::Path) -> Vec<DictEntryView> {
                             let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("").to_string();
                             if word.is_empty() { continue; }
                             all.push(DictEntryView {
+                                id: format!("{}::{}", pinyin, word),
                                 pinyin: pinyin.clone(),
                                 word,
                                 trad: v.get("trad").and_then(|t| t.as_str()).unwrap_or("").to_string(),
