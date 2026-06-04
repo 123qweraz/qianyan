@@ -8,7 +8,7 @@ pub mod punctuation;
 pub mod session_state;
 pub mod utils;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
