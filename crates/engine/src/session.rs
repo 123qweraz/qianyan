@@ -125,7 +125,11 @@ impl InputSession {
 
     pub fn push_str(&mut self, s: &str) -> bool {
         let available = MAX_BUFFER_LEN.saturating_sub(self.buffer.len());
-        let to_push = &s[..s.len().min(available)];
+        let mut end = s.len().min(available);
+        while !s.is_char_boundary(end) && end > 0 {
+            end -= 1;
+        }
+        let to_push = &s[..end];
         if to_push.is_empty() {
             return false;
         }
