@@ -5,8 +5,8 @@
     <title>词典设置 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        .editor-layout { display: flex; gap: 0; min-height: calc(100vh - 200px); margin-top: 16px; }
-        .dict-sidebar { width: 280px; min-width: 200px; background: rgba(255,255,255,0.85); border: 1px solid var(--apple-border); border-radius: 16px; display: flex; flex-direction: column; }
+        .editor-layout { display: flex; gap: 0; margin-top: 16px; }
+        .dict-sidebar { width: 360px; max-width: 100%; background: rgba(255,255,255,0.85); border: 1px solid var(--apple-border); border-radius: 16px; display: flex; flex-direction: column; }
         .dict-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--apple-border); }
         .dict-sidebar-stats { font-size: 11px; color: var(--apple-secondary); font-weight: 400; }
         .dict-sidebar-list { flex: 1; overflow-y: auto; padding: 4px 0; }
@@ -21,9 +21,6 @@
         .sidebar-actions button { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--apple-border); background: white; cursor: pointer; transition: all 0.15s; }
         .sidebar-actions button:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.05); }
         .sidebar-compile-hint { font-size: 10px; color: var(--apple-secondary); padding: 4px 12px 8px; text-align: center; }
-        .editor-main { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); border: 1px solid var(--apple-border); border-radius: 16px; margin-left: 12px; min-height: 300px; }
-        .editor-main .placeholder { text-align: center; color: var(--apple-secondary); }
-        .editor-main .placeholder .icon { font-size: 48px; margin-bottom: 16px; }
         .profile-chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .profile-chip { padding: 8px 18px; border-radius: 20px; border: 1.5px solid var(--apple-border); font-size: 13px; cursor: pointer; transition: all 0.15s; user-select: none; background: rgba(255,255,255,0.8); color: var(--apple-text); }
         .profile-chip:hover { border-color: var(--apple-accent); background: rgba(0,122,255,0.05); }
@@ -69,12 +66,10 @@
                     <a href="/static/settings/user_dict_editor.html" style="font-size:12px; color:var(--apple-secondary); text-decoration:none;">👤 用户词典 →</a>
                 </div>
             </div>
-            <div class="editor-main" id="editor-main">
-                <div class="placeholder">
-                    <div class="icon">📖</div>
-                    <p>← 选择左侧词典文件开始编辑</p>
-                </div>
-            </div>
+        </div>
+
+        <div style="margin-top:12px; text-align:center; font-size:12px; color:var(--apple-secondary);">
+            点击文件即可编辑 | 切换开关后需「编译」才能生效
         </div>
     </div>
 
