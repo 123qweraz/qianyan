@@ -56,6 +56,9 @@ pub(super) struct ImeSession {
     created: std::time::Instant,
 }
 
+const MAX_IME_SESSIONS: usize = 1000;
+const SESSION_TTL_SECS: u64 = 3600;
+
 impl WebServer {
     pub fn new(
         port: u16, 
@@ -2558,6 +2561,17 @@ async fn ime_session_handler(
 
     let mut sessions = ime_handle.sessions.lock()
         .expect("ime sessions mutex poisoned");
+    if sessions.len() >= MAX_IME_SESSIONS {
+        let now = std::time::Instant::now();
+        let ttl = std::time::Duration::from_secs(SESSION_TTL_SECS);
+        sessions.retain(|_, s| now.duration_since(s.created) < ttl);
+        if sessions.len() >= MAX_IME_SESSIONS {
+            let oldest_key = sessions.iter().min_by_key(|(_, s)| s.created).map(|(k, _)| k.clone());
+            if let Some(key) = oldest_key {
+                sessions.remove(&key);
+            }
+        }
+    }
     sessions.insert(session_id, ImeSession { processor, created: Instant::now() });
 
     Ok(Json(resp))
