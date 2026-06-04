@@ -91,6 +91,7 @@
                 <button class="btn" onclick="exportAll()">📥 导出全部数据</button>
                 <button class="btn" onclick="clearCurrentProfile()" style="color:var(--apple-red);">🗑 清空当前方案</button>
                 <button class="btn btn-danger" onclick="clearAll()">🗑 清空全部</button>
+                <button class="btn" onclick="cleanupSystemWords()">🧹 清除系统已有词</button>
             </div>
         </div>
 
@@ -238,6 +239,16 @@
             });
             showToast(res.ok ? '所有用户数据已清空' : '清空失败', res.ok ? 'success' : 'error');
             if (res.ok) loadAll();
+        }
+
+        async function cleanupSystemWords() {
+            if (!confirm('将扫描用户词典，移除系统词典中已存在的词（如\"大家\"、\"我们\"等）。\n\n此操作不会删除系统词典中没有的自造词。')) return;
+            const res = await fetch('/api/dict/user/cleanup', { method: 'POST' });
+            if (!res.ok) { showToast('清理失败', 'error'); return; }
+            const results = await res.json();
+            const total = results.reduce((s, r) => s + r.removed, 0);
+            showToast(`清理完成！共移除 ${total} 个系统已有词`, 'success');
+            loadAll();
         }
 
         async function exportAll() {

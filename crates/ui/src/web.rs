@@ -98,6 +98,7 @@ impl WebServer {
             .route("/api/dict/add", post(add_dict_entry))
             .route("/api/dict/entry/add", post(add_dict_entry_full))
             .route("/api/dict/clear_user", post(clear_user_dict))
+            .route("/api/dict/user/cleanup", post(cleanup_user_dict))
             .route("/api/keyboard/send", post(send_key_handler))
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
             .route("/api/convert", post(convert_handler))
@@ -1083,6 +1084,73 @@ async fn clear_user_dict(
     }
 
     StatusCode::OK
+}
+
+#[derive(Serialize)]
+struct CleanupResult {
+    profile: String,
+    removed: usize,
+}
+
+/// 扫描用户词典，移除系统词典已有的词
+async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
+    let root = user_dict_root();
+    let mut results = Vec::new();
+
+    let trie = {
+        let project_root = qianyan_ime_core::utils::find_project_root();
+        let idx = project_root.join("data/chinese/trie.index");
+        let dat = project_root.join("data/chinese/trie.data");
+        Trie::load(&idx, &dat, false).ok()
+    };
+
+    if let (Some(trie), Ok(entries)) = (trie, std::fs::read_dir(&root)) {
+        for profile_entry in entries.flatten() {
+            if !profile_entry.path().is_dir() { continue; }
+            let profile = profile_entry.file_name().to_string_lossy().to_string();
+            let learned_path = profile_entry.path().join("learned.json");
+            if !learned_path.exists() { continue; }
+
+            let content = match std::fs::read_to_string(&learned_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let mut data: serde_json::Value = match serde_json::from_str(&content) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+
+            let mut removed = 0usize;
+            if let Some(obj) = data.as_object_mut() {
+                if let Some(data_obj) = obj.get_mut("data").and_then(|d| d.as_object_mut()) {
+                    let pinyins: Vec<String> = data_obj.keys().cloned().collect();
+                    for pinyin in pinyins {
+                        if let Some(entries) = data_obj.get_mut(&pinyin).and_then(|a| a.as_array_mut()) {
+                            let before = entries.len();
+                            entries.retain(|entry| {
+                                let word = entry.as_array()
+                                    .and_then(|a| a.first())
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("");
+                                word.is_empty() || !trie.has_word_in_dict(word)
+                            });
+                            removed += before - entries.len();
+                            if entries.is_empty() {
+                                data_obj.remove(&pinyin);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if removed > 0 {
+                let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
+            }
+            results.push(CleanupResult { profile, removed });
+        }
+    }
+
+    Json(results)
 }
 
 #[derive(Serialize)]
