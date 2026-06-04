@@ -99,6 +99,7 @@ impl WebServer {
             .route("/api/dict/entry/add", post(add_dict_entry_full))
             .route("/api/dict/clear_user", post(clear_user_dict))
             .route("/api/dict/user/cleanup", post(cleanup_user_dict))
+            .route("/api/dict/user/promote", post(promote_to_system_dict))
             .route("/api/keyboard/send", post(send_key_handler))
             .route("/api/pinyin/convert", post(pinyin_convert_handler))
             .route("/api/convert", post(convert_handler))
@@ -1151,6 +1152,95 @@ async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
     }
 
     Json(results)
+}
+
+#[derive(Deserialize)]
+struct PromoteRequest {
+    words: Vec<PromoteWord>,
+}
+#[derive(Deserialize)]
+struct PromoteWord {
+    profile: String,
+    pinyin: String,
+    word: String,
+}
+#[derive(Serialize)]
+struct PromoteResult {
+    added: usize,
+    skipped: usize,
+}
+
+async fn promote_to_system_dict(
+    State((_, _, tray_tx)): State<WebState>,
+    Json(req): Json<PromoteRequest>,
+) -> Json<PromoteResult> {
+    let project_root = qianyan_ime_core::utils::find_project_root();
+    let dict_file = project_root.join("dicts/chinese/words/user_promoted.json");
+
+    let mut dict: serde_json::Value = if dict_file.exists() {
+        std::fs::read_to_string(&dict_file).ok()
+            .and_then(|c| serde_json::from_str(&c).ok())
+            .unwrap_or_else(|| serde_json::json!({}))
+    } else {
+        if let Some(parent) = dict_file.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        serde_json::json!({})
+    };
+
+    let mut added = 0usize;
+    let mut skipped = 0usize;
+
+    for w in &req.words {
+        let pinyin = w.pinyin.to_lowercase();
+        let obj = match dict.as_object_mut() {
+            Some(o) => o,
+            None => break,
+        };
+        let entries = obj.entry(pinyin.clone())
+            .or_insert_with(|| serde_json::Value::Array(Vec::new()));
+        let arr = match entries.as_array_mut() {
+            Some(a) => a,
+            None => continue,
+        };
+        if arr.iter().any(|e| e.get("char").and_then(|v| v.as_str()) == Some(&w.word)) {
+            skipped += 1; continue;
+        }
+        arr.push(serde_json::json!({ "char": w.word, "weight": 50000 }));
+        added += 1;
+    }
+
+    if added > 0 {
+        let _ = std::fs::write(&dict_file, serde_json::to_string_pretty(&dict).unwrap_or_default());
+    }
+
+    // 从用户词典中删除已提升的词
+    for w in &req.words {
+        let learned_path = user_dict_root().join(&w.profile).join("learned.json");
+        if !learned_path.exists() { continue; }
+        if let Ok(content) = std::fs::read_to_string(&learned_path) {
+            if let Ok(mut data) = serde_json::from_str::<serde_json::Value>(&content) {
+                let pinyin = w.pinyin.to_lowercase();
+                let modified = if let Some(data_obj) = data.get_mut("data").and_then(|d| d.as_object_mut()) {
+                    if let Some(entries) = data_obj.get_mut(&pinyin).and_then(|a| a.as_array_mut()) {
+                        entries.retain(|e| {
+                            e.as_array().and_then(|a| a.first().and_then(|v| v.as_str())) != Some(&w.word)
+                        });
+                        if entries.is_empty() { data_obj.remove(&pinyin); }
+                        true
+                    } else { false }
+                } else { false };
+                if modified {
+                    let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
+                }
+            }
+        }
+    }
+
+    if added > 0 {
+        let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
+    }
+    Json(PromoteResult { added, skipped })
 }
 
 #[derive(Serialize)]

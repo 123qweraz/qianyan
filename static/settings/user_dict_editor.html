@@ -92,6 +92,7 @@
                 <button class="btn" onclick="clearCurrentProfile()" style="color:var(--apple-red);">🗑 清空当前方案</button>
                 <button class="btn btn-danger" onclick="clearAll()">🗑 清空全部</button>
                 <button class="btn" onclick="cleanupSystemWords()">🧹 清除系统已有词</button>
+                <button class="btn" id="promote-btn" onclick="promoteToSystem()" style="display:none;">📤 添加到系统词典</button>
             </div>
         </div>
 
@@ -99,6 +100,7 @@
             <table class="dict-table" id="user-dict-table">
                 <thead>
                     <tr>
+                        <th class="center"><input type="checkbox" id="select-all" onchange="toggleAll(this)" style="display:none;" title="全选"></th>
                         <th class="left">类型</th>
                         <th class="left">方案</th>
                         <th class="left">键/拼音</th>
@@ -166,6 +168,9 @@
                     b.classList.add('active');
                 }
             });
+            // 只有 learned 标签页显示提升和全选
+            document.getElementById('promote-btn').style.display = tab === 'learned' ? '' : 'none';
+            document.getElementById('select-all').style.display = tab === 'learned' ? '' : 'none';
             renderTable();
         }
 
@@ -182,8 +187,11 @@
             document.getElementById('stats-bar').textContent =
                 `显示 ${entries.length} / ${total} 条`;
 
+            const showCheck = currentTab === 'learned';
+
             if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">暂无数据</td></tr>';
+                const cols = showCheck ? 7 : 6;
+                tbody.innerHTML = `<tr><td colspan="${cols}" class="no-data">暂无数据</td></tr>`;
                 return;
             }
             tbody.innerHTML = entries.map((e) => {
@@ -191,7 +199,9 @@
                     e.data_type === 'usage' ? 'type-usage' : 'type-ngram';
                 const tagLabel = e.data_type === 'learned' ? '词典' :
                     e.data_type === 'usage' ? '频率' : 'ngram';
+                const cb = showCheck ? `<td class="center"><input type="checkbox" value="${esc_attr(e.profile)}:${esc_attr(e.pinyin)}:${esc_attr(e.word)}" class="promote-check"></td>` : '';
                 return `<tr>
+                    ${cb}
                     <td><span class="type-tag ${tagClass}">${tagLabel}</span></td>
                     <td class="left">${esc(e.profile)}</td>
                     <td class="left cell-pinyin">${esc(e.pinyin)}</td>
@@ -266,6 +276,34 @@
             } catch(e) {
                 showToast('导出失败: ' + e.message, 'error');
             }
+        }
+
+        function toggleAll(el) {
+            document.querySelectorAll('.promote-check').forEach(cb => cb.checked = el.checked);
+        }
+
+        async function promoteToSystem() {
+            const checked = document.querySelectorAll('.promote-check:checked');
+            if (checked.length === 0) { showToast('请先勾选要添加的词', 'error'); return; }
+            if (!confirm(`将 ${checked.length} 个词添加到系统词典 (user_promoted.json)？\n\n添加后请手动点击编译词库按钮使其生效。`)) return;
+
+            const words = [];
+            checked.forEach(cb => {
+                const parts = cb.value.split(':');
+                if (parts.length >= 3) {
+                    words.push({ profile: decodeURIComponent(parts[0]), pinyin: decodeURIComponent(parts[1]), word: decodeURIComponent(parts[2]) });
+                }
+            });
+
+            const res = await fetch('/api/dict/user/promote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ words })
+            });
+            if (!res.ok) { showToast('操作失败', 'error'); return; }
+            const result = await res.json();
+            showToast(`已添加 ${result.added} 个词到系统词典${result.skipped > 0 ? '，跳过 ' + result.skipped + ' 个已存在' : ''}。请手动编译词库使其生效。`, 'success');
+            loadAll();
         }
 
         function esc(s) { if (!s) return '-'; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
