@@ -85,13 +85,9 @@ fn run_bench_mode() {
         ),
     );
 
-    let mut syllables = crate::load_syllables(&root);
-    syllables.insert("zhuo".to_string());
-    syllables.insert("mian".to_string());
-    syllables.insert("zhuomian".to_string());
     let syllable_freq = crate::load_syllable_frequencies(&root);
 
-    let mut processor = Processor::new(trie_paths, syllables, syllable_freq);
+    let mut processor = Processor::new(trie_paths, syllable_freq);
     processor.apply_config(&Config::load());
     processor.ctx.session_state.active_profiles = vec!["chinese".to_string()];
 
@@ -172,7 +168,6 @@ fn run_test_mode() {
     let config_dir = qianyan_ime_core::Config::get_config_dir();
     println!("[Test] 配置加载目录: {:?}", config_dir);
     let root = crate::find_project_root();
-    let syllables = crate::load_syllables(&root);
     let mut trie_paths = HashMap::new();
     if let Ok(entries) = std::fs::read_dir(root.join("data")) {
         for entry in entries.flatten() {
@@ -192,7 +187,7 @@ fn run_test_mode() {
     }
     let syllable_freq = crate::load_syllable_frequencies(&root);
     let config = Config::load();
-    let mut processor = Processor::new(trie_paths, syllables, syllable_freq);
+    let mut processor = Processor::new(trie_paths, syllable_freq);
     processor.apply_config(&config);
 
     use std::io::{self, Write};

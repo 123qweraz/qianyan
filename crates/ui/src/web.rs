@@ -2485,11 +2485,8 @@ fn create_processor(
     _root: &std::path::Path,
     engine: Arc<SearchEngine>,
 ) -> Option<qianyan_ime_engine::Processor> {
-    let empty = std::collections::HashSet::new();
-
     Some(qianyan_ime_engine::Processor::new_with_engine(
         (*engine).clone(),
-        empty,
     ))
 }
 

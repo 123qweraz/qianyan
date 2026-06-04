@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use serde_json::Value;
 use crate::config::PunctuationEntry;
 
@@ -64,22 +64,6 @@ pub fn load_punctuation_dict(p: &str) -> HashMap<String, Vec<PunctuationEntry>> 
         }
     }
     m
-}
-
-pub fn load_syllables(root: &Path) -> HashSet<String> {
-    let mut set = HashSet::new();
-    let path = root.join("dicts/chinese/syllables.txt");
-    if let Ok(f) = File::open(&path) {
-        use std::io::BufRead;
-        let reader = std::io::BufReader::new(f);
-        for line in reader.lines().map_while(Result::ok) {
-            let s = line.trim().to_lowercase();
-            if !s.is_empty() {
-                set.insert(s);
-            }
-        }
-    }
-    set
 }
 
 pub fn load_syllable_frequencies(root: &Path) -> HashMap<String, u64> {

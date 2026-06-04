@@ -62,20 +62,18 @@ pub struct Processor {
 impl Processor {
     pub fn new(
         trie_paths: HashMap<String, (std::path::PathBuf, std::path::PathBuf)>,
-        syllables: HashSet<String>,
         syllable_freq: HashMap<String, u64>,
     ) -> Self {
         Self {
-            ctx: EngineContext::new(trie_paths, syllables, syllable_freq),
+            ctx: EngineContext::new(trie_paths, syllable_freq),
         }
     }
 
     pub fn new_with_engine(
         engine: crate::pipeline::SearchEngine,
-        syllables: HashSet<String>,
     ) -> Self {
         Self {
-            ctx: EngineContext::new_with_engine(engine, syllables),
+            ctx: EngineContext::new_with_engine(engine),
         }
     }
 

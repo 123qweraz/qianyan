@@ -33,10 +33,6 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                         start.elapsed()
                     );
 
-                    // 编译后立即更新该方案的音节表
-                    let syllables_path = format!("{}/syllables.txt", src_path);
-                    println!("[Compiler] 更新方案 [{}] 的音节表...", dir_name);
-                    extract_syllables_from_compiled_data(&src_path, &syllables_path)?;
                 } else {
                     println!("[Compiler] 方案 [{}] 已是最新，跳过。", dir_name);
                 }
@@ -238,33 +234,6 @@ fn process_yaml_file(
                 weight,
             });
         }
-    }
-    Ok(())
-}
-
-fn extract_syllables_from_compiled_data(
-    src_dir: &str,
-    out_txt: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "json") {
-            if path.file_name().and_then(|n| n.to_str()) == Some("punctuation.json") {
-                continue;
-            }
-            process_json_file(path, &mut entries, false)?;
-        } else if path.extension().is_some_and(|ext| ext == "yaml") {
-            process_yaml_file(path, &mut entries)?;
-        }
-    }
-
-    let mut syllables: Vec<_> = entries.keys().cloned().collect();
-    syllables.sort();
-
-    let mut f = File::create(out_txt)?;
-    for s in syllables {
-        writeln!(f, "{}", s)?;
     }
     Ok(())
 }

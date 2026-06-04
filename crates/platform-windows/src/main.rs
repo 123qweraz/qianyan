@@ -1,7 +1,7 @@
 #![cfg(target_os = "windows")]
 
 use qianyan_ime_core::Config;
-use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllables};
+use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict};
 use qianyan_ime_engine::Processor;
 use std::collections::HashMap;
 use std::env;
@@ -103,9 +103,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let syllables = load_syllables(&root);
     let syllable_freq = qianyan_ime_core::utils::load_syllable_frequencies(&root);
-    let mut processor_obj = Processor::new(trie_paths, syllables, syllable_freq);
+    let mut processor_obj = Processor::new(trie_paths, syllable_freq);
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);
     }

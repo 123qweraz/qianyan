@@ -669,8 +669,8 @@ mod tests {
         ));
 
         let syllable_freq: std::collections::HashMap<String, u64> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
-            content.lines().map(|s| (s.trim().to_string(), 1u64)).filter(|(s, _)| !s.is_empty()).collect()
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
+            content.lines().filter_map(|s| { let s = s.trim(); if s.is_empty() { None } else { let (p,c) = s.split_once(' ')?; Some((p.to_string(), c.parse().unwrap_or(1))) } }).collect()
         };
 
         let engine = SearchEngine::new(
@@ -770,7 +770,7 @@ mod tests {
         ));
 
         let syllables: HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
@@ -871,7 +871,7 @@ mod tests {
         ));
 
         let syllables: HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
@@ -971,7 +971,7 @@ mod tests {
         ));
 
         let syllables: std::collections::HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
@@ -1167,7 +1167,7 @@ mod tests {
         ));
 
         let syllables: HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
@@ -1256,7 +1256,7 @@ mod tests {
         ));
 
         let syllables: HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
@@ -1340,7 +1340,7 @@ mod tests {
         ));
 
         let syllables: HashSet<String> = {
-            let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 

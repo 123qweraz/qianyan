@@ -3,7 +3,7 @@ pub use qianyan_ime_windows::{IME_ID, LANG_PROFILE_ID};
 
 // 使用 crates/ 库替代本地模块
 use qianyan_ime_core::config::Config;
-use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllable_frequencies, load_syllables};
+use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllable_frequencies};
 use qianyan_ime_engine::processor::Processor;
 use qianyan_ime_engine::processor::actor::{ProcessorHandle, ProcessorActor};
 use qianyan_ime_engine::compiler;
@@ -144,9 +144,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let syllables = load_syllables(&root);
     let syllable_freq = load_syllable_frequencies(&root);
-    let mut processor_obj = Processor::new(trie_paths, syllables, syllable_freq);
+    let mut processor_obj = Processor::new(trie_paths, syllable_freq);
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);
     }

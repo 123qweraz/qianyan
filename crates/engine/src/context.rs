@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::keys::VirtualKey;
@@ -18,7 +18,6 @@ pub struct EngineContext {
 impl EngineContext {
     pub fn new(
         trie_paths: HashMap<String, (std::path::PathBuf, std::path::PathBuf)>,
-        _syllables: HashSet<String>,
         syllable_freq: HashMap<String, u64>,
     ) -> Self {
         let config = crate::ConfigManager::new();
@@ -45,7 +44,6 @@ impl EngineContext {
 
     pub fn new_with_engine(
         engine: crate::pipeline::SearchEngine,
-        _syllables: HashSet<String>,
     ) -> Self {
         let config = crate::ConfigManager::new();
         Self {
