@@ -16,6 +16,8 @@ pub enum PasteMode {
 enum VkbdTask {
     SendText(String, bool), // text, highlight
     Backspace(usize),
+    EmitRaw(Key, i32),      // key, value
+    Tap(Key),               // tap a single key (press + release)
 }
 
 pub struct Vkbd {
@@ -94,6 +96,12 @@ impl Vkbd {
                         };
                         Self::do_backspace(&dev_bg, count, bs_delay);
                     }
+                    VkbdTask::EmitRaw(key, value) => {
+                        Self::do_emit_raw(&dev_bg, key, value);
+                    }
+                    VkbdTask::Tap(key) => {
+                        Self::do_tap(&dev_bg, key);
+                    }
                 }
             }
         });
@@ -109,7 +117,7 @@ impl Vkbd {
 
     pub fn send_key(&self, key_name: &str) {
         if let Some(key) = key_name_to_key(key_name) {
-            Self::do_tap(&self.dev, key);
+            let _ = self.task_tx.send(VkbdTask::Tap(key));
         }
     }
 
@@ -122,7 +130,7 @@ impl Vkbd {
     }
 
     pub fn emit_raw(&self, key: Key, value: i32) {
-        Self::do_emit_raw(&self.dev, key, value);
+        let _ = self.task_tx.send(VkbdTask::EmitRaw(key, value));
     }
 
     // --- 同步工作逻辑 (由后台线程调用) ---
