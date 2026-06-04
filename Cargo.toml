@@ -79,6 +79,7 @@ windows-core = "0.52"
 name = "qianyan-ime"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
 qianyan-ime-core = { path = "crates/core" }

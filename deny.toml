@@ -5,22 +5,26 @@
 db-path = "~/.cargo/advisory-db"
 # The url(s) of the advisory databases to use
 db-urls = ["https://github.com/rustsec/advisory-db"]
-# The lint level for security vulnerabilities
-vulnerability = "deny"
-# The lint level for unmaintained crates
-unmaintained = "warn"
+# All vulnerability/unsound advisories automatically emit errors
+# Scope for unmaintained advisories: all | workspace | transitive | none
+unmaintained = "workspace"
+# Scope for unsound advisories: all | workspace | transitive | none
+unsound = "workspace"
 # The lint level for crates that have been yanked from their source registry
 yanked = "warn"
-# The lint level for crates with security notices
-notice = "warn"
+# The lint level for unused entries in the ignore list
+unused-ignored-advisory = "warn"
 # A list of advisory IDs to ignore. Note that ignored advisories will still
 # output a note when they are encountered.
-ignore = []
+ignore = [
+    # daemonize is unmaintained but no safe alternative for Linux daemonization
+    "RUSTSEC-2025-0069",
+]
 
 [licenses]
-# The lint level for crates which do not have a detectable license
-unlicensed = "deny"
-# List of explicitly allowed licenses
+# The lint level for unused entries in the allow list
+unused-allowed-license = "warn"
+# Licenses that are explicitly allowed. All others are denied by default.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -29,21 +33,22 @@ allow = [
     "BSD-3-Clause",
     "ISC",
     "Unicode-DFS-2016",
+    "Unicode-3.0",
     "CC0-1.0",
+    "BSL-1.0",
+    "Zlib",
+    "Unlicense",
+    "MPL-2.0",
+    "NCSA",
+    "LicenseRef-Slint-Royalty-free-2.0",
+    "LicenseRef-Slint-Software-3.0",
 ]
-# List of explicitly disallowed licenses
-deny = [
-    "GPL-2.0",
-    "GPL-3.0",
-]
-# Lint level used when no other predicates are matched
-copyleft = "warn"
-# Blanket approval or denial for OSI-approved or FSF Free/Libre licenses
-allow-osi-fsf-free = "both"
-# Lint level used when the license cannot be determined due to missing metadata
-default = "deny"
+# Note: GPL-2.0, GPL-3.0 are denied since they are not in the allow list
 # The confidence threshold for detecting a license from license text
 confidence-threshold = 0.8
+# Ignore workspace crates' own license (handled at workspace level)
+[licenses.private]
+ignore = true
 
 [bans]
 # Lint level for when multiple versions of the same crate are detected

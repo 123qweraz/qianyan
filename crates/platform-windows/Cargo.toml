@@ -2,6 +2,7 @@
 name = "qianyan-ime-windows"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [lib]
 name = "qianyan_ime_tsf"
