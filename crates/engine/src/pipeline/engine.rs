@@ -300,7 +300,7 @@ impl SearchEngine {
 
         let paths = self.trie_paths.get(profile)?;
         log::info!("Lazy loading trie: profile={}", profile);
-        let trie = Trie::load(&paths.0, &paths.1, true).ok()?;
+        let trie = Trie::load(&paths.0, &paths.1, false).ok()?;
         let trie_arc = Arc::new(trie);
 
         if let Ok(mut cache) = self.trie_cache.write() {

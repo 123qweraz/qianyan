@@ -2327,32 +2327,16 @@ fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
     }
 }
 
-fn create_processor(root: &std::path::Path) -> Option<qianyan_ime_engine::Processor> {
+fn create_processor(
+    root: &std::path::Path,
+    engine: Arc<SearchEngine>,
+) -> Option<qianyan_ime_engine::Processor> {
     let syllables = load_syllables(root);
-    let syllable_freq = load_syllable_frequencies(root);
 
-    let data_dir = root.join("data");
-    let mut trie_paths: HashMap<String, (PathBuf, PathBuf)> = HashMap::new();
-    if let Ok(entries) = std::fs::read_dir(&data_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    let trie_idx = path.join("trie.index");
-                    let trie_dat = path.join("trie.data");
-                    if trie_idx.exists() && trie_dat.exists() {
-                        trie_paths.insert(dir_name.to_string(), (trie_idx, trie_dat));
-                    }
-                }
-            }
-        }
-    }
-
-    if trie_paths.is_empty() {
-        return None;
-    }
-
-    Some(qianyan_ime_engine::Processor::new(trie_paths, syllables, syllable_freq))
+    Some(qianyan_ime_engine::Processor::new_with_engine(
+        (*engine).clone(),
+        syllables,
+    ))
 }
 
 #[derive(Serialize)]
@@ -2444,10 +2428,11 @@ async fn ime_session_handler(
     State((config, _, _)): State<WebState>,
     Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
 ) -> Result<Json<ImeSessionResponse>, StatusCode> {
-    ensure_engine(&ime_handle).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let shared_engine = ensure_engine(&ime_handle).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
     let cfg = config.read().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.clone();
-    let mut processor = create_processor(&ime_handle.root).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+    let mut processor = create_processor(&ime_handle.root, shared_engine)
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
     processor.apply_config(&cfg);
     let _ = processor.handle_event(qianyan_ime_engine::InputEvent::CandidateSelect(0)); // warmup first lookup
 

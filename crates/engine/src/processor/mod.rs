@@ -70,6 +70,15 @@ impl Processor {
         }
     }
 
+    pub fn new_with_engine(
+        engine: crate::pipeline::SearchEngine,
+        syllables: HashSet<String>,
+    ) -> Self {
+        Self {
+            ctx: EngineContext::new_with_engine(engine, syllables),
+        }
+    }
+
     pub fn apply_config(&mut self, conf: &Config) {
         self.ctx.apply_config(conf);
     }

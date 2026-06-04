@@ -33,26 +33,7 @@ impl EngineContext {
             config.learned_words.clone(),
             config.usage_history.clone(),
             config.ngram_history.clone(),
-            {
-                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
-                m.insert(
-                    "stroke".to_string(),
-                    Box::new(crate::schemes::StrokeScheme::new()),
-                );
-                m.insert(
-                    "english".to_string(),
-                    Box::new(crate::schemes::EnglishScheme::new()),
-                );
-                m.insert(
-                    "japanese".to_string(),
-                    Box::new(crate::schemes::JapaneseScheme::new()),
-                );
-                m.insert(
-                    "chinese".to_string(),
-                    Box::new(crate::schemes::ChineseScheme::new()),
-                );
-                Arc::new(m)
-            },
+            Self::default_schemes(),
         );
 
         Self {
@@ -62,9 +43,33 @@ impl EngineContext {
             engine,
             syllables,
             dispatcher: crate::KeyDispatcher::new(),
-
             sound_manager: crate::sound::SoundManager::new(),
         }
+    }
+
+    pub fn new_with_engine(
+        engine: crate::pipeline::SearchEngine,
+        syllables: HashSet<String>,
+    ) -> Self {
+        let config = crate::ConfigManager::new();
+        Self {
+            session: crate::InputSession::new(),
+            session_state: crate::processor::session_state::SessionState::new(),
+            config,
+            engine,
+            syllables,
+            dispatcher: crate::KeyDispatcher::new(),
+            sound_manager: crate::sound::SoundManager::new(),
+        }
+    }
+
+    fn default_schemes() -> Arc<HashMap<String, Box<dyn InputScheme>>> {
+        let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+        m.insert("stroke".to_string(), Box::new(crate::schemes::StrokeScheme::new()));
+        m.insert("english".to_string(), Box::new(crate::schemes::EnglishScheme::new()));
+        m.insert("japanese".to_string(), Box::new(crate::schemes::JapaneseScheme::new()));
+        m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+        Arc::new(m)
     }
 
     pub fn reset(&mut self) {
