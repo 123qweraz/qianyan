@@ -5,6 +5,25 @@
     <title>词典设置 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
+        .editor-layout { display: flex; gap: 0; min-height: calc(100vh - 200px); margin-top: 16px; }
+        .dict-sidebar { width: 280px; min-width: 200px; background: rgba(255,255,255,0.85); border: 1px solid var(--apple-border); border-radius: 16px; display: flex; flex-direction: column; }
+        .dict-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--apple-border); }
+        .dict-sidebar-stats { font-size: 11px; color: var(--apple-secondary); font-weight: 400; }
+        .dict-sidebar-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+        .dict-sidebar-item { display: flex; align-items: center; padding: 8px 14px; cursor: pointer; transition: all 0.15s; font-size: 13px; justify-content: space-between; }
+        .dict-sidebar-item:hover { background: var(--apple-hover); }
+        .dict-sidebar-item.active { background: var(--apple-hover); border-left: 3px solid var(--apple-accent); }
+        .dict-sidebar-item.disabled { opacity: 0.5; }
+        .dict-name { font-weight: 500; }
+        .dict-count { font-size: 11px; color: var(--apple-secondary); }
+        .dict-toggle { transform: scale(0.75); }
+        .sidebar-actions { padding: 10px 12px; border-top: 1px solid var(--apple-border); display: flex; gap: 6px; flex-wrap: wrap; }
+        .sidebar-actions button { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--apple-border); background: white; cursor: pointer; transition: all 0.15s; }
+        .sidebar-actions button:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.05); }
+        .sidebar-compile-hint { font-size: 10px; color: var(--apple-secondary); padding: 4px 12px 8px; text-align: center; }
+        .editor-main { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); border: 1px solid var(--apple-border); border-radius: 16px; margin-left: 12px; min-height: 300px; }
+        .editor-main .placeholder { text-align: center; color: var(--apple-secondary); }
+        .editor-main .placeholder .icon { font-size: 48px; margin-bottom: 16px; }
         .profile-chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .profile-chip { padding: 8px 18px; border-radius: 20px; border: 1.5px solid var(--apple-border); font-size: 13px; cursor: pointer; transition: all 0.15s; user-select: none; background: rgba(255,255,255,0.8); color: var(--apple-text); }
         .profile-chip:hover { border-color: var(--apple-accent); background: rgba(0,122,255,0.05); }
@@ -27,28 +46,45 @@
                 </div>
                 <div id="enabled_profiles_container" class="profile-chip-group"></div>
             </div>
+            <div style="display:flex;justify-content:flex-end;padding-top:12px;">
+                <button class="btn" onclick="saveProfileConfig()" style="font-size:13px; padding:8px 18px;">保存方案设置</button>
+            </div>
         </div>
 
-        <h2>词典管理</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 8px;">
-            <a href="/static/settings/dictionary_editor.html" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid var(--apple-border); border-radius: 12px; text-decoration: none; color: var(--apple-text); background: rgba(255,255,255,0.8); transition: all 0.15s;">
-                <div style="font-size: 28px;">📖</div>
-                <div>
-                    <div style="font-weight: 600; font-size: 14px;">词典编辑器</div>
-                    <div style="font-size: 12px; color: var(--apple-secondary); margin-top: 2px;">浏览、搜索、添加、编辑、删除词典词条，编译词库</div>
+        <div class="editor-layout">
+            <div class="dict-sidebar">
+                <div class="dict-sidebar-header">
+                    <span>词库列表</span>
+                    <span class="dict-sidebar-stats" id="sidebar-stats">0 个</span>
                 </div>
-            </a>
+                <div id="dicts-list" class="dict-sidebar-list"></div>
+                <div class="sidebar-compile-hint">* 开关控制词典是否参与编译，切换后需点「编译」生效</div>
+                <div class="sidebar-actions">
+                    <button onclick="createDict()">+ 新建</button>
+                    <button onclick="compileDict()">🔄 编译</button>
+                    <button onclick="refresh()">🔃 刷新</button>
+                    <button onclick="openDictsDir()">📂 打开目录</button>
+                </div>
+                <div style="padding:6px 12px; border-top:1px solid var(--apple-border);">
+                    <a href="/static/settings/user_dict_editor.html" style="font-size:12px; color:var(--apple-secondary); text-decoration:none;">👤 用户词典 →</a>
+                </div>
+            </div>
+            <div class="editor-main" id="editor-main">
+                <div class="placeholder">
+                    <div class="icon">📖</div>
+                    <p>← 选择左侧词典文件开始编辑</p>
+                </div>
+            </div>
         </div>
-    </div>
-
-    <div class="sticky-footer">
-        <button class="btn" onclick="save()">保存更改</button>
     </div>
 
     <div id="toast" class="status-toast"></div>
 
     <script src="/static/js/settings.js"></script>
     <script>
+        let dictsCache = [];
+        let currentFile = null;
+
         async function init() {
             await loadConfig();
             const pc = document.getElementById('enabled_profiles_container');
@@ -57,23 +93,92 @@
                     <span>${p.name}</span>
                 </div>
             `).join('');
+            await refreshDictList();
         }
 
         function toggleProfile(name, el) {
             const idx = config.input.enabled_profiles.indexOf(name);
-            if (idx === -1) {
-                config.input.enabled_profiles.push(name);
-                el.classList.add('active');
-            } else {
-                if (config.input.enabled_profiles.length > 1) {
-                    config.input.enabled_profiles.splice(idx, 1);
-                    el.classList.remove('active');
-                }
-            }
+            if (idx === -1) { config.input.enabled_profiles.push(name); el.classList.add('active'); }
+            else if (config.input.enabled_profiles.length > 1) { config.input.enabled_profiles.splice(idx, 1); el.classList.remove('active'); }
         }
 
-        async function save() {
+        async function saveProfileConfig() {
             await saveConfig();
+            showToast('方案设置已保存', 'success');
+        }
+
+        async function refreshDictList() {
+            const r = await fetch('/api/dicts');
+            dictsCache = await r.json();
+            renderSidebar();
+            document.getElementById('sidebar-stats').textContent = dictsCache.length + ' 个';
+        }
+
+        function renderSidebar() {
+            const groups = {};
+            dictsCache.forEach(d => { if (!groups[d.group]) groups[d.group] = []; groups[d.group].push(d); });
+            const container = document.getElementById('dicts-list');
+            container.innerHTML = Object.entries(groups).sort().map(([group, files]) => {
+                const label = { chinese: '中文', english: '英文', japanese: '日文', stroke: '笔画', shengpizi: '生僻字', user: '用户' }[group] || group;
+                return `<div style="padding:6px 16px 2px; font-size:11px; color:var(--apple-accent); font-weight:600;">${label}</div>
+                    ${files.map(f => `
+                        <div class="dict-sidebar-item ${f.enabled?'':'disabled'} ${f.path===currentFile?'active':''}"
+                             onclick="selectFile('${f.path}')">
+                            <div>
+                                <div class="dict-name">${(f.name||'').replace('.disabled','')}</div>
+                                <div class="dict-count">${(f.entry_count||0).toLocaleString()} 条</div>
+                            </div>
+                            <label class="switch dict-toggle" onclick="event.stopPropagation()">
+                                <input type="checkbox" ${f.enabled?'checked':''} onchange="toggleDict('${f.path}')">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `).join('')}`;
+            }).join('');
+        }
+
+        function selectFile(path) {
+            currentFile = path;
+            renderSidebar();
+            // 打开编辑器页面，传递文件路径
+            window.location.href = `/static/settings/dictionary_editor.html?file=${encodeURIComponent(path)}`;
+        }
+
+        async function toggleDict(path) {
+            await fetch('/api/dicts/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) });
+            await refreshDictList();
+            showToast('已切换，请点击「编译」使更改生效', 'success');
+        }
+
+        async function createDict() {
+            const name = prompt('请输入词典名称（英文，如 my_words）：');
+            if (!name || !name.match(/^[a-zA-Z0-9_-]+$/)) { showToast('名称只能包含英文、数字、下划线和连字符', 'error'); return; }
+            const group = prompt('请输入分类（chinese/english/japanese/stroke/shengpizi/user，默认 user）：') || 'user';
+            const r = await fetch('/api/dicts/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, group }) });
+            if (r.ok) { showToast('空白词典已创建', 'success'); await refreshDictList(); }
+            else if (r.status === 409) { showToast('同名词典已存在', 'error'); }
+            else { showToast('创建失败', 'error'); }
+        }
+
+        async function compileDict() {
+            showToast('正在编译词库，请稍候...', 'info');
+            const r = await fetch('/api/dicts/compile', { method: 'POST' });
+            showToast(r.ok ? '编译完成' : '编译失败', r.ok ? 'success' : 'error');
+        }
+
+        async function refresh() { await refreshDictList(); showToast('列表已刷新', 'success'); }
+
+        async function openDictsDir() { await fetch('/api/dicts/open', { method: 'POST' }); }
+
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            if (type === 'success') { el.style.background = '#34c759'; el.style.color = '#fff'; }
+            else if (type === 'error') { el.style.background = '#ff3b30'; el.style.color = '#fff'; }
+            else { el.style.background = 'rgba(0,0,0,0.85)'; el.style.color = '#fff'; }
+            el.style.display = 'block';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.style.display = 'none', 3000);
         }
 
         init();
