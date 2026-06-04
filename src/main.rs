@@ -386,6 +386,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // 在 KDE 上自动注册虚拟键盘，以便 KWin 通过 WAYLAND_SOCKET 启动输入法
+    #[cfg(target_os = "linux")]
+    {
+        if qianyan_ime_linux::kwin::is_kde_session()
+            && !qianyan_ime_linux::kwin::is_kwin_virtual_keyboard()
+        {
+            match qianyan_ime_linux::kwin::configure_kde_virtual_keyboard() {
+                Ok(()) => {
+                    log::info!(
+                        "[Main] KWin 虚拟键盘已注册。重新登入 Wayland 会话或执行 \
+                         'kwin_x11 --replace && kwin_wayland --replace' 后生效。"
+                    );
+                }
+                Err(e) => log::warn!("[Main] KWin 虚拟键盘注册失败: {e}"),
+            }
+        }
+    }
+
     let (vkbd_option, host_run) = qianyan_ime_linux::runtime::create_input_host(
         &args,
         processor_handle.clone(),
@@ -423,6 +441,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .join("qianyan-ime-gui");
         let mut child = std::process::Command::new(&gui_exe)
             .arg(&socket_path)
+            .env_remove("WAYLAND_SOCKET")
             .spawn()
             .expect("Failed to spawn GUI process");
 

@@ -1,5 +1,6 @@
 pub mod hosts;
 pub mod cli;
+pub mod kwin;
 pub mod runtime;
 
 pub use qianyan_ime_core::InputMethodHost;

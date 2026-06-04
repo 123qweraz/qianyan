@@ -121,6 +121,17 @@ fn create_wayland_host(
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
+    // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set.
+    // On this private socket only zwp_input_method_v1 is available — skip the probe.
+    let kwin_socket = crate::kwin::is_kwin_virtual_keyboard();
+    if kwin_socket {
+        log::info!("[Main] KWin Virtual Keyboard mode detected (WAYLAND_SOCKET)");
+        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx)
+            .ok_or("Wayland v1 host init failed (KWin mode)")?;
+        let vkbd = host.vkbd();
+        return Ok((Box::new(host), vkbd, " Wayland v1 (KWin)"));
+    }
+
     struct DummyState;
     impl wayland_client::Dispatch<wayland_client::protocol::wl_registry::WlRegistry, wayland_client::globals::GlobalListContents> for DummyState {
         fn event(
