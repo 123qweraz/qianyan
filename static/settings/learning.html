@@ -234,7 +234,20 @@
             }
         }
 
+        document.getElementById('practiceInput').addEventListener('compositionstart', function() {
+            e_target_composing = true;
+        });
+        document.getElementById('practiceInput').addEventListener('compositionend', function(e) {
+            e_target_composing = false;
+            handleInput(e);
+        });
         document.getElementById('practiceInput').addEventListener('input', function(e) {
+            if (e_target_composing) return;
+            handleInput(e);
+        });
+
+        let e_target_composing = false;
+        function handleInput(e) {
             const val = e.target.value.trim();
             const target = e.target.dataset.target;
             if (!val || !target) return;
@@ -250,7 +263,7 @@
                 stats.count++;
                 updateStatsDisplay();
             }
-        });
+        }
 
         function updateStatsDisplay() {
             document.getElementById('countStat').innerText = stats.count;
@@ -261,6 +274,9 @@
         document.addEventListener('keydown', function(e) {
             const el = document.getElementById('key-' + e.key.toLowerCase());
             if (el) { el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 100); }
+            if (document.activeElement !== document.getElementById('practiceInput') && e.key !== 'Tab') {
+                e.preventDefault();
+            }
         });
 
         init();
