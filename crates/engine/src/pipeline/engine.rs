@@ -391,7 +391,10 @@ impl SearchEngine {
             cache.0.clear();
             cache.1.clear();
         }
-        // 注意：不清除 trie_cache。词库文件是只读的，运行时不改变，不需要重新加载。
+        // 编译词库后 trie 文件可能已更新，清除缓存让下次 get_or_load_trie 重新 mmap
+        if let Ok(mut tc) = self.trie_cache.write() {
+            tc.clear();
+        }
     }
 
     pub fn prewarm_profile(&self, profile: &str) {
