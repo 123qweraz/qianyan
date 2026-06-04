@@ -419,15 +419,22 @@ impl InputScheme for ChineseScheme {
                         if all_partitions.len() > 100 {
                             all_partitions.truncate(100);
                         }
+
+                        // 加载 ngram 数据，用于评估切分方案中相邻词的衔接概率
+                        let ngram_guard = context.ngram_history.load();
+                        let profile = context.active_profiles.first();
+
                         let mut compose_results: Vec<(String, usize, u64)> = Vec::new();
                         for part in &all_partitions {
                             let mut text = String::new();
+                            let mut words: Vec<String> = Vec::new();
                             let mut total_freq = 0u64;
                             let mut ok = true;
                             for &(s, e) in part {
                                 let py: String = base[s..e].concat();
                                 if let Some(entries) = d.get_all_exact(&py) {
                                     if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
+                                        words.push(best.word.to_string());
                                         text.push_str(best.word);
                                         total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
                                         continue;
@@ -436,15 +443,32 @@ impl InputScheme for ChineseScheme {
                                 ok = false;
                                 break;
                             }
-                            if ok {
-                                compose_results.push((text, part.len(), total_freq));
+                            if !ok { continue; }
+
+                            // N-Gram 衔接评分：相邻词对 log(共现次数+1) 累加
+                            let mut ngram_bonus = 0u64;
+                            if let (Some(_profile_str), Some(profile_ngram)) =
+                                (profile.map(|s| s.as_str()), profile.and_then(|p| ngram_guard.get(p.as_str())))
+                            {
+                                for pair in words.windows(2) {
+                                    if let Some(entries) = profile_ngram.get(&pair[0]) {
+                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &pair[1])
+                                        {
+                                            let effective = (*count).min(10) as f64;
+                                            ngram_bonus +=
+                                                ((effective + 1.0).ln() * 500_000.0) as u64;
+                                        }
+                                    }
+                                }
                             }
+                            let total_score = total_freq + ngram_bonus;
+                            compose_results.push((text, part.len(), total_score));
                         }
                         compose_results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
                         compose_results.truncate(6);
-                        for (text, _, freq) in &compose_results {
+                        for (text, _, score) in &compose_results {
                             if seen.insert(text.clone()) {
-                                let weight = (*freq as f64 * 0.001 + 0.1) as u32;
+                                let weight = (*score as f64 * 0.001 + 0.1) as u32;
                                 let mut cand = SchemeCandidate::new(text.clone(), weight);
                                 cand.match_level = 3;
                                 final_results.push(cand);
