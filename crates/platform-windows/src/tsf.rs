@@ -242,7 +242,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
                     drop(p);
                     match action {
                         Action::Emit(txt) => { response.push(1); response.extend_from_slice(txt.as_bytes()); update_gui_impl(&gui_tx, &processor, &app_state); }
-                        Action::DeleteAndEmit { delete, insert } => { if delete > 0 { response.push(3); response.push(delete as u8); } else { response.push(1); } response.extend_from_slice(insert.as_bytes()); update_gui_impl(&gui_tx, &processor, &app_state); }
+                        Action::DeleteAndEmit { delete, insert } => { if delete > 0 { response.push(3); response.extend_from_slice(&(delete as u16).to_le_bytes()); } else { response.push(1); } response.extend_from_slice(insert.as_bytes()); update_gui_impl(&gui_tx, &processor, &app_state); }
                         Action::Consume => { response.push(2); update_gui_impl(&gui_tx, &processor, &app_state); }
                         Action::Alert => { response.push(2); update_gui_impl(&gui_tx, &processor, &app_state); }
                         Action::Notify(summary, _body) => {

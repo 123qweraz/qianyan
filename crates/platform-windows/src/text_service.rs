@@ -158,9 +158,9 @@ impl TextService {
                         return (2, String::new(), 0);
                     } else if action == 3 {
                         // Delete and Commit
-                        let del_count = response[1] as usize;
+                        let del_count = u16::from_le_bytes([response[1], response[2]]) as usize;
                         let text =
-                            String::from_utf8_lossy(&response[2..bytes_read as usize]).to_string();
+                            String::from_utf8_lossy(&response[3..bytes_read as usize]).to_string();
                         let _ = CloseHandle(handle);
                         return (3, text, del_count);
                     }
