@@ -5,22 +5,20 @@
     <title>词典设置 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
-        .editor-layout { display: flex; gap: 0; margin-top: 16px; }
-        .dict-sidebar { width: 360px; max-width: 100%; background: rgba(255,255,255,0.85); border: 1px solid var(--apple-border); border-radius: 16px; display: flex; flex-direction: column; }
-        .dict-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--apple-border); }
-        .dict-sidebar-stats { font-size: 11px; color: var(--apple-secondary); font-weight: 400; }
-        .dict-sidebar-list { flex: 1; overflow-y: auto; padding: 4px 0; }
-        .dict-sidebar-item { display: flex; align-items: center; padding: 8px 14px; cursor: pointer; transition: all 0.15s; font-size: 13px; justify-content: space-between; }
-        .dict-sidebar-item:hover { background: var(--apple-hover); }
-        .dict-sidebar-item.active { background: var(--apple-hover); border-left: 3px solid var(--apple-accent); }
-        .dict-sidebar-item.disabled { opacity: 0.5; }
-        .dict-name { font-weight: 500; }
-        .dict-count { font-size: 11px; color: var(--apple-secondary); }
-        .dict-toggle { transform: scale(0.75); }
-        .sidebar-actions { padding: 10px 12px; border-top: 1px solid var(--apple-border); display: flex; gap: 6px; flex-wrap: wrap; }
-        .sidebar-actions button { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--apple-border); background: white; cursor: pointer; transition: all 0.15s; }
-        .sidebar-actions button:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.05); }
-        .sidebar-compile-hint { font-size: 10px; color: var(--apple-secondary); padding: 4px 12px 8px; text-align: center; }
+        .dict-list-header { display: flex; justify-content: space-between; align-items: center; padding: 0 0 16px; }
+        .dict-list-stats { font-size: 13px; color: var(--apple-secondary); font-weight: 400; }
+        .dict-list-body { max-height: 500px; overflow-y: auto; }
+        .dict-file-item { display: flex; align-items: center; padding: 10px 14px; cursor: pointer; transition: all 0.15s; font-size: 13px; justify-content: space-between; border-bottom: 1px solid #f0f0f0; }
+        .dict-file-item:last-child { border-bottom: none; }
+        .dict-file-item:hover { background: var(--apple-hover); }
+        .dict-file-item.disabled { opacity: 0.5; }
+        .dict-file-name { font-weight: 500; }
+        .dict-file-count { font-size: 11px; color: var(--apple-secondary); }
+        .dict-file-toggle { transform: scale(0.75); }
+        .dict-actions { padding: 12px 0 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .dict-actions button { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--apple-border); background: white; cursor: pointer; transition: all 0.15s; }
+        .dict-actions button:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.05); }
+        .dict-hint { font-size: 11px; color: var(--apple-secondary); padding: 8px 0 0; }
         .profile-chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
         .profile-chip { padding: 8px 18px; border-radius: 20px; border: 1.5px solid var(--apple-border); font-size: 13px; cursor: pointer; transition: all 0.15s; user-select: none; background: rgba(255,255,255,0.8); color: var(--apple-text); }
         .profile-chip:hover { border-color: var(--apple-accent); background: rgba(0,122,255,0.05); }
@@ -48,28 +46,20 @@
             </div>
         </div>
 
-        <div class="editor-layout">
-            <div class="dict-sidebar">
-                <div class="dict-sidebar-header">
-                    <span>词库列表</span>
-                    <span class="dict-sidebar-stats" id="sidebar-stats">0 个</span>
-                </div>
-                <div id="dicts-list" class="dict-sidebar-list"></div>
-                <div class="sidebar-compile-hint">* 开关控制词典是否参与编译，切换后需点「编译」生效</div>
-                <div class="sidebar-actions">
-                    <button onclick="createDict()">+ 新建</button>
-                    <button onclick="compileDict()">🔄 编译</button>
-                    <button onclick="refresh()">🔃 刷新</button>
-                    <button onclick="openDictsDir()">📂 打开目录</button>
-                </div>
-                <div style="padding:6px 12px; border-top:1px solid var(--apple-border);">
-                    <a href="/static/settings/user_dict_editor.html" style="font-size:12px; color:var(--apple-secondary); text-decoration:none;">👤 用户词典 →</a>
-                </div>
+        <div class="card">
+            <div class="dict-list-header">
+                <h2 style="margin:0; border:none; padding:0;">词库列表</h2>
+                <span class="dict-list-stats" id="sidebar-stats">0 个</span>
             </div>
-        </div>
-
-        <div style="margin-top:12px; text-align:center; font-size:12px; color:var(--apple-secondary);">
-            点击文件即可编辑 | 切换开关后需「编译」才能生效
+            <div id="dicts-list" class="dict-list-body"></div>
+            <div class="dict-actions">
+                <button onclick="createDict()">+ 新建</button>
+                <button onclick="compileDict()">🔄 编译</button>
+                <button onclick="refresh()">🔃 刷新</button>
+                <button onclick="openDictsDir()">📂 打开目录</button>
+                <a href="/static/settings/user_dict_editor.html" style="margin-left:auto; font-size:12px; color:var(--apple-secondary); text-decoration:none;">👤 用户词典 →</a>
+            </div>
+            <div class="dict-hint">* 点击文件即可编辑 | 开关控制词典是否参与编译，切换后需点「编译」生效</div>
         </div>
     </div>
 
@@ -78,7 +68,6 @@
     <script src="/static/js/settings.js"></script>
     <script>
         let dictsCache = [];
-        let currentFile = null;
 
         async function init() {
             await loadConfig();
@@ -115,15 +104,15 @@
             const container = document.getElementById('dicts-list');
             container.innerHTML = Object.entries(groups).sort().map(([group, files]) => {
                 const label = { chinese: '中文', english: '英文', japanese: '日文', stroke: '笔画', shengpizi: '生僻字', user: '用户' }[group] || group;
-                return `<div style="padding:6px 16px 2px; font-size:11px; color:var(--apple-accent); font-weight:600;">${label}</div>
+                return `<div style="padding:8px 14px 2px; font-size:11px; color:var(--apple-accent); font-weight:600;">${label}</div>
                     ${files.map(f => `
-                        <div class="dict-sidebar-item ${f.enabled?'':'disabled'} ${f.path===currentFile?'active':''}"
+                        <div class="dict-file-item ${f.enabled?'':'disabled'}"
                              onclick="selectFile('${f.path}')">
                             <div>
-                                <div class="dict-name">${(f.name||'').replace('.disabled','')}</div>
-                                <div class="dict-count">${(f.entry_count||0).toLocaleString()} 条</div>
+                                <div class="dict-file-name">${(f.name||'').replace('.disabled','')}</div>
+                                <div class="dict-file-count">${(f.entry_count||0).toLocaleString()} 条</div>
                             </div>
-                            <label class="switch dict-toggle" onclick="event.stopPropagation()">
+                            <label class="switch dict-file-toggle" onclick="event.stopPropagation()">
                                 <input type="checkbox" ${f.enabled?'checked':''} onchange="toggleDict('${f.path}')">
                                 <span class="slider"></span>
                             </label>
@@ -158,7 +147,12 @@
         async function compileDict() {
             showToast('正在编译词库，请稍候...', 'info');
             const r = await fetch('/api/dicts/compile', { method: 'POST' });
-            showToast(r.ok ? '编译完成' : '编译失败', r.ok ? 'success' : 'error');
+            if (r.ok) {
+                await refreshDictList();
+                showToast('编译完成', 'success');
+            } else {
+                showToast('编译失败', 'error');
+            }
         }
 
         async function refresh() { await refreshDictList(); showToast('列表已刷新', 'success'); }
