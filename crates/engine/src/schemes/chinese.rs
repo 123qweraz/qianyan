@@ -191,6 +191,19 @@ impl InputScheme for ChineseScheme {
     let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
     if let Some(profile) = context.active_profiles.first() {
         let dict = context.user_dict.load();
+        // 辅助函数：从系统词典查词，返回 (trad, tone, en, stroke_aux)
+        let lookup_aux = |word: &str, py: &str| -> (String, String, String, String) {
+            if let Some(trie) = context.tries.get("chinese") {
+                if let Some(entries) = trie.get_all_exact(py) {
+                    if let Some(tr) = entries.iter().find(|t| t.word == word) {
+                        return (tr.trad.to_string(), tr.tone.to_string(),
+                                tr.en.to_string(), tr.stroke_aux.to_string());
+                    }
+                }
+            }
+            (word.to_string(), String::new(), String::new(), String::new())
+        };
+
         if let Some(profile_dict) = dict.get(profile) {
             let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
             if has_vowel {
@@ -198,13 +211,14 @@ impl InputScheme for ChineseScheme {
                 if let Some(words) = profile_dict.get(&pinyin_key) {
                     for (word, weight) in words {
                         if seen.insert(word.clone()) {
+                            let (trad, tone, en, sa) = lookup_aux(word, &pinyin_key);
                             final_results.push(SchemeCandidate {
                                 text: word.clone(),
                                 simplified: word.clone(),
-                                traditional: word.clone(),
-                                tone: String::from("User"),
-                                english: String::new(),
-                                stroke_aux: String::new(),
+                                traditional: trad,
+                                tone,
+                                english: en,
+                                stroke_aux: sa,
                                 weight: *weight,
                                 match_level: 3,
                             });
@@ -221,13 +235,14 @@ impl InputScheme for ChineseScheme {
                         if let Some(words) = profile_dict.get(key) {
                             for (word, weight) in words {
                                 if seen.insert(word.clone()) {
+                                    let (trad, tone, en, sa) = lookup_aux(word, key);
                                     user_prefix_matches.push(SchemeCandidate {
                                         text: word.clone(),
                                         simplified: word.clone(),
-                                        traditional: word.clone(),
-                                        tone: key.clone(),
-                                        english: String::new(),
-                                        stroke_aux: String::new(),
+                                        traditional: trad,
+                                        tone,
+                                        english: en,
+                                        stroke_aux: sa,
                                         weight: (*weight as f64 * 0.8) as u32,
                                         match_level: 0, // below system prefix (level 1)
                                     });
