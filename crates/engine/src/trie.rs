@@ -676,9 +676,9 @@ mod tests {
             root.join("data/chinese/trie.data"),
         ));
 
-        let syllables: std::collections::HashSet<String> = {
+        let syllable_freq: std::collections::HashMap<String, u64> = {
             let content = std::fs::read_to_string(root.join("dicts/chinese/syllables.txt")).unwrap();
-            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+            content.lines().map(|s| (s.trim().to_string(), 1u64)).filter(|(s, _)| !s.is_empty()).collect()
         };
 
         let engine = SearchEngine::new(
