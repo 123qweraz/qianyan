@@ -156,6 +156,17 @@
                 }
             } catch(_) {}
 
+            // Pre-fill search if provided via URL params
+            const search = params.get('search');
+            const searchBy = params.get('search_by');
+            if (search) {
+                document.getElementById('search-input').value = search;
+                if (searchBy) document.getElementById('search-type').value = searchBy;
+                currentSearch = search;
+                loadPage(1);
+                return;
+            }
+
             loadPage(1);
         }
 
