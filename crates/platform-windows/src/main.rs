@@ -26,16 +26,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     unsafe {
         use windows::core::PCWSTR;
-        use windows::Win32::Foundation::ERROR_ALREADY_EXISTS;
+        use windows::Win32::Foundation::{CloseHandle, ERROR_ALREADY_EXISTS};
         use windows::Win32::System::Threading::*;
 
-        let name = PCWSTR(
-            r"Global\QianyanIMEUniqueMutex\0"
-                .encode_utf16()
-                .collect::<Vec<u16>>()
-                .as_ptr(),
-        );
+        struct MutexGuard(windows::Win32::Foundation::HANDLE);
+        impl Drop for MutexGuard {
+            fn drop(&mut self) {
+                let _ = unsafe { CloseHandle(self.0) };
+            }
+        }
+
+        let name_buf: Vec<u16> = "Global\\QianyanIMEUniqueMutex"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let name = PCWSTR(name_buf.as_ptr());
         let handle = CreateMutexW(None, true, name)?;
+        let mutex_guard = MutexGuard(handle);
         if windows::Win32::Foundation::GetLastError()
             .is_err_and(|e| e.code() == ERROR_ALREADY_EXISTS.to_hresult())
         {
@@ -47,7 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .show();
             return Ok(());
         }
-        let _ = handle;
+        let _mutex_guard = mutex_guard;
     }
 
     let root = find_project_root();

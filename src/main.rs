@@ -51,11 +51,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        let raw_name = r"Global\QianyanIMEUniqueMutex\0"
+        let raw_name: Vec<u16> = "Global\\QianyanIMEUniqueMutex"
             .encode_utf16()
-            .collect::<Vec<u16>>();
+            .chain(std::iter::once(0u16))
+            .collect();
         let name = windows::core::PCWSTR(raw_name.as_ptr());
         let handle = CreateMutexW(None, true, name)?;
+        let mutex_guard = MutexGuard(handle);
         if windows::Win32::Foundation::GetLastError()
             .is_err_and(|e| e.code() == windows::Win32::Foundation::ERROR_ALREADY_EXISTS.to_hresult())
         {
@@ -67,7 +69,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .show();
             return Ok(());
         }
-        MutexGuard(handle)
+        mutex_guard
     };
 
     #[cfg(target_os = "windows")]
