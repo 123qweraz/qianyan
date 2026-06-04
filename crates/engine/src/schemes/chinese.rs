@@ -123,7 +123,7 @@ impl ChineseScheme {
 
     /// 左到右贪心分段：先匹配最长全音节，否则匹配声母（zh/ch/sh 占 2 字符）
     /// 返回 (segment, is_initial) 对
-    pub fn segment_for_abbreviation(input: &str, sf: &std::collections::HashMap<String, u64>) -> Vec<(String, bool)> {
+    pub fn segment_for_abbreviation(input: &str, trie: &crate::trie::Trie) -> Vec<(String, bool)> {
         let two_initials: &[&str] = &["zh", "ch", "sh"];
         let single_initials: &[char] = &['b','p','m','f','d','t','n','l','g','k','h',
             'j','q','x','r','z','c','s','y','w'];
@@ -133,14 +133,13 @@ impl ChineseScheme {
         let mut pos = 0;
 
         while pos < n {
-            // 1. 尝试最长全音节（至少2字符，排除单字母如 m/z/n）
             let max_len = (n - pos).min(6);
             let mut matched = false;
             for len in (2..=max_len).rev() {
                 if input.is_char_boundary(pos + len) {
                     let candidate = &input[pos..pos + len];
-                    if sf.contains_key(candidate) {
-                        result.push((candidate.to_string(), false)); // full syllable
+                    if trie.index.contains_key(candidate) {
+                        result.push((candidate.to_string(), false));
                         pos += len;
                         matched = true;
                         break;
@@ -360,10 +359,10 @@ impl InputScheme for ChineseScheme {
         if final_results.is_empty()
             && context.config.input.enable_abbreviation_matching
         {
-            let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, context.syllable_freq);
-            if abbr_segs.len() > 1 {
-                if let Some(d) = context.tries.get("chinese") {
-                    let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, context.syllable_freq, 200);
+            if let Some(d) = context.tries.get("chinese") {
+                let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, d);
+                if abbr_segs.len() > 1 {
+                    let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, 200);
                     abbr_results.sort_by_key(|r| std::cmp::Reverse(r.weight));
                     for tr in abbr_results {
                         if final_results.len() >= max_results {

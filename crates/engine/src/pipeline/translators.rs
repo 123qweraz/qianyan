@@ -225,7 +225,7 @@ impl Translator for TableTranslator {
         if is_abbreviation && config.input.enable_abbreviation_matching {
             let abbr_results =
                 self.trie
-                    .search_abbreviation(segments, &self.syllable_freq, internal_limit);
+                    .search_abbreviation(segments, internal_limit);
             for ar in abbr_results {
                 if seen.insert(ar.word) {
                     candidates.push(Candidate {

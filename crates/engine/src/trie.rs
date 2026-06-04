@@ -293,7 +293,6 @@ impl Trie {
     pub fn search_abbreviation(
         &self,
         segments: &[String],
-        syllables: &std::collections::HashMap<String, u64>,
         limit: usize,
     ) -> Vec<TrieResult<'_>> {
         if segments.is_empty() {
@@ -309,10 +308,7 @@ impl Trie {
         while let Some((key_bytes, offset)) = stream.next() {
             let key = String::from_utf8_lossy(key_bytes);
 
-            // 严格匹配：
-            // 1. 每一个 segment 必须匹配一个音节的开头
-            // 2. 必须刚好匹配完所有 segment 且 耗尽 key 中的所有音节
-            if self.matches_strict_jianpin(&key, segments, syllables) {
+            if self.matches_strict_jianpin(&key, segments) {
                 let mut stop = false;
                 self.read_block(offset as usize, |pair| {
                     if !stop && seen.insert(pair.word) {
@@ -338,16 +334,14 @@ impl Trie {
         &self,
         key: &str,
         segments: &[String],
-        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
-        self.recursive_strict_match(key, segments, syllables)
+        self.recursive_strict_match(key, segments)
     }
 
     fn recursive_strict_match(
         &self,
         key: &str,
         segments: &[String],
-        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
         // 如果 segments 耗尽，则 key 也必须耗尽（确保音节数一致）
         if segments.is_empty() {
@@ -368,11 +362,11 @@ impl Trie {
             if len > 0 && len <= 10 {
                 // 适当放宽长度限制以处理带声调的 Unicode
                 let syl = &key[..len];
-                if syllables.contains_key(syl) {
+                if self.index.contains_key(syl) {
                     // 声母必须匹配
                     if syl.starts_with(first_seg) {
                         // 递归匹配剩余音节
-                        if self.recursive_strict_match(&key[len..], &segments[1..], syllables) {
+                        if self.recursive_strict_match(&key[len..], &segments[1..]) {
                             return true;
                         }
                     }
@@ -384,7 +378,7 @@ impl Trie {
         }
 
         // 兜底：尝试全量匹配最后一个或唯一一个音节
-        if syllables.contains_key(key) && key.starts_with(first_seg) && segments.len() == 1 {
+        if self.index.contains_key(key) && key.starts_with(first_seg) && segments.len() == 1 {
             return true;
         }
 
@@ -396,7 +390,6 @@ impl Trie {
     pub fn search_abbreviation_mixed(
         &self,
         segments: &[(String, bool)],
-        syllables: &std::collections::HashMap<String, u64>,
         limit: usize,
     ) -> Vec<TrieResult<'_>> {
         if segments.is_empty() {
@@ -411,7 +404,7 @@ impl Trie {
 
         while let Some((key_bytes, offset)) = stream.next() {
             let key = String::from_utf8_lossy(key_bytes);
-            if self.recursive_mixed_match(&key, segments, syllables) {
+            if self.recursive_mixed_match(&key, segments) {
                 let mut stop = false;
                 self.read_block(offset as usize, |pair| {
                     if !stop && seen.insert(pair.word) {
@@ -436,7 +429,6 @@ impl Trie {
         &self,
         key: &str,
         segments: &[(String, bool)],
-        syllables: &std::collections::HashMap<String, u64>,
     ) -> bool {
         if segments.is_empty() {
             return key.is_empty();
@@ -451,14 +443,14 @@ impl Trie {
             let len = byte_idx;
             if len > 0 && len <= 10 {
                 let syl = &key[..len];
-                if syllables.contains_key(syl) {
+                if self.index.contains_key(syl) {
                     let matches = if *is_initial {
                         syl.starts_with(first_seg.as_str())
                     } else {
                         syl == first_seg.as_str()
                     };
                     if matches
-                        && self.recursive_mixed_match(&key[len..], &segments[1..], syllables) {
+                        && self.recursive_mixed_match(&key[len..], &segments[1..]) {
                             return true;
                         }
                 }
@@ -468,7 +460,7 @@ impl Trie {
             }
         }
 
-        if segments.len() == 1 && syllables.contains_key(key) {
+        if segments.len() == 1 && self.index.contains_key(key) {
             let matches = if *is_initial {
                 key.starts_with(first_seg.as_str())
             } else {
