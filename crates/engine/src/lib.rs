@@ -13,7 +13,6 @@ pub mod sound;
 pub mod trie;
 pub mod user_data;
 
-pub use fst;
 pub use sound::SoundManager;
 
 pub use config_manager::ConfigManager;

@@ -5,7 +5,7 @@ use axum::{
     http::{StatusCode, Uri, HeaderName, header},
     Router,
 };
-use qianyan_ime_engine::fst::Streamer;
+use fst::Streamer;
 use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery};
 use qianyan_ime_engine::processor::FilterMode;
 use qianyan_ime_engine::schemes::{ChineseScheme, EnglishScheme, JapaneseScheme, StrokeScheme};

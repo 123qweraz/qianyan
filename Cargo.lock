@@ -4619,6 +4619,7 @@ dependencies = [
  "bytemuck",
  "encoding_rs",
  "encoding_rs_io",
+ "fst",
  "i-slint-core",
  "i-slint-renderer-skia",
  "image 0.24.9",
