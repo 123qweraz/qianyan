@@ -65,9 +65,6 @@
                         <option value="en">英文</option>
                         <option value="stroke_aux">辅码</option>
                     </select>
-                    <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
-                        <input type="checkbox" id="search-all-dicts" onchange="toggleSearchMode()"> 搜索所有词典
-                    </label>
                 </div>
                 <span class="stats" id="stats-bar"></span>
                 <a href="/static/settings/dictionary.html" class="back-link">词库列表</a>
@@ -181,11 +178,6 @@
             }, 300);
         }
 
-        function toggleSearchMode() {
-            currentPage = 1;
-            loadPage(1);
-        }
-
         function sortBy(field) {
             if (currentSortBy === field) { currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc'; }
             else { currentSortBy = field; currentSortOrder = 'asc'; }
@@ -197,14 +189,12 @@
 
         async function loadPage(page) {
             currentPage = page;
-            const searchAll = document.getElementById('search-all-dicts').checked;
             const params = new URLSearchParams({
                 file: currentFile, page, page_size: pageSize,
                 sort_by: currentSortBy, sort_order: currentSortOrder,
                 search: currentSearch,
                 search_by: document.getElementById('search-type').value,
             });
-            if (searchAll) { params.set('search_all_dicts', 'true'); }
             const r = await fetch('/api/dict/browse?' + params);
             const data = await r.json();
             totalEntries = data.total;
@@ -220,9 +210,7 @@
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--apple-secondary);">暂无数据</td></tr>`;
                 return;
             }
-            const showSource = document.getElementById('search-all-dicts').checked;
             tbody.innerHTML = entries.map((e) => {
-                const sourceCol = showSource ? `<td class="center" style="font-size:11px; color:var(--apple-secondary);">${esc(e.file||'')}</td>` : '';
                 if (editingRow === e.id) {
                     return `<tr>
                         <td class="left">${esc(e.pinyin)}</td>
@@ -232,7 +220,6 @@
                         <td class="center"><input type="text" id="edit-stroke" value="${esc_attr(e.stroke_aux||'')}" style="width:55px;"></td>
                         <td class="center"><input type="text" id="edit-trad" value="${esc_attr(e.trad||'')}" style="width:90px;"></td>
                         <td class="center"><input type="text" id="edit-category" value="${esc_attr(e.category||'')}" style="width:70px;"></td>
-                        ${sourceCol}
                         <td class="center">
                             <button class="btn-outline" onclick="saveEdit('${e.id}')">💾</button>
                             <button class="btn-outline" onclick="cancelEdit()">✕</button>
@@ -247,7 +234,6 @@
                     <td class="center" style="font-family:monospace;font-size:11px;">${esc(e.stroke_aux||'')}</td>
                     <td class="center">${esc(e.trad||'')}</td>
                     <td class="center" style="font-size:11px; color:var(--apple-secondary);">${esc(e.category||'')}</td>
-                    ${sourceCol}
                     <td class="center">
                         <button class="btn-outline" onclick="undoDelete('${e.id}')" id="undo-${e.id}" style="display:none;">↩ 撤销</button>
                         <button class="btn-outline" id="edit-${e.id}" onclick="startEdit('${e.id}')">✎</button>

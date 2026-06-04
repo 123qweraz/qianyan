@@ -533,83 +533,51 @@ struct SearchQuery {
     search_by: Option<String>,
 }
 
-async fn search_dict(axum::extract::Query(query): axum::extract::Query<SearchQuery>) -> Json<Vec<SearchResult>> {
+async fn search_dict(
+    State((_, tries, _)): State<WebState>,
+    axum::extract::Query(query): axum::extract::Query<SearchQuery>,
+) -> Json<Vec<SearchResult>> {
     let mut results = Vec::new();
     let q = query.q.to_lowercase();
     let ime = query.ime.as_deref().unwrap_or("chinese");
-    let search_by = query.search_by.as_deref().unwrap_or("all");
 
     if q.is_empty() {
         return Json(results);
     }
 
-    // 确定搜索路径
-    let search_roots: &[&str] = match ime {
-        "japanese" => &["dicts/japanese"],
-        "stroke" => &["dicts/stroke"],
-        "english" => &["dicts/english"],
-        "chinese" => &["dicts/chinese"],
-        "all" => &["dicts/chinese", "dicts/stroke", "dicts/english", "dicts/japanese"],
-        _ => return Json(results),
-    };
-
-    // 遍历指定目录下的 json
-    for root in search_roots {
-        let entries = walkdir::WalkDir::new(root);
-        for entry in entries.into_iter().filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
-            if entry.path().extension().is_some_and(|ext: &std::ffi::OsStr| ext == "json") {
-                let path_str = entry.path().to_string_lossy().to_string();
-                if path_str.contains(".disabled") {
-                    continue;
-                }
-                if let Ok(f) = std::fs::File::open(entry.path()) {
-                    if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
-                        if let Some(obj) = json.as_object() {
-                            for (pinyin, val) in obj {
-                                if let Some(arr) = val.as_array() {
-                                    for v in arr {
-                                        let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("");
-                                        let hint = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
-                                        let stroke_aux = v.get("stroke_aux").and_then(|s| s.as_str())
-                                            .or_else(|| v.get("category").and_then(|c| c.as_str()))
-                                            .unwrap_or("");
-                                        let strokes = v.get("strokes").and_then(|s| s.as_str()).unwrap_or("");
-
-                                        let match_py = pinyin.to_lowercase().starts_with(&q) || pinyin.to_lowercase() == q;
-                                        let match_word = word.contains(&query.q);
-                                        let match_hint = hint.to_lowercase().contains(&q);
-                                        let match_stroke_aux = stroke_aux.to_lowercase().contains(&q);
-                                        let match_stroke = strokes.contains(&q);
-                                        let matched = match search_by {
-                                            "pinyin" => match_py,
-                                            "word" => match_word,
-                                            "en" => match_hint,
-                                            "stroke_aux" => match_stroke_aux,
-                                            "stroke" => match_stroke,
-                                            _ => match_py || match_word || match_hint || match_stroke_aux || match_stroke,
-                                        };
-                                        if !matched {
-                                            continue;
-                                        }
-                                        results.push(SearchResult {
-                                            pinyin: pinyin.clone(),
-                                            word: word.to_string(),
-                                            hint: hint.to_string(),
-                                            stroke_aux: stroke_aux.to_string(),
-                                            strokes: strokes.to_string(),
-                                            file: path_str.clone(),
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
+    // 懒加载 trie（mmap，零额外内存）
+    let trie = {
+        let mut cache = tries.write().expect("tries lock poisoned");
+        if !cache.contains_key(ime) {
+            let project_root = qianyan_ime_core::utils::find_project_root();
+            let idx = project_root.join(format!("data/{}/trie.index", ime));
+            let dat = project_root.join(format!("data/{}/trie.data", ime));
+            if idx.exists() && dat.exists() {
+                if let Ok(t) = Trie::load(idx, dat, false) {
+                    cache.insert(ime.to_string(), t);
                 }
             }
-            if results.len() > 100 { break; }
         }
-        if results.len() > 100 { break; }
+        cache.get(ime).cloned()
+    };
+
+    let Some(trie) = trie else {
+        return Json(results);
+    };
+
+    // FST 前缀匹配（拼音搜索），毫秒级
+    let hits = trie.search_bfs(&q, 100);
+    for tr in hits {
+        results.push(SearchResult {
+            pinyin: tr.tone.to_string(),
+            word: tr.word.to_string(),
+            hint: tr.en.to_string(),
+            stroke_aux: tr.stroke_aux.to_string(),
+            strokes: String::new(),
+            file: ime.to_string(),
+        });
     }
+
     Json(results)
 }
 
