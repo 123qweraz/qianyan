@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>备份与恢复 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px; }
+        @media (max-width: 700px) { .backup-grid { grid-template-columns: 1fr; } }
+        .backup-card {
+            background: var(--apple-card); border-radius: 20px; padding: 32px;
+            border: 1px solid var(--apple-border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            display: flex; flex-direction: column; gap: 16px;
+        }
+        .backup-card h3 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+        .backup-card p { margin: 0; font-size: 14px; color: var(--apple-secondary); line-height: 1.6; }
+        .backup-card .btn { align-self: flex-start; margin-top: 8px; }
+        .import-zone {
+            border: 2px dashed var(--apple-border); border-radius: 16px;
+            padding: 40px 20px; text-align: center; cursor: pointer;
+            transition: all 0.2s; color: var(--apple-secondary);
+        }
+        .import-zone:hover { border-color: var(--apple-accent); color: var(--apple-accent); background: rgba(0,113,227,0.03); }
+        .import-zone .icon { font-size: 48px; margin-bottom: 12px; }
+        .log { margin-top: 24px; padding: 16px; border-radius: 12px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; display: none; }
+        .log.show { display: block; }
+        .log.success { background: rgba(52,199,89,0.08); border: 1px solid #34c759; color: #1a6b2e; }
+        .log.error { background: rgba(255,59,48,0.08); border: 1px solid var(--apple-red); color: #991b1b; }
+        .log.info { background: rgba(0,113,227,0.06); border: 1px solid var(--apple-accent); color: #004a9e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>备份与恢复</h1>
+        </header>
+
+        <div class="backup-grid">
+            <div class="backup-card">
+                <h3>📥 导出用户数据</h3>
+                <p>导出所有用户词典、使用频率、上下文联想数据，可用于备份或迁移。</p>
+                <button class="btn" onclick="exportUserData()">导出用户数据</button>
+            </div>
+            <div class="backup-card">
+                <h3>📤 导入用户数据</h3>
+                <p>从备份文件恢复用户词典数据。支持合并模式（不覆盖已有词条）。</p>
+                <label class="import-zone" for="import-user-file">
+                    <div class="icon">📁</div>
+                    <div>点击或拖拽 JSON 备份文件</div>
+                </label>
+                <input type="file" id="import-user-file" accept=".json" style="display:none" onchange="importUserData(this.files[0])">
+            </div>
+            <div class="backup-card" style="grid-column: 1 / -1; border-color: var(--apple-accent);">
+                <h3>📦 一键全部备份</h3>
+                <p>导出所有配置文件 + 所有用户数据为一个完整备份文件（JSON）。方便在另一台电脑上快速还原全部设置。</p>
+                <button class="btn" onclick="exportFullBackup()">导出完整备份</button>
+            </div>
+            <div class="backup-card" style="grid-column: 1 / -1; border-color: var(--apple-red);">
+                <h3>🗄️ 一键全部恢复</h3>
+                <p style="color: var(--apple-red);">导入完整备份文件将覆盖所有配置和用户数据，此操作不可撤销！建议先导出当前数据作为备份。</p>
+                <label class="import-zone" for="import-full-file">
+                    <div class="icon">⚠️</div>
+                    <div>点击选择完整备份 JSON 文件</div>
+                </label>
+                <input type="file" id="import-full-file" accept=".json" style="display:none" onchange="restoreFullBackup(this.files[0])">
+            </div>
+        </div>
+
+        <div id="log" class="log"></div>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/sidebar.js"></script>
+    <script>
+        function showToast(msg, type) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'status-toast';
+            if (type === 'success') el.style.background = '#34c759';
+            else if (type === 'error') el.style.background = '#ff3b30';
+            else el.style.background = 'rgba(0,0,0,0.85)';
+            el.style.display = 'block';
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => el.style.display = 'none', 3000);
+        }
+
+        function showLog(msg, type) {
+            const log = document.getElementById('log');
+            log.textContent += msg + '\n';
+            log.className = 'log show ' + type;
+        }
+
+        async function exportUserData() {
+            showLog('正在导出用户数据...', 'info');
+            try {
+                const resp = await fetch('/api/user/export');
+                if (!resp.ok) { showLog('导出失败: HTTP ' + resp.status, 'error'); return; }
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'qianyan_user_data_backup.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showLog('用户数据导出完成!', 'success');
+                showToast('导出成功', 'success');
+            } catch(e) {
+                showLog('导出失败: ' + e.message, 'error');
+            }
+        }
+
+        async function importUserData(file) {
+            if (!file) return;
+            if (!confirm('确定要导入用户数据吗？现有数据将被合并（新词添加，已有词保留）。')) return;
+            showLog('正在导入用户数据...', 'info');
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const resp = await fetch('/api/user/import', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data),
+                });
+                if (resp.ok) {
+                    showLog('用户数据导入完成! 输入法已自动重载。', 'success');
+                    showToast('导入成功', 'success');
+                } else {
+                    showLog('导入失败: HTTP ' + resp.status, 'error');
+                }
+            } catch(e) {
+                showLog('导入失败: ' + e.message, 'error');
+            }
+        }
+
+        async function exportFullBackup() {
+            showLog('正在导出完整备份...', 'info');
+            try {
+                const resp = await fetch('/api/backup/full');
+                if (!resp.ok) { showLog('导出失败: HTTP ' + resp.status, 'error'); return; }
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'qianyan_full_backup.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showLog('完整备份导出完成! 请在另一台电脑上使用"一键全部恢复"功能还原。', 'success');
+                showToast('备份导出成功', 'success');
+            } catch(e) {
+                showLog('导出失败: ' + e.message, 'error');
+            }
+        }
+
+        async function restoreFullBackup(file) {
+            if (!file) return;
+            if (!confirm('⚠️ 警告: 此操作将覆盖所有当前配置和用户数据！\n\n确定要恢复完整备份吗？此操作不可撤销。')) return;
+            showLog('正在恢复完整备份...', 'info');
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const resp = await fetch('/api/backup/restore', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data),
+                });
+                if (resp.ok) {
+                    showLog('完整备份恢复完成! 输入法已自动重载所有配置和词典。', 'success');
+                    showToast('恢复成功', 'success');
+                } else {
+                    showLog('恢复失败: HTTP ' + resp.status, 'error');
+                }
+            } catch(e) {
+                showLog('恢复失败: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

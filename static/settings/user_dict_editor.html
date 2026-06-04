@@ -16,15 +16,21 @@
         .stats-bar { font-size: 12px; color: var(--apple-secondary); }
         .btn-delete { background: transparent; color: var(--apple-red); border: none; cursor: pointer; font-size: 14px; padding: 3px 8px; border-radius: 4px; }
         .btn-delete:hover { background: rgba(255,59,48,0.1); }
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 10px 24px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transition: opacity 0.3s; }
-        .toast.show { opacity: 1; }
-        .toast.success { background: #34c759; color: #fff; }
-        .toast.error { background: var(--apple-red); color: #fff; }
         .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px solid var(--apple-border); border-radius: 10px; background: var(--apple-card-bg); margin-bottom: 12px; }
         .note { margin-bottom: 12px; padding: 12px 16px; font-size: 12px; line-height: 1.6; background: rgba(9,105,218,0.04); border-left: 3px solid var(--apple-accent); border-radius: 6px; }
         .note code { background: rgba(0,0,0,0.05); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
         .actions { display: flex; gap: 8px; }
         .actions .btn { font-size: 13px; padding: 6px 14px; }
+        .tab-bar { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid var(--apple-border); }
+        .tab-btn { padding: 10px 20px; border: none; background: transparent; font-size: 14px; font-weight: 500; color: var(--apple-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .tab-btn:hover { color: var(--apple-text); }
+        .tab-btn.active { color: var(--apple-accent); border-bottom-color: var(--apple-accent); font-weight: 600; }
+        .tab-badge { display: inline-block; background: var(--apple-border); color: var(--apple-secondary); font-size: 11px; padding: 1px 7px; border-radius: 8px; margin-left: 6px; }
+        .tab-btn.active .tab-badge { background: rgba(0,113,227,0.12); color: var(--apple-accent); }
+        .type-tag { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }
+        .type-learned { background: #e8f5e9; color: #2e7d32; }
+        .type-usage { background: #e3f2fd; color: #1565c0; }
+        .type-ngram { background: #fce4ec; color: #c62828; }
     </style>
 </head>
 <body>
@@ -37,22 +43,54 @@
         <div class="note">
             <strong>💡 说明</strong><br>
             • <strong>用户词典</strong> — 自动造词记录的自定义词组<br>
-            • <strong>使用频率</strong> — 自动调频数据，记录选词习惯<br>
-            • <strong>上下文联想</strong> — N-Gram 历史，记录前后词关联<br>
-            所有数据按语言方案分别存储，可通过下方标签页切换。<br>
-            删除或清空后需重启输入法才能完全生效。
+            • <strong>使用频率</strong> — 选词频率统计，用于调频排序<br>
+            • <strong>上下文联想</strong> — N-Gram 关联历史，记录前后词关系<br>
+            使用下方标签页切换查看不同类型的数据。
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0;">⚙️ 学习控制</h3>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用频率学习</div><div class="desc">记录选词习惯，根据使用频率调整候选词顺序</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的多字词自动加入用户词典</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">常用词自动置顶</div><div class="desc">使用3次以上的候选词自动跳到第一位</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div style="padding-top:12px;">
+                <button class="btn" onclick="saveSwitches()" style="font-size:13px; padding:8px 18px;">保存开关设置</button>
+            </div>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('learned')">📖 用户词典<span class="tab-badge" id="count-learned">0</span></button>
+            <button class="tab-btn" onclick="switchTab('usage')">📊 使用频率<span class="tab-badge" id="count-usage">0</span></button>
+            <button class="tab-btn" onclick="switchTab('ngram')">🔗 上下文联想<span class="tab-badge" id="count-ngram">0</span></button>
         </div>
 
         <div class="toolbar">
-            <span style="font-weight:600;">📖 词典浏览</span>
-            <select id="profile-filter" onchange="filterByProfile()" style="margin-left:10px;">
+            <span style="font-weight:600;">浏览</span>
+            <select id="profile-filter" onchange="renderTable()" style="margin-left:10px;">
                 <option value="all">全部方案</option>
+            </select>
+            <select id="data-type-filter" onchange="renderTable()" style="margin-left:10px;display:none;">
             </select>
             <span class="stats-bar" id="stats-bar"></span>
             <div class="actions" style="margin-left:auto;">
-                <button class="btn" onclick="exportUserDict()">📥 导出当前</button>
+                <button class="btn" onclick="exportAll()">📥 导出全部数据</button>
                 <button class="btn" onclick="clearCurrentProfile()" style="color:var(--apple-red);">🗑 清空当前方案</button>
-                <button class="btn btn-danger" onclick="clearUserDict()">🗑 清空全部</button>
+                <button class="btn btn-danger" onclick="clearAll()">🗑 清空全部</button>
             </div>
         </div>
 
@@ -60,8 +98,9 @@
             <table class="dict-table" id="user-dict-table">
                 <thead>
                     <tr>
+                        <th class="left">类型</th>
                         <th class="left">方案</th>
-                        <th class="left">拼音</th>
+                        <th class="left">键/拼音</th>
                         <th class="left">词汇</th>
                         <th class="center">权重</th>
                         <th class="center">操作</th>
@@ -72,78 +111,108 @@
         </div>
     </div>
 
-    <div id="toast" class="toast"></div>
+    <div id="toast" class="status-toast"></div>
 
+    <script src="/static/js/settings.js"></script>
+    <script src="/static/js/sidebar.js"></script>
     <script>
-        let userDictEntries = [];
+        let allEntries = [];
+        let currentTab = 'learned';
         let filterProfile = 'all';
 
         async function init() {
-            await loadUserDict();
+            await loadConfig();
+            // bind switch toggles
+            bindInput('enable_auto_reorder', 'input');
+            bindInput('enable_word_discovery', 'input');
+            bindInput('enable_fixed_first_candidate', 'input');
+            await loadAll();
         }
 
-        async function loadUserDict() {
+        async function saveSwitches() {
+            await saveConfig();
+            showToast('开关设置已保存', 'success');
+        }
+
+        async function loadAll() {
             const r = await fetch('/api/dict/user/browse');
             if (!r.ok) {
                 document.getElementById('user-dict-body').innerHTML =
-                    '<tr><td colspan="5" class="no-data">无法加载用户词典</td></tr>';
+                    '<tr><td colspan="6" class="no-data">无法加载用户词典</td></tr>';
                 return;
             }
-            userDictEntries = await r.json();
-            // Populate profile filter dropdown
-            const profiles = [...new Set(userDictEntries.map(e => e.profile))].sort();
+            allEntries = await r.json();
+            const profiles = [...new Set(allEntries.map(e => e.profile))].sort();
             const sel = document.getElementById('profile-filter');
             sel.innerHTML = '<option value="all">全部方案</option>' +
                 profiles.map(p => `<option value="${p}">${p}</option>`).join('');
             if (filterProfile !== 'all' && !profiles.includes(filterProfile)) filterProfile = 'all';
-            if (filterProfile !== 'all') sel.value = filterProfile;
-            renderUserDict();
+            sel.value = filterProfile;
+
+            // Update tab counts
+            for (const t of ['learned', 'usage', 'ngram']) {
+                const count = allEntries.filter(e => e.data_type === t).length;
+                const el = document.getElementById('count-' + t);
+                if (el) el.textContent = count;
+            }
+            renderTable();
         }
 
-        function filterByProfile() {
-            filterProfile = document.getElementById('profile-filter').value;
-            renderUserDict();
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                if (b.textContent.includes(tab === 'learned' ? '用户词典' : tab === 'usage' ? '使用频率' : '上下文联想')) {
+                    b.classList.add('active');
+                }
+            });
+            renderTable();
         }
 
-        function renderUserDict() {
+        function renderTable() {
             const tbody = document.getElementById('user-dict-body');
-            const entries = filterProfile === 'all'
-                ? userDictEntries
-                : userDictEntries.filter(e => e.profile === filterProfile);
+            filterProfile = document.getElementById('profile-filter').value;
+
+            let entries = allEntries.filter(e => e.data_type === currentTab);
+            if (filterProfile !== 'all') {
+                entries = entries.filter(e => e.profile === filterProfile);
+            }
+
+            const total = allEntries.filter(e => e.data_type === currentTab).length;
             document.getElementById('stats-bar').textContent =
-                `${entries.length} / ${userDictEntries.length} 条`;
+                `显示 ${entries.length} / ${total} 条`;
+
             if (entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">用户词典为空</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">暂无数据</td></tr>';
                 return;
             }
-            tbody.innerHTML = entries.map((e, idx) =>
-                `<tr>
+            tbody.innerHTML = entries.map((e) => {
+                const tagClass = e.data_type === 'learned' ? 'type-learned' :
+                    e.data_type === 'usage' ? 'type-usage' : 'type-ngram';
+                const tagLabel = e.data_type === 'learned' ? '词典' :
+                    e.data_type === 'usage' ? '频率' : 'ngram';
+                return `<tr>
+                    <td><span class="type-tag ${tagClass}">${tagLabel}</span></td>
                     <td class="left">${esc(e.profile)}</td>
                     <td class="left cell-pinyin">${esc(e.pinyin)}</td>
                     <td class="left cell-word">${esc(e.word)}</td>
                     <td class="center">${e.weight}</td>
                     <td class="center">
-                        <button class="btn-delete" onclick="deleteEntry(${userDictEntries.indexOf(e)})" title="删除">✕</button>
+                        <button class="btn-delete" onclick="deleteEntry('${esc_attr(e.profile)}', '${esc_attr(e.pinyin)}', '${esc_attr(e.word)}')" title="删除">✕</button>
                     </td>
-                </tr>`
-            ).join('');
+                </tr>`;
+            }).join('');
         }
 
-        async function deleteEntry(idx) {
-            const entry = userDictEntries[idx];
-            if (!entry) return;
-            if (!confirm(`确定要从用户词典中删除 "${entry.word}" (${entry.pinyin}) 吗？`)) return;
+        async function deleteEntry(profile, pinyin, word) {
+            if (!confirm(`确定要删除 "${word}" (${pinyin}) 吗？`)) return;
             const r = await fetch('/api/dict/user/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ profile: entry.profile, pinyin: entry.pinyin, word: entry.word })
+                body: JSON.stringify({ profile, pinyin, word })
             });
-            if (r.ok) {
-                showToast(`已删除 "${entry.word}"`, 'success');
-                loadUserDict();
-            } else {
-                showToast('删除失败', 'error');
-            }
+            showToast(r.ok ? `已删除 "${word}"` : '删除失败', r.ok ? 'success' : 'error');
+            if (r.ok) loadAll();
         }
 
         async function clearCurrentProfile() {
@@ -151,54 +220,55 @@
                 showToast('请先选择要清空的方案', 'error');
                 return;
             }
-            if (!confirm(`确定要清空 "${filterProfile}" 方案的所有用户词典吗？此操作无法撤销。`)) return;
+            if (!confirm(`确定要清空 "${filterProfile}" 方案的所有用户数据（词典+频率+联想）吗？此操作无法撤销。`)) return;
             const res = await fetch('/api/dict/clear_user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ profile: filterProfile, all: true })
+                body: JSON.stringify({ profile: filterProfile, all: false })
             });
-            showToast(res.ok ? `"${filterProfile}" 词典已清空` : '清空失败', res.ok ? 'success' : 'error');
-            if (res.ok) loadUserDict();
+            showToast(res.ok ? `"${filterProfile}" 数据已清空` : '清空失败', res.ok ? 'success' : 'error');
+            if (res.ok) loadAll();
         }
 
-        async function clearUserDict() {
-            if (!confirm('确定要清空所有方案的用户词典数据吗？此操作无法撤销。')) return;
-            const res = await fetch('/api/dict/clear_user', { method: 'POST' });
-            showToast(res.ok ? '所有用户词典已清空' : '清空失败', res.ok ? 'success' : 'error');
-            if (res.ok) loadUserDict();
+        async function clearAll() {
+            if (!confirm('确定要清空所有方案的全部用户数据吗？此操作无法撤销。')) return;
+            const res = await fetch('/api/dict/clear_user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profile: null, all: true })
+            });
+            showToast(res.ok ? '所有用户数据已清空' : '清空失败', res.ok ? 'success' : 'error');
+            if (res.ok) loadAll();
         }
 
-        async function exportUserDict() {
-            const entries = userDictEntries;
-            if (entries.length === 0) {
-                showToast('用户词典为空，无需导出', 'error');
-                return;
+        async function exportAll() {
+            try {
+                const resp = await fetch('/api/user/export');
+                if (!resp.ok) { showToast('导出失败', 'error'); return; }
+                const blob = await resp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'qianyan_user_data_backup.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('全部数据导出完成（含词典+频率+联想）', 'success');
+            } catch(e) {
+                showToast('导出失败: ' + e.message, 'error');
             }
-            const groups = {};
-            for (const e of entries) {
-                if (!groups[e.profile]) groups[e.profile] = {};
-                if (!groups[e.profile][e.pinyin]) groups[e.profile][e.pinyin] = [];
-                groups[e.profile][e.pinyin].push({ word: e.word, weight: e.weight });
-            }
-            const data = JSON.stringify({ version: '1.0', updated_at: new Date().toISOString(), data: groups }, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'user_dict_backup.json';
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('导出完成', 'success');
         }
 
         function esc(s) { if (!s) return '-'; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function esc_attr(s) { if (!s) return ''; return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
         function showToast(msg, type) {
             const el = document.getElementById('toast');
             el.textContent = msg;
-            el.className = 'toast ' + type + ' show';
+            if (type === 'success') { el.style.background = '#34c759'; el.style.color = '#fff'; }
+            else if (type === 'error') { el.style.background = 'var(--apple-red)'; el.style.color = '#fff'; }
+            el.style.display = 'block';
             clearTimeout(el._timer);
-            el._timer = setTimeout(() => el.classList.remove('show'), 2500);
+            el._timer = setTimeout(() => el.style.display = 'none', 2500);
         }
 
         init();

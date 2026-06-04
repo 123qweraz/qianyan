@@ -6,6 +6,10 @@
     --apple-secondary: #86868b;
     --apple-border: #d2d2d7;
     --apple-glass: blur(20px) saturate(180%);
+    --sidebar-width: 240px;
+    --apple-red: #ff3b30;
+    --apple-card-bg: rgba(255,255,255,0.8);
+    --apple-hover: rgba(0,113,227,0.04);
 }
 
 body {
@@ -15,12 +19,131 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
 }
 
-.container {
+/* ===== Sidebar ===== */
+.qy-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-right: 1px solid var(--apple-border);
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.qy-sidebar-logo {
+    padding: 24px 20px 12px;
+    border-bottom: 1px solid var(--apple-border);
+}
+
+.qy-sidebar-logo h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.qy-sidebar-logo .version {
+    font-size: 11px;
+    color: var(--apple-secondary);
+    margin-top: 2px;
+}
+
+.qy-sidebar-search {
+    padding: 12px 16px;
+}
+
+.qy-sidebar-search input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--apple-border);
+    font-size: 13px;
+    background: rgba(0,0,0,0.03);
+    outline: none;
+    transition: all 0.2s;
+    color: var(--apple-text);
+}
+
+.qy-sidebar-search input:focus {
+    border-color: var(--apple-accent);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(0,113,227,0.12);
+}
+
+.qy-sidebar-nav {
+    flex: 1;
+    padding: 4px 12px 24px;
+    overflow-y: auto;
+}
+
+.qy-nav-group {
+    margin-bottom: 4px;
+}
+
+.qy-nav-group-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--apple-secondary);
+    padding: 12px 8px 4px;
+}
+
+.qy-sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--apple-text);
+    transition: all 0.15s;
+}
+
+.qy-sidebar-nav a:hover {
+    background: var(--apple-hover);
+    color: var(--apple-accent);
+}
+
+.qy-sidebar-nav a.active {
+    background: var(--apple-accent);
+    color: white;
+    font-weight: 600;
+}
+
+/* ===== Main Content Area ===== */
+.qy-main-content {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    min-height: 100vh;
+}
+
+/* Update container for sidebar layout */
+.qy-main-content .container {
     max-width: 1000px;
     margin: 0 auto;
-    padding: 60px 20px;
+    padding: 40px 32px;
+}
+
+/* Override body container when sidebar present */
+body:has(#qy-sidebar) .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 32px;
 }
 
 header {
