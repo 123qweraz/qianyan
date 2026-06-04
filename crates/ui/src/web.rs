@@ -108,6 +108,10 @@ impl WebServer {
             .route("/api/ime/search", post(ime_search_handler))
             .route("/api/ime/session", post(ime_session_handler))
             .route("/api/ime/key", post(ime_key_handler))
+            .route("/api/user/export", get(export_user_data))
+            .route("/api/user/import", post(import_user_data))
+            .route("/api/backup/full", get(export_full_backup))
+            .route("/api/backup/restore", post(restore_full_backup))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
@@ -1038,16 +1042,46 @@ async fn add_dict_entry(Json(req): Json<AddEntryRequest>) -> StatusCode {
     StatusCode::INTERNAL_SERVER_ERROR
 }
 
-async fn clear_user_dict(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
-    let files = ["data/learned_words.json", "data/usage_history.json", "data/user_dict.json"];
-    for f in files {
-        let path = std::path::Path::new(f);
-        if path.exists() {
-            let _ = std::fs::remove_file(path);
+#[derive(Deserialize)]
+struct ClearUserDictRequest {
+    profile: Option<String>,
+    all: bool,
+}
+
+async fn clear_user_dict(
+    State((_, _, tray_tx)): State<WebState>,
+    Json(req): Json<ClearUserDictRequest>,
+) -> StatusCode {
+    let root = user_dict_root();
+
+    if req.all && req.profile.is_none() {
+        // 清空所有方案的词典
+        if let Ok(entries) = std::fs::read_dir(&root) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+                        let f = entry.path().join(file_name);
+                        if f.exists() {
+                            let _ = std::fs::remove_file(&f);
+                        }
+                    }
+                }
+            }
         }
+        let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
+    } else if let Some(ref profile) = req.profile {
+        let profile_dir = root.join(profile);
+        if profile_dir.exists() {
+            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+                let f = profile_dir.join(file_name);
+                if f.exists() {
+                    let _ = std::fs::remove_file(&f);
+                }
+            }
+        }
+        let _ = tray_tx.send(TrayEvent::ClearUserDict(req.profile));
     }
-    // 通知主线程清空内存中的用户词典
-    let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
+
     StatusCode::OK
 }
 
@@ -1057,6 +1091,7 @@ struct UserDictEntryView {
     pinyin: String,
     word: String,
     weight: u32,
+    data_type: String,
 }
 
 /// 获取用户词典根目录（兼容新旧路径）
@@ -1079,58 +1114,72 @@ fn user_dict_root() -> std::path::PathBuf {
 async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
     let mut results = Vec::new();
     let root = user_dict_root();
+
+    fn read_json_file(path: &std::path::Path) -> Option<HashMap<String, Vec<(String, u32)>>> {
+        let content = std::fs::read_to_string(path).ok()?;
+        // 新版格式带 version/data 字段
+        if let Ok(data_file) = serde_json::from_str::<HashMap<String, serde_json::Value>>(&content) {
+            if let Some(data) = data_file.get("data") {
+                let mut map = HashMap::new();
+                if let Some(obj) = data.as_object() {
+                    for (key, arr) in obj {
+                        let mut words = Vec::new();
+                        if let Some(entries) = arr.as_array() {
+                            for entry in entries {
+                                if let Some(arr) = entry.as_array() {
+                                    if arr.len() >= 2 {
+                                        let word = arr[0].as_str().unwrap_or("").to_string();
+                                        let weight = arr[1].as_u64().unwrap_or(0) as u32;
+                                        words.push((word, weight));
+                                    }
+                                }
+                            }
+                        }
+                        map.insert(key.clone(), words);
+                    }
+                }
+                return Some(map);
+            }
+        }
+        // 旧版格式: {pinyin: [[word, weight]]}
+        serde_json::from_str::<HashMap<String, Vec<(String, u32)>>>(&content).ok()
+    }
+
+    fn push_results(
+        results: &mut Vec<UserDictEntryView>,
+        profile: &str,
+        map: &HashMap<String, Vec<(String, u32)>>,
+        data_type: &str,
+    ) {
+        for (pinyin, words) in map {
+            for (word, weight) in words {
+                results.push(UserDictEntryView {
+                    profile: profile.to_string(),
+                    pinyin: pinyin.clone(),
+                    word: word.clone(),
+                    weight: *weight,
+                    data_type: data_type.to_string(),
+                });
+            }
+        }
+    }
+
     if let Ok(entries) = std::fs::read_dir(&root) {
         for profile_entry in entries.flatten() {
             if !profile_entry.path().is_dir() {
                 continue;
             }
             let profile = profile_entry.file_name().to_string_lossy().to_string();
-            let learned_path = profile_entry.path().join("learned.json");
-            if !learned_path.exists() {
-                // 也尝试旧路径
-                let legacy = std::path::Path::new("data/learned_words.json");
-                if legacy.exists() {
-                    if let Ok(content) = std::fs::read_to_string(legacy) {
-                        if let Ok(data) = serde_json::from_str::<HashMap<String, Vec<(String, u32)>>>(&content) {
-                            for (pinyin, words) in data {
-                                for (word, weight) in words {
-                                    results.push(UserDictEntryView {
-                                        profile: profile.clone(),
-                                        pinyin: pinyin.clone(),
-                                        word,
-                                        weight,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-                continue;
-            }
-            if let Ok(content) = std::fs::read_to_string(&learned_path) {
-                // 新版格式带 version/data 字段
-                if let Ok(data_file) = serde_json::from_str::<HashMap<String, serde_json::Value>>(&content) {
-                    if let Some(data) = data_file.get("data") {
-                        if let Some(map) = data.as_object() {
-                            for (pinyin, arr) in map {
-                                if let Some(entries) = arr.as_array() {
-                                    for entry in entries {
-                                        if let Some(arr) = entry.as_array() {
-                                            if arr.len() >= 2 {
-                                                let word = arr[0].as_str().unwrap_or("").to_string();
-                                                let weight = arr[1].as_u64().unwrap_or(0) as u32;
-                                                results.push(UserDictEntryView {
-                                                    profile: profile.clone(),
-                                                    pinyin: pinyin.clone(),
-                                                    word,
-                                                    weight,
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+
+            for (file_name, data_type) in &[
+                ("learned.json", "learned"),
+                ("usage.json", "usage"),
+                ("ngrams.json", "ngram"),
+            ] {
+                let path = profile_entry.path().join(file_name);
+                if path.exists() {
+                    if let Some(map) = read_json_file(&path) {
+                        push_results(&mut results, &profile, &map, data_type);
                     }
                 }
             }
@@ -1153,45 +1202,42 @@ async fn delete_user_dict_entry(
 ) -> StatusCode {
     let root = user_dict_root();
     let profile_dir = root.join(&req.profile);
-    let learned_path = profile_dir.join("learned.json");
-    if !learned_path.exists() {
-        return StatusCode::NOT_FOUND;
-    }
-    let content = match std::fs::read_to_string(&learned_path) {
-        Ok(c) => c,
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-    };
-    let mut data: serde_json::Value = match serde_json::from_str(&content) {
-        Ok(v) => v,
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-    };
-    let mut found = false;
-    if let Some(obj) = data.as_object_mut() {
-        if let Some(data_obj) = obj.get_mut("data").and_then(|d| d.as_object_mut()) {
-            if let Some(entries) = data_obj.get_mut(&req.pinyin).and_then(|a| a.as_array_mut()) {
-                entries.retain(|entry| {
-                    if entry.as_array().map(|a| a.first().and_then(|v| v.as_str())) == Some(Some(&req.word)) {
-                        found = true;
-                        false
-                    } else {
-                        true
+
+    // 同时从 learned, usage, ngram 三个文件中删除该词条
+    let mut deleted = false;
+    for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+        let path = profile_dir.join(file_name);
+        if !path.exists() { continue; }
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let mut data: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        if let Some(obj) = data.as_object_mut() {
+            if let Some(data_obj) = obj.get_mut("data").and_then(|d| d.as_object_mut()) {
+                if let Some(entries) = data_obj.get_mut(&req.pinyin).and_then(|a| a.as_array_mut()) {
+                    let before = entries.len();
+                    entries.retain(|entry| {
+                        entry.as_array().map(|a| a.first().and_then(|v| v.as_str())) != Some(Some(&req.word))
+                    });
+                    if entries.len() < before { deleted = true; }
+                    if entries.is_empty() {
+                        data_obj.remove(&req.pinyin);
                     }
-                });
-                if entries.is_empty() {
-                    data_obj.remove(&req.pinyin);
                 }
             }
         }
+        let _ = std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap_or_default());
     }
-    if !found {
+
+    if !deleted {
         return StatusCode::NOT_FOUND;
     }
-    if std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default()).is_ok() {
-        let _ = tray_tx.send(TrayEvent::ClearUserDict(None)); // 触发内存重载
-        StatusCode::OK
-    } else {
-        StatusCode::INTERNAL_SERVER_ERROR
-    }
+    let _ = tray_tx.send(TrayEvent::ClearUserDict(Some(req.profile)));
+    StatusCode::OK
 }
 
 /// 在文件管理器中打开词典目录
@@ -2449,6 +2495,279 @@ async fn ime_key_handler(
     resp.session_id = req.session_id;
 
     Ok(Json(resp))
+}
+
+// ===== User Data Export / Import =====
+
+async fn export_user_data() -> impl IntoResponse {
+    let mut result = serde_json::Map::new();
+    let root = user_dict_root();
+
+    if let Ok(entries) = std::fs::read_dir(&root) {
+        for profile_entry in entries.flatten() {
+            if !profile_entry.path().is_dir() { continue; }
+            let profile = profile_entry.file_name().to_string_lossy().to_string();
+            let mut profile_data = serde_json::Map::new();
+
+            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+                let path = profile_entry.path().join(file_name);
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
+                        profile_data.insert(file_name.trim_end_matches(".json").to_string(), value);
+                    }
+                }
+            }
+            if !profile_data.is_empty() {
+                result.insert(profile, serde_json::Value::Object(profile_data));
+            }
+        }
+    }
+
+    let export = serde_json::json!({
+        "version": "1.0",
+        "exported_at": timestamp_now(),
+        "user_data": result,
+    });
+
+    let body = serde_json::to_string_pretty(&export).unwrap_or_default();
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json; charset=utf-8"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"qianyan_user_data_backup.json\""),
+        ],
+        body,
+    )
+}
+
+async fn import_user_data(
+    State((_, _, tray_tx)): State<WebState>,
+    Json(body): Json<serde_json::Value>,
+) -> StatusCode {
+    let root = user_dict_root();
+    let _ = std::fs::create_dir_all(&root);
+
+    if let Some(user_data) = body.get("user_data").and_then(|v| v.as_object()) {
+        for (profile, data) in user_data {
+            let profile_dir = root.join(profile);
+            let _ = std::fs::create_dir_all(&profile_dir);
+            if let Some(data_obj) = data.as_object() {
+                for (key, value) in data_obj {
+                    let file_name = match key.as_str() {
+                        "learned" => "learned.json",
+                        "usage" => "usage.json",
+                        "ngram" => "ngrams.json",
+                        _ => continue,
+                    };
+                    let path = profile_dir.join(file_name);
+                    let content = serde_json::to_string_pretty(value).unwrap_or_default();
+                    let _ = std::fs::write(&path, content);
+                }
+            }
+        }
+    }
+
+    // 如果是旧格式 {data: {profile: {pinyin: [...]}}} 直接合并到 learned.json
+    if let Some(data) = body.get("data").and_then(|v| v.as_object()) {
+        for (profile, pinyin_map) in data {
+            let profile_dir = root.join(profile);
+            let _ = std::fs::create_dir_all(&profile_dir);
+            let learned_path = profile_dir.join("learned.json");
+            let existing = std::fs::read_to_string(&learned_path).ok()
+                .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+                .and_then(|v| v.get("data").cloned());
+            let new_data = serde_json::json!({
+                "version": "1.0",
+                "updated_at": timestamp_now(),
+                "data": pinyin_map,
+            });
+            let merged = if let Some(ref existing_data) = existing {
+                merge_json_objects(existing_data.clone(), new_data.get("data").cloned().unwrap_or(serde_json::Value::Null))
+            } else {
+                serde_json::json!({
+                    "version": "1.0",
+                    "updated_at": timestamp_now(),
+                    "data": pinyin_map,
+                })
+            };
+            let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&merged).unwrap_or_default());
+        }
+    }
+
+    let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
+    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    StatusCode::OK
+}
+
+fn merge_json_objects(mut base: serde_json::Value, overlay: serde_json::Value) -> serde_json::Value {
+    if let (Some(base_obj), Some(overlay_obj)) = (base.as_object_mut(), overlay.as_object()) {
+        for (k, v) in overlay_obj {
+            if let Some(base_v) = base_obj.get_mut(k) {
+                if let (Some(base_arr), Some(overlay_arr)) = (base_v.as_array_mut(), v.as_array()) {
+                    let mut seen: HashSet<String> = base_arr.iter()
+                        .filter_map(|e| e.as_array().and_then(|a| a.first()?.as_str().map(String::from)))
+                        .collect();
+                    for item in overlay_arr {
+                        if let Some(key) = item.as_array().and_then(|a| a.first()?.as_str()) {
+                            if !seen.contains(key) {
+                                base_arr.push(item.clone());
+                                seen.insert(key.to_string());
+                            }
+                        }
+                    }
+                } else {
+                    *base_v = v.clone();
+                }
+            } else {
+                base_obj.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    base
+}
+
+// ===== Full Backup / Restore =====
+
+fn configs_root() -> PathBuf {
+    // 尝试找到 configs/ 目录
+    if let Ok(cwd) = std::env::current_dir() {
+        let configs = cwd.join("configs");
+        if configs.exists() { return configs; }
+    }
+    PathBuf::from("configs")
+}
+
+async fn export_full_backup() -> impl IntoResponse {
+    let mut result = serde_json::Map::new();
+
+    // 1. 导出所有配置文件
+    let configs = configs_root();
+    let mut config_data = serde_json::Map::new();
+    if configs.exists() {
+        if let Ok(entries) = std::fs::read_dir(&configs) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|e| e == "json") {
+                    let name = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
+                    if let Ok(content) = std::fs::read_to_string(&path) {
+                        if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
+                            config_data.insert(name, value);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    result.insert("config".to_string(), serde_json::Value::Object(config_data));
+
+    // 2. 导出所有用户数据
+    let mut user_data = serde_json::Map::new();
+    let root = user_dict_root();
+    if let Ok(entries) = std::fs::read_dir(&root) {
+        for profile_entry in entries.flatten() {
+            if !profile_entry.path().is_dir() { continue; }
+            let profile = profile_entry.file_name().to_string_lossy().to_string();
+            let mut profile_data = serde_json::Map::new();
+            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+                let path = profile_entry.path().join(file_name);
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
+                        profile_data.insert(file_name.trim_end_matches(".json").to_string(), value);
+                    }
+                }
+            }
+            if !profile_data.is_empty() {
+                user_data.insert(profile, serde_json::Value::Object(profile_data));
+            }
+        }
+    }
+    result.insert("user_data".to_string(), serde_json::Value::Object(user_data));
+
+    let export = serde_json::json!({
+        "version": "1.0",
+        "exported_at": timestamp_now(),
+        "config": result.get("config").cloned().unwrap_or_default(),
+        "user_data": result.get("user_data").cloned().unwrap_or_default(),
+    });
+
+    let body = serde_json::to_string_pretty(&export).unwrap_or_default();
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json; charset=utf-8"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"qianyan_full_backup.json\""),
+        ],
+        body,
+    )
+}
+
+async fn restore_full_backup(
+    State((_, _, tray_tx)): State<WebState>,
+    Json(body): Json<serde_json::Value>,
+) -> StatusCode {
+    // 1. 恢复配置文件
+    if let Some(config_data) = body.get("config").and_then(|v| v.as_object()) {
+        let configs = configs_root();
+        let _ = std::fs::create_dir_all(&configs);
+        for (name, value) in config_data {
+            let path = configs.join(format!("{}.json", name));
+            let content = serde_json::to_string_pretty(value).unwrap_or_default();
+            let _ = std::fs::write(&path, content);
+        }
+    }
+
+    // 2. 恢复用户数据
+    if let Some(user_data) = body.get("user_data").and_then(|v| v.as_object()) {
+        let root = user_dict_root();
+        let _ = std::fs::create_dir_all(&root);
+        for (profile, data) in user_data {
+            let profile_dir = root.join(profile);
+            let _ = std::fs::create_dir_all(&profile_dir);
+            if let Some(data_obj) = data.as_object() {
+                for (key, value) in data_obj {
+                    let file_name = match key.as_str() {
+                        "learned" => "learned.json",
+                        "usage" => "usage.json",
+                        "ngram" => "ngrams.json",
+                        _ => continue,
+                    };
+                    let path = profile_dir.join(file_name);
+                    let content = serde_json::to_string_pretty(value).unwrap_or_default();
+                    let _ = std::fs::write(&path, content);
+                }
+            }
+        }
+    }
+
+    let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
+    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    StatusCode::OK
+}
+
+fn timestamp_now() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let days = secs / 86400;
+    let (y, m, d) = days_to_ymd(days as i64 + 719468);
+    let remaining = secs % 86400;
+    let h = remaining / 3600;
+    let min = (remaining % 3600) / 60;
+    let s = remaining % 60;
+    format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, m, d, h, min, s)
+}
+
+fn days_to_ymd(days: i64) -> (i64, u32, u32) {
+    let d = days;
+    let era = if d >= 0 { d } else { d - 146096 } / 146097;
+    let doe = d - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = if mp < 10 { (mp + 3) as u32 } else { (mp - 9) as u32 };
+    let year = if month <= 2 { y + 1 } else { y };
+    (year, month, day)
 }
 
 fn uuid_v4() -> String {
