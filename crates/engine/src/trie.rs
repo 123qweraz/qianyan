@@ -495,120 +495,26 @@ impl Trie {
         let mut cursor = offset + 4;
 
         for _ in 0..count {
-            if cursor + 2 > data.len() {
-                log::warn!("[Trie] read_block: truncated length field at cursor {}", cursor);
-                break;
-            }
-            let w_len = u16::from_le_bytes(
-                data[cursor..cursor + 2]
-                .try_into()
-                .unwrap_or_default(),
-            ) as usize;
-            cursor += 2;
-            if cursor + w_len > data.len() {
-                log::warn!("[Trie] read_block: truncated word data at cursor {}", cursor);
-                break;
-            }
-            let word = match std::str::from_utf8(&data[cursor..cursor + w_len]) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("[Trie] read_block: invalid utf8 for word: {}", e);
-                    break;
-                }
+            let word = match Self::read_str(data, &mut cursor, "word") {
+                Some(s) => s,
+                None => break,
             };
-            cursor += w_len;
-
-            if cursor + 2 > data.len() {
-                log::warn!("[Trie] read_block: truncated trad length at cursor {}", cursor);
-                break;
-            }
-            let tr_len = u16::from_le_bytes(
-                data[cursor..cursor + 2]
-                    .try_into()
-                    .unwrap_or_default(),
-            ) as usize;
-            cursor += 2;
-            if cursor + tr_len > data.len() {
-                log::warn!("[Trie] read_block: truncated trad data at cursor {}", cursor);
-                break;
-            }
-            let trad = match std::str::from_utf8(&data[cursor..cursor + tr_len]) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("[Trie] read_block: invalid utf8 for trad: {}", e);
-                    break;
-                }
+            let trad = match Self::read_str(data, &mut cursor, "trad") {
+                Some(s) => s,
+                None => break,
             };
-            cursor += tr_len;
-
-            if cursor + 2 > data.len() {
-                log::warn!("[Trie] read_block: truncated tone length at cursor {}", cursor);
-                break;
-            }
-            let t_len = u16::from_le_bytes(
-                data[cursor..cursor + 2]
-                    .try_into()
-                    .unwrap_or_default(),
-            ) as usize;
-            cursor += 2;
-            if cursor + t_len > data.len() {
-                log::warn!("[Trie] read_block: truncated tone data at cursor {}", cursor);
-                break;
-            }
-            let tone = match std::str::from_utf8(&data[cursor..cursor + t_len]) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("[Trie] read_block: invalid utf8 for tone: {}", e);
-                    break;
-                }
+            let tone = match Self::read_str(data, &mut cursor, "tone") {
+                Some(s) => s,
+                None => break,
             };
-            cursor += t_len;
-
-            if cursor + 2 > data.len() {
-                log::warn!("[Trie] read_block: truncated en length at cursor {}", cursor);
-                break;
-            }
-            let e_len = u16::from_le_bytes(
-                data[cursor..cursor + 2]
-                    .try_into()
-                    .unwrap_or_default(),
-            ) as usize;
-            cursor += 2;
-            if cursor + e_len > data.len() {
-                log::warn!("[Trie] read_block: truncated en data at cursor {}", cursor);
-                break;
-            }
-            let en = match std::str::from_utf8(&data[cursor..cursor + e_len]) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("[Trie] read_block: invalid utf8 for en: {}", e);
-                    break;
-                }
+            let en = match Self::read_str(data, &mut cursor, "en") {
+                Some(s) => s,
+                None => break,
             };
-            cursor += e_len;
-
-            if cursor + 2 > data.len() {
-                log::warn!("[Trie] read_block: truncated stroke_aux length at cursor {}", cursor);
-                break;
-            }
-            let s_len = u16::from_le_bytes(
-                data[cursor..cursor + 2]
-                    .try_into()
-                    .unwrap_or_default(),
-            ) as usize;
-            cursor += 2;
-            if cursor + s_len > data.len() {
-                log::warn!("[Trie] read_block: truncated stroke_aux data at cursor {}", cursor);
-                break;
-            }
-            let stroke_aux = match std::str::from_utf8(&data[cursor..cursor + s_len]) {
-                Ok(s) => s,
-                Err(e) => {
-                    log::warn!("[Trie] read_block: invalid utf8 for stroke_aux: {}", e);
-                    break;
-                }
+            let stroke_aux = match Self::read_str(data, &mut cursor, "stroke_aux") {
+                Some(s) => s,
+                None => break,
             };
-            cursor += s_len;
 
             if cursor + 4 > data.len() {
                 log::warn!("[Trie] read_block: truncated weight at cursor {}", cursor);
@@ -629,6 +535,33 @@ impl Trie {
                 stroke_aux,
                 weight,
             });
+        }
+    }
+
+    fn read_str<'a>(data: &'a [u8], cursor: &mut usize, field_name: &str) -> Option<&'a str> {
+        if *cursor + 2 > data.len() {
+            log::warn!("[Trie] read_block: truncated {} length at cursor {}", field_name, *cursor);
+            return None;
+        }
+        let len = u16::from_le_bytes(
+            data[*cursor..*cursor + 2]
+                .try_into()
+                .unwrap_or_default(),
+        ) as usize;
+        *cursor += 2;
+        if *cursor + len > data.len() {
+            log::warn!("[Trie] read_block: truncated {} data at cursor {}", field_name, *cursor);
+            return None;
+        }
+        match std::str::from_utf8(&data[*cursor..*cursor + len]) {
+            Ok(s) => {
+                *cursor += len;
+                Some(s)
+            }
+            Err(e) => {
+                log::warn!("[Trie] read_block: invalid utf8 for {}: {}", field_name, e);
+                None
+            }
         }
     }
 }
