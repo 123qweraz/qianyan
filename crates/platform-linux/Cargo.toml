@@ -19,5 +19,5 @@ arboard = { workspace = true }
 wl-clipboard-rs = { workspace = true }
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["unstable"] }
-wayland-protocols-misc = "0.3"
+wayland-protocols-misc = { version = "0.3", features = ["client"] }
 xkbcommon = "0.8"

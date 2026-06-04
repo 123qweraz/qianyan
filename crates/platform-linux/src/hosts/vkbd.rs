@@ -29,6 +29,77 @@ pub struct Vkbd {
 }
 
 impl Vkbd {
+    pub fn new_wayland() -> Result<Self, Box<dyn std::error::Error>> {
+        let mut keys = AttributeSet::new();
+        for code in 0u16..=0x2ff {
+            keys.insert(Key::new(code));
+        }
+
+        let dev_raw = VirtualDeviceBuilder::new()?
+            .name("qianyan-ime-v2")
+            .with_keys(&keys)?
+            .with_msc(&{
+                let mut misc = AttributeSet::<evdev::MiscType>::new();
+                misc.insert(evdev::MiscType::MSC_SCAN);
+                misc
+            })?
+            .build()?;
+
+        let dev = Arc::new(Mutex::new(dev_raw));
+        let paste_mode = Arc::new(Mutex::new(PasteMode::ShiftInsert));
+        let clipboard_delay_ms = Arc::new(Mutex::new(50));
+        let backspace_delay_ms = Arc::new(Mutex::new(10));
+
+        let (task_tx, task_rx) = mpsc::channel::<VkbdTask>();
+        let is_wayland = true;
+
+        let dev_bg = dev.clone();
+        let paste_mode_bg = paste_mode.clone();
+        let delay_bg = clipboard_delay_ms.clone();
+        let bs_delay_bg = backspace_delay_ms.clone();
+
+        thread::spawn(move || {
+            while let Ok(task) = task_rx.recv() {
+                match task {
+                    VkbdTask::SendText(text, highlight) => {
+                        let p_mode = match paste_mode_bg.lock() {
+                            Ok(m) => *m,
+                            Err(_) => PasteMode::ShiftInsert,
+                        };
+                        let delay = match delay_bg.lock() {
+                            Ok(d) => *d,
+                            Err(_) => 50,
+                        };
+                        Self::do_send_text(
+                            &dev_bg, is_wayland, p_mode, delay, &text, highlight,
+                        );
+                    }
+                    VkbdTask::Backspace(count) => {
+                        let bs_delay = match bs_delay_bg.lock() {
+                            Ok(d) => *d,
+                            Err(_) => 10,
+                        };
+                        Self::do_backspace(&dev_bg, count, bs_delay);
+                    }
+                    VkbdTask::EmitRaw(key, value) => {
+                        Self::do_emit_raw(&dev_bg, key, value);
+                    }
+                    VkbdTask::Tap(key) => {
+                        Self::do_tap(&dev_bg, key);
+                    }
+                }
+            }
+        });
+
+        Ok(Self {
+            dev,
+            paste_mode,
+            clipboard_delay_ms,
+            backspace_delay_ms,
+            task_tx,
+        })
+    }
+
     pub fn new(phys_dev: &Device) -> Result<Self, Box<dyn std::error::Error>> {
         let mut keys = AttributeSet::new();
 

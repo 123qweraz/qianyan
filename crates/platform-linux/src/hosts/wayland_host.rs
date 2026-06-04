@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::error::Error;
+use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
@@ -18,9 +20,15 @@ use wayland_protocols_misc::zwp_input_method_v2::client::{
     zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
     zwp_input_method_v2::ZwpInputMethodV2,
 };
+use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
+    zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
+    zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+};
 
 use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
+
+use super::vkbd::Vkbd;
 
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::keys::VirtualKey;
@@ -46,6 +54,12 @@ struct WlState {
     content_hint: u32,
     content_purpose: u32,
     prev_chinese_enabled: bool,
+    virtual_keyboard_manager: Option<ZwpVirtualKeyboardManagerV1>,
+    virtual_keyboard: Option<ZwpVirtualKeyboardV1>,
+    virtual_keymap: Option<std::fs::File>,
+    forwarded_keys: HashSet<u32>,
+    last_key_time: u32,
+    seat: Option<WlSeat>,
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlState {
@@ -92,11 +106,11 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 if let Some(ref im) = state.input_method {
                     let grab = im.grab_keyboard(qh, WlUser);
                     state.keyboard_grab = Some(grab);
-                    // Commit initial empty state so the compositor knows we are ready
                     im.set_preedit_string(String::new(), 0, 0);
                     im.commit(state.serial);
                     let _ = conn.flush();
                 }
+                state.setup_virtual_keyboard(qh);
             }
             Event::Deactivate => {
                 info!("[WaylandIM] deactivated");
@@ -160,8 +174,11 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 let raw_fd = fd.into_raw_fd();
                 let mut file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
                 use std::io::Read;
-                let mut keymap_str = String::new();
-                if file.read_to_string(&mut keymap_str).is_ok() {
+                let mut keymap_bytes = Vec::new();
+                if file.read_to_end(&mut keymap_bytes).is_ok() {
+                    let keymap_str = String::from_utf8_lossy(
+                        keymap_bytes.strip_suffix(&[0]).unwrap_or(&keymap_bytes),
+                    ).into_owned();
                     if let Some(keymap) = xkb::Keymap::new_from_string(
                         &state.xkb_context,
                         keymap_str,
@@ -170,6 +187,7 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                     ) {
                         state.xkb_state = Some(xkb::State::new(&keymap));
                         info!("[WaylandIM] xkb keymap and state created successfully");
+                        state.install_virtual_keymap(&keymap_bytes);
                     } else {
                         error!("[WaylandIM] failed to create xkb keymap from string");
                     }
@@ -178,7 +196,14 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 }
             }
             Event::Key { serial: _, time, key, state: key_state } => {
+                state.last_key_time = time;
                 if !state.active {
+                    return;
+                }
+                if key_state == WEnum::Value(KeyState::Released) {
+                    if state.forwarded_keys.remove(&key) {
+                        state.forward_physical_key(key, 0);
+                    }
                     return;
                 }
                 if key_state != WEnum::Value(KeyState::Pressed) {
@@ -261,6 +286,9 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
+                if let Some(vk) = &state.virtual_keyboard {
+                    vk.modifiers(mods_depressed, mods_latched, mods_locked, group);
+                }
             }
             Event::RepeatInfo { rate: _, delay: _ } => {}
             _ => {}
@@ -268,7 +296,88 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
     }
 }
 
+impl Dispatch<ZwpVirtualKeyboardManagerV1, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &ZwpVirtualKeyboardManagerV1,
+        _event: <ZwpVirtualKeyboardManagerV1 as Proxy>::Event,
+        _data: &WlUser,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwpVirtualKeyboardV1, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &ZwpVirtualKeyboardV1,
+        _event: <ZwpVirtualKeyboardV1 as Proxy>::Event,
+        _data: &WlUser,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+const WL_KEYMAP_FORMAT_XKB_V1: u32 = 1;
+
 impl WlState {
+    fn setup_virtual_keyboard(&mut self, qh: &QueueHandle<Self>) {
+        let (Some(manager), Some(seat)) = (&self.virtual_keyboard_manager, &self.seat) else {
+            return;
+        };
+        if self.virtual_keyboard.is_some() {
+            return;
+        }
+        self.virtual_keyboard = Some(manager.create_virtual_keyboard(seat, qh, WlUser));
+        info!("[WaylandIM] virtual keyboard created for key forwarding");
+    }
+
+    fn install_virtual_keymap(&mut self, keymap: &[u8]) {
+        let Some(vk) = &self.virtual_keyboard else {
+            return;
+        };
+
+        let mut file = match Self::tempfile() {
+            Ok(file) => file,
+            Err(e) => {
+                error!("[WaylandIM] failed to create virtual keyboard keymap fd: {e}");
+                return;
+            }
+        };
+        if file.set_len(keymap.len() as u64)
+            .and_then(|_| file.write_all(keymap))
+            .and_then(|_| file.seek(SeekFrom::Start(0)).map(|_| ()))
+            .is_err()
+        {
+            error!("[WaylandIM] failed to write virtual keyboard keymap");
+            return;
+        }
+
+        use std::os::fd::AsFd;
+        vk.keymap(WL_KEYMAP_FORMAT_XKB_V1, file.as_fd(), keymap.len() as u32);
+        self.virtual_keymap = Some(file);
+        info!("[WaylandIM] virtual keyboard keymap installed ({} bytes)", keymap.len());
+    }
+
+    fn forward_physical_key(&self, evdev_keycode: u32, state: u32) {
+        let Some(vk) = &self.virtual_keyboard else {
+            return;
+        };
+        vk.key(self.last_key_time, evdev_keycode, state);
+    }
+
+    fn tempfile() -> std::io::Result<std::fs::File> {
+        let name = std::ffi::CString::new("qianyan-vk")
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "bad name"))?;
+        let fd = unsafe { libc::memfd_create(name.as_ptr(), libc::MFD_CLOEXEC) };
+        if fd < 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        Ok(unsafe { std::fs::File::from_raw_fd(fd) })
+    }
+
     #[inline]
     fn resolve_key(&self, keycode: u32) -> Option<(VirtualKey, String)> {
         if let Some(ref xkb_st) = self.xkb_state {
@@ -282,11 +391,11 @@ impl WlState {
     }
 
     fn apply_state(
-        state: &Self,
+        state: &mut Self,
         action: &Action,
         conn: &Connection,
         utf8_text: String,
-        _key: u32,
+        key: u32,
         _time: u32,
         preedit: &str,
     ) {
@@ -304,10 +413,18 @@ impl WlState {
                 im.commit_string(insert.clone());
             }
             Action::PassThrough if utf8_text.is_empty() => {
-                // If utf8_text is empty (e.g. function keys), the key is consumed.
+                if state.virtual_keyboard.is_some() {
+                    state.forward_physical_key(key, 1);
+                    state.forwarded_keys.insert(key);
+                }
             }
             Action::PassThrough => {
-                im.commit_string(utf8_text);
+                if state.virtual_keyboard.is_some() && utf8_text.is_empty() {
+                    state.forward_physical_key(key, 1);
+                    state.forwarded_keys.insert(key);
+                } else {
+                    im.commit_string(utf8_text);
+                }
             }
             Action::Alert => {
                 Self::play_beep();
@@ -349,6 +466,7 @@ pub struct WaylandInputHost {
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
+    vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
 }
 
 impl InputMethodHost for WaylandInputHost {
@@ -380,9 +498,17 @@ impl InputMethodHost for WaylandInputHost {
             }
         };
 
-        let input_method: ZwpInputMethodV2 = im_manager.get_input_method(&seat, &qh, WlUser);
-        self.running.store(true, Ordering::SeqCst);
+        let virtual_keyboard_manager: Option<ZwpVirtualKeyboardManagerV1> =
+            globals.bind(&qh, 1..=1, WlUser).ok().inspect(|_| {
+                info!("[WaylandIM] zwp_virtual_keyboard_manager_v1 available");
+            });
+        if virtual_keyboard_manager.is_none() {
+            warn!("[WaylandIM] zwp_virtual_keyboard_manager_v1 not available; key forwarding will fall back to uinput/clipboard");
+        }
 
+        let input_method: ZwpInputMethodV2 = im_manager.get_input_method(&seat, &qh, WlUser);
+
+        self.running.store(true, Ordering::SeqCst);
         info!("[WaylandIM] connected, input_method obtained");
 
         let prev_chinese_enabled = self.processor.get_basic_status()
@@ -405,10 +531,20 @@ impl InputMethodHost for WaylandInputHost {
             content_hint: 0,
             content_purpose: 0,
             prev_chinese_enabled,
+            virtual_keyboard_manager,
+            virtual_keyboard: None,
+            virtual_keymap: None,
+            forwarded_keys: HashSet::new(),
+            last_key_time: 0,
+            seat: Some(seat),
         };
 
-        let _ = event_queue.dispatch_pending(&mut state);
-        let _ = conn.flush();
+        if let Err(e) = event_queue.roundtrip(&mut state) {
+            error!("[WaylandIM] initial roundtrip failed: {e}");
+            return Err(e.into());
+        }
+
+        info!("[WaylandIM] event loop started");
 
         loop {
             if !self.running.load(Ordering::SeqCst) {
@@ -419,7 +555,18 @@ impl InputMethodHost for WaylandInputHost {
                 error!("[WaylandIM] dispatch error: {e}");
                 break;
             }
-            std::thread::sleep(std::time::Duration::from_millis(4));
+            if self.running.load(Ordering::SeqCst) {
+                if let Some(guard) = conn.prepare_read() {
+                    if let Err(e) = guard.read() {
+                        error!("[WaylandIM] read error: {e}");
+                        break;
+                    }
+                }
+                if let Err(e) = event_queue.blocking_dispatch(&mut state) {
+                    error!("[WaylandIM] dispatch error: {e}");
+                    break;
+                }
+            }
         }
 
         info!("[WaylandIM] event loop ended");
@@ -439,12 +586,18 @@ impl WaylandInputHost {
         if Connection::connect_to_env().is_err() {
             return None;
         }
+        let vkbd = Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)));
         Some(Self {
             processor,
             gui_tx,
             tray_tx,
             running: Arc::new(AtomicBool::new(false)),
+            vkbd,
         })
+    }
+
+    pub fn vkbd(&self) -> Option<Arc<std::sync::Mutex<Vkbd>>> {
+        self.vkbd.clone()
     }
 }
 

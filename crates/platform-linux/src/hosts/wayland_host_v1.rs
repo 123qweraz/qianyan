@@ -28,6 +28,7 @@ use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 
 use super::wayland_host::{keysym_to_vk, xkb_to_vk_raw};
+use super::vkbd::Vkbd;
 
 struct WlState {
     _running: Arc<AtomicBool>,
@@ -352,6 +353,7 @@ pub struct WaylandInputHostV1 {
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
+    vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
 }
 
 impl InputMethodHost for WaylandInputHostV1 {
@@ -391,19 +393,30 @@ impl InputMethodHost for WaylandInputHostV1 {
             xkb_state: None,
         };
 
-        let _ = event_queue.dispatch_pending(&mut state);
+        let _ = event_queue.roundtrip(&mut state)?;
         let _ = conn.flush();
 
         loop {
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
+            let _ = conn.flush();
             if let Err(e) = event_queue.dispatch_pending(&mut state) {
                 error!("[WaylandIM v1] dispatch error: {e}");
                 break;
             }
-            let _ = conn.flush();
-            std::thread::sleep(std::time::Duration::from_millis(4));
+            if self.running.load(Ordering::SeqCst) {
+                if let Some(guard) = conn.prepare_read() {
+                    if let Err(e) = guard.read() {
+                        error!("[WaylandIM v1] read error: {e}");
+                        break;
+                    }
+                }
+                if let Err(e) = event_queue.blocking_dispatch(&mut state) {
+                    error!("[WaylandIM v1] dispatch error: {e}");
+                    break;
+                }
+            }
         }
 
         info!("[WaylandIM v1] event loop ended");
@@ -423,11 +436,17 @@ impl WaylandInputHostV1 {
         if Connection::connect_to_env().is_err() {
             return None;
         }
+        let vkbd = Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)));
         Some(Self {
             processor,
             gui_tx,
             tray_tx,
             running: Arc::new(AtomicBool::new(false)),
+            vkbd,
         })
+    }
+
+    pub fn vkbd(&self) -> Option<Arc<std::sync::Mutex<Vkbd>>> {
+        self.vkbd.clone()
     }
 }

@@ -109,9 +109,9 @@ fn try_start_wayland(
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
 ) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
-    let (mut host, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
+    let (mut host, vkbd_opt, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
     println!("[Main] 成功启动{}输入法模式。", desc);
-    Ok((None, Box::new(move || {
+    Ok((vkbd_opt, Box::new(move || {
         let _ = host.run();
     })))
 }
@@ -120,11 +120,7 @@ fn create_wayland_host(
     processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
-) -> Result<(Box<dyn InputMethodHost>, &'static str), Box<dyn Error>> {
-    // TODO: merge with host constructor to avoid double Wayland connection.
-    // Currently creates a temporary connection to probe globals (zwp_input_method_v2/v1),
-    // then the host creates a second connection. Cost is one extra round-trip at startup.
-    // Minimal state just to query globals; we don't need a real dispatch loop
+) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
     struct DummyState;
     impl wayland_client::Dispatch<wayland_client::protocol::wl_registry::WlRegistry, wayland_client::globals::GlobalListContents> for DummyState {
         fn event(
@@ -145,23 +141,19 @@ fn create_wayland_host(
 
     let globals_list = globals.contents().clone_list();
 
-    // Check for v2 (zwp_input_method_manager_v2)
     let has_v2 = globals_list.iter().any(|g| g.interface == "zwp_input_method_manager_v2");
-    // Check for v1 (zwp_input_method_v1)
     let has_v1 = globals_list.iter().any(|g| g.interface == "zwp_input_method_v1");
 
     if has_v2 {
-        Ok((
-            Box::new(WaylandInputHost::new(processor.clone(), gui_tx.clone(), tray_tx.clone())
-                .ok_or("Wayland v2 host init failed")?),
-            " Wayland v2",
-        ))
+        let host = WaylandInputHost::new(processor.clone(), gui_tx.clone(), tray_tx.clone())
+            .ok_or("Wayland v2 host init failed")?;
+        let vkbd = host.vkbd();
+        Ok((Box::new(host), vkbd, " Wayland v2"))
     } else if has_v1 {
-        Ok((
-            Box::new(WaylandInputHostV1::new(processor, gui_tx, tray_tx)
-                .ok_or("Wayland v1 host init failed")?),
-            " Wayland v1",
-        ))
+        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx)
+            .ok_or("Wayland v1 host init failed")?;
+        let vkbd = host.vkbd();
+        Ok((Box::new(host), vkbd, " Wayland v1"))
     } else {
         Err("No zwp_input_method (v1 or v2) global available".into())
     }
