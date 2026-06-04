@@ -14,7 +14,7 @@
         .target-word { font-size: 100px; font-weight: 700; color: var(--apple-text); margin: 0; line-height: 1.2; }
         .hint-area { display: flex; justify-content: center; gap: 10px; margin: 20px 0 30px; flex-wrap: wrap; }
         .hint-badge { background: #f2f2f7; padding: 8px 16px; border-radius: 100px; font-size: 14px; color: var(--apple-secondary); font-weight: 500; }
-        .hint-badge b { color: var(--apple-text); margin-left: 4px; }
+        .hint-badge b { color: var(--apple-text); margin-left: 4px; font-family: 'SF Mono', monospace; }
         .practice-input { width: 100%; max-width: 500px; font-size: 28px; padding: 20px; border-radius: 16px; border: 2px solid #e1e1e6; text-align: center; outline: none; transition: all 0.3s; box-sizing: border-box; }
         .practice-input:focus { border-color: var(--apple-accent); box-shadow: 0 0 0 4px rgba(0,122,255,0.1); }
         .stats-bar { display: flex; justify-content: space-around; margin-top: 30px; padding: 20px; background: #f8f8fa; border-radius: 20px; }
@@ -23,7 +23,7 @@
         .stat-value { font-size: 26px; font-weight: 700; color: var(--apple-text); }
         .keyboard { display: flex; flex-direction: column; gap: 6px; background: #e5e5ea; padding: 16px; border-radius: 20px; user-select: none; margin-top: 6px; }
         .kb-row { display: flex; justify-content: center; gap: 6px; }
-        .key { width: 68px; height: 68px; background: white; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 0 #d1d1d6; transition: all 0.1s; }
+        .key { width: 68px; height: 68px; background: white; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 0 #d1d1d6; transition: all 0.1s; cursor: default; }
         .key.active { transform: translateY(2px); box-shadow: 0 0 0 #d1d1d6; background: var(--apple-accent); color: white; }
         .key .char { font-size: 20px; font-weight: 700; }
         .key .strokes { font-size: 12px; color: #8e8e93; margin-top: 2px; }
@@ -46,30 +46,24 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
                 <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
                     <div>
-                        <span style="font-size: 13px; color: var(--apple-secondary);">练习模式</span>
-                        <select id="modeSelect" onchange="switchMode()" style="margin-left:6px; padding:6px 10px; border-radius:8px; font-size:13px;">
-                            <option value="pinyin">拼音练习</option>
-                            <option value="stroke">笔画码练习</option>
-                        </select>
-                    </div>
-                    <div id="dictSelectWrap">
                         <span style="font-size: 13px; color: var(--apple-secondary);">词库</span>
-                        <select id="dictSelect" style="margin-left:6px; padding:6px 10px; border-radius:8px; font-size:13px;"></select>
+                        <select id="dictSelect" style="margin-left:6px; padding:6px 10px; border-radius:8px; font-size:13px;">
+                            <option value="chinese/chars/level1.json">常用汉字</option>
+                            <option value="chinese/words/high_freq.json">通用词组</option>
+                            <option value="chinese/chars/level2.json">二级汉字</option>
+                            <option value="chinese/chars/level3.json">三级汉字</option>
+                        </select>
                     </div>
                 </div>
                 <button onclick="startPractice()" class="btn" style="font-size:13px; padding:8px 18px;">🔄 开始 / 重置</button>
             </div>
 
-            <div class="switch-group" id="pinyinSwitches">
-                <div class="switch-item"><span>显示拼音</span><label class="switch"><input type="checkbox" id="showPinyinToggle"><span class="slider"></span></label></div>
-                <div class="switch-item"><span>显示笔画码</span><label class="switch"><input type="checkbox" id="showStrokeToggle"><span class="slider"></span></label></div>
+            <div class="switch-group">
+                <div class="switch-item"><span>显示拼音</span><label class="switch"><input type="checkbox" id="showPinyinToggle" checked><span class="slider"></span></label></div>
+                <div class="switch-item"><span>显示笔画码</span><label class="switch"><input type="checkbox" id="showStrokeToggle" checked><span class="slider"></span></label></div>
                 <div class="switch-item"><span>显示英文辅助</span><label class="switch"><input type="checkbox" id="showEnglishToggle"><span class="slider"></span></label></div>
                 <div class="switch-item"><span>自动播放中文发音</span><label class="switch"><input type="checkbox" id="autoZhToggle"><span class="slider"></span></label></div>
                 <div class="switch-item"><span>自动播放英文发音</span><label class="switch"><input type="checkbox" id="autoEnToggle"><span class="slider"></span></label></div>
-            </div>
-            <div class="switch-group" id="strokeSwitches" style="display:none;">
-                <div class="switch-item"><span>隐藏编码提示</span><label class="switch"><input type="checkbox" id="hideHintToggle"><span class="slider"></span></label></div>
-                <div class="switch-item"><span>自动发音</span><label class="switch"><input type="checkbox" id="autoStkZhToggle"><span class="slider"></span></label></div>
             </div>
         </div>
 
@@ -81,30 +75,29 @@
 
             <div class="hint-area">
                 <div class="hint-badge" id="pinyinHintBadge">拼音: <b id="pinyinHint">-</b></div>
-                <div class="hint-badge" id="strokeHintBadge">笔画: <b id="strokeHint">-</b></div>
+                <div class="hint-badge" id="strokeHintBadge">笔画码: <b id="strokeHint">-</b></div>
                 <div class="hint-badge" id="englishHintBadge">英文: <b id="englishHint">-</b></div>
-                <div class="hint-badge" id="codeHintBadge" style="display:none;">编码: <b id="fullCodeHint">-</b></div>
             </div>
 
-            <input type="text" id="practiceInput" class="practice-input" placeholder="在此输入..." autocomplete="off" spellcheck="false">
+            <input type="text" id="practiceInput" class="practice-input" placeholder="在此输入汉字..." autocomplete="off" spellcheck="false">
 
             <div class="stats-bar">
                 <div class="stat-item"><div class="stat-label">已练习</div><div class="stat-value" id="countStat">0</div></div>
                 <div class="stat-item"><div class="stat-label">准确率</div><div class="stat-value" id="accuracyStat">0%</div></div>
                 <div class="stat-item"><div class="stat-label">词库</div><div id="dictNameStat" style="font-weight:600; margin-top:6px;">-</div></div>
-                <div class="stat-item" id="timerItem" style="display:none;"><div class="stat-label">时长</div><div class="stat-value" id="timerStat">0s</div></div>
+                <div class="stat-item"><div class="stat-label">时长</div><div class="stat-value" id="timerStat">0s</div></div>
             </div>
         </div>
 
         <!-- 笔画键盘 -->
-        <div class="keyboard" id="vKeyboard" style="display:none;">
+        <div class="keyboard" id="vKeyboard">
             <div class="kb-row" id="row1"></div>
             <div class="kb-row" id="row2"></div>
             <div class="kb-row" id="row3"></div>
         </div>
 
         <!-- 编码规则 -->
-        <div class="config-card" id="rulesCard" style="display:none;">
+        <div class="config-card" id="rulesCard">
             <h3>笔画编码规则 (SBSRF 4码系统)</h3>
             <div style="font-size:13px; line-height:1.8; color:#444;">
                 <p><b>5笔及以上 (4位)</b>：第1-2位=前4笔，第3位=末2笔，第4位=拼音首字母</p>
@@ -118,13 +111,11 @@
 
     <script src="/static/js/settings.js"></script>
     <script>
-        // ===== State =====
-        let mode = 'pinyin';
-        let dict = {}, keys = [], stats = { count: 0, correct: 0, attempts: 0, startTime: 0 };
-        let currentWord = { char: '', pinyin: '', stroke: '', english: '', code: '' };
+        let dict = {}, keys = [], stats = { count: 0, correct: 0, startTime: 0 };
+        let currentWord = { char: '', pinyin: '', stroke: '', english: '' };
         let timerInterval = null;
         let audioPlayer = null;
-        let config = { appearance: { show_pinyin_hint: true, show_learning_stroke_hint: true, show_learning_english_hint: true, auto_pronounce_zh: false, auto_pronounce_en: false } };
+        let learningConfig = { appearance: { show_pinyin_hint: true, show_learning_stroke_hint: true, show_learning_english_hint: true, auto_pronounce_zh: false, auto_pronounce_en: false } };
 
         // ===== Stroke keyboard =====
         const keyMap = { row1: "QWERTYUIOP", row2: "ASDFGHJKL", row3: "ZXCVBNM" };
@@ -147,54 +138,28 @@
             }
         }
 
-        function switchMode() {
-            mode = document.getElementById('modeSelect').value;
-            document.getElementById('pinyinSwitches').style.display = mode === 'pinyin' ? '' : 'none';
-            document.getElementById('strokeSwitches').style.display = mode === 'stroke' ? '' : 'none';
-            document.getElementById('vKeyboard').style.display = mode === 'stroke' ? '' : 'none';
-            document.getElementById('rulesCard').style.display = mode === 'stroke' ? '' : 'none';
-            document.getElementById('timerItem').style.display = mode === 'stroke' ? '' : 'none';
-            document.getElementById('codeHintBadge').style.display = 'none';
-
-            const sel = document.getElementById('dictSelect');
-            if (mode === 'pinyin') {
-                sel.innerHTML = `<option value="chinese/chars/chars.json">常用汉字</option>
-                    <option value="chinese/words/words.json">通用词组</option>
-                    <option value="chinese/chars/level2.json">二级汉字</option>
-                    <option value="chinese/chars/level3.json">三级汉字</option>`;
-            } else {
-                sel.innerHTML = `<option value="level-1">Level-1 (常用字)</option>
-                    <option value="level-2">Level-2 (次常用字)</option>
-                    <option value="level-3">Level-3 (较少用字)</option>
-                    <option value="level-4">Level-4 (其他字)</option>
-                    <option value="all">全部汉字</option>`;
-            }
-            resetStats();
-        }
-
         // ===== Init =====
         async function init() {
             try {
                 const resp = await fetch('/api/config');
-                if (resp.ok) { const c = await resp.json(); if (c.appearance) Object.assign(config.appearance, c.appearance); }
+                if (resp.ok) { const c = await resp.json(); if (c.appearance) Object.assign(learningConfig.appearance, c.appearance); }
             } catch(_) {}
             const map = { showPinyinToggle:'show_pinyin_hint', showStrokeToggle:'show_learning_stroke_hint', showEnglishToggle:'show_learning_english_hint', autoZhToggle:'auto_pronounce_zh', autoEnToggle:'auto_pronounce_en' };
             for (let [id, key] of Object.entries(map)) {
-                const el = document.getElementById(id); if (el) { el.checked = !!config.appearance[key]; el.onchange = () => { config.appearance[key] = el.checked; updateHints(); saveConfig(); }; }
+                const el = document.getElementById(id); if (el) { el.checked = !!learningConfig.appearance[key]; el.onchange = () => { learningConfig.appearance[key] = el.checked; updateHints(); saveConfig(); }; }
             }
             updateHints();
             initKeyboard();
-            switchMode();
         }
 
         function updateHints() {
-            document.getElementById('pinyinHintBadge').style.display = config.appearance.show_pinyin_hint ? '' : 'none';
-            document.getElementById('strokeHintBadge').style.display = config.appearance.show_learning_stroke_hint ? '' : 'none';
-            document.getElementById('englishHintBadge').style.display = config.appearance.show_learning_english_hint ? '' : 'none';
+            document.getElementById('pinyinHintBadge').style.display = learningConfig.appearance.show_pinyin_hint ? '' : 'none';
+            document.getElementById('strokeHintBadge').style.display = learningConfig.appearance.show_learning_stroke_hint ? '' : 'none';
+            document.getElementById('englishHintBadge').style.display = learningConfig.appearance.show_learning_english_hint ? '' : 'none';
         }
 
         async function saveConfig() {
-            try { await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(config) }); } catch(_) {}
+            try { await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(learningConfig) }); } catch(_) {}
         }
 
         // ===== Speech =====
@@ -212,39 +177,26 @@
 
         // ===== Practice =====
         function resetStats() {
-            stats = { count: 0, correct: 0, attempts: 0, startTime: Date.now() };
+            stats = { count: 0, correct: 0, startTime: Date.now() };
             updateStatsDisplay();
             if (timerInterval) clearInterval(timerInterval);
-            timerInterval = null;
+            timerInterval = setInterval(() => {
+                document.getElementById('timerStat').innerText = Math.floor((Date.now() - stats.startTime) / 1000) + 's';
+            }, 1000);
         }
 
         async function startPractice() {
             document.getElementById('loadingOverlay').style.display = 'flex';
             resetStats();
             try {
-                if (mode === 'pinyin') {
-                    const path = document.getElementById('dictSelect').value;
-                    const resp = await fetch('/dicts/' + path);
-                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                    dict = await resp.json();
-                    keys = Object.keys(dict);
-                } else {
-                    const level = document.getElementById('dictSelect').value;
-                    const url = level === 'all' ? '/dicts/stroke/chars/stroke_chars.json' : `/dicts/stroke/chars/stroke_chars_${level}.json`;
-                    const resp = await fetch(url);
-                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                    dict = await resp.json();
-                    keys = Object.keys(dict);
-                }
+                const path = document.getElementById('dictSelect').value;
+                const resp = await fetch('/dicts/' + path);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                dict = await resp.json();
+                keys = Object.keys(dict);
                 if (keys.length === 0) throw new Error('词库为空');
                 document.getElementById('practiceArea').style.display = 'block';
                 document.getElementById('dictNameStat').innerText = document.getElementById('dictSelect').selectedOptions[0]?.text || '-';
-
-                if (mode === 'stroke' && !timerInterval) {
-                    timerInterval = setInterval(() => {
-                        document.getElementById('timerStat').innerText = Math.floor((Date.now() - stats.startTime) / 1000) + 's';
-                    }, 1000);
-                }
                 nextWord();
                 document.getElementById('practiceInput').focus();
             } catch(e) { alert('加载失败: ' + e.message); }
@@ -256,33 +208,19 @@
             const key = keys[Math.floor(Math.random() * keys.length)];
             const data = dict[key];
 
-            if (mode === 'pinyin') {
-                let target = key, stroke = '-', english = '-';
-                if (Array.isArray(data) && data.length > 0) {
-                    const entry = data[Math.floor(Math.random() * data.length)];
-                    target = entry.char || key;
-                    stroke = entry.stroke_aux || '-';
-                    english = entry.en || '-';
-                }
-                currentWord = { char: target, pinyin: key, stroke, english, code: '' };
-            } else {
-                const entries = Array.isArray(data) ? data : [data];
-                const entry = entries[0] || {};
-                currentWord = { char: entry.char || key, pinyin: entry.tone || '-', stroke: '-', english: '-', code: key.toLowerCase() };
+            let target = key, stroke = '-', english = '-';
+            if (Array.isArray(data) && data.length > 0) {
+                const entry = data[Math.floor(Math.random() * data.length)];
+                target = entry.char || key;
+                stroke = entry.stroke_aux || '-';
+                english = entry.en || '-';
             }
+            currentWord = { char: target, pinyin: key, stroke, english };
 
             document.getElementById('targetWord').innerText = currentWord.char;
             document.getElementById('pinyinHint').innerText = currentWord.pinyin;
             document.getElementById('strokeHint').innerText = currentWord.stroke;
             document.getElementById('englishHint').innerText = currentWord.english;
-
-            if (mode === 'stroke') {
-                document.getElementById('fullCodeHint').innerText = currentWord.code;
-                document.getElementById('codeHintBadge').style.display = document.getElementById('hideHintToggle').checked ? 'none' : '';
-                if (document.getElementById('autoStkZhToggle').checked) speakCurrent();
-            } else {
-                document.getElementById('codeHintBadge').style.display = 'none';
-            }
 
             const input = document.getElementById('practiceInput');
             input.value = '';
@@ -301,45 +239,28 @@
             const target = e.target.dataset.target;
             if (!val || !target) return;
 
-            if (mode === 'pinyin') {
-                if (val === target) {
-                    stats.count++; stats.correct++;
-                    updateStatsDisplay();
-                    document.getElementById('targetWord').classList.add('success');
-                    e.target.style.borderColor = '#34c759';
-                    setTimeout(() => { document.getElementById('targetWord').classList.remove('success'); e.target.style.borderColor = '#e1e1e6'; nextWord(); }, 400);
-                }
-            } else {
-                if (val.includes(target)) {
-                    stats.count++; stats.attempts++;
-                    updateStatsDisplay();
-                    document.getElementById('targetWord').classList.add('success');
-                    e.target.style.borderColor = '#34c759';
-                    setTimeout(() => { document.getElementById('targetWord').classList.remove('success'); e.target.style.borderColor = '#e1e1e6'; nextWord(); }, 400);
-                } else if (val.length >= 1 && !target.startsWith(val) && /[^\x00-\xff]/.test(val)) {
-                    e.target.style.borderColor = '#ff3b30';
-                    stats.attempts++;
-                    updateStatsDisplay();
-                }
+            if (val === target) {
+                stats.count++; stats.correct++;
+                updateStatsDisplay();
+                document.getElementById('targetWord').classList.add('success');
+                e.target.style.borderColor = '#34c759';
+                setTimeout(() => { document.getElementById('targetWord').classList.remove('success'); e.target.style.borderColor = '#e1e1e6'; nextWord(); }, 400);
+            } else if (val.length >= target.length) {
+                e.target.style.borderColor = '#ff3b30';
+                stats.count++;
+                updateStatsDisplay();
             }
         });
 
         function updateStatsDisplay() {
             document.getElementById('countStat').innerText = stats.count;
-            const total = mode === 'stroke' ? stats.attempts : stats.count;
-            const acc = total === 0 ? 0 : Math.round((stats.correct / Math.max(total, stats.count)) * 100);
-            document.getElementById('accuracyStat').innerText = (mode === 'stroke' ? (stats.attempts === 0 ? 0 : Math.round((stats.count / stats.attempts) * 100)) : acc) + '%';
+            const acc = stats.count === 0 ? 0 : Math.round((stats.correct / stats.count) * 100);
+            document.getElementById('accuracyStat').innerText = acc + '%';
         }
 
-        document.getElementById('hideHintToggle').addEventListener('change', function(e) {
-            document.getElementById('codeHintBadge').style.display = e.target.checked ? 'none' : '';
-        });
-
         document.addEventListener('keydown', function(e) {
-            if (mode !== 'stroke') return;
             const el = document.getElementById('key-' + e.key.toLowerCase());
             if (el) { el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 100); }
-            if (document.activeElement !== document.getElementById('practiceInput') && e.key !== 'Tab') e.preventDefault();
         });
 
         init();
