@@ -348,6 +348,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 qianyan_ime_ui::tray::TrayEvent::ReloadConfig => {
                     let new_conf = Config::load();
                     processor_clone.apply_config(new_conf.clone());
+                    processor_clone.reload_tries();
                     if let Some(ref handle) = tray_handle {
                         let enabled = new_conf.input.enabled_profiles.clone();
                         handle.update(move |t| {

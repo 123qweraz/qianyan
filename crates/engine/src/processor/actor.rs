@@ -112,6 +112,9 @@ pub enum ProcessorMsg {
         config: Config,
         reply: Sender<()>,
     },
+    ReloadTries {
+        reply: Sender<()>,
+    },
     Reset {
         reply: Sender<()>,
     },
@@ -207,6 +210,11 @@ impl ProcessorHandle {
     pub fn apply_config(&self, config: Config) -> Option<()> {
         let (tx, rx) = mpsc::channel();
         self.call(ProcessorMsg::ApplyConfig { config, reply: tx }, rx)
+    }
+
+    pub fn reload_tries(&self) -> Option<()> {
+        let (tx, rx) = mpsc::channel();
+        self.call(ProcessorMsg::ReloadTries { reply: tx }, rx)
     }
 
     pub fn reset(&self) -> Option<()> {
@@ -433,6 +441,13 @@ impl ProcessorActor {
             }
             ProcessorMsg::ApplyConfig { config, reply } => {
                 self.processor.apply_config(&config);
+                let _ = reply.send(());
+            }
+            ProcessorMsg::ReloadTries { reply } => {
+                let engine = self.processor.ctx.engine.clone();
+                std::thread::spawn(move || {
+                    engine.reload_tries();
+                });
                 let _ = reply.send(());
             }
             ProcessorMsg::Reset { reply } => {

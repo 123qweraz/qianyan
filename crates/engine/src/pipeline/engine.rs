@@ -391,9 +391,18 @@ impl SearchEngine {
             cache.0.clear();
             cache.1.clear();
         }
-        // 编译词库后 trie 文件可能已更新，清除缓存让下次 get_or_load_trie 重新 mmap
+    }
+
+    /// 编译词库后调用，刷新 trie 缓存 + 预热 word 索引
+    pub fn reload_tries(&self) {
         if let Ok(mut tc) = self.trie_cache.write() {
             tc.clear();
+        }
+        // 立即重载并预热，避免首次查询卡顿
+        for profile in self.trie_paths.keys() {
+            if let Some(trie) = self.get_or_load_trie(profile) {
+                trie.ensure_word_index();
+            }
         }
     }
 

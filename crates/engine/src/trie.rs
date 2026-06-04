@@ -118,6 +118,11 @@ impl Trie {
         }
     }
 
+    /// 预热 word_pinyin 索引，避免首次 has_word_in_dict 触发的全量扫描
+    pub fn ensure_word_index(&self) {
+        self.word_pinyin.get_or_init(|| self.build_word_pinyin());
+    }
+
     /// 快速前缀检查：FST 中是否有任何 key 以 prefix 开头（不读数据块）
     pub fn has_prefix(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
