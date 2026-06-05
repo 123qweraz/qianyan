@@ -71,29 +71,16 @@ def encode_single(stroke: str) -> str:
 def build_code(strokes: str, py_initial: str) -> str:
     n = len(strokes)
     if n <= 0:
-        stroke_code = "x"
-    elif n == 1:
-        # 1 笔：直接单字母（如 一->g, 乙->n）
-        stroke_code = encode_single(strokes[0])
-    elif n == 2:
-        # 2 笔：直接两笔合一码
-        stroke_code = encode_pair(strokes[:2])
-    elif n == 3:
-        # 3 笔：前两笔一码 + 最后一笔一码
-        stroke_code = encode_pair(strokes[:2]) + encode_single(strokes[2])
-    elif n == 4:
-        # 4 笔：前两笔一码 + 后两笔一码
-        stroke_code = encode_pair(strokes[:2]) + encode_pair(strokes[2:4])
-    else:
-        # 5 笔及以上：前 4 笔两码 + 最后两笔一码
-        stroke_code = (
-            encode_pair(strokes[:2])
-            + encode_pair(strokes[2:4])
-            + encode_pair(strokes[-2:])
-        )
+        return f"x{py_initial}"
 
-    # 末位始终拼音首字母
-    return f"{stroke_code}{py_initial}"
+    if n == 1:
+        first = encode_single(strokes[0])
+        last = first
+    else:
+        first = encode_pair(strokes[:2])
+        last = encode_pair(strokes[-2:])
+
+    return f"{first}{last}{py_initial}"
 
 
 def main() -> None:
