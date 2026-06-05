@@ -4,6 +4,8 @@ use qianyan_ime_ui::ipc::transport::*;
 use std::os::unix::net::UnixStream;
 
 fn main() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     // Ask kernel to kill us when the parent (qianyan-ime) dies.
     // This handles all exit scenarios: tray Exit, Ctrl+C, SIGTERM, crash, etc.
     #[cfg(target_os = "linux")]

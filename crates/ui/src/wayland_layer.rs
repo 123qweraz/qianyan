@@ -4,7 +4,7 @@ use slint::ComponentHandle;
 use std::cell::{Cell, RefCell};
 use std::num::NonZeroU32;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::{Arc, Mutex};
 
@@ -200,38 +200,53 @@ struct WaylandRenderBuffer {
     corner: RefCell<String>,
     fixed_x: Cell<i32>,
     fixed_y: Cell<i32>,
+    screen_w: Arc<AtomicI32>,
+    screen_h: Arc<AtomicI32>,
 }
 
 impl WaylandRenderBuffer {
-    fn compute_anchor(&self, w: u32, h: u32) -> (Anchor, i32, i32) {
-        if self.fixed_position.get() {
-            let corner = self.corner.borrow();
-            match corner.as_str() {
-                "top-right" => (Anchor::TOP | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
-                "bottom-left" => (Anchor::BOTTOM | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
-                "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
-                _ => (Anchor::TOP | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
-            }
-        } else {
-            let (sw, sh) = Self::screen_size();
-            calc_anchor(self.last_x.get(), self.last_y.get(), w, h, sw, sh)
+    fn screen_size(&self) -> (i32, i32) {
+        let w = self.screen_w.load(Ordering::Relaxed);
+        let h = self.screen_h.load(Ordering::Relaxed);
+        if w > 0 && h > 0 {
+            return (w, h);
         }
-    }
-
-    fn screen_size() -> (i32, i32) {
         if let Ok(out) = std::process::Command::new("xdotool")
             .arg("getdisplaygeometry").output()
         {
             if let Ok(s) = String::from_utf8(out.stdout) {
                 let parts: Vec<&str> = s.split_whitespace().collect();
                 if parts.len() == 2 {
-                    if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
-                        return (w, h);
+                    if let (Ok(w2), Ok(h2)) = (parts[0].parse(), parts[1].parse()) {
+                        log::info!("[WL_POS] screen_size via xdotool: {}x{}", w2, h2);
+                        return (w2, h2);
                     }
                 }
             }
         }
+        log::warn!("[WL_POS] screen_size fallback to 1920x1080");
         (1920, 1080)
+    }
+
+    fn compute_anchor(&self, w: u32, h: u32) -> (Anchor, i32, i32) {
+        if self.fixed_position.get() {
+            let corner = self.corner.borrow();
+            let result = match corner.as_str() {
+                "top-right" => (Anchor::TOP | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
+                "bottom-left" => (Anchor::BOTTOM | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
+                "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, self.fixed_y.get(), self.fixed_x.get()),
+                _ => (Anchor::TOP | Anchor::LEFT, self.fixed_y.get(), self.fixed_x.get()),
+            };
+            log::info!("[WL_POS] compute_anchor(fixed, corner={}, fixed_x={}, fixed_y={}, w={}, h={}) = ({:?}, {} ,{})",
+                corner, self.fixed_x.get(), self.fixed_y.get(), w, h, result.0, result.1, result.2);
+            result
+        } else {
+            let (sw, sh) = self.screen_size();
+            let result = calc_anchor(self.last_x.get(), self.last_y.get(), w, h, sw, sh);
+            log::info!("[WL_POS] compute_anchor(cursor, last_x={}, last_y={}, w={}, h={}, sw={}, sh={}) = ({:?}, {}, {})",
+                self.last_x.get(), self.last_y.get(), w, h, sw, sh, result.0, result.1, result.2);
+            result
+        }
     }
 }
 
@@ -272,6 +287,8 @@ impl RenderBuffer for WaylandRenderBuffer {
 
         if self.window_visible.get() {
             let (anchor, margin_a, margin_b) = self.compute_anchor(w, h);
+            log::info!("[WL_POS] Sending ShowCandidate: x={} y={} w={} h={} anchor={:?} window_visible={}",
+                margin_b, margin_a, w, h, anchor, self.window_visible.get());
             if let Some(ref tx) = *self.wl_tx.lock()
                 .unwrap_or_else(|e| e.into_inner()) {
                 let cmd = WlCmd::ShowCandidate {
@@ -304,6 +321,8 @@ struct WlState {
     configured_height: u32,
     last_anchor: Option<Anchor>,
     last_margin: Option<(i32, i32, i32, i32)>, // (top, right, bottom, left)
+    screen_w: Arc<AtomicI32>,
+    screen_h: Arc<AtomicI32>,
 }
 
 delegate_registry!(WlState);
@@ -327,10 +346,7 @@ impl WlState {
         let layer = ls.create_layer_surface(qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
-        // Don't commit here — ShowCandidate will set anchor/size/margin and commit atomically
-        self.candidate_layer = Some(layer.clone());
-        self.layer_closed = false;
-        log::debug!("[WL_DEBUG] Candidate layer surface recreated after compositor closed");
+        log::info!("[WL_POS] Candidate layer surface recreated after compositor closed");
         Some(layer)
     }
 }
@@ -381,13 +397,35 @@ impl CompositorHandler for WlState {
     fn surface_leave(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &WlSurface, _: &WlOutput) {}
 }
 
+impl WlState {
+    fn update_screen_size(&mut self) {
+        for output in self._output_state.outputs() {
+            if let Some(info) = self._output_state.info(&output) {
+                for mode in &info.modes {
+                    if mode.current {
+                        let (w, h) = mode.dimensions;
+                        self.screen_w.store(w, Ordering::Relaxed);
+                        self.screen_h.store(h, Ordering::Relaxed);
+                        log::info!("[WL_POS] wl_output screen size: {}x{}", w, h);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl OutputHandler for WlState {
     fn output_state(&mut self) -> &mut OutputState {
         &mut self._output_state
     }
-    fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wayland_client::protocol::wl_output::WlOutput) {}
-    fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wayland_client::protocol::wl_output::WlOutput) {}
-    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wayland_client::protocol::wl_output::WlOutput) {}
+    fn new_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _output: wayland_client::protocol::wl_output::WlOutput) {
+        self.update_screen_size();
+    }
+    fn update_output(&mut self, _: &Connection, _: &QueueHandle<Self>, _output: wayland_client::protocol::wl_output::WlOutput) {
+        self.update_screen_size();
+    }
+    fn output_destroyed(&mut self, _: &Connection, _: &QueueHandle<Self>, _output: wayland_client::protocol::wl_output::WlOutput) {}
 }
 
 impl ShmHandler for WlState {
@@ -460,6 +498,9 @@ impl LayerShellHandler for WlState {
     ) {
         self.configured_width = cfg.new_size.0;
         self.configured_height = cfg.new_size.1;
+        let (a_dbg, m_dbg) = (self.last_anchor, self.last_margin);
+        log::info!("[WL_POS] configure event: new_size=({},{}), last_anchor={:?}, last_margin={:?}",
+            cfg.new_size.0, cfg.new_size.1, a_dbg, m_dbg);
         // Re-apply cached anchor/margin before commit, preventing
         // the compositor from locking in an anchor-less default position
         if let Some(a) = self.last_anchor {
@@ -501,10 +542,13 @@ enum WlCmd {
     Exit,
 }
 
-fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
+fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool,
+    initial_anchor: Anchor, initial_mt: i32, initial_mr: i32, initial_mb: i32, initial_ml: i32,
+    screen_w: Arc<AtomicI32>, screen_h: Arc<AtomicI32>)
+{
     log::info!("Wayland thread started");
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        wl_thread_main_inner(rx, pixel_pool);
+        wl_thread_main_inner(rx, pixel_pool, initial_anchor, initial_mt, initial_mr, initial_mb, initial_ml, screen_w, screen_h);
     }));
     if let Err(e) = result {
         let msg = if let Some(s) = e.downcast_ref::<String>() {
@@ -519,7 +563,10 @@ fn wl_thread_main(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
     log::info!("Wayland thread exited");
 }
 
-fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
+fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool,
+    initial_anchor: Anchor, initial_mt: i32, initial_mr: i32, initial_mb: i32, initial_ml: i32,
+    screen_w: Arc<AtomicI32>, screen_h: Arc<AtomicI32>)
+{
     let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
     let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_default();
     log::info!("Wayland compositor: desktop={desktop}, session={session}");
@@ -579,6 +626,8 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
         configured_height: 0,
         last_anchor: None,
         last_margin: None,
+        screen_w: screen_w.clone(),
+        screen_h: screen_h.clone(),
     };
 
     // Create candidate layer surface
@@ -591,10 +640,15 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
             .create_layer_surface(&qh, surf, Layer::Overlay, Some("qianyan-ime-candidate"), None);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
+        layer.set_anchor(initial_anchor);
         layer.set_size(400, 200);
+        layer.set_margin(initial_mt, initial_mr, initial_mb, initial_ml);
+        state.last_anchor = Some(initial_anchor);
+        state.last_margin = Some((initial_mt, initial_mr, initial_mb, initial_ml));
+        log::info!("[WL_POS] Initial commit: anchor={:?} size=(400,200) margin=({},{},{},{})",
+            initial_anchor, initial_mt, initial_mr, initial_mb, initial_ml);
         layer.commit();
         state.candidate_layer = Some(layer);
-        log::debug!("[WL_DEBUG] Candidate layer surface created");
     }
     if let Ok(pool) = SlotPool::new(4 * 1024 * 1024, &state.shm) {
         state.candidate_pool = Some(pool);
@@ -611,7 +665,7 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
             match rx.try_recv() {
                 Ok(cmd) => match cmd {
                     WlCmd::ShowCandidate { x, y, w, h, anchor, pixels } => {
-                        log::debug!("[WL_DEBUG] ShowCandidate: x={} y={} w={} h={} anchor={:?} pixels={}", x, y, w, h, anchor, pixels.len());
+                        log::info!("[WL_POS] ShowCandidate handler: x={} y={} w={} h={} anchor={:?}", x, y, w, h, anchor);
                         if let Some(layer) = state.ensure_layer(&qh) {
                             layer.set_anchor(anchor);
                             layer.set_size(w.max(1), h.max(1));
@@ -624,14 +678,15 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool) {
                             let mb = if has_bottom { y.max(0) } else { 0 };
                             let ml = if has_left { x.max(0) } else { 0 };
                             layer.set_margin(mt, mr, mb, ml);
-                            // Cache anchor/margin so configure callback can re-apply them
                             state.last_anchor = Some(anchor);
                             state.last_margin = Some((mt, mr, mb, ml));
+                            log::info!("[WL_POS] ShowCandidate applied: anchor={:?} margin=({},{},{},{}) size=({},{})",
+                                anchor, mt, mr, mb, ml, w, h);
                             if let Some(ref mut pool) = state.candidate_pool {
                                 submit_to_layer(pool, &layer, &pixels, w.max(1), h.max(1));
                             }
                         } else {
-                            log::debug!("[WL_DEBUG] candidate_layer is None!");
+                            log::info!("[WL_POS] candidate_layer is None!");
                         }
                         state.pixel_pool.put(pixels);
                     }
@@ -781,6 +836,8 @@ impl WaylandLayerDisplay {
 
         let pixel_pool = PixelPool::new();
         let (tx, rx) = mpsc::sync_channel(2);
+        let screen_w = Arc::new(AtomicI32::new(0));
+        let screen_h = Arc::new(AtomicI32::new(0));
 
         // Create Skia CPU renderer BEFORE creating the window,
         // so OffscreenWindow::new() can find it via the SKIA_RENDERER static
@@ -794,6 +851,8 @@ impl WaylandLayerDisplay {
             corner: RefCell::new(config.linux.corner.clone()),
             fixed_x: Cell::new(config.linux.fixed_x),
             fixed_y: Cell::new(config.linux.fixed_y),
+            screen_w: screen_w.clone(),
+            screen_h: screen_h.clone(),
         });
 
         let skia_context = SkiaSharedContext::default();
@@ -809,9 +868,29 @@ impl WaylandLayerDisplay {
         slint::platform::update_timers_and_animations();
 
         let pixel_pool_clone = pixel_pool.clone();
+        let (initial_anchor, initial_mt, initial_mr, initial_mb, initial_ml) = {
+            let mx = config.linux.fixed_x.max(0);
+            let my = config.linux.fixed_y.max(0);
+            if config.linux.fixed_position {
+                let (a, mt2, mr2, mb2, ml2) = match config.linux.corner.as_str() {
+                    "bottom-right" => (Anchor::BOTTOM | Anchor::RIGHT, 0, mx, my, 0),
+                    "bottom-left"  => (Anchor::BOTTOM | Anchor::LEFT,  0, 0, my, mx),
+                    "top-right"    => (Anchor::TOP | Anchor::RIGHT,    my, mx, 0, 0),
+                    "top-left"     => (Anchor::TOP | Anchor::LEFT,     my, 0, 0, mx),
+                    _ => (Anchor::BOTTOM | Anchor::RIGHT, 0, mx, my, 0),
+                };
+                (a, mt2, mr2, mb2, ml2)
+            } else {
+                (Anchor::TOP | Anchor::LEFT, 0, 0, 0, 0)
+            }
+        };
+        log::info!("[WL_POS] Config: fixed_position={}, corner={}, fixed_x={}, fixed_y={}",
+            config.linux.fixed_position, config.linux.corner, config.linux.fixed_x, config.linux.fixed_y);
+        log::info!("[WL_POS] Initial layer anchor={:?} margin=({},{},{},{})",
+            initial_anchor, initial_mt, initial_mr, initial_mb, initial_ml);
         let join = std::thread::Builder::new()
             .name("wayland-layer".into())
-            .spawn(move || wl_thread_main(rx, pixel_pool_clone));
+            .spawn(move || wl_thread_main(rx, pixel_pool_clone, initial_anchor, initial_mt, initial_mr, initial_mb, initial_ml, screen_w, screen_h));
 
         let candidate_enabled = config.linux.show_slint_window;
 
@@ -954,6 +1033,7 @@ impl CandidateDisplay for WaylandLayerDisplay {
             self.window_visible = true;
             self.render_buffer.window_visible.set(true);
             self.candidate_window.set_is_visible(true);
+            log::info!("[WL_POS] WaylandLayerDisplay set_visible=true (first show)");
         }
 
         // Estimate window size based on candidate count and font size.
@@ -969,10 +1049,19 @@ impl CandidateDisplay for WaylandLayerDisplay {
         let pinyin_height = (fs as f32 * 1.4) as u32;
         let padding = 40u32;
 
-        let mut total_w = if is_horizontal {
-            (cand_count * (fs * max_chars + 30) + padding).min(1600)
+        // Compute max width based on actual screen size
+        let (sw, _sh) = self.render_buffer.screen_size();
+        let max_w = if self.config.linux.fixed_position {
+            // Leave at least the configured margin + 10px on the anchor side
+            (sw - self.config.linux.fixed_x - 10).max(200) as u32
         } else {
-            (fs * max_chars + 120).min(1600)
+            // Cursor-follow: use 85% of screen width
+            (sw as f32 * 0.85) as u32
+        };
+        let mut total_w = if is_horizontal {
+            (cand_count * (fs * max_chars + 30) + padding).min(max_w)
+        } else {
+            (fs * max_chars + 120).min(max_w)
         };
         let mut total_h = (pinyin_height + line_height * cand_count + padding).min(1200);
 
@@ -981,8 +1070,8 @@ impl CandidateDisplay for WaylandLayerDisplay {
         // window visually stable while content stays flush with the anchor edge.
         if self.config.linux.fixed_position {
             let cs = self.candidate_window.window().size();
-            total_w = total_w.max(cs.width);
-            total_h = total_h.max(cs.height);
+            total_w = total_w.max(cs.width).min(max_w);
+            total_h = total_h.max(cs.height).min(1200);
         }
         
         let current_size = self.candidate_window.window().size();
