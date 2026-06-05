@@ -3,6 +3,7 @@ use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use log::{error, info};
 use qianyan_ime_core::Rect;
@@ -30,12 +31,15 @@ use qianyan_ime_ui::tray::TrayEvent;
 use super::wayland_host::{keysym_to_vk, xkb_to_vk_raw};
 use super::vkbd::Vkbd;
 
+const DEACTIVATE_DEBOUNCE: Duration = Duration::from_millis(180);
+
 struct WlState {
     _running: Arc<AtomicBool>,
     processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
     active: bool,
+    deactivate_deadline: Option<Instant>,
     _input_method: Option<ZwpInputMethodV1>,
     context: Option<ZwpInputMethodContextV1>,
     keyboard: Option<WlKeyboard>,
@@ -82,12 +86,10 @@ impl WlState {
                 if !utf8_text.is_empty() {
                     ctx.commit_string(self.context_serial, utf8_text);
                 } else {
-                    // Forward non-text key to the application
                     ctx.key(key_serial, time, key, state);
                 }
             }
             Action::Alert => {
-                // Sound alert
                 let root = crate::find_project_root();
                 let sound_path = root.join("sounds/beep.wav");
                 if sound_path.exists() {
@@ -120,6 +122,19 @@ impl WlState {
             ctx.preedit_string(self.context_serial, preedit, String::new());
         }
     }
+
+    fn forward_modifiers(
+        &self,
+        serial: u32,
+        mods_depressed: u32,
+        mods_latched: u32,
+        mods_locked: u32,
+        group: u32,
+    ) {
+        if let Some(ctx) = &self.context {
+            ctx.modifiers(serial, mods_depressed, mods_latched, mods_locked, group);
+        }
+    }
 }
 
 struct WlUser;
@@ -150,6 +165,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
             Event::Activate { id } => {
                 info!("[WaylandIM v1] activated");
                 state.active = true;
+                state.deactivate_deadline = None;
                 state.context = Some(id);
                 state.context_serial = 0;
                 if let Some(ref ctx) = state.context {
@@ -158,17 +174,14 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
                     info!("[WaylandIM v1] keyboard grabbed");
                 }
             }
-            Event::Deactivate { context } => {
-                info!("[WaylandIM v1] deactivated");
+            Event::Deactivate { context: _ } => {
+                info!("[WaylandIM v1] deactivated (debouncing {}ms)", DEACTIVATE_DEBOUNCE.as_millis());
                 state.active = false;
                 if let Some(ref ctx) = state.context {
                     ctx.preedit_string(state.context_serial, String::new(), String::new());
                     let _ = conn.flush();
                 }
-                state.keyboard = None;
-                context.destroy();
-                state.context = None;
-                let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
+                state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
             }
             _ => {}
         }
@@ -196,7 +209,6 @@ impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
                 state.context_serial = serial;
             }
             Event::Reset => {
-                // Text input was reset, clear preedit
                 state.processor.reset();
                 let _ = state.gui_tx.send(GuiEvent::Update {
                     pinyin: String::new(),
@@ -332,7 +344,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 let _ = conn.flush();
             }
             wl_keyboard::Event::Modifiers {
-                serial: _,
+                serial,
                 mods_depressed,
                 mods_latched,
                 mods_locked,
@@ -341,6 +353,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
+                state.forward_modifiers(serial, mods_depressed, mods_latched, mods_locked, group);
             }
             wl_keyboard::Event::RepeatInfo { rate: _, delay: _ } => {}
             _ => {}
@@ -385,6 +398,7 @@ impl InputMethodHost for WaylandInputHostV1 {
             gui_tx: self.gui_tx.clone(),
             tray_tx: self.tray_tx.clone(),
             active: false,
+            deactivate_deadline: None,
             _input_method: Some(input_method),
             context: None,
             keyboard: None,
@@ -400,6 +414,18 @@ impl InputMethodHost for WaylandInputHostV1 {
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
+
+            // Check deactivate debounce deadline
+            if state.deactivate_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+                info!("[WaylandIM v1] deactivated after debounce");
+                state.deactivate_deadline = None;
+                if let Some(ctx) = state.context.take() {
+                    ctx.destroy();
+                }
+                state.keyboard = None;
+                let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
+            }
+
             let _ = conn.flush();
             if let Err(e) = event_queue.dispatch_pending(&mut state) {
                 error!("[WaylandIM v1] dispatch error: {e}");
@@ -435,10 +461,13 @@ impl WaylandInputHostV1 {
         if !has_conn {
             return None;
         }
-        if Connection::connect_to_env().is_err() {
-            return None;
-        }
-        let vkbd = Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)));
+        // In KWin virtual keyboard mode (WAYLAND_SOCKET), avoid creating evdev uinput
+        // device — all text goes through the Wayland input-method protocol.
+        let vkbd = if std::env::var("WAYLAND_SOCKET").is_err() {
+            Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))
+        } else {
+            None
+        };
         Some(Self {
             processor,
             gui_tx,

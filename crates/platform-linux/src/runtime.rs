@@ -1,3 +1,4 @@
+use crate::hosts::ibus_backend;
 use crate::hosts::vkbd::Vkbd;
 use crate::hosts::evdev_host;
 use crate::hosts::wayland_host::WaylandInputHost;
@@ -174,6 +175,16 @@ enum BackendType {
     Auto,
     Evdev,
     Wayland,
+}
+
+/// Start the IBus D-Bus backend in a background thread.
+/// Should be called alongside the main input host.
+pub fn start_ibus_backend(
+    processor: ProcessorHandle,
+    gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
+) {
+    ibus_backend::start_ibus_backend(processor, gui_tx, tray_tx);
 }
 
 fn parse_backend(args: &[String], config_backend: &str) -> BackendType {

@@ -1,5 +1,4 @@
 use crate::ipc::transport::{self, MainToGui, GuiToMain};
-use crate::linux_notify::LinuxNotifyDisplay;
 use crate::slint_window::SlintDisplay;
 use crate::tray::TrayEvent;
 use crate::{CandidateDisplay, GuiEvent};
@@ -350,11 +349,7 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     #[cfg(not(target_os = "linux"))]
     displays.push(Box::new(SlintDisplay::new(config.clone())));
 
-    if cfg!(target_os = "linux") && (config.linux.show_notification || config.linux.show_toggle_notification) {
-        log::debug!("[GUI_DEBUG] create_displays: adding LinuxNotifyDisplay");
-        displays.push(Box::new(LinuxNotifyDisplay::new(config.clone())));
-    }
-    log::debug!("[GUI_DEBUG] create_displays: total {} displays", displays.len());
+    log::debug!("[GUI_DEBUG] create_displays: total {} displays (notifications moved to main process)", displays.len());
     displays
 }
 

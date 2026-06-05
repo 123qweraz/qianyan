@@ -5,6 +5,7 @@ use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use log::{error, info, warn};
 use qianyan_ime_core::Rect;
@@ -44,6 +45,7 @@ struct WlState {
     tray_tx: Sender<TrayEvent>,
     serial: u32,
     active: bool,
+    deactivate_deadline: Option<Instant>,
     input_method: Option<ZwpInputMethodV2>,
     keyboard_grab: Option<ZwpInputMethodKeyboardGrabV2>,
     xkb_context: xkb::Context,
@@ -102,6 +104,7 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
             Event::Activate => {
                 info!("[WaylandIM] activated");
                 state.active = true;
+                state.deactivate_deadline = None;
                 state.serial = 0;
                 if let Some(ref im) = state.input_method {
                     let grab = im.grab_keyboard(qh, WlUser);
@@ -113,15 +116,13 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 state.setup_virtual_keyboard(qh);
             }
             Event::Deactivate => {
-                info!("[WaylandIM] deactivated");
-                state.active = false;
-                state.keyboard_grab = None;
+                info!("[WaylandIM] deactivated (debouncing {}ms)", DEACTIVATE_DEBOUNCE.as_millis());
                 if let Some(ref im) = state.input_method {
                     im.set_preedit_string("".into(), 0, 0);
                     im.commit(state.serial);
                     let _ = conn.flush();
                 }
-                let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
+                state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
             }
             Event::Done => {
                 state.serial += 1;
@@ -321,6 +322,7 @@ impl Dispatch<ZwpVirtualKeyboardV1, WlUser> for WlState {
 }
 
 const WL_KEYMAP_FORMAT_XKB_V1: u32 = 1;
+const DEACTIVATE_DEBOUNCE: Duration = Duration::from_millis(180);
 
 impl WlState {
     fn setup_virtual_keyboard(&mut self, qh: &QueueHandle<Self>) {
@@ -521,6 +523,7 @@ impl InputMethodHost for WaylandInputHost {
             tray_tx: self.tray_tx.clone(),
             serial: 0,
             active: false,
+            deactivate_deadline: None,
             input_method: Some(input_method),
             keyboard_grab: None,
             xkb_context: xkb::Context::new(xkb::CONTEXT_NO_FLAGS),
@@ -550,6 +553,15 @@ impl InputMethodHost for WaylandInputHost {
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
+
+            if state.deactivate_deadline.is_some_and(|d| Instant::now() >= d) {
+                info!("[WaylandIM] deactivated after debounce");
+                state.active = false;
+                state.deactivate_deadline = None;
+                state.keyboard_grab = None;
+                let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
+            }
+
             let _ = conn.flush();
             if let Err(e) = event_queue.dispatch_pending(&mut state) {
                 error!("[WaylandIM] dispatch error: {e}");
@@ -585,10 +597,11 @@ impl WaylandInputHost {
         if !has_conn {
             return None;
         }
-        if Connection::connect_to_env().is_err() {
-            return None;
-        }
-        let vkbd = Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)));
+        let vkbd = if std::env::var("WAYLAND_SOCKET").is_err() {
+            Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))
+        } else {
+            None
+        };
         Some(Self {
             processor,
             gui_tx,

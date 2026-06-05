@@ -33,6 +33,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("SLINT_BACKEND", "skia");
     }
 
+    // 在 KDE Wayland 下设置 IM_MODULE，防止 GUI /Qt 应用走 IBus/XIM 冲突
+    #[cfg(target_os = "linux")]
+    {
+        let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+        if desktop.split(':').any(|s| s.eq_ignore_ascii_case("kde")) {
+            std::env::set_var("GTK_IM_MODULE", "wayland");
+            std::env::set_var("QT_IM_MODULE", "wayland");
+        }
+    }
+
     let args: Vec<String> = env::args().collect();
     let should_daemonize = match qianyan_ime_linux::cli::handle_startup(&args)? {
         qianyan_ime_linux::cli::StartupAction::Exit => return Ok(()),
@@ -127,6 +137,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(RwLock::new(current_config));
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
     let (tray_tx, tray_rx) = std::sync::mpsc::channel();
+
+    // 在 Linux 上，在 gui_rx 下游插入通知分发器，
+    // 使桌面通知始终由主进程处理（不依赖 GUI 子进程）。
+    #[cfg(target_os = "linux")]
+    let gui_rx = {
+        let (gui_forward_tx, gui_forward_rx) = std::sync::mpsc::channel();
+        let initial_cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
+        std::thread::spawn(move || {
+            let mut notifier = qianyan_ime_ui::local_notify::LocalNotify::new(&initial_cfg);
+            while let Ok(event) = gui_rx.recv() {
+                notifier.handle(&event);
+                if gui_forward_tx.send(event).is_err() {
+                    break;
+                }
+            }
+        });
+        gui_forward_rx
+    };
 
     let mut trie_paths = HashMap::new();
     if let Ok(entries) = std::fs::read_dir(root.join("data")) {
@@ -351,6 +379,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let new_conf = Config::load();
                     processor_clone.apply_config(new_conf.clone());
                     processor_clone.reload_tries();
+                    if let Ok(mut cfg) = config_msg.write() {
+                        *cfg = new_conf.clone();
+                    }
                     if let Some(ref handle) = tray_handle {
                         let enabled = new_conf.input.enabled_profiles.clone();
                         handle.update(move |t| {
@@ -421,98 +452,58 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         host_run();
     });
 
+    // 启动 IBus D-Bus 后端（在所有桌面环境下均可使用）
     #[cfg(target_os = "linux")]
     {
-        use qianyan_ime_ui::ipc::transport::*;
-        use std::os::unix::net::UnixListener;
-        use std::time::Duration;
-
-        // GUI 作为独立进程运行，通过 Unix socket IPC 通信
-        let socket_path = format!("/tmp/qianyan-ime-{}.sock", std::process::id());
-        let _ = std::fs::remove_file(&socket_path);
-
-        let listener = UnixListener::bind(&socket_path)
-            .expect("Failed to bind IPC socket");
-
-        let exe_path = std::env::current_exe()
-            .expect("failed to get current exe path");
-        let gui_exe = exe_path.parent()
-            .expect("exe has no parent directory")
-            .join("qianyan-ime-gui");
-        let mut child = std::process::Command::new(&gui_exe)
-            .arg(&socket_path)
-            .env_remove("WAYLAND_SOCKET")
-            .spawn()
-            .expect("Failed to spawn GUI process");
-
-        // Wait for GUI to connect
-        let (mut stream, _) = listener.accept()
-            .expect("Failed to accept GUI connection");
-
-        // Send initial config
-        let cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
-        let _ = send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(
-            serde_json::to_string(&cfg)
-                .expect("failed to serialize config"),
-        ));
-
-        // Wait for GUI to signal ready
-        match recv_gui_to_main(&mut stream, Some(Duration::from_secs(5))) {
-            Ok(Some(GuiToMain::Ready)) => {},
-            _ => log::warn!("[Main] GUI did not signal ready"),
-        }
-
-        // Forward events from gui_rx to IPC
-        let stream = std::sync::Mutex::new(Some(stream));
-        std::thread::spawn(move || {
-            while let Ok(event) = gui_rx.recv() {
-                // Take the stream, if it was already consumed (GUI died) -> skip
-                let mut stream_guard = match stream.lock() {
-                    Ok(g) => g,
-                    Err(_) => break,
-                };
-                let stream_ref = match stream_guard.as_mut() {
-                    Some(s) => s,
-                    None => break, // already closed
-                };
-                match event {
-                    GuiEvent::HideAndAck(ack_tx) => {
-                        if send_main_to_gui(stream_ref, &MainToGui::HideCandidate).is_err() {
-                            stream_guard.take(); // GUI died
-                            let _ = ack_tx.send(());
-                            break;
-                        }
-                        if let Ok(Some(GuiToMain::Ack)) = recv_gui_to_main(stream_ref, Some(Duration::from_millis(100))) {}
-                        let _ = ack_tx.send(());
-                    }
-                    GuiEvent::Exit => {
-                        let _ = send_main_to_gui(stream_ref, &MainToGui::Exit);
-                        break;
-                    }
-                    other => {
-                        if let Some(ipc) = gui_event_to_ipc(other) {
-                            if send_main_to_gui(stream_ref, &ipc).is_err() {
-                                stream_guard.take(); // GUI died
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // Wait for GUI process to exit
-        child.wait().ok();
-        let _ = std::fs::remove_file(&socket_path);
+        qianyan_ime_linux::runtime::start_ibus_backend(
+            processor_handle.clone(),
+            gui_tx.clone(),
+            tray_tx.clone(),
+        );
     }
 
     #[cfg(not(target_os = "linux"))]
     {
         // Fallback: GUI in same process (Windows)
         qianyan_ime_ui::gui::start_gui(gui_rx, config, tray_tx);
+        return Ok(());
     }
 
-    Ok(())
+    #[cfg(target_os = "linux")]
+    {
+        let is_kwin = qianyan_ime_linux::kwin::is_kwin_virtual_keyboard();
+        let no_gui = args.iter().any(|a| a == "--no-gui");
+        let show_gui = config.read().map(|c| c.linux.show_slint_window).unwrap_or(true);
+
+        let launch_gui = !is_kwin && !no_gui && show_gui;
+
+        if launch_gui {
+            match try_start_gui_process(&config) {
+                Ok((child, stream, socket_path)) => {
+                    log::info!("[Main] GUI 子进程已启动");
+                    spawn_gui_forwarder(gui_rx, stream, child, socket_path);
+                }
+                Err(e) => {
+                    log::warn!("[Main] GUI 启动失败 (无 GUI 继续运行): {e}");
+                    spawn_gui_null_handler(gui_rx);
+                }
+            }
+        } else {
+            if is_kwin {
+                log::info!("[Main] KWin 虚拟键盘模式：跳过 Slint GUI");
+            } else if no_gui {
+                log::info!("[Main] --no-gui 参数：无 GUI 模式");
+            } else {
+                log::info!("[Main] show_slint_window=false：无 GUI 模式");
+            }
+            spawn_gui_null_handler(gui_rx);
+        }
+
+        // 保持主线程存活，让 IBus/Wayland 后端继续服务
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(3600));
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -560,6 +551,145 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
         }
         _ => None,
     }
+}
+
+/// 尝试启动 GUI 子进程并建立 IPC 连接。
+/// 返回 (child, stream, socket_path)，主线程不再阻塞等待 child。
+#[cfg(target_os = "linux")]
+fn try_start_gui_process(
+    config: &std::sync::Arc<std::sync::RwLock<Config>>,
+) -> Result<
+    (
+        std::process::Child,
+        std::os::unix::net::UnixStream,
+        String,
+    ),
+    Box<dyn std::error::Error>,
+> {
+    use qianyan_ime_ui::ipc::transport::*;
+    use std::os::unix::net::UnixListener;
+    use std::time::Duration;
+
+    let socket_path = format!("/tmp/qianyan-ime-{}.sock", std::process::id());
+    let _ = std::fs::remove_file(&socket_path);
+
+    let listener = UnixListener::bind(&socket_path)?;
+    listener.set_nonblocking(true)?;
+
+    let exe_path = std::env::current_exe()?;
+    let gui_exe = exe_path
+        .parent()
+        .ok_or("exe has no parent directory")?
+        .join("qianyan-ime-gui");
+    let mut child = std::process::Command::new(&gui_exe)
+        .arg(&socket_path)
+        .env_remove("WAYLAND_SOCKET")
+        .spawn()?;
+
+    // 轮询等待 GUI 连接，同时检查子进程存活
+    let mut stream = loop {
+        match listener.accept() {
+            Ok((stream, _)) => break stream,
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                if let Ok(Some(_)) = child.try_wait() {
+                    let _ = std::fs::remove_file(&socket_path);
+                    return Err("GUI exited before connecting".into());
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&socket_path);
+                return Err(e.into());
+            }
+        }
+    };
+    listener.set_nonblocking(false)?;
+
+    // 发送初始配置
+    let cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
+    send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(serde_json::to_string(&cfg)?))?;
+
+    match recv_gui_to_main(&mut stream, Some(Duration::from_secs(5))) {
+        Ok(Some(GuiToMain::Ready)) => {}
+        _ => log::warn!("[Main] GUI did not signal ready"),
+    }
+
+    Ok((child, stream, socket_path))
+}
+
+/// 将 gui_rx 事件通过 Unix socket 转发到 GUI 子进程。
+/// GUI 子进程在单独线程中监控，退出时自动清理 socket 文件。
+#[cfg(target_os = "linux")]
+fn spawn_gui_forwarder(
+    gui_rx: std::sync::mpsc::Receiver<GuiEvent>,
+    stream: std::os::unix::net::UnixStream,
+    mut child: std::process::Child,
+    socket_path: String,
+) {
+    use qianyan_ime_ui::ipc::transport::*;
+    use std::time::Duration;
+
+    let stream = std::sync::Mutex::new(Some(stream));
+    std::thread::spawn(move || {
+        while let Ok(event) = gui_rx.recv() {
+            let mut stream_guard = match stream.lock() {
+                Ok(g) => g,
+                Err(_) => break,
+            };
+            let stream_ref = match stream_guard.as_mut() {
+                Some(s) => s,
+                None => break,
+            };
+            match event {
+                GuiEvent::HideAndAck(ack_tx) => {
+                    if send_main_to_gui(stream_ref, &MainToGui::HideCandidate).is_err() {
+                        stream_guard.take();
+                        let _ = ack_tx.send(());
+                        break;
+                    }
+                    if let Ok(Some(GuiToMain::Ack)) =
+                        recv_gui_to_main(stream_ref, Some(Duration::from_millis(100)))
+                    {}
+                    let _ = ack_tx.send(());
+                }
+                GuiEvent::Exit => {
+                    let _ = send_main_to_gui(stream_ref, &MainToGui::Exit);
+                    break;
+                }
+                other => {
+                    if let Some(ipc) = gui_event_to_ipc(other) {
+                        if send_main_to_gui(stream_ref, &ipc).is_err() {
+                            stream_guard.take();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 监控线程：等待子进程退出后清理 socket
+    std::thread::spawn(move || {
+        child.wait().ok();
+        let _ = std::fs::remove_file(&socket_path);
+    });
+}
+
+/// GUI 不可用时接管 gui_rx。
+/// HideAndAck 立即回复 ack，避免 evdev 100ms 超时等待。
+#[cfg(target_os = "linux")]
+fn spawn_gui_null_handler(gui_rx: std::sync::mpsc::Receiver<GuiEvent>) {
+    std::thread::spawn(move || {
+        while let Ok(event) = gui_rx.recv() {
+            match event {
+                GuiEvent::HideAndAck(ack) => {
+                    let _ = ack.send(());
+                }
+                GuiEvent::Exit => break,
+                _ => {}
+            }
+        }
+    });
 }
 
 #[cfg(target_os = "windows")]

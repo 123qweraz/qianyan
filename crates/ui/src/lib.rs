@@ -1,7 +1,8 @@
 pub mod tray;
 pub mod web;
 pub mod gui_slint;
-pub mod linux_notify;
+#[cfg(target_os = "linux")]
+pub mod local_notify;
 pub mod slint_window;
 #[cfg(target_os = "linux")]
 pub mod wayland_layer;
