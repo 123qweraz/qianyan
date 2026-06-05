@@ -98,8 +98,15 @@
         const symbolData = {
             "最近": { type: "grid", data: [] },
             "收藏": { type: "grid", data: [] },
-            "中文标点": { type: "grid", data: "， 。 ？ ！ 、 ； ： " " ' ' （ ） 【 】 《 》 ~ @ # ￥ % …… & * - _ = + ｜".split(' ') },
-            "希腊字母": {
+            "标点": { 
+                type: "grid", 
+                data: "， 。 ？ ！ 、 ； ： “ ” ‘ ’ 「 」 『 』 （ ） 【 】 〔 〕 ［ ］ ｛ ｝ 《 》 〈 〉 —— …… · ～ — – - / \ | # @ $ % & * + = < > ˇ ¨ 〃 々 ‐ ‖ ¦ ( ) [ ] { }".split(' ') 
+            },
+            "数学": { 
+                type: "grid", 
+                data: "+ - × ÷ = ≠ ± ／ √ ‰ % < > ≤ ≥ ≈ ≡ ≌ ∽ ∝ ∧ ∨ ∑ ∏ ∪ ∩ ∈ ∉ ∀ ∃ ∵ ∴ ∠ ⊥ ‖ ∂ ∆ ∇ ∫ ∮ ∞ π ° ′ ″".split(' ') 
+            },
+            "希腊": {
                 type: "keyboard",
                 rows: [
                     "α β γ δ ε ζ η θ".split(' '),
@@ -112,7 +119,7 @@
                     upper: "Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω".split(' ')
                 }
             },
-            "俄语字母": {
+            "俄语": {
                 type: "keyboard",
                 rows: [
                     "й ц у к е н г ш щ з х ъ".split(' '),
@@ -120,24 +127,27 @@
                     "Shift(大写) я ч с м и т ь б ю".split(' ')
                 ],
                 map: {
-                    lower: "а б в г д е ё ж з и й к л м н о п р с т у ф х ц ч ш щ ъ ы ь э ю я".split(' '),
-                    upper: "А Б В Г Д Е Ё Ж З И Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Щ Ъ Ы Ь Э Ю Я".split(' ')
+                    lower: "а б в г д е ё ж з и й к л m н о п р с т у ф х ц ч ш щ ъ ы ь э ю я".split(' '),
+                    upper: "А Б В Г Д Е Ё Ж З И Й К Л M Н О П Р С Т Υ Ф Х Ц Ч Ш Щ Ъ Ы Ь Э Ю Я".split(' ')
                 }
             },
-            "欧洲字母": {
-                type: "keyboard",
-                rows: [
-                    "á à â ä ã å æ ç é è".split(' '),
-                    "ê ë í ì î ï ñ ó ò ô".split(' '),
-                    "ö õ ø ú ù û ü ý þ ß".split(' '),
-                    "Shift(大写)".split(' ')
-                ],
-                map: {
-                    lower: "á à â ä ã å æ ç é è ê ë í ì î ï ñ ó ò ô ö õ ø ú ù û ü ý þ ß".split(' '),
-                    upper: "Á À Â Ä Ã Å Æ Ç É È Ê Ë Í Ì Î Ï Ñ Ó Ò Ô Ö Õ Ø Ú Ù Û Ü Ý Þ ẞ".split(' ')
-                }
+            "单位": { 
+                type: "grid", 
+                data: "℃ ℉ ° ′ ″ ㎡ ㎥ ㎝ ㎞ ㎜ ㎎ ㎏ ㏄ ㏎ ㎚ ㎛ ㎕ ㎖ ㎗ ㎘ ㎐ ㎑ ㎒ ㎓ ㎔ ㎩ ㎪ ㎫ ㎬ ㎰ ㎱ ㎲ ㎳ ㎷ ㎸ ㎹ ㎺ ㎻ ㎼ ㎽ ㎾ ㎿ Ω ㏀ ㏁ ￥ $ € £ ￡ ￠ ₣ ₧ ₨ ₩ ₪ ₫ ₭ ₮ ₯ ₰ ₱ ₲ ₳ ₴ ₵ ₶ ₷ ₸ ₹ ₺ ₿".split(' ') 
             },
-            "日文假名": {
+            "箭头": { 
+                type: "grid", 
+                data: "← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙ ↞ ↟ ↠ ↡ ↩ ↪ ↵ ↶ ↷ ↺ ↻ ⇐ ⇑ ⇒ ⇓ ⇔ ⇕ ➔ ➘ ➙ ➚ ➛ ➜ ➝ ➞ ➟ ➠ ➡ ➢ ➣ ➤ ➥ ➦ ➧ ➨ ➩ ➪ ➫ ➬ ➭ ➮ ➯ ➱ ➲ ➳ ➴ ➵ ➶ ➷ ➸ ➹ ➺ ➻ ➼ ➽ ➾".split(' ') 
+            },
+            "数字": { 
+                type: "grid", 
+                data: "① ② ③ ④ ⑤ ⑥ ⑦ ⑧ ⑨ ⑩ ⑪ ⑫ ⑬ ⑭ ⑮ ⑯ ⑰ ⑱ ⑲ ⑳ ⑴ ⑵ ⑶ ⑷ ⑸ ⑹ ⑿ ⒀ ⒁ ⒂ ⒃ ⒄ ⒅ ⒆ ⒇ ⒈ ⒉ ⒊ ⒋ ⒌ ⒍ ⒎ ⒏ ⒐ ⒑ ⒒ ⒓ ⒔ ⒕ ⒖ ⒗ ⒘ ⒙ ⒚ ⒛ Ⅰ Ⅱ Ⅲ Ⅳ Ⅴ Ⅵ Ⅶ Ⅷ Ⅸ Ⅹ Ⅺ Ⅻ ⅰ ⅱ ⅲ ⅳ ⅴ ⅵ ⅶ ⅷ ⅸ ⅹ".split(' ') 
+            },
+            "形状": { 
+                type: "grid", 
+                data: "★ ☆ ⚡ ☀ ☁ ☔ ❄ ✨ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ ✱ ✲ ✳ ✴ ✵ ✶ ✷ ✸ ✹ ✺ ✻ ✼ ✽ ✾ ✿ ❀ ❁ ❂ ❃ ⚪ ⚫ 🔴 🔵 ⬛ ⬜ ▢ ▣ ▤ ▥ ▦ ▧ ▨ ▩ ◘ ◙ ◚ ◛ ◜ ◝ ◞ ◟ ◠ ◡ ◢ ◣ ◤ ◥ ◦ ◧ ◨ ◩ ◪ ◫ ◬ ◭ ◮ ◯".split(' ') 
+            },
+            "日文": {
                 type: "keyboard",
                 rows: [
                     "あ い う え お か き く け こ".split(' '),
@@ -152,32 +162,20 @@
                     upper: "ア イ ウ エ オ カ キ ク ケ コ サ シ ス セ ソ タ チ ツ テ ト ナ ニ ヌ ネ ノ ハ ヒ フ ヘ ホ マ ミ ム メ モ ヤ ユ ヨ ラ リ ル レ ロ ワ ヲ ン".split(' ')
                 }
             },
-            "韩文字母": {
-                type: "keyboard",
-                rows: [
-                    "ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ".split(' '),
-                    "ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ".split(' '),
-                    "ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ".split(' '),
-                    "ㅠ ㅡ ㅣ ㄲ ㄸ ㅃ ㅆ".split(' '),
-                    "Shift(复合)".split(' ')
-                ],
-                map: {
-                    lower: "ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ ㅏ ㅑ ㅓ ㅕ ㅗ ㅛ ㅜ ㅠ ㅡ ㅣ ㄲ ㄸ ㅃ ㅆ".split(' '),
-                    upper: "ㄲ ㄸ ㅃ ㅆ ㅉ ㅐ ㅒ ㅔ ㅖ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ".split(' ')
-                }
+            "部首": { 
+                type: "grid", 
+                data: "⺀ ⺁ ⺂ ⺃ ⺄ ⺆ ⺇ ⺈ ⺉ ⺊ ⺋ ⺌ ⺍ ⺎ ⺏ ⺐ ⺑ ⺒ ⺓ ⺔ ⺕ ⺖ ⺗ ⺘ ⺙ ⺚ ⺛ ⺜ ⺝ ⺞ ⺟ ⺠ ⺡ ⺢ ⺣ ⺤ ⺥ ⺦ ⺧ ⺨ ⺩ ⺪ ⺫ ⺬ ⺭ ⺮ ⺯ ⺰ ⺱ ⺲ ⺳ ⺴ ⺵ ⺶ ⺷ ⺸ ⺹ ⺺ ⺻ ⺼ ⺽ ⺾ ⺿ ⻀ ⻁ ⻂ ⻃ ⻄ ⻅ ⻆ ⻇ ⻈ ⻉ ⻊ ⻋ ⻌ ⻍ ⻎ ⻏ ⻐ ⻑ ⻒ ⻓ ⻔ ⻕ ⻖ ⻗ ⻘ ⻙ ⻚ ⻛ ⻜ ⻝ ⻞ ⻟ ⻠ ⻡ ⻢ ⻣ ⻤ ⻥ ⻦ ⻧ ⻨ ⻩ ⻪ ⻫ ⻬ ⻭ ⻮ ⻯ ⻰ ⻱ ⻲ ⻳".split(' ') 
             },
-            "制图符号": { type: "grid", data: "─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏ ┐ ┑ ┒ ┓ └ ┕ ┖ ┗ ┘ ┙ ┚ ┛ ├ ┝ ┞ ┟ ┠ ┡ ┢ ┣ ┤ ┥ ┦ ┧ ┨ ┩ ┪ ┫ ┬ ┭ ┮ ┯ ┰ ┱ ┲ ┳ ┴ ┵ ┶ ┷ ┸ ┹ ┺ ┻ ┼ ┽ ┾ ┿ ╀ ╁ ╂ ╃ ╄ ╅ ╆ ╇ ╈ ╉ ╊ ╋ ═ ║ ╒ ╓ ╔ ╕ ╖ ╗ ╘ ╙ ╚ ╛ ╜ ╝ ╞ ╟ ╠ ╡ ╢ ╣ ╤ ╥ ╦ ╧ ╨ ╩ ╪ ╫ ╬".split(' ') },
-            "偏旁部首": { type: "grid", data: "⺀ ⺁ ⺂ ⺃ ⺄ ⺆ ⺇ ⺈ ⺉ ⺊ ⺋ ⺌ ⺍ ⺎ ⺏ ⺐ ⺑ ⺒ ⺓ ⺔ ⺕ ⺖ ⺗ ⺘ ⺙ ⺚ ⺛ ⺜ ⺝ ⺞ ⺟ ⺠ ⺡ ⺢ ⺣ ⺤ ⺥ ⺦ ⺧ ⺨ ⺩ ⺪ ⺫ ⺬ ⺭ ⺮ ⺯ ⺰ ⺱ ⺲ ⺳ ⺴ ⺵ ⺶ ⺷ ⺸ ⺹ ⺺ ⺻ ⺼ ⺽ ⺾ ⺿ ⻀ ⻁ ⻂ ⻃ ⻄ ⻅ ⻆ ⻇ ⻈ ⻉ ⻊ ⻋ ⻌ ⻍ ⻎ ⻏ ⻐ ⻑ ⻒ ⻓ ⻔ ⻕ ⻖ ⻗ ⻘ ⻙ ⻚ ⻛ ⻜ ⻝ ⻞ ⻟ ⻠ ⻡ ⻢ ⻣ ⻤ ⻥ ⻦ ⻧ ⻨ ⻩ ⻪ ⻫ ⻬ ⻭ ⻮ ⻯ ⻰ ⻱ ⻲ ⻳".split(' ') },
-            "拼音音调": { type: "grid", data: "ā á ǎ à ē é ě è ī í ǐ ì ō ó ǒ ò ū ú ǔ ù ǖ ǘ ǚ ǜ ń ň ǹ ḿ m̀".split(' ') },
-            "数理符号": { type: "grid", data: "± ° ⊥ ∥ ∠ ⌒ ⊙ ≡ ≌ ≈ ∝ ≠ ≤ ≥ ∞ ℏ ℃ ℉ Å Ω ℧ + - × ÷ = √ ∏ ∑ ∫ ∬ ∭ ∂ ∇ ∆ ∅ ∈ ∉ ∋ ∌ ∕ ∖ ∗ ∘ ∙ ∟ ∧ ∨ ∩ ∪".split(' ') },
-            "货币符号": { type: "grid", data: "￥ $ € £ ฿ ₵ ₡ ₢ ₣ ₤ ₥ ₦ ₧ ₨ ₩ ₪ ₫ ₭ ₮ ₯ ₰ ₱ ₲ ₳ ₴ ₵ ₶ ₷ ₸ ₹ ₺ ₿".split(' ') },
-            "版权符号": { type: "grid", data: "© ® ™ ℠ ℗  ⌘ ⌥ ⇧ ⌃".split(' ') },
-            "箭头符号": { type: "grid", data: "← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙ ↞ ↟ ↠ ↡ ↩ ↪ ↵ ↶ ↷ ↺ ↻ ⇐ ⇑ ⇒ ⇓ ⇔ ⇕ ➔ ➘ ➙ ➚ ➛ ➜ ➝ ➞ ➟ ➠ ➡ ➢ ➣ ➤ ➥ ➦ ➧ ➨ ➩ ➪ ➫ ➬ ➭ ➮ ➯ ➱ ➲ ➳ ➴ ➵ ➶ ➷ ➸ ➹ ➺ ➻ ➼ ➽ ➾".split(' ') },
-            "颜文字": { type: "grid", data: "(´･ω･`) (╯°□°）╯︵ ┻━┻ O(∩_∩)O (ಥ_ಥ) ( ͡° ͜ʖ ͡°) ¯\\_(ツ)_/¯ (づ￣ ³￣)づ (⊙_⊙) (￣▽￣)ノ (≧▽≦) (◕‿◕) (｡♥‿♥｡)".split(' ') },
-            "特殊符号": { type: "grid", data: "★ ☆ ⚡ ☀ ☁ ☔ ❄ ✨ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ ✱ ✲ ✳ ✴ ✵ ✶ ✷ ✸ ✹ ✺ ✻ ✼ ✽ ✾ ✿ ❀ ❁ ❂ ❃".split(' ') }
+            "制图": { 
+                type: "grid", 
+                data: "─ ━ │ ┃ ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ ┌ ┍ ┎ ┏ ┐ ┑ ┒ ┓ └ ┕ ┖ ┗ ┘ ┙ ┚ ┛ ├ ┝ ┞ ┟ ┠ ┡ ┢ ┣ ┤ ┥ ┦ ┧ ┨ ┩ ┪ ┫ ┬ ┭ ┮ ┯ ┰ ┱ ┲ ┳ ┴ ┵ ┶ ┷ ┸ ┹ ┺ ┻ ┼ ┽ ┾ ┿ ╀ ╁ ╂ ╃ ╄ ╅ ╆ ╇ ╈ ╉ ╊ ╋ ═ ║ ╒ ╓ ╔ ╕ ╖ ╗ ╘ ╙ ╚ ╛ ╜ ╝ ╞ ╟ ╠ ╡ ╢ ╣ ╤ ╥ ╦ ╧ ╨ ╩ ╪ ╫ ╬".split(' ') 
+            },
+            "表情": { 
+                type: "grid", 
+                data: "(´･ω･`) (╯°□°）╯︵ ┻━┻ O(∩_∩)O (ಥ_ಥ) ( ͡° ͜ʖ ͡°) ¯\\_(ツ)_/¯ (づ￣ ³￣)づ (⊙_⊙) (￣▽￣)ノ (≧▽≦) (◕‿◕) (｡♥‿♥｡) ฅ(๑*д*๑)ฅ (๑• . •๑) ( ´∀｀) (๑´ڡ`๑)".split(' ') 
+            }
         };
 
-        // Expanded search tags
         const searchTags = {
             "星星": "★ ☆ ✩ ✪ ✫ ✬ ✭ ✮ ✯ ✰ ✨",
             "打勾": "✓ ✔ ✅",
@@ -186,46 +184,22 @@
             "圆": "○ ● ◌ ◍ ◎ ⊙",
             "方": "□ ■ ▢ ▣ ▤ ▥ ▦ ▧ ▨ ▩",
             "三角": "△ ▽ ◁ ▷ ▲ ▼ ◀ ▶",
-            "对齐": "⊥ ∥ ∠ ⌒",
             "括号": "( ) （ ） 【 】 《 》 [ ] { } 「 」 『 』",
-            "引号": "\" \" ' ' " " ' ' 「 」 『 』",
-            "逗号": ", ， 、",
-            "句号": ". 。",
-            "破折号": "— ― – -",
-            "省略号": "… ...",
-            "书名号": "《 》 〈 〉",
             "alpha": "α Α",
             "beta": "β Β",
             "gamma": "γ Γ",
             "delta": "δ Δ",
-            "epsilon": "ε Ε",
-            "theta": "θ Θ",
-            "lambda": "λ Λ",
             "mu": "μ Μ",
             "pi": "π Π",
-            "sigma": "σ Σ",
             "omega": "ω Ω",
-            "phi": "φ Φ",
             "箭头": "← ↑ → ↓ ↔ ↕ ↖ ↗ ↘ ↙ ⇒ ⇐ ⇑ ⇓",
-            "货币": "￥ $ € £ ¥ ₽ ₹",
-            "版权": "© ® ™ ©",
+            "货币": "￥ $ € £ ¥ ₽ ₹ ₿",
             "度": "° ℃ ℉",
-            "数学": "+ - × ÷ = √ ∑ ∫ ∂ ∇ ∞ ≈ ≠ ≤ ≥ ±",
-            "积分": "∫ ∬ ∭ ∮",
-            "求和": "∑ ∏",
-            "无穷": "∞",
-            "约等于": "≈ ≌",
-            "不等于": "≠",
-            "日元": "￥ ¥",
-            "欧罗": "€",
-            "美元": "$",
-            "英镑": "£",
-            "人民币": "￥",
-            "平假名": "あ い う え お か き く け こ さ し す せ そ た ち つ て と な に ぬ ね の は ひ ふ へ ほ ま み む め も や ゆ よ ら り る れ ろ わ を ん",
-            "片假名": "ア イ ウ エ オ カ キ ク ケ コ サ シ ス セ ソ タ チ ツ テ ト ナ ニ ヌ ネ ノ ハ ヒ フ ヘ ホ マ ミ ム メ モ ヤ ユ ヨ ラ リ ル レ ロ ワ ヲ ン",
+            "数学": "+ - × ÷ = √ ∑ ∫ ∂ ∇ ∞ ≈ ≠ ≤ ≥ ± ‰",
+            "拼音": "ā á ǎ à ē é ě è ī í ǐ ì ō ó ǒ ò ū ú ǔ ù ǖ ǘ ǚ ǜ"
         };
 
-        let currentCategory = "最近";
+        let currentCategory = "标点";
         let isShifted = false;
         let recentSymbols = JSON.parse(localStorage.getItem('symbols_recent') || '[]');
         let favoriteSymbols = JSON.parse(localStorage.getItem('symbols_favs') || '[]');
@@ -338,8 +312,7 @@
 
         function updateShiftLabel() {
             const st = document.getElementById('shift-status');
-            if (currentCategory === '日文假名') st.textContent = isShifted ? '片假名' : '平假名';
-            else if (currentCategory === '韩文字母') st.textContent = isShifted ? '复合字母' : '基本字母';
+            if (currentCategory === '日文') st.textContent = isShifted ? '片假名' : '平假名';
             else st.textContent = isShifted ? '大写' : '小写';
         }
 
@@ -348,7 +321,7 @@
             const bulkArea = document.getElementById('bulkArea');
             bulkText.textContent += sym;
             bulkArea.classList.add('show');
-            navigator.clipboard.writeText(sym);
+            navigator.clipboard.writeText(sym).catch(err => console.error('Clip copy fail:', err));
 
             recentSymbols = [sym, ...recentSymbols.filter(s => s !== sym)].slice(0, 50);
             localStorage.setItem('symbols_recent', JSON.stringify(recentSymbols));
@@ -373,11 +346,9 @@
                 if (!q) { renderContent(); return; }
 
                 let results = [];
-                // Search tags
                 for (const [tag, syms] of Object.entries(searchTags)) {
                     if (tag.includes(q)) results.push(...syms.split(' '));
                 }
-                // Search all data
                 for (const [cat, cfg] of Object.entries(symbolData)) {
                     if (cat === '最近' || cat === '收藏') continue;
                     const items = cfg.type === 'grid' ? cfg.data : cfg.map ? [...cfg.map.lower, ...cfg.map.upper] : [];
