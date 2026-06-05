@@ -103,7 +103,7 @@
                 <p><b>通用 (3位编码)</b>：第1位=前2笔，第2位=末2笔，第3位=拼音首字母</p>
                 <p><b>1笔</b>：单笔码+单笔码+首字母 (3位)；<b>0笔</b>：x+首字母 (2位，极少见)</p>
                 <p style="margin-top:8px; padding:8px; background:#fff9e6; border-radius:8px; border:1px solid #ffe58f; color:#856404;">
-                    <b>提示：</b>字母代表连续两笔画组合。例 <b>G</b>="横横"，<b>F</b>="横竖"，依此类推。
+                    <b>提示：</b>字母代表连续两笔画组合。例 <b>G</b>="一一"，<b>F</b>="一丨"，依此类推。
                 </p>
             </div>
         </div>
@@ -119,7 +119,7 @@
 
         // ===== Stroke keyboard =====
         const keyMap = { row1: "QWERTYUIOP", row2: "ASDFGHJKL", row3: "ZXCVBNM" };
-        const strokeNames = { '1': '横', '2': '竖', '3': '撇', '4': '点', '5': '折' };
+        const strokeNames = { '1': '一', '2': '丨', '3': '丿', '4': '丶', '5': '乙' };
         const keyToStrokes = { G:'11',F:'12',D:'13',S:'14',A:'15', H:'21',J:'22',K:'23',L:'24',M:'25', T:'31',R:'32',E:'33',W:'34',Q:'35', Y:'41',U:'42',I:'43',O:'44',P:'45', N:'51',B:'52',V:'53',C:'54',X:'55' };
 
         function initKeyboard() {

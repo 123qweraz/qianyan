@@ -33,7 +33,7 @@
       "japanese",
       "stroke"
     ],
-    "phantom_type": "Hanzi"
+    "phantom_type": "None"
   },
   "linux": {
     "backend_type": "wayland",

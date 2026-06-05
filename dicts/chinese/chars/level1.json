@@ -3800,7 +3800,7 @@
       "tone": "chán",
       "trad": "巉",
       "weight": 114,
-      "strokes": "25234251153434251354"
+      "strokes": "25235251153535251354"
     },
     {
       "category": "level-1",
@@ -5662,7 +5662,7 @@
       "tone": "cí",
       "trad": "雌",
       "weight": 10979,
-      "strokes": "21213532411121"
+      "strokes": "21211532411121"
     },
     {
       "category": "level-1",
@@ -6662,7 +6662,7 @@
       "tone": "dàn",
       "trad": "萏",
       "weight": 237,
-      "strokes": "12235312511"
+      "strokes": "12235321511"
     }
   ],
   "dang": [
@@ -16126,11 +16126,11 @@
       "category": "level-1",
       "char": "齑",
       "en": "Powder",
-      "stroke_aux": "yrj",
+      "stroke_aux": "ygj",
       "tone": "jī",
       "trad": "齏",
       "weight": 1382,
-      "strokes": "413421112111132"
+      "strokes": "413432211121111"
     },
     {
       "category": "level-1",
@@ -17268,7 +17268,7 @@
       "tone": "jiǎo",
       "trad": "剿",
       "weight": 23891,
-      "strokes": "5551511123422"
+      "strokes": "5552511123422"
     },
     {
       "category": "level-1",
@@ -22912,7 +22912,7 @@
       "tone": "lín",
       "trad": "麟",
       "weight": 51074,
-      "strokes": "41352211535431234354152"
+      "strokes": "41352211515431234354152"
     },
     {
       "category": "level-1",
@@ -25128,11 +25128,11 @@
       "category": "level-1",
       "char": "铆",
       "en": "Rivet",
-      "stroke_aux": "tnm",
+      "stroke_aux": "tbm",
       "tone": "mǎo",
       "trad": "鉚",
       "weight": 951,
-      "strokes": "3111535351"
+      "strokes": "3111535352"
     },
     {
       "category": "level-1",
@@ -26904,11 +26904,11 @@
       "category": "level-1",
       "char": "囊",
       "en": "Bag",
-      "stroke_aux": "fln",
+      "stroke_aux": "fwn",
       "tone": "náng/nāng",
       "trad": "囊",
       "weight": 52069,
-      "strokes": "1251245251251112213524"
+      "strokes": "1251245251251112213534"
     },
     {
       "category": "level-1",
@@ -30016,7 +30016,7 @@
       "tone": "qí",
       "trad": "麒",
       "weight": 29156,
-      "strokes": "4135221153512211134"
+      "strokes": "4135221151512211134"
     },
     {
       "category": "level-1",
@@ -37680,11 +37680,11 @@
       "category": "level-1",
       "char": "嚏",
       "en": "Sneeze",
-      "stroke_aux": "mlt",
+      "stroke_aux": "mwt",
       "tone": "tì",
       "trad": "嚏",
       "weight": 7017,
-      "strokes": "25112452512152124"
+      "strokes": "25112452512152134"
     },
     {
       "category": "level-1",
@@ -40826,7 +40826,7 @@
       "tone": "xī",
       "trad": "鼷",
       "weight": 27,
-      "strokes": "32151154454453223554134"
+      "strokes": "32151154454453443554134"
     },
     {
       "category": "level-1",
@@ -47016,7 +47016,7 @@
       "tone": "yú",
       "trad": "諛",
       "weight": 3139,
-      "strokes": "4531251134"
+      "strokes": "4532151134"
     },
     {
       "category": "level-1",

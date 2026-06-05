@@ -303,7 +303,7 @@
       "char": "獒",
       "en": "Mastiff",
       "stroke_aux": "goa",
-      "strokes": "11213531341344",
+      "strokes": "11215331341344",
       "tone": "ao/áo",
       "trad": "獒",
       "weight": 5756
@@ -598,8 +598,8 @@
       "category": "level-2",
       "char": "豳",
       "en": "Bin (state)",
-      "stroke_aux": "dbb",
-      "strokes": "13533342135333452",
+      "stroke_aux": "hbb",
+      "strokes": "21353334135333452",
       "tone": "ban/bān",
       "trad": "豳",
       "weight": 226
@@ -825,7 +825,7 @@
       "char": "邶",
       "en": "Bei (state)",
       "stroke_aux": "hbb",
-      "strokes": "2113552",
+      "strokes": "2111552",
       "tone": "bei/bèi",
       "trad": "邶",
       "weight": 1064
@@ -1808,8 +1808,8 @@
       "category": "level-2",
       "char": "豳",
       "en": "Bin (state)",
-      "stroke_aux": "dbb",
-      "strokes": "13533342135333452",
+      "stroke_aux": "hbb",
+      "strokes": "21353334135333452",
       "tone": "bin/bīn",
       "trad": "豳",
       "weight": 226
@@ -2725,7 +2725,7 @@
       "char": "巉",
       "en": "Steep",
       "stroke_aux": "mcc",
-      "strokes": "25234251153434251354",
+      "strokes": "25235251153535251354",
       "tone": "chan/chán",
       "trad": "巉",
       "weight": 114
@@ -3144,8 +3144,8 @@
       "category": "level-2",
       "char": "塍",
       "en": "Ridge",
-      "stroke_aux": "mhc",
-      "strokes": "2511431134121",
+      "stroke_aux": "qhc",
+      "strokes": "3511431134121",
       "tone": "cheng/chéng",
       "trad": "塍",
       "weight": 327
@@ -5227,7 +5227,7 @@
       "char": "萏",
       "en": "Lotus bud",
       "stroke_aux": "fgd",
-      "strokes": "12235312511",
+      "strokes": "12235321511",
       "tone": "dan/dàn",
       "trad": "萏",
       "weight": 237
@@ -7692,8 +7692,8 @@
       "category": "level-2",
       "char": "酆",
       "en": "Feng (surname)",
-      "stroke_aux": "gbf",
-      "strokes": "11122111252125143152",
+      "stroke_aux": "hbf",
+      "strokes": "21112111252125143152",
       "tone": "feng/fēng",
       "trad": "酆",
       "weight": 878
@@ -12252,8 +12252,8 @@
       "category": "level-2",
       "char": "齑",
       "en": "Powder",
-      "stroke_aux": "yrj",
-      "strokes": "413421112111132",
+      "stroke_aux": "ygj",
+      "strokes": "413432211121111",
       "tone": "ji/jī",
       "trad": "齏",
       "weight": 1382
@@ -16273,7 +16273,7 @@
       "char": "镧",
       "en": "Lanthanum",
       "stroke_aux": "twl",
-      "strokes": "31115425125341234",
+      "strokes": "31115425125431234",
       "tone": "lan/lán",
       "trad": "鑭",
       "weight": 46
@@ -17577,7 +17577,7 @@
       "char": "麟",
       "en": "Unicorn",
       "stroke_aux": "ybl",
-      "strokes": "41352211535431234354152",
+      "strokes": "41352211515431234354152",
       "tone": "lin/lín",
       "trad": "麟",
       "weight": 51074
@@ -19068,8 +19068,8 @@
       "category": "level-2",
       "char": "铆",
       "en": "Rivet",
-      "stroke_aux": "tnm",
-      "strokes": "3111535351",
+      "stroke_aux": "tbm",
+      "strokes": "3111535352",
       "tone": "mao/mǎo",
       "trad": "鉚",
       "weight": 951
@@ -20626,8 +20626,8 @@
       "category": "level-2",
       "char": "齉",
       "en": "Stuffy nose",
-      "stroke_aux": "rln",
-      "strokes": "325111251211321251245251251112213524",
+      "stroke_aux": "rwn",
+      "strokes": "325111251211321251245251251112213534",
       "tone": "nang/nàng",
       "trad": "齉",
       "weight": 45
@@ -21956,8 +21956,8 @@
       "category": "level-2",
       "char": "霈",
       "en": "Downpour",
-      "stroke_aux": "snp",
-      "strokes": "145244444411251",
+      "stroke_aux": "sbp",
+      "strokes": "145244444411252",
       "tone": "pei/pèi",
       "trad": "霈",
       "weight": 378
@@ -23021,7 +23021,7 @@
       "char": "麒",
       "en": "Unicorn",
       "stroke_aux": "ywq",
-      "strokes": "4135221153512211134",
+      "strokes": "4135221151512211134",
       "tone": "qi/qí",
       "trad": "麒",
       "weight": 29156
@@ -25655,7 +25655,7 @@
       "char": "蓐",
       "en": "Mattress",
       "stroke_aux": "flr",
-      "strokes": "1221311543124",
+      "strokes": "1221311534124",
       "tone": "ru/rù",
       "trad": "蓐",
       "weight": 202
@@ -26236,8 +26236,8 @@
       "category": "level-2",
       "char": "舢",
       "en": "Sampan",
-      "stroke_aux": "ens",
-      "strokes": "335414251",
+      "stroke_aux": "ebs",
+      "strokes": "335414252",
       "tone": "shan/shān",
       "trad": "舢",
       "weight": 1209
@@ -32587,7 +32587,7 @@
       "char": "廨",
       "en": "Office",
       "stroke_aux": "yfx",
-      "strokes": "4133525112533112",
+      "strokes": "4133535112533112",
       "tone": "xie/xiè",
       "trad": "廨",
       "weight": 206
@@ -36387,7 +36387,7 @@
       "char": "谀",
       "en": "Flatter",
       "stroke_aux": "pwy",
-      "strokes": "4531251134",
+      "strokes": "4532151134",
       "tone": "yu/yú",
       "trad": "諛",
       "weight": 3139
@@ -38907,7 +38907,7 @@
       "char": "彘",
       "en": "Pig",
       "stroke_aux": "xqz",
-      "strokes": "551311341535",
+      "strokes": "551153113435",
       "tone": "zhi/zhì",
       "trad": "彘",
       "weight": 554

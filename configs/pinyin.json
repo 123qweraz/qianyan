@@ -56,7 +56,7 @@
     "auto_sentence_min_syllables": 4,
     "commit_mode": "double",
     "default_profile": "chinese",
-    "display_mode": "character_with_english",
+    "display_mode": "character_with_stroke",
     "double_tap_timeout_ms": 250,
     "double_taps": [],
     "enable_abbreviation_matching": true,
