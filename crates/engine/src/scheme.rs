@@ -42,6 +42,7 @@ pub struct SchemeContext<'a> {
     pub tries: &'a HashMap<String, Trie>,
     pub syllable_freq: &'a HashMap<String, u64>,
     pub base_syllables: &'a std::collections::HashSet<String>,
+    pub single_syllables: &'a std::collections::HashSet<String>,
     pub user_dict: &'a Arc<ArcSwap<UserDictData>>,
     pub usage_history: &'a Arc<ArcSwap<UserDictData>>,
     pub ngram_history: &'a Arc<ArcSwap<UserDictData>>,

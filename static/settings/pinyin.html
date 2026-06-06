@@ -76,6 +76,10 @@
                         <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
+                        <div class="info"><div class="title">纠错匹配</div><div class="desc">输入错误时自动纠错（如 zhonf → 中）</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
                         <div class="info"><div class="title">模糊拼音</div><div class="desc">z/zh、c/ch、s/sh、an/ang 等模糊音匹配</div></div>
                         <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊音设置 →</a>
                     </div>
@@ -221,6 +225,7 @@
             bindInput('auto_sentence_min_syllables', 'input');
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
+            bindInput('enable_error_correction', 'input');
             bindInput('anti_typo_mode', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_keyboard_voice', 'input');

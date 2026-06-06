@@ -206,6 +206,7 @@ pub struct Input {
     pub enable_prefix_matching: bool,
     pub prefix_matching_limit: usize,
     pub enable_abbreviation_matching: bool,
+    pub enable_error_correction: bool,
     pub filter_proper_nouns_by_case: bool,
     pub enabled_profiles: Vec<String>,
     pub profile_keys: Vec<ProfileKey>,
@@ -899,6 +900,7 @@ impl Config {
                 enable_prefix_matching: true,
                 prefix_matching_limit: 20,
                 enable_abbreviation_matching: true,
+                enable_error_correction: true,
                 filter_proper_nouns_by_case: true,
                 enabled_profiles: vec!["chinese".to_string()],
                 profile_keys: vec![

@@ -392,10 +392,12 @@ impl Trie {
 
     /// 混拼检索：segments 为 (segment, is_initial) 对
     /// is_initial=true → 声母简拼 (starts_with)，false → 全音节精确匹配
+    /// single_syllables: 合法单音节集合，用于防止多音节 key 冒充单音节匹配缩写
     pub fn search_abbreviation_mixed(
         &self,
         segments: &[(String, bool)],
         limit: usize,
+        single_syllables: &std::collections::HashSet<String>,
     ) -> Vec<TrieResult<'_>> {
         if segments.is_empty() {
             return Vec::new();
@@ -409,7 +411,7 @@ impl Trie {
 
         while let Some((key_bytes, offset)) = stream.next() {
             let key = String::from_utf8_lossy(key_bytes);
-            if self.recursive_mixed_match(&key, segments) {
+            if self.recursive_mixed_match(&key, segments, single_syllables) {
                 let mut stop = false;
                 self.read_block(offset as usize, |pair| {
                     if !stop && seen.insert(pair.word) {
@@ -434,6 +436,7 @@ impl Trie {
         &self,
         key: &str,
         segments: &[(String, bool)],
+        single_syllables: &std::collections::HashSet<String>,
     ) -> bool {
         if segments.is_empty() {
             return key.is_empty();
@@ -450,12 +453,15 @@ impl Trie {
                 let syl = &key[..len];
                 if self.index.contains_key(syl) {
                     let matches = if *is_initial {
-                        syl.starts_with(first_seg.as_str())
+                        // 声母缩写时，如果 single_syllables 已加载则只接受合法单音节，
+                        // 防止多音节 key 冒充单音节；未加载时向后兼容
+                        (single_syllables.is_empty() || single_syllables.contains(syl))
+                            && syl.starts_with(first_seg.as_str())
                     } else {
                         syl == first_seg.as_str()
                     };
                     if matches
-                        && self.recursive_mixed_match(&key[len..], &segments[1..]) {
+                        && self.recursive_mixed_match(&key[len..], &segments[1..], single_syllables) {
                             return true;
                         }
                 }
@@ -467,7 +473,9 @@ impl Trie {
 
         if segments.len() == 1 && self.index.contains_key(key) {
             let matches = if *is_initial {
-                key.starts_with(first_seg.as_str())
+                // 同样需要检查单音节
+                (single_syllables.is_empty() || single_syllables.contains(key))
+                    && key.starts_with(first_seg.as_str())
             } else {
                 key == first_seg.as_str()
             };

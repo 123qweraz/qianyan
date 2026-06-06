@@ -178,6 +178,7 @@ pub fn handle_composing(
             tries: &tries_map,
             syllable_freq: &ctx.engine.syllable_freq,
             base_syllables: &ctx.engine.base_syllables,
+            single_syllables: &ctx.engine.single_syllables,
             user_dict: &ctx.config.learned_words,
             usage_history: &ctx.engine.usage_history,
             ngram_history: &ctx.engine.ngram_history,

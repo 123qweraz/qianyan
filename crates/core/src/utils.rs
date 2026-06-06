@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::env;
 use std::fs::File;
 use std::io::BufReader;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use serde_json::Value;
 use crate::config::PunctuationEntry;
 
@@ -85,4 +85,21 @@ pub fn load_syllable_frequencies(root: &Path) -> HashMap<String, u64> {
         }
     }
     map
+}
+
+pub fn load_single_syllables(root: &Path) -> HashSet<String> {
+    let mut set = HashSet::new();
+    for filename in &["level1.json", "level2.json", "level3.json"] {
+        let path = root.join("dicts/chinese/chars").join(filename);
+        if let Ok(f) = File::open(&path) {
+            if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
+                if let Some(obj) = v.as_object() {
+                    for key in obj.keys() {
+                        set.insert(key.to_lowercase());
+                    }
+                }
+            }
+        }
+    }
+    set
 }

@@ -377,7 +377,7 @@ impl InputScheme for ChineseScheme {
             if let Some(d) = context.tries.get("chinese") {
                 let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, d);
                 if abbr_segs.len() > 1 {
-                    let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, 200);
+                    let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, 200, context.single_syllables);
                     abbr_results.sort_by_key(|r| std::cmp::Reverse(r.weight));
                     for tr in abbr_results {
                         if final_results.len() >= max_results {
@@ -494,7 +494,8 @@ impl InputScheme for ChineseScheme {
         }
 
         // 策略 4: 纠错 — 所有策略无结果时，用编辑距离找最近的 key
-        if final_results.is_empty() && !query.contains(' ') {
+        if final_results.is_empty() && !query.contains(' ')
+            && context.config.input.enable_error_correction {
             let pinyin_only = &pinyin_key;
             if let Some(d) = context.tries.get("chinese") {
                 if let Ok(lev) = Levenshtein::new(pinyin_only, 1u32) {
