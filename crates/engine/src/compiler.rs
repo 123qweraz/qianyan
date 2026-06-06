@@ -1,3 +1,4 @@
+use crate::trie::{TRIE_MAGIC, TRIE_VERSION};
 use fst::MapBuilder;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -21,8 +22,8 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                 println!("[Compiler] 检查方案: {}", dir_name);
                 fs::create_dir_all(&out_dir)?;
 
-                let trie_idx = format!("{}/trie.index", out_dir);
-                if should_compile(Path::new(&src_path), Path::new(&trie_idx)) {
+                let trie_dat = format!("{}/trie.data", out_dir);
+                if should_compile(Path::new(&src_path), Path::new(&trie_dat)) {
                     println!("[Compiler] 方案 [{}] 需要编译，正在执行...", dir_name);
                     let is_english = dir_name.contains("english");
                     let start = std::time::Instant::now();
@@ -46,6 +47,27 @@ fn should_compile(src_dir: &Path, target_file: &Path) -> bool {
     if !target_file.exists() {
         return true;
     }
+
+    // 检查版本头，如果版本不对也需要重新编译
+    if let Ok(mut file) = File::open(target_file) {
+        use std::io::Read;
+        let mut magic = [0u8; 4];
+        let mut version_bytes = [0u8; 4];
+        if file.read_exact(&mut magic).is_ok() && &magic == TRIE_MAGIC {
+            if file.read_exact(&mut version_bytes).is_ok() {
+                let version = u32::from_le_bytes(version_bytes);
+                if version != TRIE_VERSION {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        } else {
+            // 旧版本没有头，或者魔法数字不对
+            return true;
+        }
+    }
+
     let target_mtime = target_file
         .metadata()
         .and_then(|m| m.modified())
@@ -261,7 +283,12 @@ fn write_binary_dict(
     {
         let mut data_writer = BufWriter::new(File::create(&tmp_dat)?);
         let mut index_builder = MapBuilder::new(File::create(&tmp_idx)?)?;
-        let mut current_offset = 0u64;
+
+        // 写入头部
+        data_writer.write_all(TRIE_MAGIC)?;
+        data_writer.write_all(&TRIE_VERSION.to_le_bytes())?;
+
+        let mut current_offset = 8u64;
         for (pinyin, mut pairs) in entries {
             let mut seen = std::collections::HashSet::new();
             pairs.retain(|e| seen.insert(e.word.clone()));

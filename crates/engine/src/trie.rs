@@ -6,6 +6,8 @@ use std::path::Path;
 use std::sync::{Arc, OnceLock};
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
+pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
+pub const TRIE_VERSION: u32 = 2; // v2: 增加了 flags 字节用于生僻字过滤
 
 #[derive(Clone, Copy)]
 pub struct TrieResult<'a> {
@@ -65,6 +67,22 @@ impl Trie {
         let index_data = load_data(index_path.as_ref())?;
         let data_data = load_data(data_path.as_ref())?;
         let index = Map::new(index_data)?;
+
+        // 检查版本头
+        let data = data_data.as_ref();
+        if data.len() >= 8 && &data[0..4] == TRIE_MAGIC {
+            let version = u32::from_le_bytes(data[4..8].try_into().unwrap());
+            if version != TRIE_VERSION {
+                return Err(format!(
+                    "Trie version mismatch: expected {}, found {}",
+                    TRIE_VERSION, version
+                )
+                .into());
+            }
+        } else {
+            // 如果没有魔法数字，视为旧版本 v1
+            return Err("Trie format too old (v1), please recompile dictionaries.".into());
+        }
 
         Ok(Self {
             index,
