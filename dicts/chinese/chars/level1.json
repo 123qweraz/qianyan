@@ -35396,6 +35396,16 @@
     },
     {
       "category": "level-1",
+      "char": "率",
+      "en": "Rate",
+      "stroke_aux": "yfl",
+      "tone": "lǜ",
+      "trad": "率",
+      "weight": 217561,
+      "strokes": "41554413412"
+    },
+    {
+      "category": "level-1",
       "char": "摔",
       "en": "Fall",
       "stroke_aux": "ffs",
