@@ -300,21 +300,20 @@ impl Translator for UserDictTranslator {
         &self,
         _input: &str,
         segments: &[String],
-        _config: &Config,
+        config: &Config,
         _limit: usize,
     ) -> Vec<Candidate> {
         let query = segments.join("");
         let mut results = Vec::new();
         let dict = self.user_dict.load();
-        log::trace!("UserDictTranslator: query={}, profile={}", query, self.profile);
+        
         if let Some(profile_dict) = dict.get(&self.profile) {
-            // 仅当输入含元音（全拼）时才查询用户词典；
-            // 纯声母（简拼）跳过，让简拼策略处理
-            let has_vowel = query.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
-            if has_vowel {
-                // 精确匹配
-                if let Some(words) = profile_dict.get(&query) {
-                    for (word, weight) in words {
+            let mut seen = std::collections::HashSet::new();
+
+            // 1. 精确匹配
+            if let Some(words) = profile_dict.get(&query) {
+                for (word, weight) in words {
+                    if seen.insert(word.as_str()) {
                         let (trad, en, stroke) = lookup_trie_info(&self.trie, &query, word);
                         results.push(Candidate {
                             text: Arc::from(word.as_str()),
@@ -328,31 +327,60 @@ impl Translator for UserDictTranslator {
                             match_level: 3,
                         });
                     }
-                } else {
-                    // 前缀匹配遍历 HashMap
-                    let mut prefix_matches: Vec<(&String, &Vec<(String, u32)>)> = profile_dict
-                        .iter()
-                        .filter(|(pinyin, _)| pinyin.starts_with(&query))
-                        .collect();
-                    prefix_matches.sort_by_key(|(pinyin, _)| pinyin.len());
-                    let mut seen = std::collections::HashSet::new();
-                    for (matched_pinyin, words) in prefix_matches {
+                }
+            }
+
+            // 2. 前缀匹配 (全拼)
+            if config.input.enable_prefix_matching {
+                // 为了性能，只在查询长度 > 1 或者 profile 不是中文时执行全量扫描
+                // 或者在词典较小时执行。
+                for (pinyin, words) in profile_dict.iter() {
+                    if pinyin.starts_with(&query) && pinyin != &query {
                         for (word, weight) in words {
-                            if !seen.insert(word) {
-                                continue;
+                            if seen.insert(word.as_str()) {
+                                let (trad, en, stroke) = lookup_trie_info(&self.trie, pinyin, word);
+                                results.push(Candidate {
+                                    text: Arc::from(word.as_str()),
+                                    simplified: Arc::from(word.as_str()),
+                                    traditional: trad,
+                                    hint: Arc::from(pinyin.as_str()),
+                                    english_aux: en,
+                                    stroke_aux: stroke,
+                                    source: Arc::from("User"),
+                                    weight: *weight as f64 * 0.8,
+                                    match_level: 1,
+                                });
                             }
-                            let (trad, en, stroke) = lookup_trie_info(&self.trie, matched_pinyin, word);
-                            results.push(Candidate {
-                                text: Arc::from(word.as_str()),
-                                simplified: Arc::from(word.as_str()),
-                                traditional: trad,
-                                hint: Arc::from(matched_pinyin.as_str()),
-                                english_aux: en,
-                                stroke_aux: stroke,
-                                source: Arc::from("User"),
-                            weight: *weight as f64 * 0.8,
-                            match_level: 0, // user prefix below system prefix (level 1)
-                            });
+                        }
+                    }
+                }
+            }
+
+            // 3. 简拼/混拼匹配
+            let is_abbreviation = segments.len() > 1 && segments.iter().any(|s| s.len() == 1);
+            if is_abbreviation && config.input.enable_abbreviation_matching && self.profile == "chinese" {
+                for (pinyin, words) in profile_dict.iter() {
+                    // 如果已经通过前缀匹配找到了，就不再重复计算
+                    if pinyin.starts_with(&query) {
+                        continue;
+                    }
+
+                    if self.matches_jianpin(pinyin, segments) {
+                        for (word, weight) in words {
+                            if seen.insert(word.as_str()) {
+                                let (trad, en, stroke) = lookup_trie_info(&self.trie, pinyin, word);
+                                results.push(Candidate {
+                                    text: Arc::from(word.as_str()),
+                                    simplified: Arc::from(word.as_str()),
+                                    traditional: trad,
+                                    hint: Arc::from("User (Abbr)"),
+                                    english_aux: en,
+                                    stroke_aux: stroke,
+                                    source: Arc::from("User"),
+                                    weight: *weight as f64 * 0.9,
+                                    match_level: 2,
+                                });
+                            }
                         }
                     }
                 }
@@ -363,6 +391,57 @@ impl Translator for UserDictTranslator {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+impl UserDictTranslator {
+    /// 检查全拼 pinyin 是否匹配简拼 segments
+    /// 例如 pinyin="fuzhuma", segments=["f", "z", "m"] -> true
+    fn matches_jianpin(&self, pinyin: &str, segments: &[String]) -> bool {
+        if segments.is_empty() {
+            return pinyin.is_empty();
+        }
+        if pinyin.is_empty() {
+            return false;
+        }
+
+        // 获取当前 Trie（用于辅助分词）
+        let trie = match self.trie {
+            Some(ref t) => t,
+            None => return false,
+        };
+
+        self.recursive_jianpin_match(pinyin, segments, trie)
+    }
+
+    fn recursive_jianpin_match(&self, pinyin: &str, segments: &[String], trie: &Trie) -> bool {
+        if segments.is_empty() {
+            // 简拼匹配通常支持前缀匹配，即 segments 耗尽即可认为匹配成功
+            return true;
+        }
+        if pinyin.is_empty() {
+            return false;
+        }
+
+        let target_initial = &segments[0];
+
+        // 尝试从当前位置分出一个合法音节
+        // 限制音节长度（拼音最长为 "zhuang" 6位）
+        for len in 1..=6 {
+            if len > pinyin.len() {
+                break;
+            }
+            let syl = &pinyin[..len];
+            if trie.index.contains_key(syl) {
+                // 检查该音节是否匹配简拼的首字母
+                if syl.starts_with(target_initial) {
+                    if self.recursive_jianpin_match(&pinyin[len..], &segments[1..], trie) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 
