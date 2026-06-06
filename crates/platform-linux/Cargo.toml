@@ -22,5 +22,5 @@ wayland-protocols = { version = "0.32", features = ["unstable"] }
 wayland-protocols-misc = { version = "0.3", features = ["client"] }
 xkbcommon = "0.8"
 tokio = { version = "1", features = ["full"] }
-zbus = { version = "5", features = ["tokio"] }
+zbus = { version = "5" }
 dirs = "5"

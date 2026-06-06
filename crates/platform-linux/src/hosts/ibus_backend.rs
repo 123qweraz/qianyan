@@ -649,7 +649,7 @@ async fn run_ibus(
 
     // Request the org.freedesktop.IBus bus name
     if let Err(e) = bus.request_name("org.freedesktop.IBus").await {
-        error!("[IBus] Failed to request org.freedesktop.IBus name: {e}");
+        warn!("[IBus] Failed to request org.freedesktop.IBus name (another ibus-daemon running?): {e}");
     } else {
         info!("[IBus] Acquired org.freedesktop.IBus");
     }
