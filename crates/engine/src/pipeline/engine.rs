@@ -236,6 +236,13 @@ impl SearchEngine {
                 });
             }
 
+            if !config_ref.input.enable_rare_chars {
+                if let Some(trie) = self.get_or_load_trie(query.profile) {
+                    let rare = trie.get_rare_chars();
+                    results.retain(|c| !rare.contains(c.text.as_ref()));
+                }
+            }
+
             results.truncate(query.limit);
             return (results, vec![]);
         }
@@ -267,6 +274,13 @@ impl SearchEngine {
                 final_results.retain(|c| {
                     self.matches_filter(c, query.aux_filter, config_ref.input.english_aux_mode)
                 });
+            }
+
+            if !config_ref.input.enable_rare_chars {
+                if let Some(trie) = self.get_or_load_trie(query.profile) {
+                    let rare = trie.get_rare_chars();
+                    final_results.retain(|c| !rare.contains(c.text.as_ref()));
+                }
             }
 
             final_results.truncate(query.limit);

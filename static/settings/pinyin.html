@@ -80,6 +80,10 @@
                         <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
+                        <div class="info"><div class="title">生僻字</div><div class="desc">开启后可以输入三级字库以外的生僻汉字</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_rare_chars"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
                         <div class="info"><div class="title">模糊拼音</div><div class="desc">z/zh、c/ch、s/sh、an/ang 等模糊音匹配</div></div>
                         <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊音设置 →</a>
                     </div>
@@ -226,6 +230,7 @@
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
             bindInput('enable_error_correction', 'input');
+            bindInput('enable_rare_chars', 'input');
             bindInput('anti_typo_mode', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_keyboard_voice', 'input');

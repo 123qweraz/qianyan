@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字卡片 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .card-layout {
+            display: flex;
+            gap: 32px;
+            align-items: flex-start;
+            margin-top: 32px;
+        }
+        .card-sidebar {
+            flex: 0 0 320px;
+            position: sticky;
+            top: 20px;
+        }
+        .card-preview-area {
+            flex: 1;
+            min-width: 0;
+        }
+        .card-canvas-wrapper {
+            background: var(--apple-card);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid var(--apple-border);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            display: flex;
+            justify-content: center;
+            min-height: 300px;
+            align-items: center;
+        }
+        #cardCanvas {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .template-btn {
+            padding: 10px 8px;
+            border-radius: 12px;
+            border: 2px solid var(--apple-border);
+            background: var(--apple-card);
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: var(--apple-text);
+        }
+        .template-btn:hover {
+            border-color: var(--apple-accent);
+            background: rgba(0,113,227,0.04);
+        }
+        .template-btn.active {
+            border-color: var(--apple-accent);
+            background: rgba(0,113,227,0.08);
+        }
+        .template-btn .preview-dot {
+            display: block;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            margin: 0 auto 6px;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--apple-text);
+        }
+        .control-group textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1.5px solid var(--apple-border);
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: var(--apple-card);
+            color: var(--apple-text);
+            line-height: 1.6;
+        }
+        .control-group textarea:focus {
+            border-color: var(--apple-accent);
+            box-shadow: 0 0 0 3px rgba(0,113,227,0.12);
+        }
+        .control-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .control-row select, .control-row input[type="range"] {
+            flex: 1;
+        }
+        select {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1.5px solid var(--apple-border);
+            font-size: 13px;
+            background: var(--apple-card);
+            color: var(--apple-text);
+            outline: none;
+            cursor: pointer;
+        }
+        select:focus {
+            border-color: var(--apple-accent);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--apple-border);
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--apple-accent);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,113,227,0.3);
+        }
+        .range-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--apple-accent);
+            min-width: 32px;
+            text-align: right;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .action-buttons .btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-icon {
+            font-size: 18px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #323232;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 999;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .watermark-hint {
+            font-size: 12px;
+            color: var(--apple-secondary);
+            text-align: center;
+            margin-top: 8px;
+        }
+        @media (max-width: 900px) {
+            .card-layout { flex-direction: column-reverse; }
+            .card-sidebar { flex: none; width: 100%; position: static; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>文字卡片</h1>
+            <p style="color:var(--apple-secondary);margin-top:-8px;">将文字转换成精美的图片卡片，支持分享和保存</p>
+        </header>
+
+        <div class="card-layout">
+            <div class="card-sidebar">
+                <div class="control-group">
+                    <label>文字内容</label>
+                    <textarea id="textInput" placeholder="输入你想制作的文字内容&#10;&#10;可以换行，支持中英文和数字">生活不止眼前的苟且
+还有诗和远方的田野</textarea>
+                </div>
+
+                <div class="control-group">
+                    <label>风格模板</label>
+                    <div class="template-grid" id="templateGrid">
+                        <div class="template-btn active" data-template="minimal">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#fff,#f0f0f0);border:1px solid #ddd;"></span>
+                            极简
+                        </div>
+                        <div class="template-btn" data-template="warm">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#f5e6d3,#e8d5c4);"></span>
+                            日系
+                        </div>
+                        <div class="template-btn" data-template="classical">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#f0e6d3,#d9c9a8);"></span>
+                            古风
+                        </div>
+                        <div class="template-btn" data-template="gradient">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#667eea,#764ba2);"></span>
+                            渐变
+                        </div>
+                        <div class="template-btn" data-template="dark">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#1a1a2e,#16213e);"></span>
+                            暗夜
+                        </div>
+                        <div class="template-btn" data-template="fresh">
+                            <span class="preview-dot" style="background:linear-gradient(135deg,#e0f7fa,#fce4ec);"></span>
+                            清新
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-row">
+                        <label style="margin:0;flex:1;">字体大小</label>
+                        <span class="range-value" id="fontSizeValue">28</span>
+                    </div>
+                    <input type="range" id="fontSizeRange" min="16" max="56" value="28" step="2">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-row">
+                        <label style="margin:0;flex:1;">字间距</label>
+                        <span class="range-value" id="letterSpacingValue">2</span>
+                    </div>
+                    <input type="range" id="letterSpacingRange" min="0" max="12" value="2" step="1">
+                </div>
+
+                <div class="control-group">
+                    <label>对齐方式</label>
+                    <div class="template-grid" style="grid-template-columns:repeat(3,1fr);">
+                        <div class="template-btn align-btn active" data-align="left">左对齐</div>
+                        <div class="template-btn align-btn" data-align="center">居中</div>
+                        <div class="template-btn align-btn" data-align="right">右对齐</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn" onclick="downloadCard()">
+                        <span class="btn-icon">⬇</span> 下载图片
+                    </button>
+                    <button class="btn" onclick="copyCard()">
+                        <span class="btn-icon">📋</span> 复制图片
+                    </button>
+                </div>
+                <div class="watermark-hint">
+                    卡片尺寸 840×auto，支持透明背景
+                </div>
+            </div>
+
+            <div class="card-preview-area">
+                <div class="card-canvas-wrapper">
+                    <canvas id="cardCanvas" width="840" height="480"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ── Templates ──
+    const TEMPLATES = {
+        minimal: {
+            name: '极简',
+            bg: (ctx, w, h) => {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+            },
+            textColor: '#1d1d1f',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
+            decoration: (ctx, w, h, color) => {
+                ctx.fillStyle = '#0071e3';
+                ctx.fillRect(60, 40, w - 120, 3);
+                ctx.fillRect(60, h - 40, w - 120, 3);
+            },
+            padding: { t: 80, b: 80, l: 80, r: 80 }
+        },
+        warm: {
+            name: '日系',
+            bg: (ctx, w, h) => {
+                const g = ctx.createLinearGradient(0, 0, 0, h);
+                g.addColorStop(0, '#f5e6d3');
+                g.addColorStop(0.5, '#efe0cd');
+                g.addColorStop(1, '#e8d5c4');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = 'rgba(180,150,120,0.08)';
+                for (let i = 0; i < h; i += 24) {
+                    ctx.fillRect(40, i, w - 80, 1);
+                }
+            },
+            textColor: '#5a4a3a',
+            fontFamily: "'STKaiti', 'KaiTi', 'Noto Serif CJK SC', serif",
+            decoration: (ctx, w, h, color) => {
+                ctx.fillStyle = '#c4a882';
+                ctx.fillRect(55, 55, 4, h - 110);
+                ctx.fillStyle = 'rgba(196,168,130,0.3)';
+                ctx.beginPath();
+                ctx.arc(w - 70, h - 70, 20, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            padding: { t: 80, b: 80, l: 80, r: 80 }
+        },
+        classical: {
+            name: '古风',
+            bg: (ctx, w, h) => {
+                const g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w,h)*0.7);
+                g.addColorStop(0, '#f5edd6');
+                g.addColorStop(1, '#d9c9a8');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+                ctx.strokeStyle = 'rgba(120,90,60,0.15)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < Math.max(w, h); i += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, h);
+                    ctx.stroke();
+                }
+            },
+            textColor: '#3d2b1f',
+            fontFamily: "'STKaiti', 'KaiTi', 'Noto Serif CJK SC', serif",
+            decoration: (ctx, w, h, color) => {
+                const seal = ctx.createLinearGradient(0, 0, 0, 70);
+                seal.addColorStop(0, '#c23a2b');
+                seal.addColorStop(1, '#a83222');
+                ctx.fillStyle = seal;
+                ctx.fillRect(w - 90, 50, 50, 50);
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.font = '20px "STKaiti","KaiTi",serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('印', w - 65, 75);
+                ctx.fillStyle = 'rgba(120,90,60,0.2)';
+                ctx.fillRect(55, 55, w - 110, 3);
+                ctx.fillRect(55, h - 55, w - 110, 3);
+            },
+            padding: { t: 90, b: 90, l: 80, r: 80 }
+        },
+        gradient: {
+            name: '渐变',
+            bg: (ctx, w, h) => {
+                const g = ctx.createLinearGradient(0, 0, w, h);
+                g.addColorStop(0, '#667eea');
+                g.addColorStop(0.5, '#764ba2');
+                g.addColorStop(1, '#f093fb');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+            },
+            textColor: '#ffffff',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
+            decoration: (ctx, w, h, color) => {
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.beginPath();
+                ctx.arc(w * 0.2, h * 0.3, 150, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(w * 0.85, h * 0.7, 100, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                ctx.beginPath();
+                ctx.arc(w * 0.5, h * 0.8, 200, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            padding: { t: 80, b: 80, l: 80, r: 80 }
+        },
+        dark: {
+            name: '暗夜',
+            bg: (ctx, w, h) => {
+                const g = ctx.createLinearGradient(0, 0, w, h);
+                g.addColorStop(0, '#0f0c29');
+                g.addColorStop(0.5, '#1a1a2e');
+                g.addColorStop(1, '#16213e');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+                for (let i = 0; i < 40; i++) {
+                    const x = Math.random() * w;
+                    const y = Math.random() * h;
+                    const r = Math.random() * 1.5 + 0.5;
+                    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.4 + 0.1})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+            textColor: '#e0e0ff',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
+            decoration: (ctx, w, h, color) => {
+                ctx.fillStyle = 'rgba(100,120,255,0.08)';
+                ctx.beginPath();
+                ctx.arc(w - 80, 80, 120, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(100,120,255,0.12)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(60, h - 60);
+                ctx.lineTo(w - 60, h - 60);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(100,120,255,0.15)';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('✦ ' + new Date().toLocaleDateString('zh-CN'), w - 60, h - 75);
+            },
+            padding: { t: 80, b: 80, l: 80, r: 80 }
+        },
+        fresh: {
+            name: '清新',
+            bg: (ctx, w, h) => {
+                const g = ctx.createLinearGradient(0, 0, 0, h);
+                g.addColorStop(0, '#e0f7fa');
+                g.addColorStop(0.5, '#f3e5f5');
+                g.addColorStop(1, '#fce4ec');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+            },
+            textColor: '#37474f',
+            fontFamily: "'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif",
+            decoration: (ctx, w, h, color) => {
+                const emojis = ['🌸', '🌿', '✨', '🍃'];
+                ctx.font = '18px serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = 'rgba(0,0,0,0.06)';
+                ctx.fillText(emojis[0], 65, 55);
+                ctx.textAlign = 'right';
+                ctx.fillText(emojis[1], w - 65, 55);
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(emojis[2], 65, h - 55);
+                ctx.textAlign = 'right';
+                ctx.fillText(emojis[3], w - 65, h - 55);
+            },
+            padding: { t: 80, b: 80, l: 80, r: 80 }
+        }
+    };
+
+    // ── State ──
+    let currentTemplate = 'minimal';
+    let currentAlign = 'center';
+
+    // ── Init ──
+    const canvas = document.getElementById('cardCanvas');
+    const textInput = document.getElementById('textInput');
+    const fontSizeRange = document.getElementById('fontSizeRange');
+    const letterSpacingRange = document.getElementById('letterSpacingRange');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const letterSpacingValue = document.getElementById('letterSpacingValue');
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.className = 'toast', 2000);
+    }
+
+    // ── Template selection ──
+    document.querySelectorAll('.template-btn[data-template]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.template-btn[data-template]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTemplate = btn.dataset.template;
+            scheduleRender();
+        });
+    });
+
+    // ── Align selection ──
+    document.querySelectorAll('.align-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentAlign = btn.dataset.align;
+            scheduleRender();
+        });
+    });
+
+    // ── Text input ──
+    textInput.addEventListener('input', scheduleRender);
+
+    // ── Font size ──
+    fontSizeRange.addEventListener('input', () => {
+        fontSizeValue.textContent = fontSizeRange.value;
+        scheduleRender();
+    });
+
+    // ── Letter spacing ──
+    letterSpacingRange.addEventListener('input', () => {
+        letterSpacingValue.textContent = letterSpacingRange.value;
+        scheduleRender();
+    });
+
+    // ── Render debounce ──
+    let renderTimer = null;
+    function scheduleRender() {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(renderCard, 100);
+    }
+
+    // ── Text wrapping ──
+    function wrapText(ctx, text, font, maxWidth, letterSpacing) {
+        const paragraphs = text.split('\n');
+        const lines = [];
+        for (const para of paragraphs) {
+            if (!para) { lines.push(''); continue; }
+            let current = '';
+            for (const ch of para) {
+                const test = current + ch;
+                const metrics = ctx.measureText(test);
+                const tw = metrics.width + (test.length - 1) * letterSpacing;
+                if (tw > maxWidth && current) {
+                    lines.push(current);
+                    current = ch;
+                } else {
+                    current = test;
+                }
+            }
+            if (current) lines.push(current);
+        }
+        return lines;
+    }
+
+    // ── Main render ──
+    function renderCard() {
+        const text = textInput.value || '请输入文字';
+        const fontSize = parseInt(fontSizeRange.value);
+        const letterSpacing = parseInt(letterSpacingRange.value);
+        const tmpl = TEMPLATES[currentTemplate];
+        const DPR = window.devicePixelRatio || 1;
+
+        const ctx = canvas.getContext('2d');
+        const pad = tmpl.padding;
+        const cardW = 840;
+        const maxTextW = cardW - pad.l - pad.r;
+
+        // Measure text
+        ctx.font = `bold ${fontSize}px ${tmpl.fontFamily}`;
+        const lineHeight = fontSize * 1.8;
+        const lines = wrapText(ctx, text, tmpl.fontFamily, maxTextW, letterSpacing);
+        const textH = lines.length * lineHeight;
+        const cardH = Math.max(300, pad.t + textH + pad.b);
+
+        // Set canvas size
+        canvas.width = cardW * DPR;
+        canvas.height = cardH * DPR;
+        canvas.style.width = cardW + 'px';
+        canvas.style.height = cardH + 'px';
+        ctx.scale(DPR, DPR);
+
+        // Background
+        tmpl.bg(ctx, cardW, cardH);
+
+        // Decoration
+        tmpl.decoration(ctx, cardW, cardH);
+
+        // Text
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = tmpl.textColor;
+        ctx.font = `bold ${fontSize}px ${tmpl.fontFamily}`;
+
+        const startY = pad.t;
+        let x;
+        if (currentAlign === 'left') x = pad.l;
+        else if (currentAlign === 'right') x = cardW - pad.r;
+        else x = cardW / 2;
+
+        ctx.textAlign = currentAlign;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line) continue;
+            const y = startY + i * lineHeight;
+
+            // Letter spacing
+            if (letterSpacing > 0 && line.length > 1) {
+                const chars = [...line];
+                const totalSpace = (chars.length - 1) * letterSpacing;
+                let startX;
+                if (currentAlign === 'left') startX = x;
+                else if (currentAlign === 'right') startX = x - totalSpace;
+                else startX = x - (ctx.measureText(line).width + totalSpace) / 2;
+
+                for (let c = 0; c < chars.length; c++) {
+                    ctx.fillText(chars[c], startX, y);
+                    startX += ctx.measureText(chars[c]).width + letterSpacing;
+                }
+            } else {
+                ctx.fillText(line, x, y);
+            }
+        }
+    }
+
+    // ── Download ──
+    function downloadCard() {
+        const link = document.createElement('a');
+        link.download = 'card.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('图片已下载');
+    }
+
+    // ── Copy to clipboard ──
+    async function copyCard() {
+        try {
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            showToast('图片已复制到剪贴板');
+        } catch (e) {
+            // Fallback
+            try {
+                canvas.toBlob(async (blob) => {
+                    const item = new ClipboardItem({ 'image/png': blob });
+                    await navigator.clipboard.write([item]);
+                    showToast('图片已复制到剪贴板');
+                });
+            } catch (e2) {
+                showToast('复制失败，请使用下载功能');
+            }
+        }
+    }
+
+    // ── Initial render ──
+    renderCard();
+    </script>
+</body>
+</html>

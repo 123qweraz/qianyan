@@ -1,6 +1,6 @@
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use std::sync::{Arc, OnceLock};
@@ -15,6 +15,7 @@ pub struct TrieResult<'a> {
     pub en: &'a str,
     pub stroke_aux: &'a str,
     pub weight: u32,
+    pub flags: u8, // bit0: 1 = level-4 (生僻字)
 }
 
 #[derive(Clone)]
@@ -37,6 +38,7 @@ pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
     word_pinyin: Arc<OnceLock<HashMap<Box<str>, Box<str>>>>,
+    rare_chars_cache: Arc<OnceLock<HashSet<String>>>,
 }
 
 impl Trie {
@@ -68,6 +70,7 @@ impl Trie {
             index,
             data: data_data,
             word_pinyin: Arc::new(OnceLock::new()),
+            rare_chars_cache: Arc::new(OnceLock::new()),
         })
     }
 
@@ -100,6 +103,26 @@ impl Trie {
         } else {
             Some(results)
         }
+    }
+
+    /// 获取生僻字集合（flags & 1），带内部缓存
+    pub fn get_rare_chars(&self) -> &HashSet<String> {
+        self.rare_chars_cache
+            .get_or_init(|| self.build_rare_chars())
+    }
+
+    /// 从二进制数据中提取 level-4 生僻字集合（flags & 1）
+    pub fn build_rare_chars(&self) -> HashSet<String> {
+        let mut set = HashSet::new();
+        let mut stream = self.index.stream();
+        while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
+            self.read_block(offset as usize, |tr| {
+                if tr.flags & 1 != 0 {
+                    set.insert(tr.word.to_string());
+                }
+            });
+        }
+        set
     }
 
     /// 预热词库：读取前 limit 条记录以填充 Page Cache
@@ -535,6 +558,9 @@ impl Trie {
             );
             cursor += 4;
 
+            let flags = if cursor < data.len() { data[cursor] } else { 0 };
+            cursor += 1;
+
             f(TrieResult {
                 word,
                 trad,
@@ -542,6 +568,7 @@ impl Trie {
                 en,
                 stroke_aux,
                 weight,
+                flags,
             });
         }
     }

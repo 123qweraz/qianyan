@@ -118,7 +118,11 @@ struct DictEntry {
     en: String,
     stroke_aux: String,
     weight: u32,
+    flags: u8, // bit0: 1 = level-4 (生僻字)
 }
+
+/// 0x00 = 普通字 (level 1-3), 0x01 = 生僻字 (level-4)
+const FLAG_LEVEL4: u8 = 0x01;
 
 fn process_json_file(
     path: &Path,
@@ -149,6 +153,7 @@ fn process_json_file(
                             en: en_hint,
                             stroke_aux: String::new(),
                             weight: 0,
+                            flags: 0,
                         });
                 } else {
                     for v in arr {
@@ -163,6 +168,7 @@ fn process_json_file(
                                     en: String::new(),
                                     stroke_aux: String::new(),
                                     weight: 0,
+                                    flags: 0,
                                 });
                         } else if let Some(o) = v.as_object() {
                             if let Some(c) = o.get("char").and_then(|c| c.as_str()) {
@@ -172,11 +178,15 @@ fn process_json_file(
                                     o.get("tone").and_then(|t| t.as_str()).unwrap_or("");
                                 let stroke_aux = o
                                     .get("stroke_aux")
-                                    .or_else(|| o.get("category")) // 自动尝试读取级别信息
                                     .and_then(|s| s.as_str())
                                     .unwrap_or("");
                                 let weight =
                                     o.get("weight").and_then(|w| w.as_u64()).unwrap_or(0) as u32;
+                                let category = o
+                                    .get("category")
+                                    .and_then(|s| s.as_str())
+                                    .unwrap_or("");
+                                let flags = if category == "level-4" { FLAG_LEVEL4 } else { 0 };
 
                                 entries.entry(normalized_key.clone()).or_default().push(
                                     DictEntry {
@@ -186,6 +196,7 @@ fn process_json_file(
                                         en: en_hint.to_string(),
                                         stroke_aux: stroke_aux.to_string(),
                                         weight,
+                                        flags,
                                     },
                                 );
                             }
@@ -232,6 +243,7 @@ fn process_yaml_file(
                 en: String::new(),
                 stroke_aux: String::new(),
                 weight,
+                flags: 0,
             });
         }
     }
@@ -275,6 +287,7 @@ fn write_binary_dict(
                 block.extend_from_slice(&(s_bytes.len() as u16).to_le_bytes());
                 block.extend_from_slice(s_bytes);
                 block.extend_from_slice(&entry.weight.to_le_bytes());
+                block.push(entry.flags);
             }
             data_writer.write_all(&block)?;
             current_offset += block.len() as u64;
