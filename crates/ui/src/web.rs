@@ -1,8 +1,10 @@
 use axum::{
     routing::{get, post},
     extract::{State, Json, DefaultBodyLimit, Extension},
-    response::{IntoResponse, Html},
+    response::{IntoResponse, Html, Response},
     http::{StatusCode, Uri, HeaderName, header},
+    body::Body,
+    middleware,
     Router,
 };
 use fst::Streamer;
@@ -14,7 +16,7 @@ use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicU64, AtomicBool, Ordering};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -49,6 +51,8 @@ pub struct ImeEngineHandle {
     pub root: PathBuf,
     pub(super) sessions: StdMutex<HashMap<String, ImeSession>>,
     pub shutdown_tx: tokio::sync::watch::Sender<bool>,
+    pub shutdown_pending: Arc<AtomicBool>,
+    pub last_activity: Arc<AtomicU64>,
 }
 
 pub(super) struct ImeSession {
@@ -75,11 +79,17 @@ impl WebServer {
     pub async fn start(self) {
         let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
         let state: WebState = (self.config, self.tries, self.tray_tx);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
         let ime_handle = Arc::new(ImeEngineHandle {
             engine: Arc::new(RwLock::new(None)),
             root: self.root,
             sessions: StdMutex::new(HashMap::new()),
             shutdown_tx,
+            shutdown_pending: Arc::new(AtomicBool::new(false)),
+            last_activity: Arc::new(AtomicU64::new(now)),
         });
         let app = Router::new()
             .route("/", get(index_handler))
@@ -124,6 +134,7 @@ impl WebServer {
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
             .fallback(index_handler)
+            .layer(middleware::from_fn(activity_layer))
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .layer(Extension(ime_handle))
             .with_state(state);
@@ -379,10 +390,37 @@ async fn reset_config_section(
     StatusCode::OK
 }
 
+async fn activity_layer(
+    request: axum::http::Request<Body>,
+    next: middleware::Next,
+) -> Response {
+    if let Some(handle) = request.extensions().get::<Arc<ImeEngineHandle>>() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        handle.last_activity.store(now, Ordering::Relaxed);
+
+        let is_shutdown = request.uri().path() == "/api/shutdown";
+        if !is_shutdown {
+            handle.shutdown_pending.store(false, Ordering::Relaxed);
+        }
+    }
+    next.run(request).await
+}
+
 async fn shutdown_handler(
     Extension(handle): Extension<Arc<ImeEngineHandle>>,
 ) -> impl IntoResponse {
-    handle.shutdown_tx.send(true).ok();
+    handle.shutdown_pending.store(true, Ordering::Relaxed);
+    let pending = handle.shutdown_pending.clone();
+    let tx = handle.shutdown_tx.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+        if pending.load(Ordering::Relaxed) {
+            tx.send(true).ok();
+        }
+    });
     (StatusCode::OK, "服务器正在关闭...")
 }
 

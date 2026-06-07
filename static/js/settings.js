@@ -170,3 +170,8 @@ async function loadDictionaryViewer(filePath) {
         tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-5">数据加载失败: ' + e.message + '</td></tr>';
     }
 }
+
+// 关闭标签页时通知服务器退出，页面间导航时新页面的请求会在 3 秒内取消关闭
+window.addEventListener('pagehide', () => {
+    navigator.sendBeacon('/api/shutdown', '');
+});

@@ -28,17 +28,14 @@
   "input": {
     "autostart": true,
     "enabled_profiles": [
-      "chinese",
-      "english",
-      "japanese",
-      "stroke"
+      "chinese"
     ],
-    "phantom_type": "None"
+    "phantom_type": "Pinyin"
   },
   "linux": {
-    "backend_type": "wayland",
-    "backspace_delay_ms": 2,
-    "clipboard_delay_ms": 10,
+    "backend_type": "auto",
+    "backspace_delay_ms": 10,
+    "clipboard_delay_ms": 50,
     "corner": "bottom-right",
     "device_path": "/dev/input/event4",
     "fixed_position": true,
@@ -47,6 +44,6 @@
     "paste_method": "shift_insert",
     "show_notification": false,
     "show_slint_window": true,
-    "show_toggle_notification": true
+    "show_toggle_notification": false
   }
 }
