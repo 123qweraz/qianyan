@@ -1,0 +1,11 @@
+[package]
+name = "qianyan-web-settings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+qianyan-ime-core = { path = "../core" }
+qianyan-ime-ui = { path = "../ui" }
+serde_json = { workspace = true }
+tokio = { workspace = true }

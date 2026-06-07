@@ -10,6 +10,7 @@ use qianyan_ime_engine::compiler;
 use qianyan_ime_ui::GuiEvent;
 use std::collections::HashMap;
 use std::env;
+use std::io::BufRead;
 use std::sync::{Arc, Mutex, RwLock};
 
 static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
@@ -346,25 +347,76 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
                     if !WEB_SERVER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
                         WEB_SERVER_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
-                        let config_web = config_msg.clone();
-                        let tray_tx_web = tray_tx_for_main_loop.clone();
                         let root_web = root_for_tray.clone();
-                        std::thread::spawn(move || {
-                            if let Ok(rt) = tokio::runtime::Runtime::new() {
-                                rt.block_on(async {
-                                    let server = qianyan_ime_ui::web::WebServer::new(
-                                        18765,
-                                        Arc::new(std::sync::atomic::AtomicU16::new(18765)),
-                                        config_web,
-                                        Arc::new(RwLock::new(HashMap::new())),
-                                        tray_tx_web,
-                                        root_web,
-                                    );
-                                    server.start().await;
-                                });
+
+                        // Start TCP control server for IPC from subprocess
+                        let control_listener = match std::net::TcpListener::bind("127.0.0.1:0") {
+                            Ok(l) => l,
+                            Err(e) => {
+                                log::error!("[Web] Failed to bind control server: {}", e);
+                                WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                                return;
                             }
+                        };
+                        let control_port = control_listener.local_addr().unwrap().port();
+                        let tray_tx_control = tray_tx_for_main_loop.clone();
+
+                        std::thread::spawn(move || {
+                            if let Ok((stream, _)) = control_listener.accept() {
+                                let reader = std::io::BufReader::new(&stream);
+                                for line in reader.lines() {
+                                    if let Ok(line) = line {
+                                        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+                                            let cmd = msg.get("cmd").and_then(|c| c.as_str());
+                                            match cmd {
+                                                Some("reload_config") => {
+                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
+                                                }
+                                                Some("notify") => {
+                                                    if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
+                                                        let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
+                                                    }
+                                                }
+                                                Some("clear_user_dict") => {
+                                                    let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
+                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
+                                                }
+                                                Some("send_key") => {
+                                                    if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
+                                                        let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            // Subprocess disconnected; allow restart
+                            WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
                         });
-                        std::thread::sleep(std::time::Duration::from_millis(500));
+
+                        // Find and spawn subprocess binary
+                        let subprocess_path = std::env::current_exe()
+                            .ok()
+                            .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
+                            .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
+
+                        let root_str = root_web.to_string_lossy().to_string();
+                        match std::process::Command::new(&subprocess_path)
+                            .arg("--port").arg("18765")
+                            .arg("--control-port").arg(control_port.to_string())
+                            .arg("--root").arg(&root_str)
+                            .spawn()
+                        {
+                            Ok(_) => {
+                                std::thread::sleep(std::time::Duration::from_millis(500));
+                            }
+                            Err(e) => {
+                                log::error!("[Web] Failed to launch subprocess: {}", e);
+                                WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                            }
+                        }
                     }
                     #[cfg(target_os = "linux")]
                     {

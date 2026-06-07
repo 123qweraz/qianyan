@@ -4712,6 +4712,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "qianyan-web-settings"
+version = "0.1.0"
+dependencies = [
+ "qianyan-ime-core",
+ "qianyan-ime-ui",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "qoi"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
