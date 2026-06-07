@@ -48,6 +48,7 @@ pub struct ImeEngineHandle {
     pub engine: Arc<RwLock<Option<Arc<SearchEngine>>>>,
     pub root: PathBuf,
     pub(super) sessions: StdMutex<HashMap<String, ImeSession>>,
+    pub shutdown_tx: tokio::sync::watch::Sender<bool>,
 }
 
 pub(super) struct ImeSession {
@@ -72,17 +73,20 @@ impl WebServer {
     }
 
     pub async fn start(self) {
+        let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
         let state: WebState = (self.config, self.tries, self.tray_tx);
         let ime_handle = Arc::new(ImeEngineHandle {
             engine: Arc::new(RwLock::new(None)),
             root: self.root,
             sessions: StdMutex::new(HashMap::new()),
+            shutdown_tx,
         });
         let app = Router::new()
             .route("/", get(index_handler))
             .route("/api/config", get(get_config).post(update_config))
             .route("/api/config/reset", post(reset_config))
             .route("/api/config/reset/{sections}", post(reset_config_section))
+            .route("/api/shutdown", post(shutdown_handler))
             .route("/api/fonts", get(list_fonts))
             .route("/api/dicts", get(list_dicts))
             .route("/api/dicts/compile", post(compile_dicts_handler))
@@ -131,7 +135,11 @@ impl WebServer {
                 Ok(listener) => {
                     self.actual_port.store(current_port, Ordering::SeqCst);
                     println!("[Web] 服务器启动在 http://{}", addr);
-                    if let Err(e) = axum::serve(listener, app).await {
+                    if let Err(e) = axum::serve(listener, app)
+                        .with_graceful_shutdown(async move {
+                            shutdown_rx.changed().await.ok();
+                        })
+                        .await {
                         eprintln!("[Web] Server error: {}", e);
                     }
                     break;
@@ -369,6 +377,13 @@ async fn reset_config_section(
     if let Err(_e) = w.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
+}
+
+async fn shutdown_handler(
+    Extension(handle): Extension<Arc<ImeEngineHandle>>,
+) -> impl IntoResponse {
+    handle.shutdown_tx.send(true).ok();
+    (StatusCode::OK, "服务器正在关闭...")
 }
 
 #[derive(Serialize)]
