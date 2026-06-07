@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use arc_swap::ArcSwap;
 
-use crate::config_manager::UserDictData;
+use crate::config_manager::{UsageData, UserDictData};
 use crate::Config;
 use crate::Trie;
 
@@ -107,7 +107,7 @@ pub struct SearchEngine {
     pub base_syllables: Arc<HashSet<String>>,
     pub single_syllables: Arc<HashSet<String>>,
     pub(crate) learned_words: Arc<ArcSwap<UserDictData>>,
-    pub(crate) usage_history: Arc<ArcSwap<UserDictData>>,
+    pub(crate) usage_history: Arc<ArcSwap<UsageData>>,
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     pub(crate) pipelines: Arc<RwLock<PipelineCache>>,
@@ -132,7 +132,7 @@ impl SearchEngine {
         trie_paths: HashMap<String, (PathBuf, PathBuf)>,
         syllable_freq: Arc<HashMap<String, u64>>,
         learned_words: Arc<ArcSwap<UserDictData>>,
-        usage_history: Arc<ArcSwap<UserDictData>>,
+        usage_history: Arc<ArcSwap<UsageData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     ) -> Self {

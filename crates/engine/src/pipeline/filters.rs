@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 
-use crate::config_manager::UserDictData;
+use crate::config_manager::{UsageData, UserDictData};
 use crate::Config;
 
 use super::{
-    Candidate, FREQ_BOOST_SCALE, MAX_NGRAM_BOOST, MAX_USAGE_BOOST, NGRAM_BOOST_SCALE,
-    RECENCY_BOOST_BASE,
+    Candidate, MAX_NGRAM_BOOST, NGRAM_BOOST_SCALE, USAGE_BOOST_SCALE,
 };
 
 pub trait Filter: Send + Sync {
@@ -91,17 +90,15 @@ impl Filter for TraditionalFilter {
 
 /// 动态自适应过滤器 (调频与上下文联想)
 pub struct AdaptiveFilter {
-    pub usage_history: Arc<ArcSwap<UserDictData>>,
+    pub usage_history: Arc<ArcSwap<UsageData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
-    last_input: std::sync::RwLock<Option<(String, std::time::Instant)>>,
-    cached_usage_map: std::sync::RwLock<Option<std::collections::HashMap<String, (usize, u32)>>>,
     cached_ngram_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
 }
 
 impl AdaptiveFilter {
     pub fn new(
-        usage_history: Arc<ArcSwap<UserDictData>>,
+        usage_history: Arc<ArcSwap<UsageData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         profile: String,
     ) -> Self {
@@ -109,8 +106,6 @@ impl AdaptiveFilter {
             usage_history,
             ngram_history,
             profile,
-            last_input: std::sync::RwLock::new(None),
-            cached_usage_map: std::sync::RwLock::new(None),
             cached_ngram_map: std::sync::RwLock::new(None),
         }
     }
@@ -119,80 +114,45 @@ impl AdaptiveFilter {
 impl Filter for AdaptiveFilter {
     fn filter(
         &self,
-        input: &str,
+        _input: &str,
         mut candidates: Vec<Candidate>,
-        _config: &Config,
+        config: &Config,
         context: Option<&str>,
     ) -> Vec<Candidate> {
-        let usage_guard = self.usage_history.load();
-        let ngram_guard = self.ngram_history.load();
-
-        if let Some(profile_usage) = usage_guard.get(&self.profile) {
-            if let Some(entries) = profile_usage.get(input) {
-                let use_cached = {
-                    if let Ok(guard) = self.last_input.read() {
-                        if let Some((ref last_input, ref time)) = *guard {
-                            *last_input == input && time.elapsed().as_millis() < 300
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                };
-
-                if use_cached {
-                    if let Ok(guard) = self.cached_usage_map.read() {
-                        if let Some(ref cache_map) = *guard {
-                            for c in &mut candidates {
-                                if c.match_level == 0 { continue; }
-                                if let Some(&(pos, count)) = cache_map.get(c.simplified.as_ref()) {
-                                    c.weight += compute_decay_boost(pos, count);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    let usage_map: std::collections::HashMap<String, (usize, u32)> = entries
-                        .iter()
-                        .enumerate()
-                        .map(|(pos, (w, c))| (w.clone(), (pos, *c)))
-                        .collect();
-
-                    for c in &mut candidates {
-                        if c.match_level == 0 { continue; }
-                        if let Some(&(pos, count)) = usage_map.get(c.simplified.as_ref()) {
-                            c.weight += compute_decay_boost(pos, count);
-                        }
-                    }
-
-                    if let Ok(mut guard) = self.cached_usage_map.write() {
-                        *guard = Some(usage_map);
-                    }
-                    if let Ok(mut guard) = self.last_input.write() {
-                        *guard = Some((input.to_string(), std::time::Instant::now()));
+        // 开关1: 使用频率排序
+        if config.input.enable_usage_sorting {
+            let usage_guard = self.usage_history.load();
+            if let Some(profile_usage) = usage_guard.get(&self.profile) {
+                for c in &mut candidates {
+                    if let Some(count) = profile_usage.get(c.simplified.as_ref()) {
+                        let effective = (*count).min(50);
+                        let boost = ((effective as f64) + 1.0).log2() * USAGE_BOOST_SCALE;
+                        c.weight += boost;
                     }
                 }
             }
         }
 
-        if let Some(ctx) = context {
-            if let Some(profile_ngram) = ngram_guard.get(&self.profile) {
-                if let Some(entries) = profile_ngram.get(ctx) {
-                    let ngram_map: std::collections::HashMap<String, u32> =
-                        entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
-                    for c in &mut candidates {
-                        if c.match_level == 0 { continue; }
-                        if let Some(&count) = ngram_map.get(c.simplified.as_ref()) {
-                            let effective = count.min(10);
-                            let boost =
-                                (1.0 + (effective as f64).ln()).max(0.0) * NGRAM_BOOST_SCALE;
-                            c.weight += boost.min(MAX_NGRAM_BOOST);
+        // 开关2: 上下文 ngram 加成
+        if config.input.enable_context_sorting {
+            if let Some(ctx) = context {
+                let ngram_guard = self.ngram_history.load();
+                if let Some(profile_ngram) = ngram_guard.get(&self.profile) {
+                    if let Some(entries) = profile_ngram.get(ctx) {
+                        let ngram_map: std::collections::HashMap<String, u32> =
+                            entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
+                        for c in &mut candidates {
+                            if let Some(&count) = ngram_map.get(c.simplified.as_ref()) {
+                                let effective = count.min(50);
+                                let boost =
+                                    ((effective as f64 + 1.0).log2()).max(0.0) * NGRAM_BOOST_SCALE;
+                                c.weight += boost.min(MAX_NGRAM_BOOST);
+                            }
                         }
-                    }
 
-                    if let Ok(mut guard) = self.cached_ngram_map.write() {
-                        *guard = Some(ngram_map);
+                        if let Ok(mut guard) = self.cached_ngram_map.write() {
+                            *guard = Some(ngram_map);
+                        }
                     }
                 }
             }
@@ -205,12 +165,4 @@ impl Filter for AdaptiveFilter {
         });
         candidates
     }
-}
-
-/// 衰减算法：位置越靠后（越久没用），加成越小；次数用对数缩放，避免旧使用无限叠加
-pub(crate) fn compute_decay_boost(pos: usize, count: u32) -> f64 {
-    let recency = RECENCY_BOOST_BASE / (1.0 + (pos as f64).sqrt());
-    let effective = count.min(20);
-    let freq = (1.0 + (effective as f64).ln()).max(0.0) * FREQ_BOOST_SCALE;
-    (recency + freq).min(MAX_USAGE_BOOST)
 }

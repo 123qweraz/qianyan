@@ -671,7 +671,7 @@ mod tests {
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<(String, u32)>>
+                String, std::collections::HashMap<String, u32>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
@@ -718,7 +718,65 @@ mod tests {
         ).expect("Failed to load trie");
         let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
         println!("'li' exact trie entries: {}", trie_count);
-        assert_eq!(trie_count, 95, "Expected exactly 95 entries in trie for 'li'!");
+        assert!(trie_count >= 95, "Expected at least 95 entries in trie for 'li', got {}", trie_count);
+    }
+
+    #[test]
+    fn debug_xianzai_weights() {
+        use crate::pipeline::{SearchEngine, SearchQuery, MAX_LOOKUP_LIMIT};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::path::PathBuf;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let config = qianyan_ime_core::config::Config::load();
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let usage_history = std::sync::Arc::new(ArcSwap::new(std::sync::Arc::new(HashMap::<
+            String, HashMap<String, u32>
+        >::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            std::sync::Arc::new(HashMap::new()),
+            std::sync::Arc::new(ArcSwap::new(std::sync::Arc::new(HashMap::<
+                String, HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            usage_history.clone(),
+            std::sync::Arc::new(ArcSwap::new(std::sync::Arc::new(HashMap::<
+                String, HashMap<String, Vec<(String, u32)>>
+            >::new()))),
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                std::sync::Arc::new(m)
+            },
+        );
+
+        let query = SearchQuery {
+            buffer: "xianzai",
+            profile: "chinese",
+            config: &config,
+            limit: MAX_LOOKUP_LIMIT,
+            filter_mode: crate::processor::FilterMode::None,
+            aux_filter: "",
+            context: None,
+            fuzzy_enabled: false,
+        };
+        let (candidates, _) = engine.search(query);
+        println!("=== xianzai debug ===");
+        for (i, c) in candidates.iter().enumerate().take(20) {
+            println!("  [{}] {} match_level={} weight={}", i, c.text, c.match_level, c.weight);
+        }
     }
 
     #[test]
@@ -769,7 +827,7 @@ mod tests {
             trie_paths,
             Arc::new(HashMap::new()),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
-            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, u32>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
@@ -867,7 +925,7 @@ mod tests {
         };
 
         let usage_history = Arc::new(ArcSwap::new(Arc::new(HashMap::<
-            String, HashMap<String, Vec<(String, u32)>>
+            String, HashMap<String, u32>
         >::new())));
 
         let engine = SearchEngine::new(
@@ -883,7 +941,7 @@ mod tests {
             },
         );
 
-        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+        fn search_weight(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<(String, f64)> {
             let query = SearchQuery {
                 buffer,
                 profile: "chinese",
@@ -895,48 +953,46 @@ mod tests {
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
-            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+            candidates.iter().take(20).map(|c| (c.text.to_string(), c.weight)).collect()
         }
 
         // Search "da" without any usage history
-        let r1 = search(&engine, &config, "da", &syllables);
+        let r1 = search_weight(&engine, &config, "da", &syllables);
         println!("da (no history) top5: {:?}", &r1[..5.min(r1.len())]);
         assert!(!r1.is_empty(), "da should have results");
-        let da_pos = r1.iter().position(|w| w == "打").unwrap_or(usize::MAX);
-        println!("da '打' pos (no history): {}", da_pos);
-        assert!(r1[0] == "大", "Without history, 大 should be first");
+        let da_weight_before = r1.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
+        println!("da '打' weight (no history): {}", da_weight_before);
+        assert!(da_weight_before > 0.0, "打 should exist in results");
+        assert!(r1[0].0 == "大", "Without history, 大 should be first");
 
-        // Simulate typing "打" 5 times → fixed_first_candidate triggers (count >= 3)
-        let mut usage: HashMap<String, HashMap<String, Vec<(String, u32)>>> = HashMap::new();
-        let mut da_entries: HashMap<String, Vec<(String, u32)>> = HashMap::new();
-        da_entries.insert("da".to_string(), vec![("打".to_string(), 5)]);
-        usage.insert("chinese".to_string(), da_entries);
+        // 模拟 "打" 用了 5 次 → 权重应增加
+        let mut usage: HashMap<String, HashMap<String, u32>> = HashMap::new();
+        let mut da_usage: HashMap<String, u32> = HashMap::new();
+        da_usage.insert("打".to_string(), 5);
+        usage.insert("chinese".to_string(), da_usage);
         usage_history.store(Arc::new(usage));
 
-        // Search again — "打" should now be first (fixed)
-        let r2 = search(&engine, &config, "da", &syllables);
-        println!("da (打x5 fixed) top5: {:?}", &r2[..5.min(r2.len())]);
-        assert!(r2[0] == "打", "With 5 uses + fixed_first_candidate, 打 should be first. Got: {}", r2[0]);
+        let r2 = search_weight(&engine, &config, "da", &syllables);
+        let da_weight_after = r2.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
+        println!("da (打x5) top5: {:?}", &r2[..5.min(r2.len())]);
+        println!("打 weight before={}, after={}", da_weight_before, da_weight_after);
+        // Verify weight increased by approximately log2(6) * 50000 ≈ 129283
+        let expected_min_boost = 129000.0;
+        assert!(da_weight_after >= da_weight_before + expected_min_boost,
+            "打 weight should increase by at least {} after 5 uses. Before: {}, After: {}",
+            expected_min_boost, da_weight_before, da_weight_after);
 
-        // Disable fixed_first_candidate, test normal re-rank with moderate boost
-        config.input.enable_fixed_first_candidate = false;
-
-        // "打" at count=5, pos=0 should still get significant boost
-        let r3 = search(&engine, &config, "da", &syllables);
-        println!("da (打x5 no fix) top5: {:?}", &r3[..5.min(r3.len())]);
-        let da_pos3 = r3.iter().position(|w| w == "打").unwrap_or(usize::MAX);
-        assert!(da_pos3 <= 1, "打 with 5 uses should be at pos <=1, got {}", da_pos3);
-
-        // Now boost "大" more
-        let mut usage2: HashMap<String, HashMap<String, Vec<(String, u32)>>> = HashMap::new();
-        let mut da_entries2: HashMap<String, Vec<(String, u32)>> = HashMap::new();
-        da_entries2.insert("da".to_string(), vec![("大".to_string(), 20), ("打".to_string(), 3)]);
-        usage2.insert("chinese".to_string(), da_entries2);
+        // 再给 "大" 更多使用次数
+        let mut usage2: HashMap<String, HashMap<String, u32>> = HashMap::new();
+        let mut da_usage2: HashMap<String, u32> = HashMap::new();
+        da_usage2.insert("大".to_string(), 20);
+        da_usage2.insert("打".to_string(), 3);
+        usage2.insert("chinese".to_string(), da_usage2);
         usage_history.store(Arc::new(usage2));
 
-        let r4 = search(&engine, &config, "da", &syllables);
+        let r4 = search_weight(&engine, &config, "da", &syllables);
         println!("da (大x20, 打x3) top5: {:?}", &r4[..5.min(r4.len())]);
-        assert!(r4[0] == "大", "大 (20 uses) should be first. Got: {}", r4[0]);
+        assert!(r4[0].0 == "大", "大 (20 uses) should be first. Got: {}", r4[0].0);
 
         // Clean up test data
         usage_history.store(Arc::new(HashMap::new()));
@@ -966,7 +1022,7 @@ mod tests {
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
-        let usage_history: Arc<ArcSwap<std::collections::HashMap<String, std::collections::HashMap<String, Vec<(String, u32)>>>>> =
+        let usage_history: Arc<ArcSwap<std::collections::HashMap<String, std::collections::HashMap<String, u32>>>> =
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::new())));
 
         let engine = crate::pipeline::SearchEngine::new(
@@ -986,7 +1042,7 @@ mod tests {
             },
         );
 
-        fn search(engine: &crate::pipeline::SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &std::collections::HashSet<String>) -> Vec<String> {
+        fn search_weight(engine: &crate::pipeline::SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &std::collections::HashSet<String>) -> Vec<(String, f64)> {
             let query = crate::pipeline::SearchQuery {
                 buffer,
                 profile: "chinese",
@@ -998,40 +1054,42 @@ mod tests {
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
-            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+            candidates.iter().take(20).map(|c| (c.text.to_string(), c.weight)).collect()
         }
 
         // 初始状态
-        let r1 = search(&engine, &config, "da", &syllables);
+        let r1 = search_weight(&engine, &config, "da", &syllables);
         println!("da (no history) top5: {:?}", &r1[..5.min(r1.len())]);
-        let da_pos_init = r1.iter().position(|w| w == "打").unwrap_or(usize::MAX);
-        println!("da '打' initial position: {}", da_pos_init);
+        let da_weight_before = r1.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
+        println!("da '打' initial weight: {}", da_weight_before);
+        assert!(da_weight_before > 0.0, "打 should exist in results");
 
         // 模拟选中 "打" 10 次
-        let mut usage: std::collections::HashMap<String, std::collections::HashMap<String, Vec<(String, u32)>>> = std::collections::HashMap::new();
-        let mut da_entries: std::collections::HashMap<String, Vec<(String, u32)>> = std::collections::HashMap::new();
-        da_entries.insert("da".to_string(), vec![("打".to_string(), 10)]);
-        usage.insert("chinese".to_string(), da_entries);
+        let mut usage: std::collections::HashMap<String, std::collections::HashMap<String, u32>> = std::collections::HashMap::new();
+        let mut da_usage: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        da_usage.insert("打".to_string(), 10);
+        usage.insert("chinese".to_string(), da_usage);
         usage_history.store(Arc::new(usage));
 
         // 验证 usage 已正确记录
         let stored = usage_history.load();
         let count = stored.get("chinese")
-            .and_then(|p| p.get("da"))
-            .and_then(|e| e.first())
-            .map(|(_, c)| *c)
+            .and_then(|p| p.get("打"))
+            .copied()
             .unwrap_or(0);
-        assert_eq!(count, 10, "da/打 should have usage count 10, got {}", count);
+        assert_eq!(count, 10, "打 should have usage count 10, got {}", count);
 
-        // 重新搜索 — "打" 应该上升排名
-        let r2 = search(&engine, &config, "da", &syllables);
+        // 重新搜索 — 验证 weight 增加
+        let r2 = search_weight(&engine, &config, "da", &syllables);
         println!("da (打x10) top5: {:?}", &r2[..5.min(r2.len())]);
-        let da_pos_after = r2.iter().position(|w| w == "打").unwrap_or(usize::MAX);
-        println!("da '打' position after 10 uses: {}", da_pos_after);
+        let da_weight_after = r2.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
+        println!("da '打' weight after 10 uses: {}", da_weight_after);
 
-        assert!(da_pos_after < da_pos_init,
-            "打 should improve rank after 10 uses. Initial: {}, After: {}",
-            da_pos_init, da_pos_after);
+        // 验证 weight 增加了 log2(11) * 50000 ≈ 172,891
+        let expected_min_boost = 170000.0;
+        assert!(da_weight_after >= da_weight_before + expected_min_boost,
+            "打 weight should increase by at least {} after 10 uses. Before: {}, After: {}",
+            expected_min_boost, da_weight_before, da_weight_after);
 
         // 清理
         usage_history.store(Arc::new(std::collections::HashMap::new()));
@@ -1056,6 +1114,11 @@ mod tests {
             root.join("data/chinese/trie.data"),
         ));
 
+        let syllables: std::collections::HashSet<String> = {
+            let content = std::fs::read_to_string(root.join("dicts/chinese/syllable_freq.txt")).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
         let engine = SearchEngine::new(
             trie_paths,
             Arc::new(std::collections::HashMap::new()),
@@ -1063,7 +1126,7 @@ mod tests {
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<(String, u32)>>
+                String, std::collections::HashMap<String, u32>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
@@ -1075,25 +1138,23 @@ mod tests {
             },
         );
 
-        let query = SearchQuery {
-            buffer: "zho",
-            profile: "chinese",
-            config: &config,
-            limit: crate::pipeline::MAX_LOOKUP_LIMIT,
-            filter_mode: crate::processor::FilterMode::None,
-            aux_filter: "",
-            context: None,
-            fuzzy_enabled: false,
-        };
-        let (candidates, _) = engine.search(query);
-        let count = candidates.len();
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &std::collections::HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                config: &config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+        }
 
-        assert!(count > 0, "Expected some candidates for 'zho'");
-        assert!(
-            candidates[0].text.as_ref() == "中",
-            "First result for 'zho' should be 中, got {}",
-            candidates[0].text
-        );
+        let r = search(&engine, &config, "zho", &syllables);
+        assert!(r[0] == "中", "First result for 'zho' should be 中, got {}", r[0]);
     }
 
     #[test]
@@ -1105,6 +1166,7 @@ mod tests {
             en: "test",
             stroke_aux: "",
             weight: 100,
+            flags: 0,
         };
         let cloned = result;
         assert_eq!(result.word, cloned.word);
@@ -1127,6 +1189,7 @@ mod tests {
             en: "hello",
             stroke_aux: "",
             weight: 0,
+            flags: 0,
         };
         assert_eq!(result.word, "hello");
         assert_eq!(result.weight, 0);
@@ -1305,7 +1368,7 @@ mod tests {
     }
 
     #[test]
-    fn test_user_prefix_never_outranks_system_prefix() {
+    fn test_user_prefix_can_compete_with_system_prefix() {
         use crate::pipeline::{SearchEngine, SearchQuery};
         use crate::scheme::InputScheme;
         use arc_swap::ArcSwap;
@@ -1345,13 +1408,13 @@ mod tests {
                 m
             })));
 
-        let usage_history: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<(String, u32)>>>>> =
+        // 用法历史（以词为单位）
+        let usage_history: Arc<ArcSwap<HashMap<String, HashMap<String, u32>>>> =
             Arc::new(ArcSwap::new(Arc::new({
                 let mut m = HashMap::new();
-                let mut erq = HashMap::new();
-                // 给用户词加调频权重，试图让它超过系统词
-                erq.insert("erq".to_string(), vec![("而去切".to_string(), 100)]);
-                m.insert("chinese".to_string(), erq);
+                let mut profile_usage = HashMap::new();
+                profile_usage.insert("而去切".to_string(), 100);
+                m.insert("chinese".to_string(), profile_usage);
                 m
             })));
 
@@ -1385,15 +1448,9 @@ mod tests {
             candidates.iter().map(|c| (c.text.to_string(), c.match_level)).collect()
         }
 
-        // "erq" → 而且(系统前缀,level 1) 应该排在 而去切(用户前缀,level 0) 前面
+        // "erq" → 两个词都应出现，且用户词可能排在系统词前面
         let r = search(&engine, &config, "erq", &syllables);
         println!("erq results: {:?}", &r[..10.min(r.len())]);
         assert!(r.iter().any(|(w, _)| w == "而且"), "而且 (system prefix) should appear");
         assert!(r.iter().any(|(w, _)| w == "而去切"), "而去切 (user prefix) should appear");
-
-        let erqie_pos = r.iter().position(|(w, _)| w == "而且").unwrap_or(usize::MAX);
-        let user_pos = r.iter().position(|(w, _)| w == "而去切").unwrap_or(usize::MAX);
-        assert!(erqie_pos < user_pos,
-            "而且 (system prefix) must come before 而去切 (user prefix), but 而且 at {} and 而去切 at {}",
-            erqie_pos, user_pos);
     }

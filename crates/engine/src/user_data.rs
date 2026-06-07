@@ -1,4 +1,4 @@
-use crate::config_manager::UserDictData;
+use crate::config_manager::{UsageData, UserDictData};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -13,6 +13,13 @@ pub enum DataType {
     Learned,
     Usage,
     Ngram,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct UsageFile {
+    version: String,
+    updated_at: Option<String>,
+    data: HashMap<String, u32>,
 }
 
 impl DataType {
@@ -86,16 +93,16 @@ impl UserDataManager {
         HashMap::new()
     }
 
-    pub fn load_all(&self, profiles: &[String]) -> (UserDictData, UserDictData, UserDictData) {
+    pub fn load_all(&self, profiles: &[String]) -> (UserDictData, UsageData, UserDictData) {
         let mut learned: UserDictData = UserDictData::new();
-        let mut usage: UserDictData = UserDictData::new();
+        let mut usage: UsageData = UsageData::new();
         let mut ngrams: UserDictData = UserDictData::new();
 
         for profile in profiles {
             let dir = self.profile_dir(profile);
             if dir.exists() {
                 let l = self.load(profile, DataType::Learned);
-                let u = self.load(profile, DataType::Usage);
+                let u = self.load_usage(profile);
                 let n = self.load(profile, DataType::Ngram);
 
                 if !l.is_empty() {
@@ -113,11 +120,20 @@ impl UserDataManager {
         if learned.is_empty() {
             Self::load_from_legacy_json_static(&mut learned, DataType::Learned);
         }
-        if usage.is_empty() {
-            Self::load_from_legacy_json_static(&mut usage, DataType::Usage);
-        }
 
         (learned, usage, ngrams)
+    }
+
+    pub fn load_usage(&self, profile: &str) -> HashMap<String, u32> {
+        let file_path = self.profile_dir(profile).join("usage.json");
+        if file_path.exists() {
+            if let Ok(content) = fs::read_to_string(&file_path) {
+                if let Ok(data_file) = serde_json::from_str::<UsageFile>(&content) {
+                    return data_file.data;
+                }
+            }
+        }
+        HashMap::new()
     }
 
     fn load_from_legacy_json_static(data: &mut UserDictData, data_type: DataType) {
@@ -170,6 +186,24 @@ impl UserDataManager {
         Ok(())
     }
 
+    pub fn save_usage(&self, profile: &str, data: &UsageData) -> std::io::Result<()> {
+        if let Some(profile_data) = data.get(profile) {
+            let dir = self.ensure_profile_dir(profile)?;
+            let file_path = dir.join("usage.json");
+
+            let data_file = UsageFile {
+                version: DATA_VERSION.to_string(),
+                updated_at: Some(Self::timestamp()),
+                data: profile_data.clone(),
+            };
+
+            let json = serde_json::to_string_pretty(&data_file)?;
+            fs::write(&file_path, json)?;
+            self.dirty.store(false, Ordering::SeqCst);
+        }
+        Ok(())
+    }
+
     pub fn list_profiles(&self) -> Vec<String> {
         let mut profiles = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.data_dir) {
@@ -186,14 +220,26 @@ impl UserDataManager {
 
     pub fn clear(&self, profile: &str, data_type: Option<DataType>) -> std::io::Result<()> {
         match data_type {
+            Some(DataType::Usage) => {
+                let dir = self.ensure_profile_dir(profile)?;
+                let usage_path = dir.join("usage.json");
+                if usage_path.exists() {
+                    fs::remove_file(usage_path)?;
+                }
+            }
             Some(dt) => {
                 let empty: HashMap<String, Vec<(String, u32)>> = HashMap::new();
                 self.save(profile, dt, &empty)?;
             }
             None => {
-                for dt in &[DataType::Learned, DataType::Usage, DataType::Ngram] {
+                for dt in &[DataType::Learned, DataType::Ngram] {
                     let empty: HashMap<String, Vec<(String, u32)>> = HashMap::new();
                     self.save(profile, dt.clone(), &empty)?;
+                }
+                let dir = self.ensure_profile_dir(profile)?;
+                let usage_path = dir.join("usage.json");
+                if usage_path.exists() {
+                    fs::remove_file(usage_path)?;
                 }
             }
         }

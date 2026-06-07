@@ -83,6 +83,16 @@
                         <div class="info"><div class="title">生僻字</div><div class="desc">开启后可以输入三级字库以外的生僻汉字</div></div>
                         <label class="switch"><input type="checkbox" id="enable_rare_chars"><span class="slider"></span></label>
                     </div>
+                    <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
+                    <div style="font-size:13px; color:var(--apple-secondary); margin-bottom:12px;"><strong>排序算法调试开关</strong> — 关闭后对应因素不影响排序结果，仅用于排查问题</div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">使用频率排序</div><div class="desc">关闭后按纯字典权重排序，不受历史输入影响</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_usage_sorting"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">上下文联想排序</div><div class="desc">关闭后上文词不影响当前候选排序</div></div>
+                        <label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label>
+                    </div>
                     <div class="setting-item">
                         <div class="info"><div class="title">模糊拼音</div><div class="desc">z/zh、c/ch、s/sh、an/ang 等模糊音匹配</div></div>
                         <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊音设置 →</a>
@@ -231,6 +241,8 @@
             bindInput('enable_abbreviation_matching', 'input');
             bindInput('enable_error_correction', 'input');
             bindInput('enable_rare_chars', 'input');
+            bindInput('enable_usage_sorting', 'input');
+            bindInput('enable_context_sorting', 'input');
             bindInput('anti_typo_mode', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_keyboard_voice', 'input');

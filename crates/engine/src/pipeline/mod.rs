@@ -20,11 +20,9 @@ pub mod search_helper;
 pub use search_helper::*;
 
 // 调频衰减算法参数
-pub(crate) const RECENCY_BOOST_BASE: f64 = 5000000.0;
-pub(crate) const FREQ_BOOST_SCALE: f64 = 1000000.0;
-pub(crate) const MAX_USAGE_BOOST: f64 = 10000000.0;
-pub(crate) const NGRAM_BOOST_SCALE: f64 = 2000000.0;
-pub(crate) const MAX_NGRAM_BOOST: f64 = 5000000.0;
+pub(crate) const NGRAM_BOOST_SCALE: f64 = 50000.0;
+pub(crate) const MAX_NGRAM_BOOST: f64 = 500000.0;
+pub(crate) const USAGE_BOOST_SCALE: f64 = 50000.0;
 
 pub const MAX_LOOKUP_LIMIT: usize = 500;
 const CACHE_TTL_MS: u64 = 300;
@@ -462,24 +460,6 @@ mod tests {
         };
         let (candidates, _segments) = engine.search(query);
         assert!(candidates.is_empty());
-    }
-
-    #[test]
-    fn test_compute_decay_boost_range() {
-        // 验证 compute_decay_boost 的返回值在合理范围内
-        let boost = compute_decay_boost(0, 1);
-        assert!(boost > 0.0);
-        assert!(boost <= MAX_USAGE_BOOST);
-
-        // 高频、最近使用的词加成最大
-        let high_boost = compute_decay_boost(0, 20);
-        // 低频、很久没用过的词加成最小
-        let low_boost = compute_decay_boost(100, 0);
-        assert!(high_boost >= low_boost);
-
-        // 验证上限
-        let max_boost = compute_decay_boost(0, 100);
-        assert!(max_boost <= MAX_USAGE_BOOST);
     }
 
     #[test]

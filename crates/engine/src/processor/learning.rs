@@ -1,6 +1,27 @@
-use crate::config_manager::UserDictData;
+use crate::config_manager::{UsageData, UserDictData};
 use arc_swap::ArcSwap;
 use std::sync::Arc;
+
+/// 按词累计使用次数（替代旧的拼音-keyed MRU）
+pub fn increment_usage(
+    history: &Arc<ArcSwap<UsageData>>,
+    profile: &str,
+    word: &str,
+) -> u32 {
+    let mut new_count = 0;
+    history.rcu(|hist| {
+        let mut clone = (**hist).clone();
+        let entry = clone
+            .entry(profile.to_string())
+            .or_default()
+            .entry(word.to_string())
+            .or_insert(0);
+        *entry += 1;
+        new_count = *entry;
+        Arc::new(clone)
+    });
+    new_count
+}
 
 pub fn update_mru(
     history: &Arc<ArcSwap<UserDictData>>,
@@ -46,41 +67,49 @@ pub fn update_mru(
     result
 }
 
-/// 衰减某个词的使用计数（用于打错纠正）。
-/// 如果词存在，计数减 1（最低 0），并返回更新后的条目。
-pub fn decay_mru(
-    history: &Arc<ArcSwap<UserDictData>>,
-    profile: &str,
-    key: &str,
+pub fn record_usage(
+    ctx: &mut crate::EngineContext,
+    _pinyin: &str,
     word: &str,
-) -> Vec<(String, u32)> {
-    let mut result = Vec::new();
-    history.rcu(|hist| {
-        let mut clone = (**hist).clone();
-        if let Some(entries) = clone
-            .entry(profile.to_string())
-            .or_default()
-            .get_mut(key)
-        {
-            if let Some(pos) = entries.iter().position(|(w, _)| w == word) {
-                let (w, count) = &entries[pos];
-                if *count > 1 {
-                    entries[pos] = (w.clone(), count - 1);
-                } else {
-                    entries.remove(pos);
-                }
-            } else {
-                // 词不在列表，添加一个负分标记（优先级降低）
-                entries.push((word.to_string(), 0));
-            }
-            result = entries.clone();
-            Arc::new(clone)
-        } else {
-            result = Vec::new();
-            Arc::new(clone)
+    source: &std::sync::Arc<str>,
+    context: Option<&str>,
+) {
+    if word.is_empty() {
+        return;
+    }
+
+    let profile = ctx.session_state.get_current_profile();
+    let word_len = word.chars().count();
+
+    if ctx.config.enable_auto_reorder() {
+        // 按词累计使用次数
+        increment_usage(&ctx.config.usage_history, &profile, word);
+        ctx.engine.clear_cache();
+
+        // 上下文 ngram
+        if let Some(ctx_str) = context {
+            let updated =
+                update_mru(&ctx.config.ngram_history, &profile, ctx_str, word, false);
+            ctx.config.insert_ngram(&profile, ctx_str, &updated);
         }
-    });
-    result
+    }
+
+    // 反查系统词典获取拼音（用于新词发现）
+    let correct_pinyin = ctx.engine.get_or_load_trie(&profile)
+        .and_then(|t| t.lookup_pinyin(word).map(|s| s.to_string()))
+        .unwrap_or_else(|| _pinyin.to_string());
+
+    let is_valid_pinyin = correct_pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+    if ctx.config.master_config.input.enable_word_discovery
+        && is_valid_pinyin
+        && word_len > 1
+        && !ctx.engine.has_word_in_dict(&profile, word)
+        && source.as_ref() != "Compose"
+        && source.as_ref() != "Table (Abbr)"
+    {
+        let updated = update_mru(&ctx.config.learned_words, &profile, &correct_pinyin, word, true);
+        ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
+    }
 }
 
 #[cfg(test)]

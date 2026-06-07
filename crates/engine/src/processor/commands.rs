@@ -120,15 +120,12 @@ pub(crate) fn commit_candidate(
             .map(|c| c.source.clone())
             .unwrap_or_default();
         let last_word_opt = ctx.session_state.get_last_word().map(|s| s.to_string());
-        record_usage(ctx, &py, &cand, &source, last_word_opt.as_deref());
+        crate::processor::learning::record_usage(ctx, &py, &cand, &source, last_word_opt.as_deref());
         ctx.session_state
             .add_to_history(py.clone(), cand.to_string());
 
-        // 记录最近一次上屏，供打错检测使用
-        ctx.session_state.set_last_committed(py.clone(), cand.to_string());
-
         for (py_c, word_c) in ctx.session_state.get_combination_candidates(8) {
-            record_usage(ctx, &py_c, &word_c, &Arc::from(""), None);
+            crate::processor::learning::record_usage(ctx, &py_c, &word_c, &Arc::from(""), None);
         }
         ctx.session_state.update_commit_time();
     }
@@ -150,65 +147,4 @@ pub(crate) fn commit_candidate(
     }
 }
 
-fn record_usage(
-    ctx: &mut EngineContext,
-    pinyin: &str,
-    word: &str,
-    source: &Arc<str>,
-    context: Option<&str>,
-) {
-    use crate::processor::learning;
 
-    if pinyin.is_empty() || word.is_empty() {
-        return;
-    }
-
-    let profile = ctx.session_state.get_current_profile();
-    let word_len = word.chars().count();
-
-    // 反查系统词典获取正确拼音（兜底用原始 buffer）
-    let correct_pinyin = ctx.engine.get_or_load_trie(&profile)
-        .and_then(|t| t.lookup_pinyin(word).map(|s| s.to_string()))
-        .unwrap_or_else(|| pinyin.to_string());
-
-    if ctx.config.enable_auto_reorder() {
-        // 打错检测：如果上次上屏同拼音但不同词，给旧词做衰减
-        if let Some((last_py, last_word)) = ctx.session_state.last_commit(10) {
-            if last_py == &*correct_pinyin && last_word != word {
-                let decayed = learning::decay_mru(
-                    &ctx.config.usage_history,
-                    &profile,
-                    &correct_pinyin,
-                    last_word,
-                );
-                ctx.config.insert_usage(&profile, &correct_pinyin, &decayed);
-            }
-        }
-
-        let updated =
-            learning::update_mru(&ctx.config.usage_history, &profile, &correct_pinyin, word, false);
-        ctx.config.insert_usage(&profile, &correct_pinyin, &updated);
-        ctx.engine.clear_cache();
-    }
-
-    if ctx.config.enable_auto_reorder() {
-        if let Some(ctx_str) = context {
-            let updated =
-                learning::update_mru(&ctx.config.ngram_history, &profile, ctx_str, word, false);
-            ctx.config.insert_ngram(&profile, ctx_str, &updated);
-        }
-    }
-
-    // 只有确认不在系统词典且拼音合法才学
-    let is_valid_pinyin = correct_pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
-    if ctx.config.master_config.input.enable_word_discovery
-        && is_valid_pinyin
-        && word_len > 1
-        && !ctx.engine.has_word_in_dict(&profile, word)
-        && source.as_ref() != "Compose"
-        && source.as_ref() != "Table (Abbr)"
-    {
-        let updated = learning::update_mru(&ctx.config.learned_words, &profile, &correct_pinyin, word, true);
-        ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
-    }
-}

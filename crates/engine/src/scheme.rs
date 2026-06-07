@@ -32,7 +32,7 @@ impl SchemeCandidate {
     }
 }
 
-use crate::config_manager::UserDictData;
+use crate::config_manager::{UsageData, UserDictData};
 use arc_swap::ArcSwap;
 use std::sync::Arc;
 
@@ -44,7 +44,7 @@ pub struct SchemeContext<'a> {
     pub base_syllables: &'a std::collections::HashSet<String>,
     pub single_syllables: &'a std::collections::HashSet<String>,
     pub user_dict: &'a Arc<ArcSwap<UserDictData>>,
-    pub usage_history: &'a Arc<ArcSwap<UserDictData>>,
+    pub usage_history: &'a Arc<ArcSwap<UsageData>>,
     pub ngram_history: &'a Arc<ArcSwap<UserDictData>>,
     pub active_profiles: &'a [String],
     pub candidate_count: usize,

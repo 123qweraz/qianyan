@@ -106,21 +106,6 @@ impl ChineseScheme {
         crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, trie)
     }
 
-    fn segment_buffer(&self, input: &str, _delimiters: &str, context: &SchemeContext) -> Vec<String> {
-        if !input.is_ascii() {
-            return Vec::new();
-        }
-        let normalized = if input.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()) {
-            input.to_string()
-        } else {
-            input.to_ascii_lowercase()
-        };
-        if normalized.is_empty() {
-            return vec![];
-        }
-        crate::pipeline::DefaultSegmentor::viterbi_segment(&normalized, context.syllable_freq, context.base_syllables)
-    }
-
     /// 左到右贪心分段：先匹配最长全音节，否则匹配声母（zh/ch/sh 占 2 字符）
     /// 返回 (segment, is_initial) 对
     pub fn segment_for_abbreviation(input: &str, trie: &crate::trie::Trie) -> Vec<(String, bool)> {
@@ -607,78 +592,43 @@ impl InputScheme for ChineseScheme {
 
     fn post_process(
         &self,
-        query: &str,
+        _query: &str,
         candidates: &mut Vec<SchemeCandidate>,
         context: &SchemeContext,
     ) {
-        let raw_parsed = self.parse_buffer(query);
-        let pinyin_only: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
-        let delimiters = &context.config.input.segmentation_delimiters;
-        let smart_segments = self.segment_buffer(&pinyin_only, delimiters, context);
-        let input_syllables = if smart_segments.is_empty() {
-            raw_parsed.len()
-        } else {
-            smart_segments.len()
-        };
+        const USAGE_BOOST_SCALE: u32 = 50000;   // 5万/次使用，50次封顶≈+283K
+        const NGRAM_BOOST_SCALE: u32 = 50000;
 
         // 自适应加权：基于 usage_history + ngram_history 调整权重
         if let Some(profile) = context.active_profiles.first() {
-            let usage_guard = context.usage_history.load();
-            let ngram_guard = context.ngram_history.load();
-
-            // 用法历史（MRU 衰减 + 频率对数缩放）
-            if let Some(profile_usage) = usage_guard.get(profile) {
-                if let Some(entries) = profile_usage.get(&pinyin_only) {
-                    let usage_map: std::collections::HashMap<String, (usize, u32)> = entries
-                        .iter()
-                        .enumerate()
-                        .map(|(pos, (w, c))| (w.clone(), (pos, *c)))
-                        .collect();
+            // 开关1: 使用频率排序（受历史输入影响）
+            if context.config.input.enable_usage_sorting {
+                let usage_guard = context.usage_history.load();
+                if let Some(profile_usage) = usage_guard.get(profile) {
                     for c in &mut *candidates {
-                        // level=0 (user prefix) never receives usage boosts —
-                        // it must stay below system prefix (level 1) in all cases
-                        if c.match_level == 0 {
-                            continue;
-                        }
-                        if let Some(&(pos, count)) = usage_map.get(c.simplified.as_str()) {
-                            c.weight += (crate::pipeline::compute_decay_boost(pos, count) as u32).max(1);
-                        }
-                    }
-
-                    // 置顶首候选：最近常用词自动排第一
-                    if context.config.input.enable_fixed_first_candidate {
-                        if let Some((fixed_word, fixed_count)) = entries.first() {
-                            if *fixed_count >= 3 {
-                                for c in &mut *candidates {
-                                    if c.match_level == 0 {
-                                        continue;
-                                    }
-                                    if c.simplified.as_str() == fixed_word {
-                                        c.weight += 20000000;
-                                        break;
-                                    }
-                                }
-                            }
+                        if let Some(count) = profile_usage.get(c.simplified.as_str()) {
+                            let effective = (*count).min(50);
+                            let boost = ((effective as f64 + 1.0).log2() * USAGE_BOOST_SCALE as f64) as u32;
+                            c.weight += boost;
                         }
                     }
                 }
             }
 
-            // 上下文联想 (N-Gram) 加权
-            if let Some(last_word) = context.last_word {
-                if let Some(profile_ngram) = ngram_guard.get(profile) {
-                    if let Some(entries) = profile_ngram.get(last_word) {
-                        let ngram_map: std::collections::HashMap<String, u32> =
-                            entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
-                        for c in &mut *candidates {
-                            if c.match_level == 0 {
-                                continue;
-                            }
-                            if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
-                                let effective = count.min(10);
-                                let boost = (1.0 + (effective as f64).ln()).max(0.0)
-                                    * crate::pipeline::NGRAM_BOOST_SCALE;
-                                c.weight += (boost.min(crate::pipeline::MAX_NGRAM_BOOST) as u32).max(1);
+            // 开关2: 上下文联想（受上文词影响）
+            if context.config.input.enable_context_sorting {
+                if let Some(last_word) = context.last_word {
+                    let ngram_guard = context.ngram_history.load();
+                    if let Some(profile_ngram) = ngram_guard.get(profile) {
+                        if let Some(entries) = profile_ngram.get(last_word) {
+                            let ngram_map: std::collections::HashMap<String, u32> =
+                                entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
+                            for c in &mut *candidates {
+                                if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
+                                    let effective = count.min(50);
+                                    let boost = ((effective as f64 + 1.0).log2() * NGRAM_BOOST_SCALE as f64) as u32;
+                                    c.weight += boost;
+                                }
                             }
                         }
                     }
@@ -686,26 +636,8 @@ impl InputScheme for ChineseScheme {
             }
         }
 
-        candidates.sort_by(|a, b| {
-            let get_score = |m: &SchemeCandidate| -> i64 {
-                let level = m.match_level as i64;
-                let weight = m.weight as i64;
-                let char_count = m.text.chars().count() as i64;
-            let mut score = if level == 3 {
-                30_000_000 + context.config.input.ranking.exact_match_bonus as i64
-            } else {
-                    level * 10_000_000
-                };
-                if level == 2 && char_count == input_syllables as i64 {
-                    score += 10_000_000;
-                }
-                score += weight;
-                let len_diff = (char_count - input_syllables as i64).max(0);
-                score -= len_diff * (if level == 2 { 10000 } else { 1000 });
-                score
-            };
-            get_score(b).cmp(&get_score(a))
-        });
+        // 纯 weight 降序排序
+        candidates.sort_by(|a, b| b.weight.cmp(&a.weight));
 
         // 繁体开关
         if context.config.input.enable_traditional {

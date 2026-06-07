@@ -231,6 +231,10 @@ pub struct Input {
     #[serde(default)]
     pub display_mode: DisplayMode,
     pub ranking: RankingConfig,
+    #[serde(default = "default_true")]
+    pub enable_usage_sorting: bool,
+    #[serde(default = "default_true")]
+    pub enable_context_sorting: bool,
     pub firefox_space_interrupt: bool,
     #[serde(default = "default_segmentation_delimiters")]
     pub segmentation_delimiters: String,
@@ -940,6 +944,8 @@ impl Config {
                 enable_word_discovery: true,
                 enable_auto_reorder: true,
                 enable_fixed_first_candidate: false,
+                enable_usage_sorting: true,
+                enable_context_sorting: true,
                 enable_smart_backspace: false,
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {

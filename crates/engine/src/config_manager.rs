@@ -8,13 +8,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub type UserDictData = HashMap<String, HashMap<String, Vec<(String, u32)>>>;
+pub type UsageData = HashMap<String, HashMap<String, u32>>;
 
 const USAGE_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 
 pub struct ConfigManager {
     pub master_config: Config,
     pub learned_words: Arc<ArcSwap<UserDictData>>,
-    pub usage_history: Arc<ArcSwap<UserDictData>>,
+    pub usage_history: Arc<ArcSwap<UsageData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub user_data: Option<Arc<UserDataManager>>,
     usage_last_save: Mutex<Instant>,
@@ -71,7 +72,7 @@ impl ConfigManager {
 
         if (self.master_config.input.enable_word_discovery
             || self.master_config.input.enable_auto_reorder)
-            && (self.learned_words.load().is_empty() || self.usage_history.load().is_empty())
+            && self.learned_words.load().is_empty()
         {
             self.load_user_dicts();
         }
@@ -112,14 +113,13 @@ impl ConfigManager {
         }
     }
 
-    pub fn insert_usage(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
+    pub fn insert_usage(&self, profile: &str, word: &str, count: u32) {
         let mut current = (**self.usage_history.load()).clone();
         current
             .entry(profile.to_string())
             .or_default()
-            .insert(pinyin.to_string(), entries.to_vec());
+            .insert(word.to_string(), count);
         self.usage_history.store(Arc::new(current));
-        // 频率数据 30s 写一次，减少磁盘 IO
         self.save_usage_if_due(profile);
     }
 
@@ -140,8 +140,7 @@ impl ConfigManager {
         if last.elapsed() >= USAGE_SAVE_INTERVAL {
             *last = Instant::now();
             if let Some(ref user_data) = self.user_data {
-                let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Usage,
-                    &self.usage_history.load());
+                let _ = user_data.save_usage(profile, &self.usage_history.load());
                 let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
                     &self.ngram_history.load());
             }
@@ -164,7 +163,7 @@ impl ConfigManager {
                 if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &learned) {
                     log::error!("[ConfigManager] 保存 learned 失败: {}", e);
                 }
-                if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Usage, &usage) {
+                if let Err(e) = user_data.save_usage(profile, &usage) {
                     log::error!("[ConfigManager] 保存 usage 失败: {}", e);
                 }
                 if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &ngram) {
