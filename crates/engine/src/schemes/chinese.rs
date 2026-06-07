@@ -175,6 +175,48 @@ impl ChineseScheme {
     }
 }
 
+/// 递归检查用户词典词条的拼音是否匹配简拼段（如 "fzm" → "fuzhuma"）
+fn match_user_dict_abbreviation(
+    pinyin: &str,
+    segments: &[(String, bool)],
+    trie: &crate::trie::Trie,
+    single_syllables: &std::collections::HashSet<String>,
+) -> bool {
+    fn recursive(
+        pinyin: &str,
+        segments: &[(String, bool)],
+        trie: &crate::trie::Trie,
+        single_syllables: &std::collections::HashSet<String>,
+    ) -> bool {
+        if segments.is_empty() {
+            return pinyin.is_empty();
+        }
+        let first_seg = &segments[0].0;
+        let is_initial = segments[0].1;
+        let max_len = pinyin.len().min(6);
+        for len in 1..=max_len {
+            if !pinyin.is_char_boundary(len) {
+                continue;
+            }
+            let syl = &pinyin[..len];
+            if !trie.index.contains_key(syl) {
+                continue;
+            }
+            let matched = if is_initial {
+                (single_syllables.is_empty() || single_syllables.contains(syl))
+                    && syl.starts_with(first_seg.as_str())
+            } else {
+                syl == first_seg.as_str()
+            };
+            if matched && recursive(&pinyin[len..], &segments[1..], trie, single_syllables) {
+                return true;
+            }
+        }
+        false
+    }
+    recursive(pinyin, segments, trie, single_syllables)
+}
+
 impl InputScheme for ChineseScheme {
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate> {
         let raw_parsed = self.parse_buffer(query);
@@ -244,8 +286,33 @@ impl InputScheme for ChineseScheme {
                                         english: en,
                                         stroke_aux: sa,
                                         weight: (*weight as f64 * 0.8) as u32,
-                                        match_level: 0, // below system prefix (level 1)
+                                        match_level: 0,
                                     });
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if context.config.input.enable_abbreviation_matching {
+                if let Some(trie) = context.tries.get("chinese") {
+                    let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, trie);
+                    if !abbr_segs.is_empty() {
+                        for (pinyin, words) in profile_dict.iter() {
+                            if match_user_dict_abbreviation(pinyin, &abbr_segs, trie, context.single_syllables) {
+                                for (word, weight) in words {
+                                    if seen.insert(word.clone()) {
+                                        let (trad, tone, en, sa) = lookup_aux(word, pinyin);
+                                        user_prefix_matches.push(SchemeCandidate {
+                                            text: word.clone(),
+                                            simplified: word.clone(),
+                                            traditional: trad,
+                                            tone,
+                                            english: en,
+                                            stroke_aux: sa,
+                                            weight: (*weight as f64 * 0.8) as u32,
+                                            match_level: 0,
+                                        });
+                                    }
                                 }
                             }
                         }
