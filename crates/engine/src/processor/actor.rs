@@ -1,6 +1,5 @@
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Sender};
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::keys::VirtualKey;
 use crate::pipeline::{Candidate, SearchQuery, MAX_LOOKUP_LIMIT};
@@ -385,10 +384,9 @@ impl ProcessorActor {
 
     pub fn run(mut self) {
         loop {
-            match self.rx.recv_timeout(Duration::from_millis(1)) {
+            match self.rx.recv() {
                 Ok(msg) => self.handle(msg),
-                Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => break,
+                Err(_) => break,
             }
         }
         log::info!("ProcessorActor: exiting");
