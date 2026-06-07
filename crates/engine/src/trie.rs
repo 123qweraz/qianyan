@@ -129,7 +129,7 @@ impl Trie {
             .get_or_init(|| self.build_rare_chars())
     }
 
-    /// 从二进制数据中提取 level-4 生僻字集合（flags & 1）
+    /// 从二进制数据中提取生僻字集合（level-4, level-5, flags & 1）
     pub fn build_rare_chars(&self) -> HashSet<String> {
         let mut set = HashSet::new();
         let mut stream = self.index.stream();

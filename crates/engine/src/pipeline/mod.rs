@@ -39,6 +39,7 @@ pub struct Candidate {
     pub source: Arc<str>, // 来源：如 "User", "Table", "Script"
     pub weight: f64,
     pub match_level: u8, // 0: unknown, 1: prefix, 2: abbreviation/wildcard, 3: exact
+    pub flags: u8,       // bit0: 1 = rare character
 }
 
 

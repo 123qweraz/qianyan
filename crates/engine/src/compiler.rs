@@ -140,11 +140,11 @@ struct DictEntry {
     en: String,
     stroke_aux: String,
     weight: u32,
-    flags: u8, // bit0: 1 = level-4 (生僻字)
+    flags: u8, // bit0: 1 = 生僻字 (level-4, level-5)
 }
 
-/// 0x00 = 普通字 (level 1-3), 0x01 = 生僻字 (level-4)
-const FLAG_LEVEL4: u8 = 0x01;
+/// 0x01 = 生僻字 (level-4, level-5)
+const FLAG_RARE: u8 = 0x01;
 
 fn process_json_file(
     path: &Path,
@@ -208,7 +208,7 @@ fn process_json_file(
                                     .get("category")
                                     .and_then(|s| s.as_str())
                                     .unwrap_or("");
-                                let flags = if category == "level-4" { FLAG_LEVEL4 } else { 0 };
+                                let flags = if category == "level-4" || category == "level-5" { FLAG_RARE } else { 0 };
 
                                 entries.entry(normalized_key.clone()).or_default().push(
                                     DictEntry {

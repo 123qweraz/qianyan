@@ -181,6 +181,15 @@ fn default_english_aux_mode() -> EnglishAuxMode {
     EnglishAuxMode::Prefix
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RareCharMode {
+    #[default]
+    CommonOnly,
+    IncludeRare,
+    OnlyRare,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Input {
     pub autostart: bool,
@@ -208,6 +217,7 @@ pub struct Input {
     pub enable_abbreviation_matching: bool,
     pub enable_error_correction: bool,
     pub enable_rare_chars: bool,
+    pub rare_char_mode: RareCharMode,
     pub filter_proper_nouns_by_case: bool,
     pub enabled_profiles: Vec<String>,
     pub profile_keys: Vec<ProfileKey>,
@@ -907,6 +917,7 @@ impl Config {
                 enable_abbreviation_matching: true,
                 enable_error_correction: true,
                 enable_rare_chars: false,
+                rare_char_mode: RareCharMode::CommonOnly,
                 filter_proper_nouns_by_case: true,
                 enabled_profiles: vec!["chinese".to_string()],
                 profile_keys: vec![
@@ -929,10 +940,6 @@ impl Config {
                     ProfileKey {
                         key: "m".into(),
                         profile: "chinese,english,japanese".into(),
-                    },
-                    ProfileKey {
-                        key: "s".into(),
-                        profile: "shengpizi".into(),
                     },
                 ],
                 swap_arrow_keys: false,

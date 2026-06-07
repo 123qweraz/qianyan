@@ -80,8 +80,12 @@
                         <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
-                        <div class="info"><div class="title">生僻字</div><div class="desc">开启后可以输入三级字库以外的生僻汉字</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_rare_chars"><span class="slider"></span></label>
+                        <div class="info"><div class="title">生僻字模式</div><div class="desc">控制是否显示生僻汉字（三级字库以外）</div></div>
+                        <select id="rare_char_mode" class="select-input">
+                            <option value="common_only">只显示常用字</option>
+                            <option value="include_rare">显示所有字符（包含生僻字）</option>
+                            <option value="only_rare">只显示生僻字</option>
+                        </select>
                     </div>
                     <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
                     <div style="font-size:13px; color:var(--apple-secondary); margin-bottom:12px;"><strong>排序算法调试开关</strong> — 关闭后对应因素不影响排序结果，仅用于排查问题</div>
@@ -240,7 +244,7 @@
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
             bindInput('enable_error_correction', 'input');
-            bindInput('enable_rare_chars', 'input');
+            bindInput('rare_char_mode', 'input');
             bindInput('enable_usage_sorting', 'input');
             bindInput('enable_context_sorting', 'input');
             bindInput('anti_typo_mode', 'input');

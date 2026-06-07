@@ -363,10 +363,12 @@ impl ProcessorActor {
                 hint: Arc::from(""),
                 english_aux: Arc::from(""),
                 stroke_aux: Arc::from(""),
-                source: Arc::from("Raw"),
-                weight: 0.0,
-                match_level: 0,
-            });
+                source: Arc::from("Special"),
+                weight: 1000.0,
+                match_level: 3,
+                flags: 0,
+                });
+
         }
         ctx.session.update_state();
 

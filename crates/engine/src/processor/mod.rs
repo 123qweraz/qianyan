@@ -602,6 +602,7 @@ impl Processor {
                     source: Arc::from("Raw"),
                     weight: 0.0,
                     match_level: 0,
+                    flags: 0,
                 });
         }
         self.ctx.session.update_state();

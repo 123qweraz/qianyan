@@ -15,6 +15,7 @@ pub struct SchemeCandidate {
     pub stroke_aux: String,  // 笔画辅助码提示
     pub weight: u32,         // 排序权重
     pub match_level: u8,     // 匹配级别：3=精确, 2=简拼, 1=前缀
+    pub flags: u8,           // bit0: 1 = rare character
 }
 
 impl SchemeCandidate {
@@ -28,6 +29,7 @@ impl SchemeCandidate {
             stroke_aux: String::new(),
             weight,
             match_level: 1,
+            flags: 0,
         }
     }
 }

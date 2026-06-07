@@ -218,19 +218,18 @@ impl InputScheme for ChineseScheme {
     let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
     if let Some(profile) = context.active_profiles.first() {
         let dict = context.user_dict.load();
-        // 辅助函数：从系统词典查词，返回 (trad, tone, en, stroke_aux)
-        let lookup_aux = |word: &str, py: &str| -> (String, String, String, String) {
+        // 辅助函数：从系统词典查词，返回 (trad, tone, en, stroke_aux, flags)
+        let lookup_aux = |word: &str, py: &str| -> (String, String, String, String, u8) {
             if let Some(trie) = context.tries.get("chinese") {
                 if let Some(entries) = trie.get_all_exact(py) {
                     if let Some(tr) = entries.iter().find(|t| t.word == word) {
                         return (tr.trad.to_string(), tr.tone.to_string(),
-                                tr.en.to_string(), tr.stroke_aux.to_string());
+                                tr.en.to_string(), tr.stroke_aux.to_string(), tr.flags);
                     }
                 }
             }
-            (word.to_string(), String::new(), String::new(), String::new())
+            (word.to_string(), String::new(), String::new(), String::new(), 0)
         };
-
         if let Some(profile_dict) = dict.get(profile) {
             let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
             if has_vowel {
@@ -238,7 +237,7 @@ impl InputScheme for ChineseScheme {
                 if let Some(words) = profile_dict.get(&pinyin_key) {
                     for (word, weight) in words {
                         if seen.insert(word.clone()) {
-                            let (trad, tone, en, sa) = lookup_aux(word, &pinyin_key);
+                            let (trad, tone, en, sa, flags) = lookup_aux(word, &pinyin_key);
                             final_results.push(SchemeCandidate {
                                 text: word.clone(),
                                 simplified: word.clone(),
@@ -248,6 +247,7 @@ impl InputScheme for ChineseScheme {
                                 stroke_aux: sa,
                                 weight: *weight,
                                 match_level: 3,
+                                flags,
                             });
                         }
                     }
@@ -262,7 +262,7 @@ impl InputScheme for ChineseScheme {
                         if let Some(words) = profile_dict.get(key) {
                             for (word, weight) in words {
                                 if seen.insert(word.clone()) {
-                                    let (trad, tone, en, sa) = lookup_aux(word, key);
+                                    let (trad, tone, en, sa, flags) = lookup_aux(word, key);
                                     user_prefix_matches.push(SchemeCandidate {
                                         text: word.clone(),
                                         simplified: word.clone(),
@@ -272,6 +272,7 @@ impl InputScheme for ChineseScheme {
                                         stroke_aux: sa,
                                         weight: (*weight as f64 * 0.8) as u32,
                                         match_level: 0,
+                                        flags,
                                     });
                                 }
                             }
@@ -286,7 +287,7 @@ impl InputScheme for ChineseScheme {
                             if match_user_dict_abbreviation(pinyin, &abbr_segs, trie, context.single_syllables) {
                                 for (word, weight) in words {
                                     if seen.insert(word.clone()) {
-                                        let (trad, tone, en, sa) = lookup_aux(word, pinyin);
+                                        let (trad, tone, en, sa, flags) = lookup_aux(word, pinyin);
                                         user_prefix_matches.push(SchemeCandidate {
                                             text: word.clone(),
                                             simplified: word.clone(),
@@ -296,6 +297,7 @@ impl InputScheme for ChineseScheme {
                                             stroke_aux: sa,
                                             weight: (*weight as f64 * 0.8) as u32,
                                             match_level: 0,
+                                            flags,
                                         });
                                     }
                                 }
@@ -331,6 +333,7 @@ impl InputScheme for ChineseScheme {
                                     tr.stroke_aux.to_string(),
                                     tr.weight,
                                     3,
+                                    tr.flags,
                                 ));
                             }
                         } else if context.config.input.enable_prefix_matching && !py.is_empty() {
@@ -367,6 +370,7 @@ impl InputScheme for ChineseScheme {
                                             tr.stroke_aux.to_string(),
                                             tr.weight,
                                             1,
+                                            tr.flags,
                                         ));
                                         if matches.len() >= max_results {
                                             break;
@@ -418,6 +422,7 @@ impl InputScheme for ChineseScheme {
                 cand.english = m.3;
                 cand.stroke_aux = m.4;
                 cand.match_level = m.6;
+                cand.flags = m.7;
                 final_results.push(cand);
             }
         }
@@ -460,6 +465,7 @@ impl InputScheme for ChineseScheme {
                             cand.english = tr.en.to_string();
                             cand.stroke_aux = tr.stroke_aux.to_string();
                             cand.match_level = 2;
+                            cand.flags = tr.flags;
                             final_results.push(cand);
                         }
                     }
@@ -573,6 +579,7 @@ impl InputScheme for ChineseScheme {
                                     cand.english = tr.en.to_string();
                                     cand.stroke_aux = tr.stroke_aux.to_string();
                                     cand.match_level = 1;
+                                    cand.flags = tr.flags;
                                     final_results.push(cand);
                                     if final_results.len() >= max_results { break; }
                                 }

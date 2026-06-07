@@ -82,10 +82,12 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
             hint: Arc::from(""),
             english_aux: Arc::from(""),
             stroke_aux: Arc::from(""),
-            source: Arc::from("Raw"),
-            weight: 0.0,
-            match_level: 0,
-        });
+            source: Arc::from("Syllable"),
+            weight: 1.0,
+            match_level: 3,
+            flags: 0,
+            });
+
     }
     ctx.session.update_state();
     crate::compositor::Compositor::check_auto_commit(ctx)

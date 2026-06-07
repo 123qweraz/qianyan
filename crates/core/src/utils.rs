@@ -87,18 +87,20 @@ pub fn load_syllable_frequencies(root: &Path) -> HashMap<String, u64> {
     map
 }
 
-/// 从 level4.json 提取生僻字集合（只加载汉字本身，不含拼音等字段）
+/// 从 level4.json 和 level5.json 提取生僻字集合
 pub fn load_rare_chars(root: &Path) -> HashSet<String> {
     let mut set = HashSet::new();
-    let path = root.join("dicts/chinese/chars/level4.json");
-    if let Ok(f) = File::open(&path) {
-        if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
-            if let Some(obj) = v.as_object() {
-                for entries in obj.values() {
-                    if let Some(arr) = entries.as_array() {
-                        for entry in arr {
-                            if let Some(ch) = entry.get("char").and_then(|c| c.as_str()) {
-                                set.insert(ch.to_string());
+    for filename in &["level4.json", "level5.json"] {
+        let path = root.join("dicts/chinese/chars").join(filename);
+        if let Ok(f) = File::open(&path) {
+            if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {
+                if let Some(obj) = v.as_object() {
+                    for entries in obj.values() {
+                        if let Some(arr) = entries.as_array() {
+                            for entry in arr {
+                                if let Some(ch) = entry.get("char").and_then(|c| c.as_str()) {
+                                    set.insert(ch.to_string());
+                                }
                             }
                         }
                     }
@@ -112,7 +114,7 @@ pub fn load_rare_chars(root: &Path) -> HashSet<String> {
 pub fn load_single_syllables(root: &Path) -> HashSet<String> {
     let mut set = HashSet::new();
 
-    // 优先读取缓存的 single_syllables.txt（免去解析 4 个 JSON）
+    // 优先读取缓存的 single_syllables.txt（免去解析 5 个 JSON）
     let cached = root.join("dicts/chinese/single_syllables.txt");
     if let Ok(f) = File::open(&cached) {
         use std::io::BufRead;
@@ -129,7 +131,7 @@ pub fn load_single_syllables(root: &Path) -> HashSet<String> {
     }
 
     // 兜底：逐层解析 JSON
-    for filename in &["level1.json", "level2.json", "level3.json", "level4.json"] {
+    for filename in &["level1.json", "level2.json", "level3.json", "level4.json", "level5.json"] {
         let path = root.join("dicts/chinese/chars").join(filename);
         if let Ok(f) = File::open(&path) {
             if let Ok(v) = serde_json::from_reader::<_, Value>(BufReader::new(f)) {

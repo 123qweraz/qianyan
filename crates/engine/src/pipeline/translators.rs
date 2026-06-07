@@ -65,6 +65,7 @@ impl<'a, 'b> FuzzyPinyinSearcher<'a, 'b> {
                             source: Arc::from("Table (Fuzzy)"),
                             weight: tr.weight as f64,
                             match_level: 2,
+                            flags: tr.flags,
                         });
                         if self.candidates.len() >= self.limit {
                             return;
@@ -184,6 +185,7 @@ impl Translator for TableTranslator {
                         source: Arc::from("Table (Exact)"),
                         weight: tr.weight as f64,
                         match_level: 3,
+                        flags: tr.flags,
                     });
                 }
             }
@@ -242,6 +244,7 @@ impl Translator for TableTranslator {
                         source: Arc::from("Table (Abbr)"),
                         weight: ar.weight as f64,
                         match_level: 2,
+                        flags: ar.flags,
                     });
                 }
                 if candidates.len() >= internal_limit {
@@ -266,6 +269,7 @@ impl Translator for TableTranslator {
                         source: Arc::from("Table"),
                         weight: tr.weight as f64,
                         match_level: 1,
+                        flags: tr.flags,
                     });
                 }
                 if candidates.len() >= internal_limit {
@@ -314,7 +318,7 @@ impl Translator for UserDictTranslator {
             if let Some(words) = profile_dict.get(&query) {
                 for (word, weight) in words {
                     if seen.insert(word.as_str()) {
-                        let (trad, en, stroke) = lookup_trie_info(&self.trie, &query, word);
+                        let (trad, en, stroke, flags) = lookup_trie_info(&self.trie, &query, word);
                         results.push(Candidate {
                             text: Arc::from(word.as_str()),
                             simplified: Arc::from(word.as_str()),
@@ -325,6 +329,7 @@ impl Translator for UserDictTranslator {
                             source: Arc::from("User"),
                             weight: *weight as f64,
                             match_level: 3,
+                            flags,
                         });
                     }
                 }
@@ -338,7 +343,7 @@ impl Translator for UserDictTranslator {
                     if pinyin.starts_with(&query) && pinyin != &query {
                         for (word, weight) in words {
                             if seen.insert(word.as_str()) {
-                                let (trad, en, stroke) = lookup_trie_info(&self.trie, pinyin, word);
+                                let (trad, en, stroke, flags) = lookup_trie_info(&self.trie, pinyin, word);
                                 results.push(Candidate {
                                     text: Arc::from(word.as_str()),
                                     simplified: Arc::from(word.as_str()),
@@ -349,6 +354,7 @@ impl Translator for UserDictTranslator {
                                     source: Arc::from("User"),
                                     weight: *weight as f64 * 0.8,
                                     match_level: 1,
+                                    flags,
                                 });
                             }
                         }
@@ -368,7 +374,7 @@ impl Translator for UserDictTranslator {
                     if self.matches_jianpin(pinyin, segments) {
                         for (word, weight) in words {
                             if seen.insert(word.as_str()) {
-                                let (trad, en, stroke) = lookup_trie_info(&self.trie, pinyin, word);
+                                let (trad, en, stroke, flags) = lookup_trie_info(&self.trie, pinyin, word);
                                 results.push(Candidate {
                                     text: Arc::from(word.as_str()),
                                     simplified: Arc::from(word.as_str()),
@@ -379,6 +385,7 @@ impl Translator for UserDictTranslator {
                                     source: Arc::from("User"),
                                     weight: *weight as f64 * 0.9,
                                     match_level: 2,
+                                    flags,
                                 });
                             }
                         }
@@ -449,16 +456,16 @@ fn lookup_trie_info(
     trie: &Option<Arc<Trie>>,
     pinyin: &str,
     word: &str,
-) -> (Arc<str>, Arc<str>, Arc<str>) {
+) -> (Arc<str>, Arc<str>, Arc<str>, u8) {
     if let Some(ref trie) = trie {
         if let Some(exacts) = trie.get_all_exact(pinyin) {
             if let Some(tr) = exacts.iter().find(|tr| tr.word == word) {
                 let trad = if tr.trad.is_empty() { Arc::from(word) } else { Arc::from(tr.trad) };
-                return (trad, Arc::from(tr.en), Arc::from(tr.stroke_aux));
+                return (trad, Arc::from(tr.en), Arc::from(tr.stroke_aux), tr.flags);
             }
         }
     }
-    (Arc::from(word), Arc::from(""), Arc::from(""))
+    (Arc::from(word), Arc::from(""), Arc::from(""), 0)
 }
 
 /// 长句组合器：遍历所有可能的分割，逐段查最高频词，返回多个候选
@@ -573,8 +580,11 @@ impl Translator for ComposeTranslator {
                 stroke_aux: Arc::from(""),
                 source: Arc::from("Compose"),
                 weight: freq as f64 * 0.001 + 0.1,
+
                 match_level: 0,
-            })
+                flags: 0,
+                })
+
             .collect()
     }
 

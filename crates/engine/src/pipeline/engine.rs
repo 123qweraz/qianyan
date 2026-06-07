@@ -225,6 +225,7 @@ impl SearchEngine {
                     source: Arc::from("Engine"),
                     weight: sc.weight as f64,
                     match_level: sc.match_level,
+                    flags: sc.flags,
                 });
             }
 
@@ -236,11 +237,14 @@ impl SearchEngine {
                 });
             }
 
-            if !config_ref.input.enable_rare_chars {
-                if let Some(trie) = self.get_or_load_trie(query.profile) {
-                    let rare = trie.get_rare_chars();
-                    results.retain(|c| !rare.contains(c.text.as_ref()));
+            match config_ref.input.rare_char_mode {
+                qianyan_ime_core::config::RareCharMode::CommonOnly => {
+                    results.retain(|c| c.flags & 1 == 0);
                 }
+                qianyan_ime_core::config::RareCharMode::OnlyRare => {
+                    results.retain(|c| c.flags & 1 != 0);
+                }
+                qianyan_ime_core::config::RareCharMode::IncludeRare => {}
             }
 
             results.truncate(query.limit);
@@ -276,11 +280,14 @@ impl SearchEngine {
                 });
             }
 
-            if !config_ref.input.enable_rare_chars {
-                if let Some(trie) = self.get_or_load_trie(query.profile) {
-                    let rare = trie.get_rare_chars();
-                    final_results.retain(|c| !rare.contains(c.text.as_ref()));
+            match config_ref.input.rare_char_mode {
+                qianyan_ime_core::config::RareCharMode::CommonOnly => {
+                    final_results.retain(|c| c.flags & 1 == 0);
                 }
+                qianyan_ime_core::config::RareCharMode::OnlyRare => {
+                    final_results.retain(|c| c.flags & 1 != 0);
+                }
+                qianyan_ime_core::config::RareCharMode::IncludeRare => {}
             }
 
             final_results.truncate(query.limit);
