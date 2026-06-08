@@ -260,9 +260,21 @@ impl InputScheme for ChineseScheme {
                     }
                 } else {
                     // 前缀匹配 → 暂存到末尾再推入，不阻塞其他策略
+                    let input_syl_count = if raw_parsed.len() > 1 {
+                        raw_parsed.len()
+                    } else {
+                        self.segment_base(&pinyin_key, context.base_syllables).len()
+                    };
+                    let max_syl = input_syl_count + 1;
                     let mut prefix_keys: Vec<&String> = profile_dict
                         .keys()
-                        .filter(|k| k.starts_with(&pinyin_key))
+                        .filter(|k| {
+                            if !k.starts_with(&pinyin_key) {
+                                return false;
+                            }
+                            let key_syl = self.segment_base(k, context.base_syllables);
+                            key_syl.len() <= max_syl
+                        })
                         .collect();
                     prefix_keys.sort_by_key(|k| k.len());
                     for key in prefix_keys {
