@@ -27,7 +27,6 @@ impl EngineContext {
             trie_paths,
             syllable_freq_arc,
             config.learned_words.clone(),
-            config.usage_history.clone(),
             config.ngram_history.clone(),
             config.user_order.clone(),
             Self::default_schemes(),

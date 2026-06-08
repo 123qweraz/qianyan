@@ -43,19 +43,12 @@
         <div class="note">
             <strong>💡 说明</strong><br>
             • <strong>用户词典</strong> — 自动造词记录的自定义词组<br>
-            • <strong>使用频率</strong> — 选词频率统计，用于调频排序<br>
             • <strong>上下文联想</strong> — N-Gram 关联历史，记录前后词关系<br>
             使用下方标签页切换查看不同类型的数据。
         </div>
 
         <div class="card">
             <h3 style="margin-top:0;">⚙️ 排序与学习控制</h3>
-            <div class="setting-item">
-                <div class="info"><div class="title">使用频率排序</div><div class="desc">候选词按历史使用次数排序，常用词自动靠前</div></div>
-                <div style="display:flex;align-items:center;">
-                    <label class="switch"><input type="checkbox" id="enable_usage_sorting"><span class="slider"></span></label>
-                </div>
-            </div>
             <div class="setting-item">
                 <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文词语关系调整候选顺序</div></div>
                 <div style="display:flex;align-items:center;">
@@ -81,7 +74,6 @@
 
         <div class="tab-bar">
             <button class="tab-btn active" onclick="switchTab('learned')">📖 用户词典<span class="tab-badge" id="count-learned">0</span></button>
-            <button class="tab-btn" onclick="switchTab('usage')">📊 使用频率<span class="tab-badge" id="count-usage">0</span></button>
             <button class="tab-btn" onclick="switchTab('ngram')">🔗 上下文联想<span class="tab-badge" id="count-ngram">0</span></button>
         </div>
 
@@ -131,7 +123,6 @@
         async function init() {
             await loadConfig();
             // bind switch toggles
-            bindInput('enable_usage_sorting', 'input');
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
             bindInput('enable_fixed_first_candidate', 'input');
@@ -139,7 +130,7 @@
         }
 
         async function saveSwitches() {
-            config.input.enable_auto_reorder = config.input.enable_usage_sorting || config.input.enable_context_sorting;
+            config.input.enable_auto_reorder = config.input.enable_context_sorting;
             await saveConfig();
             showToast('开关设置已保存', 'success');
         }
@@ -160,7 +151,7 @@
             sel.value = filterProfile;
 
             // Update tab counts
-            for (const t of ['learned', 'usage', 'ngram']) {
+            for (const t of ['learned', 'ngram']) {
                 const count = allEntries.filter(e => e.data_type === t).length;
                 const el = document.getElementById('count-' + t);
                 if (el) el.textContent = count;
@@ -172,7 +163,7 @@
             currentTab = tab;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => {
-                if (b.textContent.includes(tab === 'learned' ? '用户词典' : tab === 'usage' ? '使用频率' : '上下文联想')) {
+                if (b.textContent.includes(tab === 'learned' ? '用户词典' : '上下文联想')) {
                     b.classList.add('active');
                 }
             });
@@ -203,10 +194,8 @@
                 return;
             }
             tbody.innerHTML = entries.map((e) => {
-                const tagClass = e.data_type === 'learned' ? 'type-learned' :
-                    e.data_type === 'usage' ? 'type-usage' : 'type-ngram';
-                const tagLabel = e.data_type === 'learned' ? '词典' :
-                    e.data_type === 'usage' ? '频率' : 'ngram';
+                const tagClass = e.data_type === 'learned' ? 'type-learned' : 'type-ngram';
+                const tagLabel = e.data_type === 'learned' ? '词典' : 'ngram';
                 const cb = showCheck ? `<td class="center"><input type="checkbox" value="${esc_attr(e.profile)}:${esc_attr(e.pinyin)}:${esc_attr(e.word)}" class="promote-check"></td>` : '';
                 return `<tr>
                     ${cb}
@@ -238,7 +227,7 @@
                 showToast('请先选择要清空的方案', 'error');
                 return;
             }
-            if (!confirm(`确定要清空 "${filterProfile}" 方案的所有用户数据（词典+频率+联想）吗？此操作无法撤销。`)) return;
+            if (!confirm(`确定要清空 "${filterProfile}" 方案的所有用户数据（词典+联想+顺序）吗？此操作无法撤销。`)) return;
             const res = await fetch('/api/dict/clear_user', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

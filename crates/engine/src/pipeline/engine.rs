@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use arc_swap::ArcSwap;
 
-use crate::config_manager::{UsageData, UserDictData, OrderData};
+use crate::config_manager::{UserDictData, OrderData};
 use crate::Config;
 use crate::Trie;
 
@@ -107,7 +107,6 @@ pub struct SearchEngine {
     pub base_syllables: Arc<HashSet<String>>,
     pub single_syllables: Arc<HashSet<String>>,
     pub(crate) learned_words: Arc<ArcSwap<UserDictData>>,
-    pub(crate) usage_history: Arc<ArcSwap<UsageData>>,
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub(crate) user_order: Arc<ArcSwap<OrderData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
@@ -133,7 +132,6 @@ impl SearchEngine {
         trie_paths: HashMap<String, (PathBuf, PathBuf)>,
         syllable_freq: Arc<HashMap<String, u64>>,
         learned_words: Arc<ArcSwap<UserDictData>>,
-        usage_history: Arc<ArcSwap<UsageData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         user_order: Arc<ArcSwap<OrderData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
@@ -144,7 +142,6 @@ impl SearchEngine {
             base_syllables: Arc::new(HashSet::new()),
             single_syllables: Arc::new(HashSet::new()),
             learned_words,
-            usage_history,
             ngram_history,
             user_order,
             schemes,
@@ -181,7 +178,6 @@ impl SearchEngine {
                 base_syllables: &self.base_syllables,
                 single_syllables: &self.single_syllables,
                 user_dict: &self.learned_words,
-                usage_history: &self.usage_history,
                 ngram_history: &self.ngram_history,
                 user_order: &self.user_order,
                 active_profiles: &[query.profile.to_string()],
@@ -407,7 +403,6 @@ impl SearchEngine {
         )));
         pipeline.add_filter(Box::new(MatchLevelScoringFilter));
         pipeline.add_filter(Box::new(AdaptiveFilter::new(
-            self.usage_history.clone(),
             self.ngram_history.clone(),
             profile.to_string(),
         )));

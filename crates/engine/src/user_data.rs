@@ -1,4 +1,4 @@
-use crate::config_manager::{UsageData, UserDictData, OrderData};
+use crate::config_manager::{UserDictData, OrderData};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -11,16 +11,8 @@ const DATA_VERSION: &str = "1.0";
 #[derive(Clone, Debug)]
 pub enum DataType {
     Learned,
-    Usage,
     Ngram,
     Order,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct UsageFile {
-    version: String,
-    updated_at: Option<String>,
-    data: HashMap<String, u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -34,7 +26,6 @@ impl DataType {
     fn filename(&self) -> &str {
         match self {
             DataType::Learned => "learned.json",
-            DataType::Usage => "usage.json",
             DataType::Ngram => "ngrams.json",
             DataType::Order => "order.json",
         }
@@ -102,9 +93,8 @@ impl UserDataManager {
         HashMap::new()
     }
 
-    pub fn load_all(&self, profiles: &[String]) -> (UserDictData, UsageData, UserDictData, OrderData) {
+    pub fn load_all(&self, profiles: &[String]) -> (UserDictData, UserDictData, OrderData) {
         let mut learned: UserDictData = UserDictData::new();
-        let mut usage: UsageData = UsageData::new();
         let mut ngrams: UserDictData = UserDictData::new();
         let mut orders: OrderData = OrderData::new();
 
@@ -112,15 +102,11 @@ impl UserDataManager {
             let dir = self.profile_dir(profile);
             if dir.exists() {
                 let l = self.load(profile, DataType::Learned);
-                let u = self.load_usage(profile);
                 let n = self.load(profile, DataType::Ngram);
                 let o = self.load_order(profile);
 
                 if !l.is_empty() {
                     learned.insert(profile.clone(), l);
-                }
-                if !u.is_empty() {
-                    usage.insert(profile.clone(), u);
                 }
                 if !n.is_empty() {
                     ngrams.insert(profile.clone(), n);
@@ -135,19 +121,7 @@ impl UserDataManager {
             Self::load_from_legacy_json_static(&mut learned, DataType::Learned);
         }
 
-        (learned, usage, ngrams, orders)
-    }
-
-    pub fn load_usage(&self, profile: &str) -> HashMap<String, u32> {
-        let file_path = self.profile_dir(profile).join("usage.json");
-        if file_path.exists() {
-            if let Ok(content) = fs::read_to_string(&file_path) {
-                if let Ok(data_file) = serde_json::from_str::<UsageFile>(&content) {
-                    return data_file.data;
-                }
-            }
-        }
-        HashMap::new()
+        (learned, ngrams, orders)
     }
 
     pub fn load_order(&self, profile: &str) -> HashMap<String, Vec<String>> {
@@ -180,7 +154,6 @@ impl UserDataManager {
     fn load_from_legacy_json_static(data: &mut UserDictData, data_type: DataType) {
         let legacy_file = match data_type {
             DataType::Learned => Path::new("data/learned_words.json"),
-            DataType::Usage => Path::new("data/usage_history.json"),
             DataType::Ngram => return,
             DataType::Order => return,
         };
@@ -228,24 +201,6 @@ impl UserDataManager {
         Ok(())
     }
 
-    pub fn save_usage(&self, profile: &str, data: &UsageData) -> std::io::Result<()> {
-        if let Some(profile_data) = data.get(profile) {
-            let dir = self.ensure_profile_dir(profile)?;
-            let file_path = dir.join("usage.json");
-
-            let data_file = UsageFile {
-                version: DATA_VERSION.to_string(),
-                updated_at: Some(Self::timestamp()),
-                data: profile_data.clone(),
-            };
-
-            let json = serde_json::to_string_pretty(&data_file)?;
-            fs::write(&file_path, json)?;
-            self.dirty.store(false, Ordering::SeqCst);
-        }
-        Ok(())
-    }
-
     pub fn list_profiles(&self) -> Vec<String> {
         let mut profiles = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.data_dir) {
@@ -262,13 +217,6 @@ impl UserDataManager {
 
     pub fn clear(&self, profile: &str, data_type: Option<DataType>) -> std::io::Result<()> {
         match data_type {
-            Some(DataType::Usage) => {
-                let dir = self.ensure_profile_dir(profile)?;
-                let usage_path = dir.join("usage.json");
-                if usage_path.exists() {
-                    fs::remove_file(usage_path)?;
-                }
-            }
             Some(DataType::Order) => {
                 let dir = self.ensure_profile_dir(profile)?;
                 let order_path = dir.join("order.json");
@@ -286,10 +234,6 @@ impl UserDataManager {
                     self.save(profile, dt.clone(), &empty)?;
                 }
                 let dir = self.ensure_profile_dir(profile)?;
-                let usage_path = dir.join("usage.json");
-                if usage_path.exists() {
-                    fs::remove_file(usage_path)?;
-                }
                 let order_path = dir.join("order.json");
                 if order_path.exists() {
                     fs::remove_file(order_path)?;

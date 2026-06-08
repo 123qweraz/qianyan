@@ -407,7 +407,6 @@ mod tests {
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
-            Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(HashMap::new()),
         )
     }
@@ -445,7 +444,6 @@ mod tests {
         let engine = SearchEngine::new(
             HashMap::new(),
             Arc::new(HashMap::new()),
-            Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),
             Arc::new(ArcSwap::from_pointee(HashMap::new())),

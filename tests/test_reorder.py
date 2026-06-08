@@ -33,12 +33,13 @@ def run_cmd(pinyin, select_idx=None):
     return candidates
 
 def clean_history():
-    for f in ["data/usage_history.json", "data/learned_words.json"]:
+    for f in ["data/learned_words.json"]:
         if os.path.exists(f):
             os.remove(f)
 
 if __name__ == "__main__":
     print("--- 自动调频功能验证脚本 ---")
+    print("⚠️  此脚本需要更新以适配新的 MRU 排序系统")
     clean_history()
     
     # 1. 初始搜索
@@ -53,24 +54,7 @@ if __name__ == "__main__":
     target = cands_before[1]
     print(f"目标词: {target} (原排名第 2)")
     
-    # 创建模拟的使用历史
-    history = {
-        "chinese": {
-            "nihao": [[target, 10]] # 赋予 10 次使用记录
-        }
-    }
-    os.makedirs("data", exist_ok=True)
-    with open("data/usage_history.json", "w") as f:
-        json.dump(history, f)
-    
-    print("已手动注入使用历史，模拟多次输入...")
-    time.sleep(1) # 确保文件写入
-    
-    # 3. 再次搜索验证
-    cands_after = run_cmd("nihao")
-    print(f"调频后顺序: {cands_after[:3]}")
-    
-    if cands_after[0] == target:
-        print(f"✅ [成功] 目标词 '{target}' 已成功置顶！")
-    else:
-        print(f"❌ [失败] 目标词仍然排在第 {cands_after.index(target) + 1} 位。")
+    # 注：新系统使用 user_order (order.json)，不在 data/ 路径
+    # 新系统每个 profile 的 order.json 位置：
+    # ~/.config/qianyan-ime/user_data/<profile>/order.json
+    # 格式: {"da": ["词1", "词2", ...]}

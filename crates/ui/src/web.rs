@@ -2359,7 +2359,6 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
 
     let syllable_freq_arc = Arc::new(syllable_freq);
     let empty_user_dict = Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new())));
-    let empty_usage = Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, u32>>::new())));
 
     let mut schemes_map: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
     schemes_map.insert("chinese".into(), Box::new(ChineseScheme::new()));
@@ -2372,7 +2371,6 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
         trie_paths,
         syllable_freq_arc,
         empty_user_dict,
-        empty_usage,
         Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
         Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<String>>>::new()))),
         Arc::new(schemes_map),

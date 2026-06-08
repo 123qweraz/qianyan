@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 
-use crate::config_manager::{UsageData, UserDictData};
+use crate::config_manager::UserDictData;
 use crate::Config;
 
 use super::{
@@ -88,9 +88,8 @@ impl Filter for TraditionalFilter {
     }
 }
 
-/// 动态自适应过滤器 (调频与上下文联想)
+/// 动态自适应过滤器 (上下文联想)
 pub struct AdaptiveFilter {
-    pub usage_history: Arc<ArcSwap<UsageData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
     cached_ngram_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
@@ -98,12 +97,10 @@ pub struct AdaptiveFilter {
 
 impl AdaptiveFilter {
     pub fn new(
-        usage_history: Arc<ArcSwap<UsageData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
         profile: String,
     ) -> Self {
         Self {
-            usage_history,
             ngram_history,
             profile,
             cached_ngram_map: std::sync::RwLock::new(None),
@@ -119,20 +116,7 @@ impl Filter for AdaptiveFilter {
         config: &Config,
         context: Option<&str>,
     ) -> Vec<Candidate> {
-        // 简单粗暴排序：使用次数主导，次数相同按原始权重
-        if config.input.enable_usage_sorting {
-            let usage_guard = self.usage_history.load();
-            if let Some(profile_usage) = usage_guard.get(&self.profile) {
-                for c in &mut candidates {
-                    if let Some(count) = profile_usage.get(c.simplified.as_ref()) {
-                        let effective = (*count).min(40) as f64;
-                        c.weight += effective * 100_000_000.0;
-                    }
-                }
-            }
-        }
-
-        // 开关2: 上下文 ngram 加成
+        // 上下文 ngram 加成
         if config.input.enable_context_sorting {
             if let Some(ctx) = context {
                 let ngram_guard = self.ngram_history.load();

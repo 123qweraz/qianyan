@@ -1,27 +1,6 @@
-use crate::config_manager::{UsageData, UserDictData};
+use crate::config_manager::UserDictData;
 use arc_swap::ArcSwap;
 use std::sync::Arc;
-
-/// 按词累计使用次数（替代旧的拼音-keyed MRU）
-pub fn increment_usage(
-    history: &Arc<ArcSwap<UsageData>>,
-    profile: &str,
-    word: &str,
-) -> u32 {
-    let mut new_count = 0;
-    history.rcu(|hist| {
-        let mut clone = (**hist).clone();
-        let entry = clone
-            .entry(profile.to_string())
-            .or_default()
-            .entry(word.to_string())
-            .or_insert(0);
-        *entry += 1;
-        new_count = *entry;
-        Arc::new(clone)
-    });
-    new_count
-}
 
 pub fn update_mru(
     history: &Arc<ArcSwap<UserDictData>>,
@@ -82,8 +61,6 @@ pub fn record_usage(
     let word_len = word.chars().count();
 
     if ctx.config.enable_auto_reorder() {
-        // 按词累计使用次数
-        increment_usage(&ctx.config.usage_history, &profile, word);
         // 按拼音记录用户选词顺序（无计数，纯 MRU 排序）
         if !_pinyin.is_empty() {
             ctx.config.insert_usage_order(&profile, _pinyin, word);

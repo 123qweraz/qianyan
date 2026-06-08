@@ -612,21 +612,6 @@ impl InputScheme for ChineseScheme {
     ) {
         // 简单粗暴排序：使用次数主导，次数相同按原始权重
         if let Some(profile) = context.active_profiles.first() {
-            // 开关1: 使用频率排序（使用次数 × 1亿 + 原始权重 → 1次就比0次靠前）
-            if context.config.input.enable_usage_sorting {
-                let usage_guard = context.usage_history.load();
-                if let Some(profile_usage) = usage_guard.get(profile) {
-                    for c in &mut *candidates {
-                        if let Some(count) = profile_usage.get(c.simplified.as_str()) {
-                            let effective = (*count).min(40) as u32;
-                            let boost = effective.saturating_mul(100_000_000);
-                            c.weight = c.weight.saturating_add(boost);
-                        }
-                    }
-                }
-            }
-
-            // 开关2: 上下文联想
             if context.config.input.enable_context_sorting {
                 if let Some(last_word) = context.last_word {
                     let ngram_guard = context.ngram_history.load();
