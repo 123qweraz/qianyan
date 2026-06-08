@@ -50,6 +50,12 @@
         <div class="card">
             <h3 style="margin-top:0;">⚙️ 排序与学习控制</h3>
             <div class="setting-item">
+                <div class="info"><div class="title">用户选词顺序排序</div><div class="desc">选过的词自动排到该拼音候选的首位，关闭后完全按系统词典 weight 降序</div></div>
+                <div style="display:flex;align-items:center;">
+                    <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文词语关系调整候选顺序</div></div>
                 <div style="display:flex;align-items:center;">
                     <label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label>
@@ -117,13 +123,13 @@
         async function init() {
             await loadConfig();
             // bind switch toggles
+            bindInput('enable_auto_reorder', 'input');
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
             await loadAll();
         }
 
         async function saveSwitches() {
-            config.input.enable_auto_reorder = config.input.enable_context_sorting;
             await saveConfig();
             showToast('开关设置已保存', 'success');
         }
