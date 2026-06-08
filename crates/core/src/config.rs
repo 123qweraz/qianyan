@@ -709,6 +709,19 @@ impl Config {
             }
         }
 
+        // 向后兼容: enable_rare_chars: true → rare_char_mode: include_rare
+        if let Some(input) = merged.get_mut("input").and_then(|v| v.as_object_mut()) {
+            let has_old_true = input.get("enable_rare_chars") == Some(&serde_json::Value::Bool(true));
+            let has_new = input.contains_key("rare_char_mode");
+            if has_old_true && !has_new {
+                log::info!("Config::load: 迁移 enable_rare_chars=true → rare_char_mode=include_rare");
+                input.insert(
+                    "rare_char_mode".into(),
+                    serde_json::Value::String("include_rare".into()),
+                );
+            }
+        }
+
         serde_json::from_value(merged).unwrap_or_else(|e| {
             log::warn!("Config::load: 配置合并反序列化失败: {:?}，使用默认配置", e);
             Self::default_config()
