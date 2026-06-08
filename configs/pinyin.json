@@ -57,7 +57,7 @@
     "commit_mode": "single",
     "default_profile": "chinese",
     "display_mode": "character_with_english",
-    "double_tap_timeout_ms": 150,
+    "double_tap_timeout_ms": 200,
     "double_tap_uppercase_keys": [
       "a",
       "b",
@@ -102,7 +102,7 @@
     "enable_prefix_matching": true,
     "enable_smart_backspace": false,
     "enable_traditional": false,
-    "enable_usage_sorting": true,
+    "enable_usage_sorting": false,
     "enable_word_discovery": true,
     "english_aux_mode": "Prefix",
     "filter_proper_nouns_by_case": true,
