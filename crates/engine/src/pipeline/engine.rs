@@ -155,14 +155,15 @@ impl SearchEngine {
     }
 
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
+        let config_ref = query.config;
         log::info!(
-            "engine_search: profile={}, buffer={}, fuzzy_enabled={}",
+            "engine_search: profile={}, buffer={}, fuzzy_enabled={}, rare_char_mode={:?}",
             query.profile,
             query.buffer,
-            query.fuzzy_enabled
+            query.fuzzy_enabled,
+            config_ref.input.rare_char_mode
         );
 
-        let config_ref = query.config;
         let effective_fuzzy = query.fuzzy_enabled && query.config.input.enable_fuzzy_pinyin;
 
         if let Some(scheme) = self.schemes.get(query.profile) {
@@ -253,6 +254,13 @@ impl SearchEngine {
                 _ => query.limit.max(2000),
             };
             results.truncate(effective_limit);
+            log::info!(
+                "engine_search: scheme results total={}, rare={}, common={}, mode={:?}",
+                results.len(),
+                results.iter().filter(|c| c.flags & 1 != 0).count(),
+                results.iter().filter(|c| c.flags & 1 == 0).count(),
+                config_ref.input.rare_char_mode,
+            );
             return (results, vec![]);
         }
 
@@ -300,6 +308,13 @@ impl SearchEngine {
                 _ => query.limit.max(2000),
             };
             final_results.truncate(effective_limit);
+            log::info!(
+                "engine_search: pipeline results total={}, rare={}, common={}, mode={:?}",
+                final_results.len(),
+                final_results.iter().filter(|c| c.flags & 1 != 0).count(),
+                final_results.iter().filter(|c| c.flags & 1 == 0).count(),
+                config_ref.input.rare_char_mode,
+            );
             return (final_results, segments);
         }
 

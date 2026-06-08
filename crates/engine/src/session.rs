@@ -431,6 +431,7 @@ mod tests {
             source: Arc::from("test"),
             weight: 1.0,
             match_level: 3,
+            flags: 0,
         }
     }
 }

@@ -1194,7 +1194,6 @@ mod tests {
         assert_eq!(result.word, "hello");
         assert_eq!(result.weight, 0);
     }
-}
 
     #[test]
     fn test_abbreviation_user_dict_priority() {
@@ -1454,3 +1453,99 @@ mod tests {
         assert!(r.iter().any(|(w, _)| w == "而且"), "而且 (system prefix) should appear");
         assert!(r.iter().any(|(w, _)| w == "而去切"), "而去切 (user prefix) should appear");
     }
+
+    #[test]
+    fn test_rare_char_flags_in_trie() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+
+        // 检查 li 拼音的条目，统计 flag=1 的生僻字
+        let results = trie.get_all_exact("li").expect("li should exist");
+        let total = results.len();
+        let rare_count = results.iter().filter(|r| r.flags & 1 != 0).count();
+        let common_count = results.iter().filter(|r| r.flags & 1 == 0).count();
+        println!("li: total={}, rare={}, common={}", total, rare_count, common_count);
+
+        // 检查几个已知的生僻字
+        let rare_examples = vec!["孋", "悧", "蒚", "唎"];
+        for ex in &rare_examples {
+            if let Some(r) = results.iter().find(|r| r.word == *ex) {
+                println!("  {}: weight={}, flags={:#04x}", ex, r.weight, r.flags);
+                assert_eq!(r.flags & 1, 1, "{} should have rare flag set", ex);
+            }
+        }
+
+        // 确保生僻字数量合理（至少有 level4/level5 的条目）
+        assert!(rare_count > 0, "Should have at least some rare characters with flags=1 for 'li'");
+    }
+
+    #[test]
+    fn test_rare_char_search_engine_filter() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, u32>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        let base_cfg = qianyan_ime_core::config::Config::load();
+
+        // Test 3 modes
+        for (label, mode) in [
+            ("CommonOnly", qianyan_ime_core::config::RareCharMode::CommonOnly),
+            ("IncludeRare", qianyan_ime_core::config::RareCharMode::IncludeRare),
+            ("OnlyRare", qianyan_ime_core::config::RareCharMode::OnlyRare),
+        ] {
+            let mut cfg = base_cfg.clone();
+            cfg.input.rare_char_mode = mode;
+            cfg.input.enable_prefix_matching = false;
+            cfg.input.enable_abbreviation_matching = false;
+            cfg.input.enable_error_correction = false;
+
+            let query = SearchQuery {
+                buffer: "li",
+                profile: "chinese",
+                config: &cfg,
+                limit: 3000,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
+            let total = candidates.len();
+            let rare = candidates.iter().filter(|c| c.flags & 1 != 0).count();
+            let common = candidates.iter().filter(|c| c.flags & 1 == 0).count();
+            println!("{}: total={} rare={} common={}", label, total, rare, common);
+        }
+    }
+}
