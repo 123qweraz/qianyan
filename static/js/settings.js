@@ -7,6 +7,7 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
+    console.log('saveConfig: rare_char_mode=', config?.input?.rare_char_mode, 'full config keys:', Object.keys(config || {}));
     await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,9 +53,13 @@ function bindInput(id, section, propertyPath) {
     const el = document.getElementById(id);
     if (!el) return;
 
+    // 确保配置对象存在
+    if (!config) { console.warn('bindInput: config not loaded yet for', id); return; }
+
     // 确定目标属性路径
     const path = propertyPath || id;
     const targetSection = section ? config[section] : config;
+    if (!targetSection) { console.warn('bindInput: targetSection missing for', id, 'section=', section); return; }
     
     let val = getNestedValue(targetSection, path);
 

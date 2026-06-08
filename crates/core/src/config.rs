@@ -712,10 +712,14 @@ impl Config {
         }
 
         // 向后兼容: enable_rare_chars: true → rare_char_mode: include_rare
+        // 默认值为 "common_only"（serde snake_case 序列化），需要兼容旧版写入的空字符串
         if let Some(input) = merged.get_mut("input").and_then(|v| v.as_object_mut()) {
             let has_old_true = input.get("enable_rare_chars") == Some(&serde_json::Value::Bool(true));
-            let has_new = input.contains_key("rare_char_mode");
-            if has_old_true && !has_new {
+            let rare_val = input.get("rare_char_mode");
+            let is_default_or_empty = rare_val.map_or(true, |v| {
+                v.as_str().map_or(true, |s| s.is_empty() || s == "common_only")
+            });
+            if has_old_true && is_default_or_empty {
                 log::info!("Config::load: 迁移 enable_rare_chars=true → rare_char_mode=include_rare");
                 input.insert(
                     "rare_char_mode".into(),

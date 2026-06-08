@@ -313,6 +313,7 @@ async fn update_config(
     State((config, _, tray_tx)): State<WebState>,
     Json(new_config): Json<Config>
 ) -> StatusCode {
+    log::info!("update_config: rare_char_mode={:?}", new_config.input.rare_char_mode);
     // 先保存到磁盘，再更新内存（磁盘失败时内存不受影响）
     if let Err(e) = new_config.save() {
         log::error!("Config save failed: {}", e);
