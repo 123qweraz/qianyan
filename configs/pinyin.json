@@ -57,7 +57,7 @@
     "commit_mode": "single",
     "default_profile": "chinese",
     "display_mode": "character_with_english",
-    "double_tap_timeout_ms": 500,
+    "double_tap_timeout_ms": 150,
     "double_tap_uppercase_keys": [
       "a",
       "b",
@@ -90,7 +90,7 @@
     "enable_abbreviation_matching": true,
     "enable_auto_reorder": true,
     "enable_caps_selection": true,
-    "enable_context_sorting": true,
+    "enable_context_sorting": false,
     "enable_double_tap": true,
     "enable_english_filter": true,
     "enable_error_correction": true,
