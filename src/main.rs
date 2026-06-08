@@ -15,6 +15,8 @@ use std::sync::{Arc, Mutex, RwLock};
 
 static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
+static WEB_SERVER_CHILD: std::sync::Mutex<Option<std::process::Child>> =
+    std::sync::Mutex::new(None);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -393,6 +395,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             // Subprocess disconnected; allow restart
+                            if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
+                                *c = None;
+                            }
                             WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
                         });
 
@@ -409,7 +414,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .arg("--root").arg(&root_str)
                             .spawn()
                         {
-                            Ok(_) => {
+                            Ok(child) => {
+                                if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
+                                    *c = Some(child);
+                                }
                                 std::thread::sleep(std::time::Duration::from_millis(500));
                             }
                             Err(e) => {
@@ -461,6 +469,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::Exit => {
+                    if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
+                        if let Some(ref mut child) = *c {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                        }
+                    }
                     processor_clone.exit();
                     let _ = gui_tx_tray.send(GuiEvent::Exit);
                     std::thread::sleep(std::time::Duration::from_millis(50));
