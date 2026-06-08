@@ -740,6 +740,7 @@ impl Config {
         let _guard = lock.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
 
         let config_dir = Self::get_config_dir();
+        log::info!("Config::save to {:?}, rare_char_mode={:?}", config_dir, self.input.rare_char_mode);
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir)?;
         }

@@ -8,11 +8,16 @@ async function loadConfig() {
 
 async function saveConfig() {
     console.log('saveConfig: rare_char_mode=', config?.input?.rare_char_mode, 'full config keys:', Object.keys(config || {}));
-    await fetch('/api/config', {
+    const resp = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
     });
+    if (!resp.ok) {
+        console.error('saveConfig FAILED:', resp.status, resp.statusText);
+        showToast("保存失败！请检查终端日志");
+        return;
+    }
     showToast("设置已保存并应用");
 }
 
