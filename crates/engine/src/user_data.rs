@@ -19,7 +19,7 @@ pub enum DataType {
 struct OrderFile {
     version: String,
     updated_at: Option<String>,
-    data: HashMap<String, Vec<String>>,
+    data: Vec<String>,
 }
 
 impl DataType {
@@ -124,7 +124,7 @@ impl UserDataManager {
         (learned, ngrams, orders)
     }
 
-    pub fn load_order(&self, profile: &str) -> HashMap<String, Vec<String>> {
+    pub fn load_order(&self, profile: &str) -> Vec<String> {
         let file_path = self.profile_dir(profile).join("order.json");
         if file_path.exists() {
             if let Ok(content) = fs::read_to_string(&file_path) {
@@ -133,7 +133,7 @@ impl UserDataManager {
                 }
             }
         }
-        HashMap::new()
+        Vec::new()
     }
 
     pub fn save_order(&self, profile: &str, data: &OrderData) -> std::io::Result<()> {

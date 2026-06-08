@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub type UserDictData = HashMap<String, HashMap<String, Vec<(String, u32)>>>;
-pub type OrderData = HashMap<String, HashMap<String, Vec<String>>>;
+pub type OrderData = HashMap<String, Vec<String>>;
 
 const USAGE_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 
@@ -114,13 +114,9 @@ impl ConfigManager {
         }
     }
 
-    pub fn insert_usage_order(&self, profile: &str, syllable: &str, word: &str) {
+    pub fn insert_usage_order(&self, profile: &str, word: &str) {
         let mut current = (**self.user_order.load()).clone();
-        let entries = current
-            .entry(profile.to_string())
-            .or_default()
-            .entry(syllable.to_string())
-            .or_default();
+        let entries = current.entry(profile.to_string()).or_default();
         entries.retain(|w| w != word);
         entries.insert(0, word.to_string());
         entries.truncate(20);

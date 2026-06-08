@@ -193,14 +193,10 @@ impl Trie {
         let mut map = HashMap::with_capacity(50000);
         let mut stream = self.index.stream();
         while let Some((key, offset)) = fst::Streamer::next(&mut stream) {
-            let mut first = true;
             self.read_block(offset as usize, |tr| {
                 let word: Box<str> = Box::from(tr.word);
-                if first {
-                    if let Ok(key_str) = std::str::from_utf8(key) {
-                        map.entry(word).or_insert_with(|| Box::<str>::from(key_str));
-                    }
-                    first = false;
+                if let Ok(key_str) = std::str::from_utf8(key) {
+                    map.entry(word).or_insert_with(|| Box::<str>::from(key_str));
                 }
             });
         }
@@ -674,7 +670,7 @@ mod tests {
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<String>>>
+                String, Vec<String>>
             ::new()))),
             {
                 let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
@@ -751,7 +747,7 @@ mod tests {
                 String, HashMap<String, Vec<(String, u32)>>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<String>>>
+                String, Vec<String>>
             ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
@@ -827,7 +823,7 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<String>>>
+                String, Vec<String>>
             ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
@@ -908,6 +904,7 @@ mod tests {
         let config_path = root.join("configs");
         std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
         let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_auto_reorder = true;
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
         config.input.enable_fuzzy_pinyin = false;
@@ -923,7 +920,7 @@ mod tests {
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
-        let user_order: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<String>>>>> =
+        let user_order: Arc<ArcSwap<HashMap<String, Vec<String>>>> =
             Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
 
         let engine = SearchEngine::new(
@@ -962,10 +959,8 @@ mod tests {
         assert!(r1[0] == "大", "Without order, 大 should be first. Got: {}", r1[0]);
 
         // 模拟用户选了 "打" → 它应排到首位
-        let mut order: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
-        let mut da_order: HashMap<String, Vec<String>> = HashMap::new();
-        da_order.insert("da".to_string(), vec!["打".to_string()]);
-        order.insert("chinese".to_string(), da_order);
+        let mut order: HashMap<String, Vec<String>> = HashMap::new();
+        order.insert("chinese".to_string(), vec!["打".to_string()]);
         user_order.store(Arc::new(order));
 
         let r2 = search_words(&engine, &config, "da", &syllables);
@@ -973,10 +968,8 @@ mod tests {
         assert!(r2[0] == "打", "打 should be first after user order. Got: {}", r2[0]);
 
         // 再选 "大" → 它应该排首位，"打"排第二
-        let mut order2: HashMap<String, HashMap<String, Vec<String>>> = HashMap::new();
-        let mut da_order2: HashMap<String, Vec<String>> = HashMap::new();
-        da_order2.insert("da".to_string(), vec!["大".to_string(), "打".to_string()]);
-        order2.insert("chinese".to_string(), da_order2);
+        let mut order2: HashMap<String, Vec<String>> = HashMap::new();
+        order2.insert("chinese".to_string(), vec!["大".to_string(), "打".to_string()]);
         user_order.store(Arc::new(order2));
 
         let r3 = search_words(&engine, &config, "da", &syllables);
@@ -1010,7 +1003,7 @@ mod tests {
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
-        let user_order: Arc<ArcSwap<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>> =
+        let user_order: Arc<ArcSwap<std::collections::HashMap<String, Vec<String>>>> =
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::new())));
 
         let engine = crate::pipeline::SearchEngine::new(
@@ -1052,10 +1045,8 @@ mod tests {
         assert!(r1[0] == "大", "Without order, 大 should be first. Got: {}", r1[0]);
 
         // 模拟用户选了 "打" 10 次（MRU 列表只保留最后选的，但测试只验证单次选择后的顺序）
-        let mut order: std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>> = std::collections::HashMap::new();
-        let mut da_order: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
-        da_order.insert("da".to_string(), vec!["打".to_string()]);
-        order.insert("chinese".to_string(), da_order);
+        let mut order: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        order.insert("chinese".to_string(), vec!["打".to_string()]);
         user_order.store(Arc::new(order));
 
         // 重新搜索 — "打" 应排首位
@@ -1101,7 +1092,7 @@ mod tests {
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<String>>>
+                String, Vec<String>>
             ::new()))),
             {
                 let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
@@ -1378,7 +1369,7 @@ mod tests {
                 m
             })));
 
-        let user_order: Arc<ArcSwap<HashMap<String, HashMap<String, Vec<String>>>>> =
+        let user_order: Arc<ArcSwap<HashMap<String, Vec<String>>>> =
             Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
 
         let ngram_history = Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
@@ -1474,7 +1465,7 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
-                String, std::collections::HashMap<String, Vec<String>>>
+                String, Vec<String>>
             ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();

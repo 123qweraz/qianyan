@@ -635,17 +635,15 @@ impl InputScheme for ChineseScheme {
         // 纯 weight 降序排序
         candidates.sort_by(|a, b| b.weight.cmp(&a.weight));
 
-        // 用户选词顺序：按音节重排，最近选的排最前
+        // 全局 MRU：最近选的词排最前（不按拼音分组，同词不同拼音也能置顶）
         if context.config.input.enable_auto_reorder {
             if let Some(profile) = context.active_profiles.first() {
                 let order_guard = context.user_order.load();
-                if let Some(profile_orders) = order_guard.get(profile) {
-                    if let Some(word_list) = profile_orders.get(_query) {
-                        for word in word_list.iter().rev() {
-                            if let Some(idx) = candidates.iter().position(|c| c.text == *word || c.simplified == *word) {
-                                let cand = candidates.remove(idx);
-                                candidates.insert(0, cand);
-                            }
+                if let Some(word_list) = order_guard.get(profile) {
+                    for word in word_list.iter().rev() {
+                        if let Some(idx) = candidates.iter().position(|c| c.text == *word || c.simplified == *word) {
+                            let cand = candidates.remove(idx);
+                            candidates.insert(0, cand);
                         }
                     }
                 }
