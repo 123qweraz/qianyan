@@ -251,7 +251,8 @@ pub fn handle_composing(
                                 // 双击出大写：如果没找到常规双击映射，检查是否启用了双击大写功能
                                 if replacement.is_none() {
                                     let uppercase_keys = ctx.config.double_tap_uppercase_keys();
-                                    if uppercase_keys.contains(&c.to_string()) {
+                                    // g/n 既可作拼音声母又可作辅码接受字母，排除两者以免干扰正常输入
+                                    if uppercase_keys.contains(&c.to_string()) && c != 'g' && c != 'n' {
                                         ctx.dispatcher.last_tap_key = None;
                                         ctx.dispatcher.last_tap_time = None;
                                         // 去掉第一击多输入的字母

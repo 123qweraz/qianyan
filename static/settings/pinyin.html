@@ -158,6 +158,9 @@
                         <div class="info"><div class="title">启用双击字母辅码过滤</div><div class="desc">快速双击任意字母键（如双击 h），等同于按 Shift + h，进入辅码过滤模式。候选列表只显示匹配该字母提示的候选字</div></div>
                         <label class="switch"><input type="checkbox" id="double_tap_uppercase_toggle" onchange="toggleDoubleTapUppercase()"><span class="slider"></span></label>
                     </div>
+                    <div style="margin:0 14px 14px;font-size:11px;color:var(--apple-secondary);line-height:1.5;background:rgba(255,149,0,0.08);padding:8px 12px;border-radius:6px;border-left:3px solid #ff9500;">
+                        <strong>注：</strong>字母 <code>g</code> 和 <code>n</code> 不可作为辅码过滤触发键。两者既可作拼音声母（如 gāo、nĭ），又可作辅码接受字母（如笔画码 <code>g</code>=𠃍 <code>n</code>=𠃌），为避免干扰正常拼音输入，双击 <code>g</code>/<code>n</code> 不会触发辅码过滤，仅作为普通字母输入。
+                    </div>
                     <div class="setting-item">
                         <div class="info"><div class="title">双击间隔(毫秒)</div><div class="desc">两次按键的间隔低于此值判定为双击，默认 250ms</div></div>
                         <input type="number" id="double_tap_timeout_ms" style="width: 100px;" min="100" max="1000" step="50">
@@ -233,7 +236,7 @@
 
     <script src="/static/js/settings.js"></script>
     <script>
-        const DOUBLE_TAP_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
+        const DOUBLE_TAP_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(k => k !== 'g' && k !== 'n');
 
         async function resetPinyin() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
