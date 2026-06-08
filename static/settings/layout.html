@@ -163,6 +163,28 @@
         .key-enter { width: 95px; }
         .key-shift { width: 115px; }
         .key-space { width: 300px; }
+
+        .uppercase-toggle-section {
+            background: #fff;
+            border: 1px solid var(--apple-border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 0 auto 16px;
+            max-width: 900px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .uppercase-toggle-section label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        .uppercase-toggle-section .hint {
+            font-size: 12px;
+            color: #888;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -195,6 +217,17 @@
                     导入布局 <input type="file" id="import-file" style="display:none" onchange="importLayout(event)">
                 </label>
             </div>
+        </div>
+
+        <div class="uppercase-toggle-section">
+            <div>
+                <label for="uppercase-toggle">双击字母键启用辅码过滤</label>
+                <span class="hint">（开启后，快速双击任意字母键 = Shift + 该字母）</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="uppercase-toggle" onchange="toggleDoubleTapUppercase()">
+                <span class="slider"></span>
+            </label>
         </div>
 
         <div class="visual-keyboard" id="keyboard-container">
@@ -261,11 +294,20 @@
 
         let currentProfile = 'chinese';
         let editingKeyId = null;
+        const ALL_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
         async function init() {
             await loadConfig();
             if (!config.input.layouts) config.input.layouts = {};
-            
+
+            if (!config.input.double_tap_uppercase_keys) {
+                config.input.double_tap_uppercase_keys = [];
+            }
+
+            const currentKeys = config.input.double_tap_uppercase_keys || [];
+            const allEnabled = ALL_LETTERS.every(k => currentKeys.includes(k));
+            document.getElementById('uppercase-toggle').checked = allEnabled;
+
             // 确保默认 profile 存在
             ['chinese', 'english', 'japanese', 'stroke'].forEach(p => {
                 if (!config.input.layouts[p]) {
@@ -275,6 +317,15 @@
 
             document.getElementById('preset-select').value = currentProfile;
             renderKeyboard();
+        }
+
+        function toggleDoubleTapUppercase() {
+            const checked = document.getElementById('uppercase-toggle').checked;
+            if (checked) {
+                config.input.double_tap_uppercase_keys = [...ALL_LETTERS];
+            } else {
+                config.input.double_tap_uppercase_keys = [];
+            }
         }
 
         function renderKeyboard() {
