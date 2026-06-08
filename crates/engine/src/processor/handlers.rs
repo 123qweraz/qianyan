@@ -258,6 +258,11 @@ pub fn handle_composing(
                                         if ctx.session.buffer.ends_with(c) {
                                             ctx.session.buffer.pop();
                                         }
+                                        // 空缓冲区不触发过滤（如单独双击某个字母）
+                                        if ctx.session.buffer.is_empty() {
+                                            ctx.session.clear_buffer();
+                                            return Compositor::update_phantom_action(ctx);
+                                        }
                                         // 模拟 Shift+key：触发辅码过滤模式
                                         ctx.session.shift_used_as_modifier = true;
                                         if ctx.session.filter_mode != FilterMode::Global {
