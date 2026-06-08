@@ -218,7 +218,6 @@ pub struct Input {
     pub prefix_matching_limit: usize,
     pub enable_abbreviation_matching: bool,
     pub enable_error_correction: bool,
-    pub enable_rare_chars: bool,
     pub rare_char_mode: RareCharMode,
     pub filter_proper_nouns_by_case: bool,
     pub enabled_profiles: Vec<String>,
@@ -711,23 +710,6 @@ impl Config {
             }
         }
 
-        // 向后兼容: enable_rare_chars: true → rare_char_mode: include_rare
-        // 默认值为 "common_only"（serde snake_case 序列化），需要兼容旧版写入的空字符串
-        if let Some(input) = merged.get_mut("input").and_then(|v| v.as_object_mut()) {
-            let has_old_true = input.get("enable_rare_chars") == Some(&serde_json::Value::Bool(true));
-            let rare_val = input.get("rare_char_mode");
-            let is_default_or_empty = rare_val.map_or(true, |v| {
-                v.as_str().map_or(true, |s| s.is_empty() || s == "common_only")
-            });
-            if has_old_true && is_default_or_empty {
-                log::info!("Config::load: 迁移 enable_rare_chars=true → rare_char_mode=include_rare");
-                input.insert(
-                    "rare_char_mode".into(),
-                    serde_json::Value::String("include_rare".into()),
-                );
-            }
-        }
-
         serde_json::from_value(merged).unwrap_or_else(|e| {
             log::warn!("Config::load: 配置合并反序列化失败: {:?}，使用默认配置", e);
             Self::default_config()
@@ -937,7 +919,6 @@ impl Config {
                 prefix_matching_limit: 20,
                 enable_abbreviation_matching: true,
                 enable_error_correction: true,
-                enable_rare_chars: false,
                 rare_char_mode: RareCharMode::CommonOnly,
                 filter_proper_nouns_by_case: true,
                 enabled_profiles: vec!["chinese".to_string()],

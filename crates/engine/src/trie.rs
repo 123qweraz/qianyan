@@ -296,9 +296,9 @@ impl Trie {
                             results.push(pair);
                             if results.len() >= limit {
                                 stop = true;
-                            }
-                        }
-                    }
+        }
+    }
+}
                 });
                 if stop {
                     break;
@@ -1519,9 +1519,8 @@ mod tests {
 
         let base_cfg = qianyan_ime_core::config::Config::load();
         println!(
-            "base_cfg.rare_char_mode={:?}, enable_rare_chars={}",
+            "base_cfg.rare_char_mode={:?}",
             base_cfg.input.rare_char_mode,
-            base_cfg.input.enable_rare_chars,
         );
 
         // Test 3 modes
