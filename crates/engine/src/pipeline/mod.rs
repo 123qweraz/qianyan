@@ -19,10 +19,8 @@ pub use word_discovery::*;
 pub mod search_helper;
 pub use search_helper::*;
 
-// 调频衰减算法参数
-pub(crate) const NGRAM_BOOST_SCALE: f64 = 50000.0;
-pub(crate) const MAX_NGRAM_BOOST: f64 = 500000.0;
-pub(crate) const USAGE_BOOST_SCALE: f64 = 50000.0;
+// 调频衰减算法参数（乘法加成系数现在在 filters.rs 和 chinese.rs 中内联定义）
+
 
 pub const MAX_LOOKUP_LIMIT: usize = 500;
 const CACHE_TTL_MS: u64 = 300;
