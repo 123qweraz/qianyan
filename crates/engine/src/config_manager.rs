@@ -69,6 +69,7 @@ impl ConfigManager {
 
     pub fn apply_config(&mut self, conf: &Config) {
         self.master_config = conf.clone();
+        log::info!("ConfigManager::apply_config: rare_char_mode={:?}", self.master_config.input.rare_char_mode);
 
         if (self.master_config.input.enable_word_discovery
             || self.master_config.input.enable_auto_reorder)

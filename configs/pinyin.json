@@ -71,6 +71,7 @@
     "enable_long_press": false,
     "enable_number_selection": true,
     "enable_prefix_matching": true,
+    "enable_rare_chars": false,
     "enable_smart_backspace": false,
     "enable_traditional": false,
     "enable_word_discovery": true,
