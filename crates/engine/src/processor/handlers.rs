@@ -248,6 +248,24 @@ pub fn handle_composing(
                                         ctx.config.double_taps().get(&c.to_string()).cloned();
                                 }
 
+                                // 双击出大写：如果没找到常规双击映射，检查是否启用了双击大写功能
+                                if replacement.is_none() {
+                                    let uppercase_keys = ctx.config.double_tap_uppercase_keys();
+                                    if uppercase_keys.contains(&c.to_string()) {
+                                        ctx.dispatcher.last_tap_key = None;
+                                        ctx.dispatcher.last_tap_time = None;
+                                        // 模拟 Shift+key：追加字符并标记 shift 已使用（触发辅码过滤模式）
+                                        ctx.session.shift_used_as_modifier = true;
+                                        ctx.session.push_char(c);
+                                        if perform_lookup {
+                                            if let Some(act) = lookup(ctx) {
+                                                return act;
+                                            }
+                                        }
+                                        return Compositor::update_phantom_action(ctx);
+                                    }
+                                }
+
                                 if let Some(r) = replacement {
                                     if ctx.session.buffer.ends_with(c) {
                                         ctx.session.buffer.pop();

@@ -200,6 +200,8 @@ pub struct Input {
     pub enable_double_tap: bool,
     pub double_tap_timeout_ms: u64,
     pub double_taps: Vec<DoubleTap>,
+    #[serde(default)]
+    pub double_tap_uppercase_keys: Vec<String>,
     pub enable_long_press: bool,
     pub long_press_timeout_ms: u64,
     pub long_press_mappings: Vec<LongPressMapping>,
@@ -915,6 +917,7 @@ impl Config {
                 enable_double_tap: false,
                 double_tap_timeout_ms: 250,
                 double_taps: vec![],
+                double_tap_uppercase_keys: vec![],
                 enable_long_press: false,
                 long_press_timeout_ms: 400,
                 long_press_mappings: vec![],

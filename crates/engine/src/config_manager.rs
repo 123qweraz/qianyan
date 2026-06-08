@@ -300,6 +300,10 @@ impl ConfigManager {
         m
     }
 
+    pub fn double_tap_uppercase_keys(&self) -> &[String] {
+        &self.master_config.input.double_tap_uppercase_keys
+    }
+
     pub fn double_tap_timeout(&self) -> Duration {
         Duration::from_millis(self.master_config.input.double_tap_timeout_ms)
     }
