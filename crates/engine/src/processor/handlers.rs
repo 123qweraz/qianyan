@@ -254,6 +254,10 @@ pub fn handle_composing(
                                     if uppercase_keys.contains(&c.to_string()) {
                                         ctx.dispatcher.last_tap_key = None;
                                         ctx.dispatcher.last_tap_time = None;
+                                        // 去掉第一击多输入的字母
+                                        if ctx.session.buffer.ends_with(c) {
+                                            ctx.session.buffer.pop();
+                                        }
                                         // 模拟 Shift+key：触发辅码过滤模式
                                         ctx.session.shift_used_as_modifier = true;
                                         if ctx.session.filter_mode != FilterMode::Global {
