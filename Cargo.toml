@@ -7,6 +7,10 @@ members = [
     "crates/platform-windows",
     "crates/web-settings",
 ]
+default-members = [
+    ".",
+    "crates/web-settings",
+]
 resolver = "2"
 
 [workspace.package]
