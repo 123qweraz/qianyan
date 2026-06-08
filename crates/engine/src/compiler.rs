@@ -16,6 +16,28 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
+
+                // stroke 方案特殊处理：从 chinese/chars 编译，用 stroke_aux 作为 key
+                if dir_name == "stroke" {
+                    println!("[Compiler] 检查方案: stroke（从 chinese/chars 编译）");
+                    let src_path = "dicts/chinese/chars";
+                    let out_dir = "data/stroke";
+                    fs::create_dir_all(out_dir)?;
+                    let trie_dat = format!("{}/trie.data", out_dir);
+                    if should_compile(Path::new(src_path), Path::new(&trie_dat)) {
+                        println!("[Compiler] 方案 [stroke] 需要编译，正在执行...");
+                        let start = std::time::Instant::now();
+                        compile_dict_for_path(src_path, &format!("{}/trie", out_dir), false, Some("stroke_aux"))?;
+                        println!(
+                            "[Compiler] 方案 [stroke] 编译完成，耗时 {:?}",
+                            start.elapsed()
+                        );
+                    } else {
+                        println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
+                    }
+                    continue;
+                }
+
                 let src_path = format!("dicts/{}", dir_name);
                 let out_dir = format!("data/{}", dir_name);
 
@@ -27,7 +49,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                     println!("[Compiler] 方案 [{}] 需要编译，正在执行...", dir_name);
                     let is_english = dir_name.contains("english");
                     let start = std::time::Instant::now();
-                    compile_dict_for_path(&src_path, &format!("{}/trie", out_dir), is_english)?;
+                    compile_dict_for_path(&src_path, &format!("{}/trie", out_dir), is_english, None)?;
                     println!(
                         "[Compiler] 方案 [{}] 编译完成，耗时 {:?}",
                         dir_name,
@@ -113,6 +135,7 @@ fn compile_dict_for_path(
     src_dir: &str,
     out_stem: &str,
     is_english: bool,
+    key_field: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
     for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
@@ -121,7 +144,7 @@ fn compile_dict_for_path(
             if path.file_name().and_then(|n| n.to_str()) == Some("punctuation.json") {
                 continue;
             }
-            process_json_file(path, &mut entries, is_english)?;
+            process_json_file(path, &mut entries, is_english, key_field)?;
         } else if path.extension().is_some_and(|ext| ext == "yaml") {
             process_yaml_file(path, &mut entries)?;
         }
@@ -150,6 +173,7 @@ fn process_json_file(
     path: &Path,
     entries: &mut BTreeMap<String, Vec<DictEntry>>,
     is_english: bool,
+    key_field: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let json: Value = serde_json::from_reader(file)?;
@@ -210,7 +234,21 @@ fn process_json_file(
                                     .unwrap_or("");
                                 let flags = if category == "level-4" || category == "level-5" { FLAG_RARE } else { 0 };
 
-                                entries.entry(normalized_key.clone()).or_default().push(
+                                // 当指定 key_field 时，用该字段的值作为搜索 key
+                                let trie_key = if let Some(field) = key_field {
+                                    let k = o.get(field)
+                                        .and_then(|v| v.as_str())
+                                        .unwrap_or("")
+                                        .to_lowercase();
+                                    if k.is_empty() {
+                                        continue; // 跳过没有该字段的条目
+                                    }
+                                    k
+                                } else {
+                                    normalized_key.clone()
+                                };
+
+                                entries.entry(trie_key).or_default().push(
                                     DictEntry {
                                         word: c.to_string(),
                                         trad: trad.to_string(),
