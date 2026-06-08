@@ -254,9 +254,12 @@ pub fn handle_composing(
                                     if uppercase_keys.contains(&c.to_string()) {
                                         ctx.dispatcher.last_tap_key = None;
                                         ctx.dispatcher.last_tap_time = None;
-                                        // 模拟 Shift+key：追加字符并标记 shift 已使用（触发辅码过滤模式）
+                                        // 模拟 Shift+key：触发辅码过滤模式
                                         ctx.session.shift_used_as_modifier = true;
-                                        ctx.session.push_char(c);
+                                        if ctx.session.filter_mode != FilterMode::Global {
+                                            ctx.session.filter_mode = FilterMode::Global;
+                                        }
+                                        ctx.session.handle_filter_char(c);
                                         if perform_lookup {
                                             if let Some(act) = lookup(ctx) {
                                                 return act;

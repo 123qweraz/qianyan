@@ -48,6 +48,7 @@
                 <a href="#display-mode">候选显示模式</a>
                 <a href="#traditional">繁体输入功能</a>
                 <a href="#key-switches">按键功能开关</a>
+                <a href="#double-tap">双击辅码过滤</a>
                 <a href="#hotkeys">快捷键</a>
             </nav>
 
@@ -161,6 +162,18 @@
                     </div>
                 </div>
 
+                <h2 id="double-tap">双击辅码过滤</h2>
+                <div class="card">
+                    <div class="setting-item">
+                        <div class="info"><div class="title">启用双击字母辅码过滤</div><div class="desc">快速双击任意字母键（如双击 h），等同于按 Shift + h，进入辅码过滤模式。候选列表只显示匹配该字母提示的候选字</div></div>
+                        <label class="switch"><input type="checkbox" id="double_tap_uppercase_toggle" onchange="toggleDoubleTapUppercase()"><span class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">双击间隔(毫秒)</div><div class="desc">两次按键的间隔低于此值判定为双击，默认 250ms</div></div>
+                        <input type="number" id="double_tap_timeout_ms" style="width: 100px;" min="100" max="1000" step="50">
+                    </div>
+                </div>
+
                 <h2 id="hotkeys">快捷键</h2>
                 <div class="card">
                     <div class="note" style="margin:0 0 16px;">
@@ -230,6 +243,8 @@
 
     <script src="/static/js/settings.js"></script>
     <script>
+        const DOUBLE_TAP_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
+
         async function resetPinyin() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
             await fetch('/api/config/reset/input,hotkeys', { method: 'POST' });
@@ -254,6 +269,14 @@
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
             bindInput('enable_ctrl_capslock_commit', 'hotkeys');
             bindInput('display_mode', 'input');
+            bindInput('double_tap_timeout_ms', 'input');
+
+            if (!config.input.double_tap_uppercase_keys) {
+                config.input.double_tap_uppercase_keys = [];
+            }
+            const keys = config.input.double_tap_uppercase_keys;
+            const allEnabled = DOUBLE_TAP_LETTERS.every(k => keys.includes(k));
+            document.getElementById('double_tap_uppercase_toggle').checked = allEnabled;
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
@@ -265,6 +288,11 @@
             document.getElementById('nav_fuzzy_input').value = (config.hotkeys.nav_fuzzy || []).join(', ');
             document.getElementById('nav_clear_input').value = (config.hotkeys.nav_clear || []).join(', ');
             document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
+        }
+
+        function toggleDoubleTapUppercase() {
+            const checked = document.getElementById('double_tap_uppercase_toggle').checked;
+            config.input.double_tap_uppercase_keys = checked ? [...DOUBLE_TAP_LETTERS] : [];
         }
 
         async function init() {
