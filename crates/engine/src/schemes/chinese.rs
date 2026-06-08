@@ -610,30 +610,23 @@ impl InputScheme for ChineseScheme {
         candidates: &mut Vec<SchemeCandidate>,
         context: &SchemeContext,
     ) {
-        // 自适应加权：基于 usage_history + ngram_history 调整权重（乘法加成）
+        // 简单粗暴排序：使用次数主导，次数相同按原始权重
         if let Some(profile) = context.active_profiles.first() {
-            // 开关1: 使用频率排序（受历史输入影响）
+            // 开关1: 使用频率排序（使用次数 × 1亿 + 原始权重 → 1次就比0次靠前）
             if context.config.input.enable_usage_sorting {
                 let usage_guard = context.usage_history.load();
                 if let Some(profile_usage) = usage_guard.get(profile) {
-                    // 单字额外加成系数：single_char_bonus/10M 转为乘数
-                    let single_mult = context.config.input.ranking.single_char_bonus / 10_000_000.0;
                     for c in &mut *candidates {
                         if let Some(count) = profile_usage.get(c.simplified.as_str()) {
-                            let effective = (*count).min(50) as f64;
-                            // 基础乘法加成：log2(count+1) * 0.15
-                            let mut multiplier = 1.0 + (effective + 1.0).log2() * 0.15;
-                            // 单字额外加成
-                            if c.simplified.chars().count() == 1 {
-                                multiplier *= 1.0 + single_mult;
-                            }
-                            c.weight = (c.weight as f64 * multiplier) as u32;
+                            let effective = (*count).min(40) as u32;
+                            let boost = effective.saturating_mul(100_000_000);
+                            c.weight = c.weight.saturating_add(boost);
                         }
                     }
                 }
             }
 
-            // 开关2: 上下文联想（受上文词影响）
+            // 开关2: 上下文联想
             if context.config.input.enable_context_sorting {
                 if let Some(last_word) = context.last_word {
                     let ngram_guard = context.ngram_history.load();
@@ -643,9 +636,9 @@ impl InputScheme for ChineseScheme {
                                 entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
                             for c in &mut *candidates {
                                 if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
-                                    let effective = count.min(50) as f64;
-                                    let multiplier = 1.0 + (effective + 1.0).log2() * 0.15;
-                                    c.weight = (c.weight as f64 * multiplier) as u32;
+                                    let effective = count.min(40) as u32;
+                                    let boost = effective.saturating_mul(50_000_000);
+                                    c.weight = c.weight.saturating_add(boost);
                                 }
                             }
                         }
