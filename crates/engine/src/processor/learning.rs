@@ -84,6 +84,10 @@ pub fn record_usage(
     if ctx.config.enable_auto_reorder() {
         // 按词累计使用次数
         increment_usage(&ctx.config.usage_history, &profile, word);
+        // 按拼音记录用户选词顺序（无计数，纯 MRU 排序）
+        if !_pinyin.is_empty() {
+            ctx.config.insert_usage_order(&profile, _pinyin, word);
+        }
         ctx.engine.clear_cache();
 
         // 上下文 ngram

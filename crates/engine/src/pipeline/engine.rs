@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use arc_swap::ArcSwap;
 
-use crate::config_manager::{UsageData, UserDictData};
+use crate::config_manager::{UsageData, UserDictData, OrderData};
 use crate::Config;
 use crate::Trie;
 
@@ -109,6 +109,7 @@ pub struct SearchEngine {
     pub(crate) learned_words: Arc<ArcSwap<UserDictData>>,
     pub(crate) usage_history: Arc<ArcSwap<UsageData>>,
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
+    pub(crate) user_order: Arc<ArcSwap<OrderData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     pub(crate) pipelines: Arc<RwLock<PipelineCache>>,
     pub(crate) trie_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
@@ -134,6 +135,7 @@ impl SearchEngine {
         learned_words: Arc<ArcSwap<UserDictData>>,
         usage_history: Arc<ArcSwap<UsageData>>,
         ngram_history: Arc<ArcSwap<UserDictData>>,
+        user_order: Arc<ArcSwap<OrderData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     ) -> Self {
         Self {
@@ -144,6 +146,7 @@ impl SearchEngine {
             learned_words,
             usage_history,
             ngram_history,
+            user_order,
             schemes,
             pipelines: Arc::new(RwLock::new((HashMap::new(), std::collections::VecDeque::new()))),
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
@@ -180,6 +183,7 @@ impl SearchEngine {
                 user_dict: &self.learned_words,
                 usage_history: &self.usage_history,
                 ngram_history: &self.ngram_history,
+                user_order: &self.user_order,
                 active_profiles: &[query.profile.to_string()],
                 candidate_count: 0,
                 last_word: query.context,

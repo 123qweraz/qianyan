@@ -676,6 +676,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -755,6 +758,9 @@ mod tests {
             std::sync::Arc::new(ArcSwap::new(std::sync::Arc::new(HashMap::<
                 String, HashMap<String, Vec<(String, u32)>>
             >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -829,6 +835,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, u32>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -911,6 +920,7 @@ mod tests {
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
         config.input.enable_fuzzy_pinyin = false;
+        config.input.enable_usage_sorting = true;
         config.input.enable_fixed_first_candidate = true;
 
         let mut trie_paths = HashMap::new();
@@ -934,6 +944,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             usage_history.clone(),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -965,7 +978,7 @@ mod tests {
         assert!(da_weight_before > 0.0, "打 should exist in results");
         assert!(r1[0].0 == "大", "Without history, 大 should be first");
 
-        // 模拟 "打" 用了 5 次 → 权重应增加
+        // 模拟 "打" 用了 5 次 → 权重应增加 5 * 100_000_000 = 500_000_000
         let mut usage: HashMap<String, HashMap<String, u32>> = HashMap::new();
         let mut da_usage: HashMap<String, u32> = HashMap::new();
         da_usage.insert("打".to_string(), 5);
@@ -976,11 +989,10 @@ mod tests {
         let da_weight_after = r2.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
         println!("da (打x5) top5: {:?}", &r2[..5.min(r2.len())]);
         println!("打 weight before={}, after={}", da_weight_before, da_weight_after);
-        // Verify weight increased by approximately log2(6) * 50000 ≈ 129283
-        let expected_min_boost = 129000.0;
-        assert!(da_weight_after >= da_weight_before + expected_min_boost,
-            "打 weight should increase by at least {} after 5 uses. Before: {}, After: {}",
-            expected_min_boost, da_weight_before, da_weight_after);
+        // Verify weight increased by 5 * 100_000_000 = 500_000_000
+        assert!(da_weight_after >= da_weight_before + 499_000_000.0,
+            "打 weight should increase by ~500M after 5 uses. Before: {}, After: {}",
+            da_weight_before, da_weight_after);
 
         // 再给 "大" 更多使用次数
         let mut usage2: HashMap<String, HashMap<String, u32>> = HashMap::new();
@@ -1009,6 +1021,7 @@ mod tests {
         std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_auto_reorder = true;
+        config.input.enable_usage_sorting = true;
         config.input.enable_fixed_first_candidate = false;
 
         let mut trie_paths = std::collections::HashMap::new();
@@ -1035,6 +1048,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: std::collections::HashMap<String, Box<dyn crate::scheme::InputScheme>> = std::collections::HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -1085,11 +1101,10 @@ mod tests {
         let da_weight_after = r2.iter().find(|(w, _)| w == "打").map(|(_, w)| *w).unwrap_or(0.0);
         println!("da '打' weight after 10 uses: {}", da_weight_after);
 
-        // 验证 weight 增加了 log2(11) * 50000 ≈ 172,891
-        let expected_min_boost = 170000.0;
-        assert!(da_weight_after >= da_weight_before + expected_min_boost,
-            "打 weight should increase by at least {} after 10 uses. Before: {}, After: {}",
-            expected_min_boost, da_weight_before, da_weight_after);
+        // 验证 weight 增加了 10 * 100_000_000 = 1_000_000_000
+        assert!(da_weight_after >= da_weight_before + 999_000_000.0,
+            "打 weight should increase by ~1B after 10 uses. Before: {}, After: {}",
+            da_weight_before, da_weight_after);
 
         // 清理
         usage_history.store(Arc::new(std::collections::HashMap::new()));
@@ -1131,6 +1146,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
                 String, std::collections::HashMap<String, Vec<(String, u32)>>
             >::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: std::collections::HashMap<String, Box<dyn InputScheme>> = std::collections::HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -1244,6 +1262,7 @@ mod tests {
             learned_words,
             usage_history,
             ngram_history,
+            Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -1332,6 +1351,7 @@ mod tests {
             learned_words,
             usage_history,
             ngram_history,
+            Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -1425,6 +1445,7 @@ mod tests {
             learned_words,
             usage_history,
             ngram_history,
+            Arc::new(ArcSwap::new(Arc::new(HashMap::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
@@ -1510,6 +1531,9 @@ mod tests {
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, u32>>::new()))),
             Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, std::collections::HashMap<String, Vec<String>>>
+            ::new()))),
             {
                 let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
                 m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));

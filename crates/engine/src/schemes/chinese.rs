@@ -650,6 +650,21 @@ impl InputScheme for ChineseScheme {
         // 纯 weight 降序排序
         candidates.sort_by(|a, b| b.weight.cmp(&a.weight));
 
+        // 用户选词顺序：按音节重排，最近选的排最前
+        if let Some(profile) = context.active_profiles.first() {
+            let order_guard = context.user_order.load();
+            if let Some(profile_orders) = order_guard.get(profile) {
+                if let Some(word_list) = profile_orders.get(_query) {
+                    for word in word_list.iter().rev() {
+                        if let Some(idx) = candidates.iter().position(|c| c.text == *word || c.simplified == *word) {
+                            let cand = candidates.remove(idx);
+                            candidates.insert(0, cand);
+                        }
+                    }
+                }
+            }
+        }
+
         // 繁体开关
         if context.config.input.enable_traditional {
             for c in &mut *candidates {

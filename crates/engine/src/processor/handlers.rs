@@ -182,6 +182,7 @@ pub fn handle_composing(
             user_dict: &ctx.config.learned_words,
             usage_history: &ctx.engine.usage_history,
             ngram_history: &ctx.engine.ngram_history,
+            user_order: &ctx.config.user_order,
             active_profiles: &ctx.session_state.active_profiles,
             candidate_count: ctx.session.candidates.len(),
             last_word,

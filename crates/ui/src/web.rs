@@ -2374,6 +2374,7 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
         empty_user_dict,
         empty_usage,
         Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+        Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<String>>>::new()))),
         Arc::new(schemes_map),
     );
     engine.single_syllables = single_syllables;

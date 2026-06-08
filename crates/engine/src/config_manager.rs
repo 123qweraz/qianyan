@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 pub type UserDictData = HashMap<String, HashMap<String, Vec<(String, u32)>>>;
 pub type UsageData = HashMap<String, HashMap<String, u32>>;
+pub type OrderData = HashMap<String, HashMap<String, Vec<String>>>;
 
 const USAGE_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 
@@ -17,6 +18,7 @@ pub struct ConfigManager {
     pub learned_words: Arc<ArcSwap<UserDictData>>,
     pub usage_history: Arc<ArcSwap<UsageData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
+    pub user_order: Arc<ArcSwap<OrderData>>,
     pub user_data: Option<Arc<UserDataManager>>,
     usage_last_save: Mutex<Instant>,
 }
@@ -43,6 +45,7 @@ impl ConfigManager {
             learned_words: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             usage_history: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             ngram_history: Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            user_order: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             user_data: user_data.map(Arc::new),
             usage_last_save: Mutex::new(Instant::now()),
         }
@@ -93,10 +96,11 @@ impl ConfigManager {
         }
 
         if let Some(ref user_data) = self.user_data {
-            let (learned, usage, ngrams) = user_data.load_all(&profiles);
+            let (learned, usage, ngrams, orders) = user_data.load_all(&profiles);
             self.learned_words.store(Arc::new(learned));
             self.usage_history.store(Arc::new(usage));
             self.ngram_history.store(Arc::new(ngrams));
+            self.user_order.store(Arc::new(orders));
         }
     }
 
@@ -124,6 +128,19 @@ impl ConfigManager {
         self.save_usage_if_due(profile);
     }
 
+    pub fn insert_usage_order(&self, profile: &str, syllable: &str, word: &str) {
+        let mut current = (**self.user_order.load()).clone();
+        let entries = current
+            .entry(profile.to_string())
+            .or_default()
+            .entry(syllable.to_string())
+            .or_default();
+        entries.retain(|w| w != word);
+        entries.insert(0, word.to_string());
+        entries.truncate(20);
+        self.user_order.store(Arc::new(current));
+    }
+
     pub fn insert_ngram(&self, profile: &str, context: &str, entries: &[(String, u32)]) {
         let mut current = (**self.ngram_history.load()).clone();
         current
@@ -142,6 +159,7 @@ impl ConfigManager {
             *last = Instant::now();
             if let Some(ref user_data) = self.user_data {
                 let _ = user_data.save_usage(profile, &self.usage_history.load());
+                let _ = user_data.save_order(profile, &self.user_order.load());
                 let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
                     &self.ngram_history.load());
             }
@@ -154,6 +172,7 @@ impl ConfigManager {
             let learned = (**self.learned_words.load()).clone();
             let usage = (**self.usage_history.load()).clone();
             let ngram = (**self.ngram_history.load()).clone();
+            let order = (**self.user_order.load()).clone();
 
             let profiles: Vec<String> = self.master_config
                 .input.profile_keys.iter()
@@ -166,6 +185,9 @@ impl ConfigManager {
                 }
                 if let Err(e) = user_data.save_usage(profile, &usage) {
                     log::error!("[ConfigManager] 保存 usage 失败: {}", e);
+                }
+                if let Err(e) = user_data.save_order(profile, &order) {
+                    log::error!("[ConfigManager] 保存 order 失败: {}", e);
                 }
                 if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &ngram) {
                     log::error!("[ConfigManager] 保存 ngram 失败: {}", e);
