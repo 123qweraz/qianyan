@@ -230,7 +230,6 @@ pub struct Input {
     pub enable_number_selection: bool,
     pub enable_word_discovery: bool,
     pub enable_auto_reorder: bool,
-    pub enable_fixed_first_candidate: bool,
     pub enable_smart_backspace: bool,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
@@ -950,9 +949,8 @@ impl Config {
                 enable_number_selection: true,
                 enable_word_discovery: true,
                 enable_auto_reorder: true,
-                enable_fixed_first_candidate: false,
-                enable_context_sorting: true,
                 enable_smart_backspace: false,
+                enable_context_sorting: true,
                 enable_double_pinyin: false,
                 double_pinyin_scheme: DoublePinyinScheme {
                     name: "小鹤双拼".to_string(),

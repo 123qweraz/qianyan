@@ -95,7 +95,6 @@
     "enable_english_filter": true,
     "enable_error_correction": true,
     "enable_error_sound": true,
-    "enable_fixed_first_candidate": false,
     "enable_keyboard_voice": false,
     "enable_long_press": false,
     "enable_number_selection": true,

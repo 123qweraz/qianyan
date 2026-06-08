@@ -911,7 +911,6 @@ mod tests {
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
         config.input.enable_fuzzy_pinyin = false;
-        config.input.enable_fixed_first_candidate = true;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -999,7 +998,6 @@ mod tests {
         std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_auto_reorder = true;
-        config.input.enable_fixed_first_candidate = false;
 
         let mut trie_paths = std::collections::HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -1358,7 +1356,6 @@ mod tests {
         config.input.enable_prefix_matching = true;
         config.input.enable_fuzzy_pinyin = false;
         config.input.enable_auto_reorder = false;
-        config.input.enable_fixed_first_candidate = false;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (

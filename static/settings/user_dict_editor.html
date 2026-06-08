@@ -61,12 +61,6 @@
                     <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
                 </div>
             </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">常用词自动置顶</div><div class="desc">使用3次以上的候选词自动跳到第一位</div></div>
-                <div style="display:flex;align-items:center;">
-                    <label class="switch"><input type="checkbox" id="enable_fixed_first_candidate"><span class="slider"></span></label>
-                </div>
-            </div>
             <div style="padding-top:12px;">
                 <button class="btn" onclick="saveSwitches()" style="font-size:13px; padding:8px 18px;">保存设置</button>
             </div>
@@ -125,7 +119,6 @@
             // bind switch toggles
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
-            bindInput('enable_fixed_first_candidate', 'input');
             await loadAll();
         }
 
