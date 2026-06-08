@@ -119,7 +119,7 @@ impl ConfigManager {
         let entries = current.entry(profile.to_string()).or_default();
         entries.retain(|w| w != word);
         entries.insert(0, word.to_string());
-        entries.truncate(20);
+        entries.truncate(self.master_config.input.mru_length as usize);
         self.user_order.store(Arc::new(current));
     }
 

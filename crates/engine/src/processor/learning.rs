@@ -76,9 +76,29 @@ pub fn record_usage(
     }
 
     // 反查系统词典获取拼音（用于新词发现）
-    let correct_pinyin = ctx.engine.get_or_load_trie(&profile)
-        .and_then(|t| t.lookup_pinyin(word).map(|s| s.to_string()))
-        .unwrap_or_else(|| _pinyin.to_string());
+    let correct_pinyin = match ctx.engine.get_or_load_trie(&profile) {
+        Some(t) => {
+            if let Some(py) = t.lookup_pinyin(word) {
+                py.to_string()
+            } else {
+                let mut chars_pinyin = String::new();
+                let mut ok = true;
+                for ch in word.chars() {
+                    let ch_str = ch.to_string();
+                    match t.lookup_pinyin(&ch_str) {
+                        Some(py) => chars_pinyin.push_str(py),
+                        None => { ok = false; break; }
+                    }
+                }
+                if ok && !chars_pinyin.is_empty() {
+                    chars_pinyin
+                } else {
+                    _pinyin.to_string()
+                }
+            }
+        }
+        None => _pinyin.to_string(),
+    };
 
     let is_valid_pinyin = correct_pinyin.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
     if ctx.config.master_config.input.enable_word_discovery

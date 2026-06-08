@@ -70,24 +70,16 @@ impl SessionState {
     }
 
     pub fn get_combination_candidates(&self, max_len: usize) -> Vec<(String, String)> {
-        let start = if self.commit_history.len() > 4 {
-            self.commit_history.len() - 4
-        } else {
-            0
-        };
         let mut results = Vec::new();
-        let history_slice = &self.commit_history[start..];
-
-        for i in 0..history_slice.len() {
-            let mut combined_py = String::new();
-            let mut combined_word = String::new();
-            for entry in &history_slice[i..] {
-                combined_py.push_str(&entry.0);
-                combined_word.push_str(&entry.1);
-            }
-            if combined_word.chars().count() <= max_len {
-                results.push((combined_py, combined_word));
-            }
+        if self.commit_history.len() < 2 {
+            return results;
+        }
+        let prev = &self.commit_history[self.commit_history.len() - 2];
+        let last = self.commit_history.last().unwrap();
+        let combined_py = format!("{}{}", prev.0, last.0);
+        let combined_word = format!("{}{}", prev.1, last.1);
+        if combined_word.chars().count() <= max_len {
+            results.push((combined_py, combined_word));
         }
         results
     }

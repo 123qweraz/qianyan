@@ -109,7 +109,7 @@ pub(crate) fn commit_candidate(
     let py = ctx.session.last_lookup_pinyin.clone();
 
     if !py.is_empty() && index != 99 {
-        if now.duration_since(ctx.session_state.last_commit_time) > Duration::from_secs(3) {
+        if now.duration_since(ctx.session_state.last_commit_time) > Duration::from_secs(10) {
             ctx.session_state.commit_history.clear();
         }
 

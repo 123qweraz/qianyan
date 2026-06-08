@@ -47,6 +47,14 @@ fn default_true() -> bool {
     true
 }
 
+fn default_mru_length() -> u32 {
+    2000
+}
+
+fn default_word_learn_threshold() -> u32 {
+    2
+}
+
 fn default_fixed_x() -> i32 {
     10
 }
@@ -229,7 +237,11 @@ pub struct Input {
     pub enable_caps_selection: bool,
     pub enable_number_selection: bool,
     pub enable_word_discovery: bool,
+    #[serde(default = "default_word_learn_threshold")]
+    pub word_learn_threshold: u32,
     pub enable_auto_reorder: bool,
+    #[serde(default = "default_mru_length")]
+    pub mru_length: u32,
     pub enable_smart_backspace: bool,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
@@ -948,7 +960,9 @@ impl Config {
                 enable_caps_selection: true,
                 enable_number_selection: true,
                 enable_word_discovery: true,
+                word_learn_threshold: 2,
                 enable_auto_reorder: true,
+                mru_length: 2000,
                 enable_smart_backspace: false,
                 enable_context_sorting: true,
                 enable_double_pinyin: false,

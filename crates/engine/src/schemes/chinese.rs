@@ -239,10 +239,12 @@ impl InputScheme for ChineseScheme {
         };
         if let Some(profile_dict) = dict.get(profile) {
             let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+            let threshold = context.config.input.word_learn_threshold;
             if has_vowel {
                 // 精确匹配
                 if let Some(words) = profile_dict.get(&pinyin_key) {
                     for (word, weight) in words {
+                        if *weight < threshold { continue; }
                         if seen.insert(word.clone()) {
                             let (trad, tone, en, sa, flags) = lookup_aux(word, &pinyin_key);
                             final_results.push(SchemeCandidate {
@@ -260,26 +262,16 @@ impl InputScheme for ChineseScheme {
                     }
                 } else {
                     // 前缀匹配 → 暂存到末尾再推入，不阻塞其他策略
-                    let input_syl_count = if raw_parsed.len() > 1 {
-                        raw_parsed.len()
-                    } else {
-                        self.segment_base(&pinyin_key, context.base_syllables).len()
-                    };
-                    let max_syl = input_syl_count + 1;
+                    let max_extra = pinyin_key.len() + 5;
                     let mut prefix_keys: Vec<&String> = profile_dict
                         .keys()
-                        .filter(|k| {
-                            if !k.starts_with(&pinyin_key) {
-                                return false;
-                            }
-                            let key_syl = self.segment_base(k, context.base_syllables);
-                            key_syl.len() <= max_syl
-                        })
+                        .filter(|k| k.starts_with(&pinyin_key) && k.len() <= max_extra)
                         .collect();
                     prefix_keys.sort_by_key(|k| k.len());
                     for key in prefix_keys {
                         if let Some(words) = profile_dict.get(key) {
                             for (word, weight) in words {
+                                if *weight < threshold { continue; }
                                 if seen.insert(word.clone()) {
                                     let (trad, tone, en, sa, flags) = lookup_aux(word, key);
                                     user_prefix_matches.push(SchemeCandidate {
@@ -305,6 +297,7 @@ impl InputScheme for ChineseScheme {
                         for (pinyin, words) in profile_dict.iter() {
                             if match_user_dict_abbreviation(pinyin, &abbr_segs, trie, context.single_syllables) {
                                 for (word, weight) in words {
+                                    if *weight < threshold { continue; }
                                     if seen.insert(word.clone()) {
                                         let (trad, tone, en, sa, flags) = lookup_aux(word, pinyin);
                                         user_prefix_matches.push(SchemeCandidate {

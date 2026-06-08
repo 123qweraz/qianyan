@@ -56,6 +56,16 @@
                 </div>
             </div>
             <div class="setting-item">
+                <div class="info">
+                    <div class="title">MRU 记忆数量</div>
+                    <div class="desc">最多记住最近选过的多少个词（默认2000）</div>
+                </div>
+                <div style="display:flex;align-items:center;">
+                    <input type="number" id="mru_length" min="5" max="10000" step="10"
+                           style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;">
+                </div>
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文词语关系调整候选顺序</div></div>
                 <div style="display:flex;align-items:center;">
                     <label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label>
@@ -65,6 +75,16 @@
                 <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的多字词自动加入用户词典</div></div>
                 <div style="display:flex;align-items:center;">
                     <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">学习阈值</div>
+                    <div class="desc">同一个词出现多少次才自动收录（1=立即收录，默认2）</div>
+                </div>
+                <div style="display:flex;align-items:center;">
+                    <input type="number" id="word_learn_threshold" min="1" max="10" step="1"
+                           style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;">
                 </div>
             </div>
             <div style="padding-top:12px;">
@@ -124,8 +144,10 @@
             await loadConfig();
             // bind switch toggles
             bindInput('enable_auto_reorder', 'input');
+            bindInput('mru_length', 'input');
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
+            bindInput('word_learn_threshold', 'input');
             await loadAll();
         }
 
