@@ -247,7 +247,12 @@ impl SearchEngine {
                 qianyan_ime_core::config::RareCharMode::IncludeRare => {}
             }
 
-            results.truncate(query.limit);
+            // CommonOnly 保持原有上限，IncludeRare/OnlyRare 放宽到更大值以显示全部生僻字
+            let effective_limit = match config_ref.input.rare_char_mode {
+                qianyan_ime_core::config::RareCharMode::CommonOnly => query.limit,
+                _ => query.limit.max(2000),
+            };
+            results.truncate(effective_limit);
             return (results, vec![]);
         }
 
@@ -290,7 +295,11 @@ impl SearchEngine {
                 qianyan_ime_core::config::RareCharMode::IncludeRare => {}
             }
 
-            final_results.truncate(query.limit);
+            let effective_limit = match config_ref.input.rare_char_mode {
+                qianyan_ime_core::config::RareCharMode::CommonOnly => query.limit,
+                _ => query.limit.max(2000),
+            };
+            final_results.truncate(effective_limit);
             return (final_results, segments);
         }
 

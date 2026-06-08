@@ -208,8 +208,12 @@ impl InputScheme for ChineseScheme {
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
+        // 根据生僻字模式调整候选上限：显示生僻字时需要更多结果空间
         let min_results_needed = 500;
-        let max_results = 500;
+        let max_results = match context.config.input.rare_char_mode {
+            qianyan_ime_core::config::RareCharMode::CommonOnly => 500,
+            _ => 2000, // IncludeRare / OnlyRare 需要更大的结果空间
+        };
 
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
 

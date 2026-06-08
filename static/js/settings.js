@@ -63,6 +63,20 @@ function bindInput(id, section, propertyPath) {
         el.onchange = () => {
             setNestedValue(targetSection, path, el.checked);
         };
+    } else if (el.tagName === 'SELECT') {
+        // select: 只有值有效时才设置，否则用第一个 option 的默认值
+        if (val !== undefined && val !== null && val !== '') {
+            el.value = val;
+        } else {
+            // 确保不出现空白选择，回退到第一个 option
+            if (el.options.length > 0) {
+                el.value = el.options[0].value;
+                setNestedValue(targetSection, path, el.value);
+            }
+        }
+        el.onchange = () => {
+            setNestedValue(targetSection, path, el.value);
+        };
     } else {
         el.value = (val !== undefined && val !== null) ? val : "";
         const update = () => {
@@ -74,9 +88,6 @@ function bindInput(id, section, propertyPath) {
             setNestedValue(targetSection, path, newVal);
         };
         el.oninput = update;
-        if (el.tagName === 'SELECT') {
-            el.onchange = update;
-        }
     }
 }
 
