@@ -275,7 +275,8 @@
                 config.input.double_tap_uppercase_keys = [];
             }
             const keys = config.input.double_tap_uppercase_keys;
-            const allEnabled = DOUBLE_TAP_LETTERS.every(k => keys.includes(k));
+            const allEnabled = config.input.enable_double_tap
+                && DOUBLE_TAP_LETTERS.every(k => keys.includes(k));
             document.getElementById('double_tap_uppercase_toggle').checked = allEnabled;
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
@@ -292,6 +293,7 @@
 
         function toggleDoubleTapUppercase() {
             const checked = document.getElementById('double_tap_uppercase_toggle').checked;
+            config.input.enable_double_tap = checked;
             config.input.double_tap_uppercase_keys = checked ? [...DOUBLE_TAP_LETTERS] : [];
         }
 

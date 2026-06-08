@@ -57,7 +57,7 @@
     "commit_mode": "single",
     "default_profile": "chinese",
     "display_mode": "character_with_english",
-    "double_tap_timeout_ms": 250,
+    "double_tap_timeout_ms": 10,
     "double_tap_uppercase_keys": [
       "f",
       "d",
