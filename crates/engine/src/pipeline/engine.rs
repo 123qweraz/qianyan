@@ -166,8 +166,6 @@ impl SearchEngine {
             config_ref.input.rare_char_mode
         );
 
-        let effective_fuzzy = query.fuzzy_enabled && query.config.input.enable_fuzzy_pinyin;
-
         if let Some(scheme) = self.schemes.get(query.profile) {
             let mut tries_map = HashMap::with_capacity(1);
             if let Some(trie) = self.get_or_load_trie(query.profile) {
@@ -188,7 +186,6 @@ impl SearchEngine {
                 last_two_words: query.context_pair,
                 _filter_mode: query.filter_mode.clone(),
                 _aux_filter: query.aux_filter,
-                effective_fuzzy,
             };
 
             let pre_processed = scheme.pre_process(query.buffer, &context);

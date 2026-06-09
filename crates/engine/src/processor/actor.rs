@@ -14,7 +14,6 @@ pub struct SearchSnapshot {
     pub config: Config,
     pub aux_filter: String,
     pub filter_mode: FilterMode,
-    pub fuzzy_activated: bool,
 }
 
 /// Result from background search
@@ -347,7 +346,7 @@ impl ProcessorActor {
             aux_filter: &ctx.session.aux_filter,
             context: last_word,
             context_pair: last_two,
-            fuzzy_enabled: ctx.session.fuzzy_activated,
+            fuzzy_enabled: ctx.config.master_config.input.enable_fuzzy_pinyin,
         };
 
         let (candidates, segments) = ctx.engine.search(query);

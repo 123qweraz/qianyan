@@ -56,14 +56,6 @@
           "description": "中文右方括号",
           "shift": "}",
           "tap": "】"
-        },
-        "d": {
-          "shift": "d",
-          "tap": "e"
-        },
-        "e": {
-          "shift": "e",
-          "tap": "d"
         }
       },
       "name": "中文默认布局"

@@ -77,10 +77,6 @@
                         <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
-                        <div class="info"><div class="title">纠错匹配</div><div class="desc">输入错误时自动纠错（如 zhonf → 中）</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-item">
                         <div class="info"><div class="title">生僻字模式</div><div class="desc">控制是否显示生僻汉字（三级字库以外）</div></div>
                         <select id="rare_char_mode" class="select-input">
                             <option value="common_only">只显示常用字</option>
@@ -89,14 +85,9 @@
                         </select>
                     </div>
                     <div class="setting-item">
-                        <div class="info"><div class="title">模糊拼音</div><div class="desc">z/zh、c/ch、s/sh、an/ang 等模糊音匹配</div></div>
-                        <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊音设置 →</a>
+                        <div class="info"><div class="title">模糊与纠错行为</div><div class="desc">模糊音（z↔zh等）、纠错匹配和防呆模式</div></div>
+                        <a href="fuzzy.html" class="sub-link" style="font-size:14px;">模糊与纠错设置 →</a>
                     </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">防呆模式</div><div class="desc">容忍常见拼写错误，智能模式自动纠错，严格模式要求精准输入</div></div>
-                        <select id="anti_typo_mode" class="select-input">
-                            <option value="None">关闭</option>
-                            <option value="Strict">严格模式</option>
                             <option value="Smart">智能模式</option>
                         </select>
                     </div>
@@ -236,9 +227,7 @@
             bindInput('auto_sentence_min_syllables', 'input');
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
-            bindInput('enable_error_correction', 'input');
             bindInput('rare_char_mode', 'input');
-            bindInput('anti_typo_mode', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_number_selection', 'input');
             bindInput('enable_ctrl_space_toggle', 'hotkeys');

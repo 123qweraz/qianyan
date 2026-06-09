@@ -54,7 +54,6 @@ pub struct SchemeContext<'a> {
     pub last_two_words: Option<(&'a str, &'a str)>,
     pub _filter_mode: FilterMode,
     pub _aux_filter: &'a str,
-    pub effective_fuzzy: bool,
 }
 
 /// 输入方案接口定义

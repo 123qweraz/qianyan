@@ -32,10 +32,6 @@ pub struct InputSession {
     /// Non-modifier key whose press was consumed by the IME.
     pub consumed_press_key: Option<VirtualKey>,
 
-    /// 模糊音是否已激活
-    pub fuzzy_activated: bool,
-    /// 当前输入会话的翻页次数
-    pub fuzzy_page_turns: usize,
     /// 预留：光标位置，当前未使用（恒为0）
     pub cursor_pos: usize,
 }
@@ -74,8 +70,6 @@ impl InputSession {
 
             consumed_press_key: None,
 
-            fuzzy_activated: false,
-            fuzzy_page_turns: 0,
             cursor_pos: 0,
         }
     }
@@ -85,8 +79,6 @@ impl InputSession {
         self.switch_mode = false;
         self.quote_open = false;
         self.single_quote_open = false;
-        self.fuzzy_activated = false;
-        self.fuzzy_page_turns = 0;
     }
 
     pub fn clear_composing(&mut self) {
@@ -105,8 +97,6 @@ impl InputSession {
         self.page_snapshot.clear();
         self.nav_mode = false;
         self.consumed_press_key = None;
-        self.fuzzy_activated = false;
-        self.fuzzy_page_turns = 0;
         self.cursor_pos = 0;
     }
 
@@ -119,8 +109,6 @@ impl InputSession {
             self.state = ImeState::Composing;
         }
         self.preview_selected_candidate = false;
-        self.fuzzy_activated = false;
-        self.fuzzy_page_turns = 0;
     }
 
     pub fn push_str(&mut self, s: &str) -> bool {
@@ -138,8 +126,6 @@ impl InputSession {
             self.state = ImeState::Composing;
         }
         self.preview_selected_candidate = false;
-        self.fuzzy_activated = false;
-        self.fuzzy_page_turns = 0;
         true
     }
 
@@ -164,83 +150,6 @@ impl InputSession {
     /// dd / Tab+DD: 清空缓冲区
     pub fn clear_buffer(&mut self) {
         self.reset();
-    }
-
-    // ── Vim 编辑模式：模糊音切换 ──
-
-    /// Tab+S / nav_mode S: 切换光标所在音节的模糊音（sh↔s, ch↔c, zh↔z）
-    pub fn toggle_syllable_fuzzy(&mut self) -> bool {
-        if self.buffer.is_empty() {
-            return false;
-        }
-        let pos = self.buffer.len();
-        // 找到光标所在的音节范围
-        let mut start = 0usize;
-        let mut end = self.buffer.len();
-        if !self.best_segmentation.is_empty() {
-            let boundaries = syllable_boundaries(&self.best_segmentation, self.buffer.len());
-            for &b in &boundaries {
-                if pos <= b {
-                    end = b;
-                    break;
-                }
-                start = b;
-            }
-        }
-
-        if start >= self.buffer.len() {
-            return false;
-        }
-        let syllable: String = self.buffer[start..end.min(self.buffer.len())].to_string();
-        if syllable.is_empty() {
-            return false;
-        }
-
-        // Toggle: zh↔z, ch↔c, sh↔s (以及反向)
-        let toggled: String;
-        if syllable.starts_with("zh") {
-            toggled = syllable.replacen("zh", "z", 1);
-        } else if syllable.starts_with("ch") {
-            toggled = syllable.replacen("ch", "c", 1);
-        } else if syllable.starts_with("sh") {
-            toggled = syllable.replacen("sh", "s", 1);
-        } else if syllable.starts_with('z') && syllable.len() >= 2 {
-            if syllable.as_bytes().get(1) != Some(&b'h') {
-                toggled = "zh".to_string() + &syllable[1..];
-            } else {
-                return false;
-            }
-        } else if syllable.starts_with('c') && syllable.len() >= 2 {
-            if syllable.as_bytes().get(1) != Some(&b'h') {
-                toggled = "ch".to_string() + &syllable[1..];
-            } else {
-                return false;
-            }
-        } else if syllable.starts_with('s') && syllable.len() >= 2 {
-            if syllable.as_bytes().get(1) != Some(&b'h') {
-                toggled = "sh".to_string() + &syllable[1..];
-            } else {
-                return false;
-            }
-        } else {
-            return false;
-        }
-
-        if toggled.is_empty() || toggled == syllable {
-            return false;
-        }
-
-        let chars: Vec<char> = self.buffer.chars().collect();
-        let mut new_buf = String::new();
-        for (i, ch) in chars.iter().enumerate() {
-            if i < start || i >= end.min(self.buffer.len()) {
-                new_buf.push(*ch);
-            }
-        }
-        new_buf.insert_str(start, &toggled);
-        self.buffer = new_buf;
-        self.preview_selected_candidate = false;
-        true
     }
 
     pub fn next_candidate(&mut self, page_size: usize) {
@@ -268,7 +177,6 @@ impl InputSession {
             self.page += page_size;
             self.selected = self.page;
         }
-        self.fuzzy_page_turns += 1;
     }
 
     pub fn prev_page(&mut self, page_size: usize) {
@@ -313,19 +221,6 @@ impl InputSession {
             self.state = ImeState::Composing;
         }
     }
-}
-
-/// 根据 best_segmentation 计算音节边界位置（每个音节的结束位置）
-fn syllable_boundaries(segments: &[String], buffer_len: usize) -> Vec<usize> {
-    let mut pos = 0usize;
-    let mut boundaries = Vec::new();
-    for seg in segments {
-        pos += seg.len();
-        if pos <= buffer_len {
-            boundaries.push(pos);
-        }
-    }
-    boundaries
 }
 
 #[cfg(test)]

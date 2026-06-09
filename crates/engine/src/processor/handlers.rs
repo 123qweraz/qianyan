@@ -120,12 +120,6 @@ pub fn handle_composing(
             ctx.session.delete_at_cursor();
             return lookup(ctx).unwrap_or(Action::Consume);
         }
-        if ctx.config.nav_fuzzy_keys().contains(&key) {
-            if ctx.session.toggle_syllable_fuzzy() {
-                return lookup(ctx).unwrap_or(Action::Consume);
-            }
-            return Action::Consume;
-        }
         if ctx.config.nav_clear_keys().contains(&key) {
             ctx.session.clear_buffer();
             return Action::Consume;
@@ -218,8 +212,6 @@ pub fn handle_composing(
             last_two_words: last_two,
             _filter_mode: ctx.session.filter_mode.clone(),
             _aux_filter: &ctx.session.aux_filter,
-            effective_fuzzy: ctx.session.fuzzy_activated
-                && ctx.config.master_config.input.enable_fuzzy_pinyin,
         };
         let act_opt: Option<Action> =
             scheme.handle_special_key(key, &mut ctx.session.buffer, &context);
@@ -499,40 +491,6 @@ pub fn handle_composing(
                 }
             }
             Action::Consume
-        }
-
-        VirtualKey::Slash if !ctx.session.buffer.is_empty() => {
-            let mut new_buffer = ctx.session.buffer.clone();
-            let last_part_start = new_buffer.rfind(' ').map(|i| i + 1).unwrap_or(0);
-            let last_part = &new_buffer[last_part_start..];
-
-            let transformed = if last_part.starts_with("zh") {
-                last_part.replacen("zh", "z", 1)
-            } else if last_part.starts_with("ch") {
-                last_part.replacen("ch", "c", 1)
-            } else if last_part.starts_with("sh") {
-                last_part.replacen("sh", "s", 1)
-            } else if last_part.starts_with("z") {
-                last_part.replacen("z", "zh", 1)
-            } else if last_part.starts_with("c") {
-                last_part.replacen("c", "ch", 1)
-            } else if last_part.starts_with("s") {
-                last_part.replacen("s", "sh", 1)
-            } else {
-                last_part.to_string()
-            };
-
-            if transformed != last_part {
-                new_buffer.replace_range(last_part_start.., &transformed);
-                ctx.session.buffer = new_buffer;
-                if perform_lookup {
-                    if let Some(act) = lookup(ctx) {
-                        return act;
-                    }
-                }
-                return Compositor::update_phantom_action(ctx);
-            }
-            Action::PassThrough
         }
 
         _ if is_digit(key) => {

@@ -78,7 +78,7 @@ impl ChineseScheme {
     }
 
     fn get_fuzzy_variants(&self, pinyin: &str, context: &SchemeContext) -> Vec<String> {
-        if !context.effective_fuzzy {
+        if !context.config.input.enable_fuzzy_pinyin {
             if pinyin.bytes().all(|b| b.is_ascii_lowercase()) {
                 return vec![pinyin.to_string()];
             }
@@ -336,6 +336,7 @@ impl InputScheme for ChineseScheme {
                             if n > 0 {
                                 exact.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
                             }
+                            let mlevel = if py == &part.pinyin { 3u8 } else { 2u8 };
                             for tr in exact.iter().take(n) {
                                 matches.push((
                                     tr.word.to_string(),
@@ -344,7 +345,7 @@ impl InputScheme for ChineseScheme {
                                     tr.en.to_string(),
                                     tr.stroke_aux.to_string(),
                                     tr.weight,
-                                    3,
+                                    mlevel,
                                     tr.flags,
                                 ));
                             }

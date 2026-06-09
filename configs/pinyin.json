@@ -91,7 +91,7 @@
     "enable_auto_reorder": true,
     "enable_caps_selection": true,
     "enable_context_sorting": true,
-    "enable_double_tap": true,
+    "enable_double_tap": false,
     "enable_english_filter": true,
     "enable_error_correction": true,
     "enable_error_sound": true,
