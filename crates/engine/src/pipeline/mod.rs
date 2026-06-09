@@ -464,7 +464,6 @@ mod tests {
             aux_filter: "",
             context: None,
             context_pair: None,
-            fuzzy_enabled: false,
         };
         let (candidates, _segments) = engine.search(query);
         assert!(candidates.is_empty());

@@ -519,7 +519,6 @@ impl Processor {
         self.ctx.config.master_config.input.enable_traditional =
             self.ctx.session_state.traditional_enabled;
 
-        let fuzzy_enabled = self.ctx.config.master_config.input.enable_fuzzy_pinyin;
         let query = crate::pipeline::SearchQuery {
             buffer: &self.ctx.session.buffer,
             profile: &current_profile,
@@ -529,7 +528,6 @@ impl Processor {
             aux_filter: &self.ctx.session.aux_filter,
             context: last_word,
             context_pair: last_two,
-            fuzzy_enabled,
         };
         let (results, segments) = self.ctx.engine.search(query);
         self.ctx.session.candidates = results;

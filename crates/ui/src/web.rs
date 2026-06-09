@@ -2459,7 +2459,6 @@ async fn ime_search_handler(
         aux_filter: &req.aux_filter,
         context: None,
         context_pair: None,
-        fuzzy_enabled: cfg.input.enable_fuzzy_pinyin,
     });
 
     let response_candidates: Vec<ImeCandidateResponse> = candidates

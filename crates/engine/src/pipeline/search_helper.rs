@@ -54,7 +54,6 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         .session_state
         .get_last_two_words();
 
-    let fuzzy_enabled = ctx.config.master_config.input.enable_fuzzy_pinyin;
     let query = SearchQuery {
         buffer: &ctx.session.buffer,
         profile: &current_profile,
@@ -64,7 +63,6 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         aux_filter: &ctx.session.aux_filter,
         context: last_word,
         context_pair: last_two,
-        fuzzy_enabled,
     };
     let (results, segments) = ctx.engine.search(query);
     ctx.session.candidates = results;

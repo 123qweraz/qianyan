@@ -1,5 +1,4 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
-use crate::FuzzyPinyinConfig;
 use fst::{Automaton, IntoStreamer, Streamer};
 
 pub struct ChineseScheme;
@@ -76,20 +75,6 @@ impl ChineseScheme {
         result
     }
 
-    fn get_fuzzy_variants(&self, pinyin: &str, context: &SchemeContext) -> Vec<String> {
-        if !context.config.input.enable_fuzzy_pinyin {
-            if pinyin.bytes().all(|b| b.is_ascii_lowercase()) {
-                return vec![pinyin.to_string()];
-            }
-            return vec![pinyin.to_lowercase()];
-        }
-        Self::fuzzy_variants_per_segment(pinyin, &context.config.input.fuzzy_config)
-    }
-
-    fn fuzzy_variants_per_segment(seg: &str, fuzzy: &FuzzyPinyinConfig) -> Vec<String> {
-        crate::pipeline::fuzzy_variants_per_segment(seg, fuzzy)
-    }
-
     fn segment_base(&self, input: &str, base_syllables: &std::collections::HashSet<String>) -> Vec<String> {
         crate::pipeline::compose_utils::segment_base(input, base_syllables)
     }
@@ -101,9 +86,8 @@ impl ChineseScheme {
         current: &mut Vec<(usize, usize)>,
         result: &mut Vec<Vec<(usize, usize)>>,
         trie: &crate::trie::Trie,
-        fuzzy: Option<&FuzzyPinyinConfig>,
     ) {
-        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, trie, fuzzy)
+        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, trie)
     }
 
     /// 左到右贪心分段：先匹配最长全音节，否则匹配声母（zh/ch/sh 占 2 字符）
@@ -326,30 +310,28 @@ impl InputScheme for ChineseScheme {
         let mut last_matches_raw = Vec::new();
         for (i, part) in raw_parsed.iter().enumerate() {
             let mut matches = Vec::new();
-            let pinyin_variants = self.get_fuzzy_variants(&part.pinyin, context);
             for profile in context.active_profiles {
                 if let Some(d) = context.tries.get(profile) {
-                    for py in &pinyin_variants {
-                        if let Some(m) = d.get_all_exact(py) {
-                            let mut exact: Vec<_> = m.iter().collect();
-                            let n = exact.len().min(min_results_needed);
-                            if n > 0 {
-                                exact.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
-                            }
-                            let mlevel = if py == &part.pinyin { 3u8 } else { 2u8 };
-                            for tr in exact.iter().take(n) {
-                                matches.push((
-                                    tr.word.to_string(),
-                                    tr.trad.to_string(),
-                                    tr.tone.to_string(),
-                                    tr.en.to_string(),
-                                    tr.stroke_aux.to_string(),
-                                    tr.weight,
-                                    mlevel,
-                                    tr.flags,
-                                ));
-                            }
-                        } else if context.config.input.enable_prefix_matching && !py.is_empty() {
+                    let py = &part.pinyin;
+                    if let Some(m) = d.get_all_exact(py) {
+                        let mut exact: Vec<_> = m.iter().collect();
+                        let n = exact.len().min(min_results_needed);
+                        if n > 0 {
+                            exact.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
+                        }
+                        for tr in exact.iter().take(n) {
+                            matches.push((
+                                tr.word.to_string(),
+                                tr.trad.to_string(),
+                                tr.tone.to_string(),
+                                tr.en.to_string(),
+                                tr.stroke_aux.to_string(),
+                                tr.weight,
+                                3,
+                                tr.flags,
+                            ));
+                        }
+                    } else if context.config.input.enable_prefix_matching && !py.is_empty() {
                             let matcher = fst::automaton::Str::new(py).starts_with();
                             let mut comp_keys: Vec<String> = Vec::new();
                             let max_key_len = if py.len() <= 3 { 6usize } else { py.len() + 2 };
@@ -395,7 +377,6 @@ impl InputScheme for ChineseScheme {
                                 }
                             }
                         }
-                    }
                     if matches.len() >= max_results {
                         break;
                     }
@@ -486,142 +467,14 @@ impl InputScheme for ChineseScheme {
             }
         }
 
-        // 策略 3: 长句组合（ComposeTranslator）
-        if !query.contains(' ') && !raw_parsed.is_empty() {
-            if let Some(d) = context.tries.get("chinese") {
-                let base = self.segment_base(&pinyin_key, context.base_syllables);
-                let min_syllables = context.config.input.auto_sentence_min_syllables as usize;
-                let min_syllables = min_syllables.max(2);
-                if base.len() >= 2 && base.len() <= 12
-                    && (base.len() >= min_syllables || final_results.is_empty()) {
-                    let prefix_without_last: String = base[..base.len() - 1].concat();
-                    if d.has_longer_match(&prefix_without_last) {
-                        // 去掉最后一个音节的前缀仍在词典中有更长的匹配，
-                        // 说明用户可能正在输入一个较长的已知词，跳过组句
-                    } else {
-                        let mut all_partitions = Vec::new();
-                        let fuzzy_cfg = if context.config.input.enable_fuzzy_pinyin {
-                            Some(&context.config.input.fuzzy_config)
-                        } else {
-                            None
-                        };
-                        self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d, fuzzy_cfg);
-                        if all_partitions.len() > 100 {
-                            all_partitions.truncate(100);
-                        }
-
-                        // 加载 ngram 数据，用于评估切分方案中相邻词的衔接概率
-                        let ngram_guard = context.ngram_history.load();
-                        let profile = context.active_profiles.first();
-
-                        let mut compose_results: Vec<(String, usize, u64)> = Vec::new();
-                        for part in &all_partitions {
-                            let mut text = String::new();
-                            let mut words: Vec<String> = Vec::new();
-                            let mut total_freq = 0u64;
-                            let mut ok = true;
-                            for &(s, e) in part {
-                                // 收集此区间内的所有基础段，并为每段生成模糊变体
-                                let seg_vec: Vec<&str> = base[s..e].iter().map(|x| x.as_str()).collect();
-                                let variant_sets: Vec<Vec<String>> = seg_vec.iter().map(|seg| {
-                                    if context.config.input.enable_fuzzy_pinyin {
-                                        Self::fuzzy_variants_per_segment(seg, &context.config.input.fuzzy_config)
-                                    } else {
-                                        vec![seg.to_string()]
-                                    }
-                                }).collect();
-                                // 遍历所有模糊变体组合（笛卡尔积）
-                                let mut idxs: Vec<usize> = vec![0; variant_sets.len()];
-                                let mut found = false;
-                                loop {
-                                    let py: String = idxs.iter().enumerate()
-                                        .map(|(i, &idx)| variant_sets[i][idx].as_str())
-                                        .collect::<Vec<&str>>().concat();
-                                    if let Some(entries) = d.get_all_exact(&py) {
-                                        if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
-                                            words.push(best.word.to_string());
-                                            text.push_str(best.word);
-                                            total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                    // 递增索引
-                                    let mut carry = true;
-                                    for i in (0..idxs.len()).rev() {
-                                        if carry {
-                                            idxs[i] += 1;
-                                            if idxs[i] >= variant_sets[i].len() {
-                                                idxs[i] = 0;
-                                            } else {
-                                                carry = false;
-                                            }
-                                        }
-                                    }
-                                    if carry { break; }
-                                }
-                                if !found {
-                                    ok = false;
-                                    break;
-                                }
-                            }
-                            if !ok { continue; }
-
-                            // N-Gram 衔接评分：相邻词对 log(共现次数+1) 累加
-                            let mut ngram_bonus = 0u64;
-                            if let (Some(_profile_str), Some(profile_ngram)) =
-                                (profile.map(|s| s.as_str()), profile.and_then(|p| ngram_guard.get(p.as_str())))
-                            {
-                                for pair in words.windows(2) {
-                                    if let Some(entries) = profile_ngram.get(&pair[0]) {
-                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &pair[1])
-                                        {
-                                            let effective = (*count).min(10) as f64;
-                                            ngram_bonus +=
-                                                ((effective + 1.0).ln() * 500_000.0) as u64;
-                                        }
-                                    }
-                                }
-                                // trigram 衔接评分 (统一从 profile_ngram 查询)
-                                for triple in words.windows(3) {
-                                    let key = format!("{}|{}", triple[0], triple[1]);
-                                    if let Some(entries) = profile_ngram.get(&key) {
-                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &triple[2]) {
-                                            let effective = (*count).min(10) as f64;
-                                            ngram_bonus +=
-                                                ((effective + 1.0).ln() * 600_000.0) as u64;
-                                        }
-                                    }
-                                }
-                            }
-                            let total_score = total_freq + ngram_bonus;
-                            compose_results.push((text, part.len(), total_score));
-                        }
-                        compose_results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
-                        compose_results.truncate(6);
-                        for (text, _, score) in &compose_results {
-                            if seen.insert(text.clone()) {
-                                let weight = (*score as f64 * 0.001 + 0.1) as u32;
-                                let mut cand = SchemeCandidate::new(text.clone(), weight);
-                                cand.match_level = 3;
-                                final_results.push(cand);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 策略 4: 统一相似拼音纠错（换位 + 模糊 + Levenshtein）
+        // 策略 3: 统一相似拼音纠错（换位 + 模糊 + Levenshtein）
+        // 仅在前面的策略都无结果时触发
         if final_results.is_empty() && !query.contains(' ')
             && context.config.input.enable_error_correction {
             if let Some(d) = context.tries.get("chinese") {
-                let fuzzy = if context.config.input.enable_fuzzy_pinyin {
-                    Some(&context.config.input.fuzzy_config)
-                } else {
-                    None
-                };
-                let similar = crate::pipeline::find_similar_pinyin(&pinyin_key, d, fuzzy);
+                let similar = crate::pipeline::find_similar_pinyin(
+                    &pinyin_key, d, Some(&context.config.input.fuzzy_config)
+                );
                 for m in &similar {
                     if let Some(entries) = d.get_all_exact(&m.pinyin) {
                         for tr in entries.iter() {
@@ -639,6 +492,87 @@ impl InputScheme for ChineseScheme {
                         }
                     }
                     if final_results.len() >= max_results { break; }
+                }
+            }
+        }
+
+        // 策略 4: 长句组合（ComposeTranslator）— 仅纠错无结果且音节数足够时触发
+        if final_results.is_empty() && !query.contains(' ') && !raw_parsed.is_empty() {
+            if let Some(d) = context.tries.get("chinese") {
+                let base = self.segment_base(&pinyin_key, context.base_syllables);
+                let min_syllables = context.config.input.auto_sentence_min_syllables as usize;
+                let min_syllables = min_syllables.max(2);
+                if base.len() >= 2 && base.len() <= 12
+                    && (base.len() >= min_syllables || final_results.is_empty()) {
+                    let prefix_without_last: String = base[..base.len() - 1].concat();
+                    if d.has_longer_match(&prefix_without_last) {
+                        // 去掉最后一个音节的前缀仍在词典中有更长的匹配，
+                        // 说明用户可能正在输入一个较长的已知词，跳过组句
+                    } else {
+                        let mut all_partitions = Vec::new();
+                        self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d);
+                        if all_partitions.len() > 100 {
+                            all_partitions.truncate(100);
+                        }
+
+                        let ngram_guard = context.ngram_history.load();
+                        let profile = context.active_profiles.first();
+
+                        let mut compose_results: Vec<(String, usize, u64)> = Vec::new();
+                        for part in &all_partitions {
+                            let mut text = String::new();
+                            let mut words: Vec<String> = Vec::new();
+                            let mut total_freq = 0u64;
+                            let mut ok = true;
+                            for &(s, e) in part {
+                                let py: String = base[s..e].concat();
+                                if let Some(entries) = d.get_all_exact(&py) {
+                                    if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
+                                        words.push(best.word.to_string());
+                                        text.push_str(best.word);
+                                        total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
+                                        continue;
+                                    }
+                                }
+                                ok = false;
+                                break;
+                            }
+                            if !ok { continue; }
+
+                            // N-Gram 衔接评分
+                            let mut ngram_bonus = 0u64;
+                            if let (Some(_p), Some(pn)) = (profile.map(|s| s.as_str()), profile.and_then(|p| ngram_guard.get(p.as_str()))) {
+                                for pair in words.windows(2) {
+                                    if let Some(entries) = pn.get(&pair[0]) {
+                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &pair[1]) {
+                                            let e = (*count).min(10) as f64;
+                                            ngram_bonus += ((e + 1.0).ln() * 500_000.0) as u64;
+                                        }
+                                    }
+                                }
+                                for triple in words.windows(3) {
+                                    let key = format!("{}|{}", triple[0], triple[1]);
+                                    if let Some(entries) = pn.get(&key) {
+                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &triple[2]) {
+                                            let e = (*count).min(10) as f64;
+                                            ngram_bonus += ((e + 1.0).ln() * 600_000.0) as u64;
+                                        }
+                                    }
+                                }
+                            }
+                            compose_results.push((text, part.len(), total_freq + ngram_bonus));
+                        }
+                        compose_results.sort_by(|a, b| a.1.cmp(&b.1).then(b.2.cmp(&a.2)));
+                        compose_results.truncate(6);
+                        for (text, _, score) in &compose_results {
+                            if seen.insert(text.clone()) {
+                                let weight = (*score as f64 * 0.001 + 0.1) as u32;
+                                let mut cand = SchemeCandidate::new(text.clone(), weight);
+                                cand.match_level = 3;
+                                final_results.push(cand);
+                            }
+                        }
+                    }
                 }
             }
         }

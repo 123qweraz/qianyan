@@ -257,7 +257,6 @@ pub struct Input {
     pub enable_smart_backspace: bool,
     pub enable_double_pinyin: bool,
     pub double_pinyin_scheme: DoublePinyinScheme,
-    pub enable_fuzzy_pinyin: bool,
     pub fuzzy_config: FuzzyPinyinConfig,
     pub enable_traditional: bool,
     #[serde(default = "default_english_aux_mode")]
@@ -574,7 +573,7 @@ impl Config {
         &'static [&'static str],
     )] = &[
         ("system", &["files", "linux"], &["autostart", "enabled_profiles", "phantom_type"], &["show_candidates", "show_tray"]),
-        ("fuzzy", &[], &["enable_fuzzy_pinyin", "fuzzy_config"], &[]),
+        ("fuzzy", &[], &["fuzzy_config"], &[]),
         ("doublepinyin", &[], &["enable_double_pinyin", "double_pinyin_scheme"], &[]),
         ("punctuation", &["punctuations"], &["enable_punctuation_long_press", "punctuation_long_press_mappings"], &[]),
     ];
@@ -1010,7 +1009,6 @@ impl Config {
                     .map(|(k, v)| (k.to_string(), v.to_string()))
                     .collect(),
                 },
-                enable_fuzzy_pinyin: false,
                 fuzzy_config: FuzzyPinyinConfig {
                     z_zh: true,
                     c_ch: true,

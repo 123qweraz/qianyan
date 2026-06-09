@@ -191,7 +191,7 @@ impl Translator for TableTranslator {
             }
         }
 
-        if config.input.enable_fuzzy_pinyin {
+        if !segments.is_empty() {
             let fuzzy_cfg = &config.input.fuzzy_config;
             let per_seg: Vec<Vec<String>> = segments
                 .iter()
@@ -496,7 +496,7 @@ impl ComposeTranslator {
         current: &mut Vec<(usize, usize)>,
         result: &mut Vec<Vec<(usize, usize)>>,
     ) {
-        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, &self.trie, None)
+        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, &self.trie)
     }
 }
 

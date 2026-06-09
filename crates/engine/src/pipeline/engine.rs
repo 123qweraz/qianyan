@@ -126,7 +126,6 @@ pub struct SearchQuery<'a> {
     pub aux_filter: &'a str,
     pub context: Option<&'a str>,
     pub context_pair: Option<(&'a str, &'a str)>,
-    pub fuzzy_enabled: bool,
 }
 
 impl SearchEngine {
@@ -159,10 +158,9 @@ impl SearchEngine {
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
         let config_ref = query.config;
         log::info!(
-            "engine_search: profile={}, buffer={}, fuzzy_enabled={}, rare_char_mode={:?}",
+            "engine_search: profile={}, buffer={}, rare_char_mode={:?}",
             query.profile,
             query.buffer,
-            query.fuzzy_enabled,
             config_ref.input.rare_char_mode
         );
 

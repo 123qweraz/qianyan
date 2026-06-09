@@ -346,7 +346,6 @@ impl ProcessorActor {
             aux_filter: &ctx.session.aux_filter,
             context: last_word,
             context_pair: last_two,
-            fuzzy_enabled: ctx.config.master_config.input.enable_fuzzy_pinyin,
         };
 
         let (candidates, segments) = ctx.engine.search(query);

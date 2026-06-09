@@ -690,7 +690,7 @@ mod tests {
             aux_filter: "",
             context: None,
             context_pair: None,
-            fuzzy_enabled: false,
+            
         };
         let (candidates, _) = engine.search(query);
         let count = candidates.len();
@@ -766,7 +766,7 @@ mod tests {
             aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
         println!("=== xianzai debug ===");
@@ -806,7 +806,6 @@ mod tests {
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_abbreviation_matching = true;
         config.input.enable_prefix_matching = true;
-        config.input.enable_fuzzy_pinyin = false;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -844,7 +843,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().take(20).map(|c| c.text.to_string()).collect()
@@ -910,7 +909,6 @@ mod tests {
         config.input.enable_auto_reorder = true;
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
-        config.input.enable_fuzzy_pinyin = false;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -949,7 +947,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().map(|c| c.text.to_string()).collect()
@@ -1037,7 +1035,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().map(|c| c.text.to_string()).collect()
@@ -1116,7 +1114,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().take(20).map(|c| c.text.to_string()).collect()
@@ -1180,7 +1178,6 @@ mod tests {
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_abbreviation_matching = true;
         config.input.enable_prefix_matching = true;
-        config.input.enable_fuzzy_pinyin = false;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -1230,7 +1227,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().map(|c| c.text.to_string()).collect()
@@ -1270,7 +1267,6 @@ mod tests {
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_abbreviation_matching = true;
         config.input.enable_prefix_matching = true;
-        config.input.enable_fuzzy_pinyin = false;
 
         let mut trie_paths = HashMap::new();
         trie_paths.insert("chinese".to_string(), (
@@ -1319,7 +1315,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().map(|c| c.text.to_string()).collect()
@@ -1353,7 +1349,6 @@ mod tests {
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_abbreviation_matching = true;
         config.input.enable_prefix_matching = true;
-        config.input.enable_fuzzy_pinyin = false;
         config.input.enable_auto_reorder = false;
 
         let mut trie_paths = HashMap::new();
@@ -1405,7 +1400,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().map(|c| (c.text.to_string(), c.match_level)).collect()
@@ -1510,7 +1505,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: false,
+                
             };
             let (candidates, _) = engine.search(query);
             let total = candidates.len();
@@ -1536,7 +1531,6 @@ mod tests {
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
-        config.input.enable_fuzzy_pinyin = true;
         config.input.fuzzy_config.z_zh = true;
         config.input.enable_error_correction = true;
 
@@ -1581,7 +1575,7 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                fuzzy_enabled: config.input.enable_fuzzy_pinyin,
+                
             };
             let (candidates, _) = engine.search(query);
             candidates.iter().take(20).map(|c| c.text.to_string()).collect()

@@ -115,7 +115,6 @@ fn run_bench_mode() {
                         aux_filter: "",
                         context: None,
                         context_pair: None,
-                        fuzzy_enabled: false,
                     })
                     .0
                     .is_empty();

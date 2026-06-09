@@ -20,30 +20,30 @@
 
         <div class="note">
             <strong>📝 说明</strong><br>
-            • 模糊音 — 输入近似音节也能匹配正确词汇（如 zui→zhui 追）。精确匹配始终排在模糊匹配之前。<br>
-            • 纠错 — 换位(gogn→gong)、模糊分段(leizui→leizhui)、单字符错(zhonf→zhong)，统一纠正。
+            • 模糊音 — 输入近似音节也匹配正确词汇（如 zui→zhui→累赘）。精确匹配始终排在模糊之前。<br>
+            • 纠错 — 换位(gogn→gong)、单字符错(zhonf→zhong)，统一纠正。<br>
+            • 开启纠错后，下方勾选的模糊规则自动生效。Tab+S 可手动切换当前拼音。
         </div>
 
-        <h2>模糊音设置</h2>
+        <h2>纠错行为</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">启用模糊音</div><div class="desc">输入拼音时自动匹配相似音节（如 zui 也能匹配 zhui）</div></div>
-                <label class="switch"><input type="checkbox" id="enable_fuzzy_pinyin"><span class="slider"></span></label>
+                <div class="info"><div class="title">启用智能纠错</div><div class="desc">输入错误时自动纠正：相邻键位按反、音节模糊变体、单字符笔误均覆盖</div></div>
+                <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
             </div>
         </div>
 
-        <h3>声母模糊</h3>
+        <h2 style="margin-top:32px;">模糊音规则</h2>
         <div class="card">
+            <h3>声母模糊</h3>
             <div class="setting-item"><div class="info"><div class="title">z ↔ zh</div><div class="desc">平舌音 z 与卷舌音 zh 互换</div></div><label class="switch"><input type="checkbox" id="z_zh"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">c ↔ ch</div><div class="desc">平舌音 c 与卷舌音 ch 互换</div></div><label class="switch"><input type="checkbox" id="c_ch"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">s ↔ sh</div><div class="desc">平舌音 s 与卷舌音 sh 互换</div></div><label class="switch"><input type="checkbox" id="s_sh"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">n ↔ l</div><div class="desc">鼻音 n 与边音 l 互换</div></div><label class="switch"><input type="checkbox" id="n_l"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">r ↔ l</div><div class="desc">卷舌音 r 与边音 l 互换</div></div><label class="switch"><input type="checkbox" id="r_l"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">f ↔ h</div><div class="desc">唇齿音 f 与舌根音 h 互换</div></div><label class="switch"><input type="checkbox" id="f_h"><span class="slider"></span></label></div>
-        </div>
 
-        <h3>韵母模糊</h3>
-        <div class="card">
+            <h3>韵母模糊</h3>
             <div class="setting-item"><div class="info"><div class="title">an ↔ ang</div><div class="desc">前鼻音 an 与后鼻音 ang 互换</div></div><label class="switch"><input type="checkbox" id="an_ang"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">en ↔ eng</div><div class="desc">前鼻音 en 与后鼻音 eng 互换</div></div><label class="switch"><input type="checkbox" id="en_eng"><span class="slider"></span></label></div>
             <div class="setting-item"><div class="info"><div class="title">in ↔ ing</div><div class="desc">前鼻音 in 与后鼻音 ing 互换</div></div><label class="switch"><input type="checkbox" id="in_ing"><span class="slider"></span></label></div>
@@ -52,7 +52,7 @@
             <div class="setting-item"><div class="info"><div class="title">u ↔ v (ü)</div><div class="desc">韵母 u 与 ü 互换</div></div><label class="switch"><input type="checkbox" id="u_v"><span class="slider"></span></label></div>
         </div>
 
-        <h3>自定义模糊映射</h3>
+        <h2 style="margin-top:32px;">自定义模糊映射</h2>
         <div class="card">
             <p class="desc">在此添加任意拼音片段的替换规则（如将 l 替换为 n）。</p>
             <table class="mapping-table" id="customMappingsTable">
@@ -60,14 +60,6 @@
                 <tbody></tbody>
             </table>
             <button class="btn btn-sm" style="margin-top: 15px;" onclick="addMapping()">+ 添加映射对</button>
-        </div>
-
-        <h2 style="margin-top:40px;">纠错行为</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">纠错匹配</div><div class="desc">输入错误时自动纠错（如 zhonf→中, gogn→gong, leizui→累赘）</div></div>
-                <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
-            </div>
         </div>
     </div>
 
@@ -82,7 +74,6 @@
         async function init() {
             await loadConfig();
 
-            bindInput('enable_fuzzy_pinyin', 'input');
             bindInput('enable_error_correction', 'input');
 
             const presetIds = ['z_zh','c_ch','s_sh','n_l','r_l','f_h','an_ang','en_eng','in_ing','ian_iang','uan_uang','u_v'];
