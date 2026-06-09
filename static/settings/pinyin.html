@@ -124,18 +124,6 @@
                     </div>
                 </div>
 
-                <h2 id="double-tap">双击辅码过滤</h2>
-                <div class="card">
-                    <div class="setting-item">
-                        <div class="info"><div class="title">启用双击字母辅码过滤</div><div class="desc">快速双击任意字母键（如双击 h），等同于按 Shift + h，进入辅码过滤模式。候选列表只显示匹配该字母提示的候选字</div></div>
-                        <label class="switch"><input type="checkbox" id="double_tap_uppercase_toggle" onchange="toggleDoubleTapUppercase()"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">双击间隔(毫秒)</div><div class="desc">两次按键的间隔低于此值判定为双击，默认 250ms</div></div>
-                        <input type="number" id="double_tap_timeout_ms" style="width: 100px;" min="100" max="1000" step="50">
-                    </div>
-                </div>
-
                 <h2 id="traditional">繁体输入功能</h2>
                 <div class="card">
                     <div class="setting-item">
@@ -154,9 +142,8 @@
                         <div class="info"><div class="title">Shift 筛选模式</div><div class="desc">输入拼音时按 Shift 进入英文/全局筛选</div></div>
                         <label class="switch"><input type="checkbox" id="enable_english_filter"><span class="slider"></span></label>
                     </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">键盘发音</div><div class="desc">打字时发出对应字母的声音</div></div>
-                        <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
+                    <div class="note" style="margin:0 14px 14px;">
+                        双击/长按辅码过滤、键盘发音等按键行为请前往 <a href="keyboard_layout.html" style="color:var(--apple-accent);">键盘布局设置 →</a>
                     </div>
                     <div class="setting-item">
                         <div class="info"><div class="title">数字键选词</div><div class="desc">关闭后数字键将作为普通字符输入</div></div>
@@ -235,7 +222,6 @@
 
     <script src="/static/js/settings.js"></script>
     <script>
-        const DOUBLE_TAP_LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(k => k !== 'g' && k !== 'n');
 
         async function resetPinyin() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
@@ -254,20 +240,14 @@
             bindInput('rare_char_mode', 'input');
             bindInput('anti_typo_mode', 'input');
             bindInput('enable_english_filter', 'input');
-            bindInput('enable_keyboard_voice', 'input');
             bindInput('enable_number_selection', 'input');
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
             bindInput('enable_ctrl_capslock_commit', 'hotkeys');
             bindInput('display_mode', 'input');
-            bindInput('double_tap_timeout_ms', 'input');
 
             if (!config.input.double_tap_uppercase_keys) {
                 config.input.double_tap_uppercase_keys = [];
             }
-            const keys = config.input.double_tap_uppercase_keys;
-            const allEnabled = config.input.enable_double_tap
-                && DOUBLE_TAP_LETTERS.every(k => keys.includes(k));
-            document.getElementById('double_tap_uppercase_toggle').checked = allEnabled;
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
@@ -279,12 +259,6 @@
             document.getElementById('nav_fuzzy_input').value = (config.hotkeys.nav_fuzzy || []).join(', ');
             document.getElementById('nav_clear_input').value = (config.hotkeys.nav_clear || []).join(', ');
             document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
-        }
-
-        function toggleDoubleTapUppercase() {
-            const checked = document.getElementById('double_tap_uppercase_toggle').checked;
-            config.input.enable_double_tap = checked;
-            config.input.double_tap_uppercase_keys = checked ? [...DOUBLE_TAP_LETTERS] : [];
         }
 
         async function init() {

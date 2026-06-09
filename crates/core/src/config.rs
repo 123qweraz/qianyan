@@ -227,6 +227,8 @@ pub struct Input {
     pub long_press_mappings: Vec<LongPressMapping>,
     pub enable_punctuation_long_press: bool,
     pub punctuation_long_press_mappings: std::collections::HashMap<String, String>,
+    #[serde(default)]
+    pub long_press_uppercase_keys: Vec<String>,
     pub keyboard_layouts:
         std::collections::HashMap<String, std::collections::HashMap<String, String>>,
     pub auto_commit_unique_en_fuzhuma: bool,
@@ -474,6 +476,11 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
     );
     chinese.insert("?".to_string(), action("？", "?", None, None, "中文问号"));
     chinese.insert("!".to_string(), action("！", "!", None, None, "中文叹号"));
+    chinese.insert("[".to_string(), action("「", "{", None, None, "中文左引号"));
+    chinese.insert("]".to_string(), action("」", "}", None, None, "中文右引号"));
+    chinese.insert("'".to_string(), action("'", "\"", None, None, "中文引号"));
+    chinese.insert("/".to_string(), action("、", "?", None, None, "中文顿号"));
+    chinese.insert("\\".to_string(), action("、", "|", None, None, "中文顿号"));
     layouts.insert(
         "chinese".to_string(),
         ProfileLayout {
@@ -483,13 +490,10 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
     );
 
     let mut english = std::collections::HashMap::new();
-    english.insert(";".to_string(), action(";", ":", None, None, "英文分号"));
-    english.insert(".".to_string(), action(".", ">", None, None, "英文句号"));
-    english.insert(",".to_string(), action(",", "<", None, None, "英文逗号"));
     layouts.insert(
         "english".to_string(),
         ProfileLayout {
-            name: "English Default Layout".into(),
+            name: "English (Default)".into(),
             mappings: english,
         },
     );
@@ -937,6 +941,7 @@ impl Config {
                 long_press_mappings: vec![],
                 enable_punctuation_long_press: true,
                 punctuation_long_press_mappings: std::collections::HashMap::new(),
+                long_press_uppercase_keys: vec![],
                 keyboard_layouts: std::collections::HashMap::new(),
                 auto_commit_unique_en_fuzhuma: false,
                 auto_commit_unique_full_match: false,

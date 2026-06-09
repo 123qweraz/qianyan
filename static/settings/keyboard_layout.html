@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>键盘布局 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .kb-grid { display: flex; flex-direction: column; gap: 6px; user-select: none; }
+        .kb-row { display: flex; gap: 5px; justify-content: center; }
+        .kb-key { height: 56px; min-width: 52px; border-radius: 8px; border: 1.5px solid var(--apple-border); background: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.15s; font-size: 13px; padding: 2px 4px; }
+        .kb-key:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.04); }
+        .kb-key.active { border-color: var(--apple-accent); background: rgba(0,113,227,0.08); }
+        .kb-key.selected { border-color: #ff9500; box-shadow: 0 0 0 2px rgba(255,149,0,0.3); background: rgba(255,149,0,0.08); }
+        .kb-key.trading { border-color: #ff9500; box-shadow: 0 0 0 2px rgba(255,149,0,0.3); animation: pulse 0.8s infinite; }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 2px rgba(255,149,0,0.3); } 50% { box-shadow: 0 0 0 4px rgba(255,149,0,0.5); } }
+        .kb-key-fn { background: #f0f0f2; cursor: default; min-width: 44px; font-size: 12px; color: var(--apple-secondary); }
+        .kb-key-fn:hover { border-color: var(--apple-border); background: #f0f0f2; }
+        .kb-key-wide { min-width: 80px; }
+        .kb-key-main { font-size: 14px; font-weight: 600; }
+        .kb-key-sub { font-size: 10px; color: var(--apple-accent); overflow: hidden; white-space: nowrap; max-width: 45px; text-align: center; margin-top: 1px; }
+        .profile-tabs { display: flex; gap: 0; margin: 16px 0; border-bottom: 2px solid var(--apple-border); }
+        .profile-tab { padding: 10px 20px; border: none; background: transparent; font-size: 14px; font-weight: 500; color: var(--apple-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .profile-tab:hover { color: var(--apple-text); }
+        .profile-tab.active { color: var(--apple-accent); border-bottom-color: var(--apple-accent); font-weight: 600; }
+        .edit-panel { display: none; margin-top: 20px; padding: 20px; background: var(--apple-card); border-radius: 16px; border: 1px solid var(--apple-border); }
+        .edit-panel .row { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .edit-panel label { font-size: 13px; font-weight: 600; min-width: 70px; text-align: right; }
+        .edit-panel input { flex: 1; min-width: 120px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--apple-border); font-size: 14px; }
+        .edit-panel .hint { font-size: 11px; color: var(--apple-secondary); }
+        .tag-input { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--apple-border); min-height: 32px; align-items: center; cursor: text; background: #fff; }
+        .tag-input:focus-within { border-color: var(--apple-accent); }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; background: rgba(0,113,227,0.1); color: var(--apple-accent); }
+        .tag .remove { margin-left: 4px; cursor: pointer; font-size: 14px; line-height: 1; }
+        .tag-input-inner { border: none; outline: none; font-size: 13px; min-width: 40px; flex: 1; padding: 2px 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>键盘布局</h1>
+        </header>
+
+        <div class="note">
+            <strong>⌨️ 说明</strong><br>
+            • 点击可视化键盘上的任意字母/符号键，编辑其按下、Shift、双击、长按行为。
+            • 点击「开始交换」后，再点击另一个键，双方按键行为整包互换。
+            • 「双击大写键列表」中配置的字母：双击该字母等同于 Shift+该字母，触发辅码过滤。
+            • 「长按大写键列表」同理：长按该字母等同于 Shift+该字母，触发辅码过滤。
+        </div>
+
+        <!-- 按键行为设置 -->
+        <div class="card">
+            <h3 style="margin-top:0;">⚙️ 按键行为设置</h3>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用双击功能</div><div class="desc">开启后可识别快速双击按键并触发自定义行为</div></div>
+                <label class="switch"><input type="checkbox" id="enable_double_tap"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">双击间隔(毫秒)</div><div class="desc">两次按键低于此间隔判定为双击，默认 250ms</div></div>
+                <input type="number" id="double_tap_timeout_ms" style="width:100px;" min="100" max="1000" step="50">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">双击大写键列表</div><div class="desc">双击这些字母键 = Shift + 该字母 → 触发辅码过滤。用逗号分隔，如 a,b,c</div></div>
+                <div style="flex:1; max-width:400px;">
+                    <input type="text" id="double_tap_uppercase_keys" style="width:100%; padding:6px 10px; border-radius:8px; border:1px solid var(--apple-border); font-size:13px; font-family:monospace;" placeholder="例如: h,j,k,l">
+                </div>
+            </div>
+            <hr style="margin:16px 0; border:0; border-top:1px solid var(--apple-border);">
+            <div class="setting-item">
+                <div class="info"><div class="title">启用长按功能</div><div class="desc">开启后可识别长按按键并触发自定义行为</div></div>
+                <label class="switch"><input type="checkbox" id="enable_long_press"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">长按判定时间(毫秒)</div><div class="desc">按住超过此时间判定为长按，默认 400ms</div></div>
+                <input type="number" id="long_press_timeout_ms" style="width:100px;" min="100" max="2000" step="50">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">长按大写键列表</div><div class="desc">长按这些字母键 = Shift + 该字母 → 触发辅码过滤。用逗号分隔</div></div>
+                <div style="flex:1; max-width:400px;">
+                    <input type="text" id="long_press_uppercase_keys" style="width:100%; padding:6px 10px; border-radius:8px; border:1px solid var(--apple-border); font-size:13px; font-family:monospace;" placeholder="例如: j,k">
+                </div>
+            </div>
+            <hr style="margin:16px 0; border:0; border-top:1px solid var(--apple-border);">
+            <div class="setting-item">
+                <div class="info"><div class="title">键盘发音</div><div class="desc">打字时发出对应字母的声音</div></div>
+                <label class="switch"><input type="checkbox" id="enable_keyboard_voice"><span class="slider"></span></label>
+            </div>
+            <div style="padding-top:12px;">
+                <button class="btn" onclick="saveSettings()" style="font-size:13px; padding:8px 18px;">保存设置</button>
+            </div>
+        </div>
+
+        <!-- 按键布局 -->
+        <h3 style="margin-top:32px;">⌨️ 按键布局编辑</h3>
+        <div class="profile-tabs" id="profile-tabs">
+            <button class="profile-tab active" data-profile="chinese">chinese</button>
+            <button class="profile-tab" data-profile="english">english</button>
+            <button class="profile-tab" data-profile="japanese">japanese</button>
+            <button class="profile-tab" data-profile="stroke">stroke</button>
+        </div>
+        <div class="kb-grid" id="keyboard-grid"></div>
+
+        <!-- 编辑面板 -->
+        <div class="edit-panel" id="edit-panel">
+            <h4 style="margin:0 0 12px;" id="edit-title">编辑按键</h4>
+            <div class="row">
+                <label>普通(tap):</label>
+                <input type="text" id="edit-tap" placeholder="按下时输出">
+                <span class="hint">默认=键自身</span>
+            </div>
+            <div class="row">
+                <label>Shift:</label>
+                <input type="text" id="edit-shift" placeholder="Shift+按下时输出">
+                <span class="hint">默认=键自身</span>
+            </div>
+            <div class="row">
+                <label>双击:</label>
+                <input type="text" id="edit-doubletap" placeholder="留空=不设置">
+                <span class="hint">覆盖大写辅码过滤</span>
+            </div>
+            <div class="row">
+                <label>长按:</label>
+                <input type="text" id="edit-longpress" placeholder="留空=不设置">
+                <span class="hint">覆盖大写辅码过滤</span>
+            </div>
+            <div class="row">
+                <label>描述:</label>
+                <input type="text" id="edit-desc" placeholder="备注（可选）">
+            </div>
+            <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+                <button class="btn" onclick="saveKeyEdit()">保存映射</button>
+                <button class="btn" onclick="startSwap()" id="btn-swap" style="background:#ff9500;">开始交换</button>
+                <button class="btn" onclick="cancelSwap()" id="btn-cancel-swap" style="background:var(--apple-secondary); display:none;">取消交换</button>
+                <button class="btn btn-danger" onclick="resetKey()" id="btn-reset" style="display:none;">恢复默认</button>
+                <button class="btn" onclick="cancelEdit()" style="background:var(--apple-secondary);">取消</button>
+            </div>
+        </div>
+
+        <div id="toast" class="status-toast"></div>
+    </div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        const KB_ROWS = [
+            [['`','`'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6'],['7','7'],['8','8'],['9','9'],['0','0'],['-','-'],['=','='],['⌫',null]],
+            [['↹',null],['q','q'],['w','w'],['e','e'],['r','r'],['t','t'],['y','y'],['u','u'],['i','i'],['o','o'],['p','p'],['[','['],[']',']'],['\\','\\']],
+            [['⇪',null],['a','a'],['s','s'],['d','d'],['f','f'],['g','g'],['h','h'],['j','j'],['k','k'],['l','l'],[';',';'],["'","'"],['⏎',null]],
+            [['⇧',null],['z','z'],['x','x'],['c','c'],['v','v'],['b','b'],['n','n'],['m','m'],[',',','],['.','.'],['/','/'],['⇧',null]]
+        ];
+
+        let currentProfile = 'chinese';
+        let editingKey = null;
+        let swapping = false;
+
+        function getMapping(physKey) {
+            ensureProfile(currentProfile);
+            const mappings = config.layouts[currentProfile].mappings;
+            return mappings[physKey] || null;
+        }
+
+        function setMapping(physKey, action) {
+            ensureProfile(currentProfile);
+            config.layouts[currentProfile].mappings[physKey] = action;
+        }
+
+        function deleteKeyMapping(physKey) {
+            ensureProfile(currentProfile);
+            delete config.layouts[currentProfile].mappings[physKey];
+        }
+
+        function ensureProfile(profile) {
+            if (!config.layouts[profile]) {
+                config.layouts[profile] = { name: profile, mappings: {} };
+            }
+            if (!config.layouts[profile].mappings) {
+                config.layouts[profile].mappings = {};
+            }
+        }
+
+        function renderKeyboard() {
+            const container = document.getElementById('keyboard-grid');
+            ensureProfile(currentProfile);
+            const mappings = config.layouts[currentProfile].mappings;
+
+            container.innerHTML = KB_ROWS.map(row => `
+                <div class="kb-row">
+                    ${row.map(([label, physKey]) => {
+                        if (!physKey) {
+                            const wide = ['⌫','⇧','⏎','⇪','↹'].includes(label);
+                            return `<div class="kb-key kb-key-fn ${wide?'kb-key-wide':''}">${label}</div>`;
+                        }
+                        const action = mappings[physKey];
+                        const sub = action ? (action.tap || '') : '';
+                        const hasCustom = action && (action.tap || action.shift || action.double_tap || action.long_press);
+                        let cls = '';
+                        if (swapping && editingKey === physKey) cls = 'trading';
+                        else if (editingKey === physKey) cls = 'selected';
+                        else if (hasCustom) cls = 'active';
+                        return `<div class="kb-key ${cls}" onclick="onKeyClick('${physKey}')">
+                            <div class="kb-key-main">${label}</div>
+                            ${sub ? `<div class="kb-key-sub">${sub}</div>` : ''}
+                        </div>`;
+                    }).join('')}
+                </div>
+            `).join('');
+        }
+
+        function onKeyClick(physKey) {
+            if (swapping && editingKey && editingKey !== physKey) {
+                doSwap(editingKey, physKey);
+                return;
+            }
+            if (swapping) {
+                cancelSwap();
+            }
+            editKey(physKey);
+        }
+
+        async function init() {
+            await loadConfig();
+
+            bindInput('enable_double_tap', 'input');
+            bindInput('double_tap_timeout_ms', 'input');
+            bindInput('enable_long_press', 'input');
+            bindInput('long_press_timeout_ms', 'input');
+            bindInput('enable_keyboard_voice', 'input');
+
+            // double_tap_uppercase_keys is a string array, shown as comma-separated text
+            const dtUkEl = document.getElementById('double_tap_uppercase_keys');
+            dtUkEl.value = (config.input.double_tap_uppercase_keys || []).join(',');
+            dtUkEl.oninput = () => {
+                config.input.double_tap_uppercase_keys = dtUkEl.value.split(',').map(s => s.trim()).filter(Boolean);
+            };
+
+            // long_press_uppercase_keys is a string array
+            const lpUkEl = document.getElementById('long_press_uppercase_keys');
+            lpUkEl.value = (config.input.long_press_uppercase_keys || []).join(',');
+            lpUkEl.oninput = () => {
+                config.input.long_press_uppercase_keys = lpUkEl.value.split(',').map(s => s.trim()).filter(Boolean);
+            };
+
+            // Profile tab switching
+            document.querySelectorAll('.profile-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentProfile = tab.dataset.profile;
+                    editingKey = null;
+                    swapping = false;
+                    document.getElementById('edit-panel').style.display = 'none';
+                    updateSwapButton();
+                    renderKeyboard();
+                });
+            });
+
+            renderKeyboard();
+        }
+
+        function editKey(physKey) {
+            editingKey = physKey;
+            swapping = false;
+            updateSwapButton();
+
+            const action = getMapping(physKey);
+            document.getElementById('edit-title').innerText = `编辑按键: ${physKey} (${currentProfile})`;
+            document.getElementById('edit-tap').value = action ? (action.tap || '') : '';
+            document.getElementById('edit-shift').value = action ? (action.shift || '') : '';
+            document.getElementById('edit-doubletap').value = action ? (action.double_tap || '') : '';
+            document.getElementById('edit-longpress').value = action ? (action.long_press || '') : '';
+            document.getElementById('edit-desc').value = action ? (action.description || '') : '';
+            document.getElementById('edit-panel').style.display = 'block';
+            document.getElementById('edit-panel').scrollIntoView({ behavior: 'smooth' });
+
+            // Show/hide reset button based on whether key has a custom mapping
+            const hasMapping = action && (action.tap || action.shift || action.double_tap || action.long_press);
+            document.getElementById('btn-reset').style.display = hasMapping ? '' : 'none';
+
+            renderKeyboard();
+        }
+
+        function cancelEdit() {
+            document.getElementById('edit-panel').style.display = 'none';
+            editingKey = null;
+            renderKeyboard();
+        }
+
+        function resetKey() {
+            if (!editingKey) return;
+            deleteKeyMapping(editingKey);
+            document.getElementById('edit-panel').style.display = 'none';
+            editingKey = null;
+            renderKeyboard();
+            showToast('已恢复默认', 'info');
+        }
+
+        function saveKeyEdit() {
+            if (!editingKey) return;
+            const tap = document.getElementById('edit-tap').value.trim();
+            const shift = document.getElementById('edit-shift').value.trim();
+            const dt = document.getElementById('edit-doubletap').value.trim();
+            const lp = document.getElementById('edit-longpress').value.trim();
+            const desc = document.getElementById('edit-desc').value.trim();
+
+            if (!tap && !shift && !dt && !lp && !desc) {
+                deleteKeyMapping(editingKey);
+            } else {
+                const action = { tap: tap || editingKey, shift: shift || editingKey };
+                if (dt) action.double_tap = dt;
+                if (lp) action.long_press = lp;
+                if (desc) action.description = desc;
+                setMapping(editingKey, action);
+            }
+
+            document.getElementById('edit-panel').style.display = 'none';
+            editingKey = null;
+            renderKeyboard();
+            showToast('映射已保存（需点击下方保存设置按钮持久化）', 'success');
+        }
+
+        function startSwap() {
+            if (!editingKey) {
+                showToast('请先选择一个按键', 'info');
+                return;
+            }
+            swapping = true;
+            updateSwapButton();
+            renderKeyboard();
+            showToast('请点击另一个键完成交换', 'info');
+        }
+
+        function cancelSwap() {
+            swapping = false;
+            updateSwapButton();
+            renderKeyboard();
+        }
+
+        function doSwap(keyA, keyB) {
+            const actionA = getMapping(keyA) ? JSON.parse(JSON.stringify(getMapping(keyA))) : null;
+            const actionB = getMapping(keyB) ? JSON.parse(JSON.stringify(getMapping(keyB))) : null;
+
+            if (actionA) setMapping(keyB, actionA);
+            else deleteKeyMapping(keyB);
+
+            if (actionB) setMapping(keyA, actionB);
+            else deleteKeyMapping(keyA);
+
+            swapping = false;
+            editingKey = null;
+            updateSwapButton();
+            document.getElementById('edit-panel').style.display = 'none';
+            renderKeyboard();
+            showToast(`已交换 ${keyA} ↔ ${keyB}`, 'success');
+        }
+
+        function updateSwapButton() {
+            document.getElementById('btn-swap').style.display = editingKey ? '' : 'none';
+            document.getElementById('btn-cancel-swap').style.display = swapping ? '' : 'none';
+            if (swapping) {
+                document.getElementById('btn-swap').style.display = 'none';
+            }
+        }
+
+        async function saveSettings() {
+            await saveConfig();
+            showToast('设置已保存', 'success');
+        }
+
+        init();
+    </script>
+</body>
+</html>

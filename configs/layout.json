@@ -7,6 +7,11 @@
           "shift": "!",
           "tap": "！"
         },
+        "'": {
+          "description": "中文引号",
+          "shift": "\"",
+          "tap": "'"
+        },
         ",": {
           "description": "中文逗号",
           "long_press": "、",
@@ -20,6 +25,11 @@
           "shift": "》",
           "tap": "。"
         },
+        "/": {
+          "description": "中文顿号",
+          "shift": "?",
+          "tap": "、"
+        },
         ";": {
           "description": "中文分号",
           "double_tap": ";",
@@ -31,29 +41,28 @@
           "description": "中文问号",
           "shift": "?",
           "tap": "？"
+        },
+        "[": {
+          "description": "中文左引号",
+          "shift": "{",
+          "tap": "{"
+        },
+        "\\": {
+          "description": "中文顿号",
+          "shift": "|",
+          "tap": "、"
+        },
+        "]": {
+          "description": "中文右引号",
+          "shift": "}",
+          "tap": "」"
         }
       },
       "name": "中文默认布局"
     },
     "english": {
-      "mappings": {
-        ",": {
-          "description": "英文逗号",
-          "shift": "<",
-          "tap": ","
-        },
-        ".": {
-          "description": "英文句号",
-          "shift": ">",
-          "tap": "."
-        },
-        ";": {
-          "description": "英文分号",
-          "shift": ":",
-          "tap": ";"
-        }
-      },
-      "name": "English Default Layout"
+      "mappings": {},
+      "name": "English (Default)"
     },
     "japanese": {
       "mappings": {

@@ -1,6 +1,6 @@
 use crate::keys::VirtualKey;
 use crate::processor::utils::*;
-use crate::processor::{inject_text, Action, ImeState};
+use crate::processor::{inject_text, Action, FilterMode, ImeState};
 use crate::{compositor, EngineContext};
 use std::time::Instant;
 
@@ -115,6 +115,28 @@ pub fn process_intent(
                                         }
                                     }
                                     return Some(inject_text(ctx, &r));
+                                }
+
+                                let uppercase_keys = ctx.config.long_press_uppercase_keys();
+                                if uppercase_keys.contains(&c.to_string()) {
+                                    ctx.dispatcher.long_press_triggered = true;
+                                    if !ctx.session.buffer.is_empty() {
+                                        if let Some(last_char) = ctx.session.buffer.chars().last() {
+                                            if last_char.to_string() == c.to_string() {
+                                                ctx.session.buffer.pop();
+                                            }
+                                        }
+                                    }
+                                    if ctx.session.buffer.is_empty() {
+                                        ctx.session.clear_buffer();
+                                        return Some(Action::Consume);
+                                    }
+                                    ctx.session.shift_used_as_modifier = true;
+                                    if ctx.session.filter_mode != FilterMode::Global {
+                                        ctx.session.filter_mode = FilterMode::Global;
+                                    }
+                                    ctx.session.handle_filter_char(c);
+                                    return Some(Action::Consume);
                                 }
                             }
                         } else if let Some(p_key) = get_punctuation_key(key, false) {
