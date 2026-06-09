@@ -147,6 +147,7 @@
     "segmentation_delimiters": "'",
     "short_term_capacity": 200,
     "swap_arrow_keys": false,
-    "word_learn_threshold": 2
+    "word_learn_threshold": 2,
+    "ngram_synthesis_threshold": 2
   }
 }

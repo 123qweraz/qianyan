@@ -121,14 +121,15 @@ pub fn record_usage(
         ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
     }
 
-    // N-gram 驱动新词合成：同一对词连续出现 >= 2 次，自动合并为新词
+    // N-gram 驱动新词合成：同一对词连续出现达到阈值，自动合并为新词
     if ctx.config.master_config.input.enable_word_discovery {
+        let threshold = ctx.config.master_config.input.ngram_synthesis_threshold;
         if let Some(ctx_str) = context {
             let ngram_guard = ctx.config.ngram_history.load();
             if let Some(profile_ngram) = ngram_guard.get(&profile) {
                 if let Some(entries) = profile_ngram.get(ctx_str) {
                     if let Some((_, count)) = entries.iter().find(|(w, _)| w == word) {
-                        if *count >= 2 {
+                        if *count >= threshold {
                             let combined_word = format!("{}{}", ctx_str, word);
                             if combined_word.chars().count() > 1
                                 && !ctx.engine.has_word_in_dict(&profile, &combined_word)
