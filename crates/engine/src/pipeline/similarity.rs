@@ -15,6 +15,8 @@ pub fn find_similar_pinyin(
     trie: &Trie,
     fuzzy: Option<&FuzzyPinyinConfig>,
 ) -> Vec<PinyinMatch> {
+    // 长输入只做 L0+L1（精确+模糊），跳过昂贵的 L2+L3
+    let long_input = input.len() > 12;
     let mut seen = std::collections::HashSet::new();
     let mut matches: Vec<PinyinMatch> = Vec::new();
 
@@ -25,10 +27,14 @@ pub fn find_similar_pinyin(
     l1_fuzzy_variants(input, trie, fuzzy, &mut seen, &mut matches);
 
     // L2: adjacent transposition — cost 0.5 per swap
-    l2_transpositions(input, trie, &mut seen, &mut matches);
+    if !long_input {
+        l2_transpositions(input, trie, &mut seen, &mut matches);
+    }
 
     // L3: Levenshtein distance 1 — cost 1.0
-    l3_levenshtein(input, trie, &mut seen, &mut matches);
+    if !long_input {
+        l3_levenshtein(input, trie, &mut seen, &mut matches);
+    }
 
     // Sort by cost ascending, then by length (shorter = better)
     matches.sort_by(|a, b| {

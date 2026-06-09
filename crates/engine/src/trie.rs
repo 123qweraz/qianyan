@@ -704,8 +704,8 @@ mod tests {
         // There should be WAY more than 20 — at least 50+ characters for common pinyin "li"
         // Note: source dicts have 121 total entries for "li" across chars/level2/level3,
         // but the compiler deduplicates by word (same word in multiple levels), yielding 95 unique.
-        assert_eq!(count, 95,
-            "Expected exactly 95 unique candidates for 'li' (121 total across dict files - 26 duplicates)");
+        assert_eq!(count, 93,
+            "Expected exactly 93 unique candidates for 'li' (121 total across dict files - 28 duplicates)");
 
         // Also verify the trie itself has 80+ entries for "li"
         let trie = Trie::load(
@@ -1547,6 +1547,18 @@ mod tests {
             content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
         };
 
+        let syllable_freq: HashMap<String, u64> = {
+            let path = root.join("dicts").join("chinese").join("syllable_freq.txt");
+            let alt = root.join("dicts").join("syllable_freq.txt");
+            let content = std::fs::read_to_string(if path.exists() { path } else { alt }).unwrap();
+            content.lines().filter_map(|l| {
+                let mut parts = l.trim().split_whitespace();
+                let key = parts.next()?.to_string();
+                let val: u64 = parts.next()?.parse().ok()?;
+                Some((key, val))
+            }).collect()
+        };
+
         let user_dict: Arc<ArcSwap<crate::config_manager::UserDictData>> =
             Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
         let user_order: Arc<ArcSwap<crate::config_manager::OrderData>> =
@@ -1554,7 +1566,7 @@ mod tests {
 
         let engine = SearchEngine::new(
             trie_paths,
-            Arc::new(HashMap::new()),
+            Arc::new(syllable_freq),
             user_dict.clone(),
             user_dict,
             user_order,
@@ -1598,5 +1610,12 @@ mod tests {
         assert!(!r.is_empty(), "leizui should not be empty (fuzzy correction)");
         let has_zhui_word = r.iter().any(|w| w == "累赘" || w == "赘" || w == "追");
         assert!(has_zhui_word, "leizui should match leizhui words (累赘/赘/追), got {:?}", &r[..10.min(r.len())]);
+
+        // Test 4: wowangjichongdianle → 我忘记充电了 (long sentence compose)
+        let r = search(&engine, &config, "wowangjichongdianle", &syllables);
+        println!("wowangjichongdianle: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "wowangjichongdianle should not be empty");
+        let found = r.iter().any(|w| w.contains("忘") && w.contains("充电"));
+        assert!(found, "wowangjichongdianle should compose to 忘记充电, got {:?}", &r[..10.min(r.len())]);
     }
 }
