@@ -279,8 +279,11 @@ impl SearchEngine {
                 results.iter().filter(|c| c.flags & 1 == 0).count(),
                 config_ref.input.rare_char_mode,
             );
-            let segs = DefaultSegmentor.segment(&pre_processed, "", &self.syllable_freq, &self.base_syllables);
-            return (results, segs);
+            let delims = &query.config.input.segmentation_delimiters;
+            let segs = DefaultSegmentor.segment(&pre_processed, delims, &self.syllable_freq, &self.base_syllables);
+            // 退化为全单字符 → 输入不完整，保持原始 buffer 显示
+            let non_degen = !segs.is_empty() && !(segs.len() == pre_processed.len() && segs.iter().all(|s| s.len() == 1));
+            return (results, if non_degen { segs } else { vec![] });
         }
 
         if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
