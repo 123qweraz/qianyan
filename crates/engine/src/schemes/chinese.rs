@@ -516,17 +516,49 @@ impl InputScheme for ChineseScheme {
                             let mut total_freq = 0u64;
                             let mut ok = true;
                             for &(s, e) in part {
-                                let py: String = base[s..e].concat();
-                                if let Some(entries) = d.get_all_exact(&py) {
-                                    if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
-                                        words.push(best.word.to_string());
-                                        text.push_str(best.word);
-                                        total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
-                                        continue;
+                                // 收集此区间内的所有基础段，并为每段生成模糊变体
+                                let seg_vec: Vec<&str> = base[s..e].iter().map(|x| x.as_str()).collect();
+                                let variant_sets: Vec<Vec<String>> = seg_vec.iter().map(|seg| {
+                                    if context.config.input.enable_fuzzy_pinyin {
+                                        Self::fuzzy_variants_per_segment(seg, &context.config.input.fuzzy_config)
+                                    } else {
+                                        vec![seg.to_string()]
                                     }
+                                }).collect();
+                                // 遍历所有模糊变体组合（笛卡尔积）
+                                let mut idxs: Vec<usize> = vec![0; variant_sets.len()];
+                                let mut found = false;
+                                loop {
+                                    let py: String = idxs.iter().enumerate()
+                                        .map(|(i, &idx)| variant_sets[i][idx].as_str())
+                                        .collect::<Vec<&str>>().concat();
+                                    if let Some(entries) = d.get_all_exact(&py) {
+                                        if let Some(best) = entries.iter().max_by_key(|r| r.weight) {
+                                            words.push(best.word.to_string());
+                                            text.push_str(best.word);
+                                            total_freq += context.syllable_freq.get(&py).copied().unwrap_or(0);
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                    // 递增索引
+                                    let mut carry = true;
+                                    for i in (0..idxs.len()).rev() {
+                                        if carry {
+                                            idxs[i] += 1;
+                                            if idxs[i] >= variant_sets[i].len() {
+                                                idxs[i] = 0;
+                                            } else {
+                                                carry = false;
+                                            }
+                                        }
+                                    }
+                                    if carry { break; }
                                 }
-                                ok = false;
-                                break;
+                                if !found {
+                                    ok = false;
+                                    break;
+                                }
                             }
                             if !ok { continue; }
 
