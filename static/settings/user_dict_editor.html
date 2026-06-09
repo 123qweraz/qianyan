@@ -40,12 +40,13 @@
             <h1>用户词典</h1>
         </header>
 
-        <div class="note">
-            <strong>💡 说明</strong><br>
-            • <strong>用户词典</strong> — 自动造词记录的自定义词组<br>
-            • <strong>上下文联想</strong> — N-Gram 关联历史，记录前后词关系<br>
-            使用下方标签页切换查看不同类型的数据。
-        </div>
+            <div class="note">
+                <strong>💡 说明</strong><br>
+                • <strong>用户词典 / 短期记忆</strong> — 自动造词记录的自定义词组，最多保留 N 条，超出时自动淘汰使用次数最低的词<br>
+                • <strong>长期记忆</strong> — 短期记忆中的词被使用达到 M 次后自动晋升，永久保留<br>
+                • <strong>上下文联想</strong> — N-Gram 关联历史，记录前后词关系<br>
+                使用下方标签页切换查看不同类型的数据。
+            </div>
 
         <div class="card">
             <h3 style="margin-top:0;">⚙️ 排序与学习控制</h3>
@@ -84,6 +85,26 @@
                 </div>
                 <div style="display:flex;align-items:center;">
                     <input type="number" id="word_learn_threshold" min="1" max="10" step="1"
+                           style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">短期记忆容量</div>
+                    <div class="desc">短期记忆最多保留的词条数（默认200）。超过时自动淘汰使用最少的词</div>
+                </div>
+                <div style="display:flex;align-items:center;">
+                    <input type="number" id="short_term_capacity" min="10" max="10000" step="10"
+                           style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;">
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">晋升长期记忆次数</div>
+                    <div class="desc">短期记忆中的词被使用达到此次数后晋升到长期记忆（默认5）</div>
+                </div>
+                <div style="display:flex;align-items:center;">
+                    <input type="number" id="long_term_threshold" min="2" max="100" step="1"
                            style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;">
                 </div>
             </div>
@@ -148,6 +169,8 @@
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
             bindInput('word_learn_threshold', 'input');
+            bindInput('short_term_capacity', 'input');
+            bindInput('long_term_threshold', 'input');
             await loadAll();
         }
 

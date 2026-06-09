@@ -46,6 +46,13 @@ pub fn update_mru(
     result
 }
 
+fn is_boundary_stopword(word: &str) -> bool {
+    let stopwords = "的了和是在有而及与或之为其于以到等说着也就都吧呢吗啊呀让把给被";
+    let first = word.chars().next().unwrap_or(' ');
+    let last = word.chars().last().unwrap_or(' ');
+    stopwords.contains(first) || stopwords.contains(last)
+}
+
 pub fn record_usage(
     ctx: &mut crate::EngineContext,
     _pinyin: &str,
@@ -54,6 +61,10 @@ pub fn record_usage(
     context: Option<&str>,
 ) {
     if word.is_empty() {
+        return;
+    }
+    // 过滤以停用词开头或结尾的碎片词（如"的学习"、"现在的"）
+    if is_boundary_stopword(word) {
         return;
     }
 

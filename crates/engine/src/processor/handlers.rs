@@ -179,7 +179,7 @@ pub fn handle_composing(
             syllable_freq: &ctx.engine.syllable_freq,
             base_syllables: &ctx.engine.base_syllables,
             single_syllables: &ctx.engine.single_syllables,
-            user_dict: &ctx.config.learned_words,
+            user_dict: &ctx.config.combined_dict,
             ngram_history: &ctx.engine.ngram_history,
             user_order: &ctx.config.user_order,
             active_profiles: &ctx.session_state.active_profiles,

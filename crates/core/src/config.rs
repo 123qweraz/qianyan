@@ -55,6 +55,14 @@ fn default_word_learn_threshold() -> u32 {
     2
 }
 
+fn default_short_term_capacity() -> u32 {
+    200
+}
+
+fn default_long_term_threshold() -> u32 {
+    5
+}
+
 fn default_fixed_x() -> i32 {
     10
 }
@@ -239,6 +247,10 @@ pub struct Input {
     pub enable_word_discovery: bool,
     #[serde(default = "default_word_learn_threshold")]
     pub word_learn_threshold: u32,
+    #[serde(default = "default_short_term_capacity")]
+    pub short_term_capacity: u32,
+    #[serde(default = "default_long_term_threshold")]
+    pub long_term_threshold: u32,
     pub enable_auto_reorder: bool,
     #[serde(default = "default_mru_length")]
     pub mru_length: u32,
@@ -961,6 +973,8 @@ impl Config {
                 enable_number_selection: true,
                 enable_word_discovery: true,
                 word_learn_threshold: 2,
+                short_term_capacity: 200,
+                long_term_threshold: 5,
                 enable_auto_reorder: true,
                 mru_length: 2000,
                 enable_smart_backspace: false,

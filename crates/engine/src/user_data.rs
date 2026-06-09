@@ -11,6 +11,7 @@ const DATA_VERSION: &str = "1.0";
 #[derive(Clone, Debug)]
 pub enum DataType {
     Learned,
+    LongTerm,
     Ngram,
     Order,
 }
@@ -26,6 +27,7 @@ impl DataType {
     fn filename(&self) -> &str {
         match self {
             DataType::Learned => "learned.json",
+            DataType::LongTerm => "long_term.json",
             DataType::Ngram => "ngrams.json",
             DataType::Order => "order.json",
         }
@@ -154,6 +156,7 @@ impl UserDataManager {
     fn load_from_legacy_json_static(data: &mut UserDictData, data_type: DataType) {
         let legacy_file = match data_type {
             DataType::Learned => Path::new("data/learned_words.json"),
+            DataType::LongTerm => return,
             DataType::Ngram => return,
             DataType::Order => return,
         };
@@ -229,7 +232,7 @@ impl UserDataManager {
                 self.save(profile, dt, &empty)?;
             }
             None => {
-                for dt in &[DataType::Learned, DataType::Ngram] {
+                for dt in &[DataType::Learned, DataType::LongTerm, DataType::Ngram] {
                     let empty: HashMap<String, Vec<(String, u32)>> = HashMap::new();
                     self.save(profile, dt.clone(), &empty)?;
                 }

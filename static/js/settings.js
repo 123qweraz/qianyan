@@ -21,12 +21,15 @@ async function saveConfig() {
     showToast("设置已保存并应用");
 }
 
-function showToast(message) {
+function showToast(message, type) {
     const toast = document.getElementById('toast');
     if (toast) {
-        toast.innerText = message;
-        toast.className = "status-toast show";
-        setTimeout(() => { toast.className = "status-toast"; }, 2000);
+        toast.textContent = message;
+        toast.style.display = 'block';
+        toast.style.background = type === 'error' ? '#ff3b30' : 'rgba(0,0,0,0.85)';
+        toast.style.color = '#fff';
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 2500);
     }
 }
 

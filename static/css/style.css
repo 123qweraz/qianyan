@@ -469,6 +469,20 @@ input:checked + .slider:before {
     backdrop-filter: blur(10px);
 }
 
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: white;
+    padding: 14px 34px;
+    border-radius: 20px;
+    display: none;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
 /* Keyboard styles */
 .keyboard {
     display: flex;

@@ -1,7 +1,7 @@
 {
   "hotkeys": {
     "enable_ctrl_capslock_commit": true,
-    "enable_ctrl_space_toggle": false,
+    "enable_ctrl_space_toggle": true,
     "enable_tab_toggle": false,
     "nav_clear": [
       "R"
@@ -108,6 +108,7 @@
     "keyboard_layouts": {},
     "long_press_mappings": [],
     "long_press_timeout_ms": 400,
+    "mru_length": 2000,
     "prefix_matching_limit": 20,
     "profile_keys": [
       {

@@ -26,7 +26,7 @@ impl EngineContext {
         let engine = crate::pipeline::SearchEngine::new(
             trie_paths,
             syllable_freq_arc,
-            config.learned_words.clone(),
+            config.combined_dict.clone(),
             config.ngram_history.clone(),
             config.user_order.clone(),
             Self::default_schemes(),

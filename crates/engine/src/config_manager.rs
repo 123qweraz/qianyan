@@ -15,6 +15,8 @@ const USAGE_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 pub struct ConfigManager {
     pub master_config: Config,
     pub learned_words: Arc<ArcSwap<UserDictData>>,
+    pub long_term_words: Arc<ArcSwap<UserDictData>>,
+    pub combined_dict: Arc<ArcSwap<UserDictData>>,
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub user_order: Arc<ArcSwap<OrderData>>,
     pub user_data: Option<Arc<UserDataManager>>,
@@ -41,6 +43,8 @@ impl ConfigManager {
         Self {
             master_config: master,
             learned_words: Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            long_term_words: Arc::new(ArcSwap::from_pointee(HashMap::new())),
+            combined_dict: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             ngram_history: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             user_order: Arc::new(ArcSwap::from_pointee(HashMap::new())),
             user_data: user_data.map(Arc::new),
@@ -95,23 +99,137 @@ impl ConfigManager {
         if let Some(ref user_data) = self.user_data {
             let (learned, ngrams, orders) = user_data.load_all(&profiles);
             self.learned_words.store(Arc::new(learned));
+
+            // 加载长期记忆
+            let mut long_term_all: UserDictData = UserDictData::new();
+            for profile in &profiles {
+                let lt = user_data.load(profile, crate::user_data::DataType::LongTerm);
+                if !lt.is_empty() {
+                    long_term_all.insert(profile.clone(), lt);
+                }
+            }
+            self.long_term_words.store(Arc::new(long_term_all));
+
             self.ngram_history.store(Arc::new(ngrams));
             self.user_order.store(Arc::new(orders));
+            self.rebuild_combined_dict();
         }
     }
 
     pub fn insert_learned(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
-        let mut current = (**self.learned_words.load()).clone();
-        current
+        let mut short = (**self.learned_words.load()).clone();
+        let cap = self.master_config.input.short_term_capacity as usize;
+        let threshold = self.master_config.input.long_term_threshold;
+
+        // 更新短期池
+        short
             .entry(profile.to_string())
             .or_default()
             .insert(pinyin.to_string(), entries.to_vec());
-        self.learned_words.store(Arc::new(current));
-        // 学习到新词立即写盘（用户词典不能丢）
+
+        // 淘汰：超过容量时移除 count 最低的条目
+        if let Some(profile_data) = short.get_mut(profile) {
+            let total: usize = profile_data.values().map(|v| v.len()).sum();
+            if total > cap {
+                // 找到全局最低 count 的条目
+                let mut min_count = u32::MAX;
+                let mut evict_py = String::new();
+                let mut evict_idx = 0;
+                for (py, words) in profile_data.iter() {
+                    for (i, (_, cnt)) in words.iter().enumerate() {
+                        if *cnt < min_count {
+                            min_count = *cnt;
+                            evict_py = py.clone();
+                            evict_idx = i;
+                        }
+                    }
+                }
+                if !evict_py.is_empty() {
+                    if let Some(words) = profile_data.get_mut(&evict_py) {
+                        words.remove(evict_idx);
+                        if words.is_empty() {
+                            profile_data.remove(&evict_py);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 晋升：count >= threshold 的条目移入长期记忆
+        let mut long = (**self.long_term_words.load()).clone();
+        let mut promoted = false;
+        if let Some(profile_data) = short.get_mut(profile) {
+            let mut to_remove: Vec<(String, String, u32)> = Vec::new();
+            for (py, words) in profile_data.iter() {
+                for (word, cnt) in words.iter() {
+                    if *cnt >= threshold {
+                        to_remove.push((py.clone(), word.clone(), *cnt));
+                    }
+                }
+            }
+            for (py, word, cnt) in &to_remove {
+                if let Some(words) = profile_data.get_mut(py) {
+                    words.retain(|(w, _)| w != word);
+                    if words.is_empty() {
+                        profile_data.remove(py);
+                    }
+                }
+                let long_entries = long.entry(profile.to_string()).or_default()
+                    .entry(py.clone()).or_default();
+                if let Some(pos) = long_entries.iter().position(|(w, _)| w == word) {
+                    long_entries[pos].1 = *cnt;
+                } else {
+                    long_entries.push((word.clone(), *cnt));
+                }
+                promoted = true;
+            }
+        }
+
+        self.learned_words.store(Arc::new(short));
+        self.long_term_words.store(Arc::new(long));
+        self.rebuild_combined_dict();
+
+        // 写盘
         if let Some(ref user_data) = self.user_data {
             let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Learned,
                 &self.learned_words.load());
+            if promoted {
+                let _ = user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
+                    &self.long_term_words.load());
+            }
         }
+    }
+
+    pub fn insert_long_term_direct(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
+        let mut long = (**self.long_term_words.load()).clone();
+        long
+            .entry(profile.to_string())
+            .or_default()
+            .insert(pinyin.to_string(), entries.to_vec());
+        self.long_term_words.store(Arc::new(long));
+        self.rebuild_combined_dict();
+        if let Some(ref user_data) = self.user_data {
+            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
+                &self.long_term_words.load());
+        }
+    }
+
+    fn rebuild_combined_dict(&self) {
+        let short = self.learned_words.load();
+        let long = self.long_term_words.load();
+        let mut combined = (**short).clone();
+        for (profile, profile_data) in (**long).iter() {
+            let target = combined.entry(profile.clone()).or_default();
+            for (pinyin, words) in profile_data {
+                let target_words = target.entry(pinyin.clone()).or_default();
+                for (word, cnt) in words {
+                    if !target_words.iter().any(|(w, _)| w == word) {
+                        target_words.push((word.clone(), *cnt));
+                    }
+                }
+            }
+        }
+        self.combined_dict.store(Arc::new(combined));
     }
 
     pub fn insert_usage_order(&self, profile: &str, word: &str) {
@@ -151,6 +269,7 @@ impl ConfigManager {
     pub fn flush_all(&self) {
         if let Some(ref user_data) = self.user_data {
             let learned = (**self.learned_words.load()).clone();
+            let long_term = (**self.long_term_words.load()).clone();
             let ngram = (**self.ngram_history.load()).clone();
             let order = (**self.user_order.load()).clone();
 
@@ -162,6 +281,9 @@ impl ConfigManager {
             for profile in &profiles {
                 if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &learned) {
                     log::error!("[ConfigManager] 保存 learned 失败: {}", e);
+                }
+                if let Err(e) = user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm, &long_term) {
+                    log::error!("[ConfigManager] 保存 long_term 失败: {}", e);
                 }
                 if let Err(e) = user_data.save_order(profile, &order) {
                     log::error!("[ConfigManager] 保存 order 失败: {}", e);
