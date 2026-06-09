@@ -46,13 +46,6 @@ pub fn update_mru(
     result
 }
 
-fn is_boundary_stopword(word: &str) -> bool {
-    let stopwords = "的了和是在有而及与或之为其于以到等说着也就都吧呢吗啊呀让把给被";
-    let first = word.chars().next().unwrap_or(' ');
-    let last = word.chars().last().unwrap_or(' ');
-    stopwords.contains(first) || stopwords.contains(last)
-}
-
 pub fn record_usage(
     ctx: &mut crate::EngineContext,
     _pinyin: &str,
@@ -62,10 +55,6 @@ pub fn record_usage(
     context_pair: Option<(&str, &str)>,
 ) {
     if word.is_empty() {
-        return;
-    }
-    // 过滤以停用词开头或结尾的碎片词（如"的学习"、"现在的"）
-    if is_boundary_stopword(word) {
         return;
     }
 
@@ -130,6 +119,38 @@ pub fn record_usage(
     {
         let updated = update_mru(&ctx.config.learned_words, &profile, &correct_pinyin, word, true);
         ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
+    }
+
+    // N-gram 驱动新词合成：同一对词连续出现 >= 2 次，自动合并为新词
+    if ctx.config.master_config.input.enable_word_discovery {
+        if let Some(ctx_str) = context {
+            let ngram_guard = ctx.config.ngram_history.load();
+            if let Some(profile_ngram) = ngram_guard.get(&profile) {
+                if let Some(entries) = profile_ngram.get(ctx_str) {
+                    if let Some((_, count)) = entries.iter().find(|(w, _)| w == word) {
+                        if *count >= 2 {
+                            let combined_word = format!("{}{}", ctx_str, word);
+                            if combined_word.chars().count() > 1
+                                && !ctx.engine.has_word_in_dict(&profile, &combined_word)
+                            {
+                                if let Some(t) = ctx.engine.get_or_load_trie(&profile) {
+                                    let ctx_py = t.lookup_pinyin(ctx_str).unwrap_or_default();
+                                    let word_py = t.lookup_pinyin(word).unwrap_or_default();
+                                    if !ctx_py.is_empty() && !word_py.is_empty() {
+                                        let combined_py = format!("{}{}", ctx_py, word_py);
+                                        let updated = update_mru(
+                                            &ctx.config.learned_words, &profile,
+                                            &combined_py, &combined_word, true,
+                                        );
+                                        ctx.config.insert_learned(&profile, &combined_py, &updated);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
