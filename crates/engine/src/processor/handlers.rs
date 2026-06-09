@@ -132,6 +132,33 @@ pub fn handle_composing(
         }
     }
 
+    // 键盘布局映射：在拼音输入中也生效（nav_mode 优先）
+    if is_letter(key) {
+        if let Some(c) = key_to_char(key, false, ctx.session_state.caps_lock_enabled) {
+            let lang = ctx
+                .session_state
+                .active_profiles
+                .first()
+                .cloned()
+                .unwrap_or_default()
+                .to_lowercase();
+            if let Some(layout) = ctx.config.layouts().get(&lang) {
+                if let Some(action) = layout.mappings.get(&c.to_string()) {
+                    if shift_pressed && !action.shift.is_empty() {
+                        return Action::Emit(action.shift.clone());
+                    } else if !shift_pressed && !action.tap.is_empty() {
+                        return Action::Emit(action.tap.clone());
+                    }
+                }
+            }
+            if !shift_pressed {
+                if let Some(mapped) = ctx.config.keyboard_layouts().get(&lang).and_then(|m| m.get(&c.to_string())) {
+                    return Action::Emit(mapped.clone());
+                }
+            }
+        }
+    }
+
     if is_letter(key) && shift_pressed && !ctx.session.buffer.is_empty()
         && ctx.session.has_dict_match
         && ctx.session.buffer.chars().any(|c| c.is_ascii_lowercase())

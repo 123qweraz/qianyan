@@ -476,8 +476,8 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
     );
     chinese.insert("?".to_string(), action("？", "?", None, None, "中文问号"));
     chinese.insert("!".to_string(), action("！", "!", None, None, "中文叹号"));
-    chinese.insert("[".to_string(), action("「", "{", None, None, "中文左引号"));
-    chinese.insert("]".to_string(), action("」", "}", None, None, "中文右引号"));
+    chinese.insert("[".to_string(), action("【", "{", None, None, "中文左方括号"));
+    chinese.insert("]".to_string(), action("】", "}", None, None, "中文右方括号"));
     chinese.insert("'".to_string(), action("'", "\"", None, None, "中文引号"));
     chinese.insert("/".to_string(), action("、", "?", None, None, "中文顿号"));
     chinese.insert("\\".to_string(), action("、", "|", None, None, "中文顿号"));
@@ -489,7 +489,7 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
         },
     );
 
-    let mut english = std::collections::HashMap::new();
+    let english = std::collections::HashMap::new();
     layouts.insert(
         "english".to_string(),
         ProfileLayout {

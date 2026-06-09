@@ -43,9 +43,9 @@
           "tap": "？"
         },
         "[": {
-          "description": "中文左引号",
+          "description": "中文左方括号",
           "shift": "{",
-          "tap": "{"
+          "tap": "【"
         },
         "\\": {
           "description": "中文顿号",
@@ -53,9 +53,17 @@
           "tap": "、"
         },
         "]": {
-          "description": "中文右引号",
+          "description": "中文右方括号",
           "shift": "}",
-          "tap": "」"
+          "tap": "】"
+        },
+        "d": {
+          "shift": "d",
+          "tap": "e"
+        },
+        "e": {
+          "shift": "e",
+          "tap": "d"
         }
       },
       "name": "中文默认布局"
