@@ -336,6 +336,7 @@ impl ProcessorActor {
 
         let current_profile = ctx.session_state.active_profiles.first().cloned().unwrap_or_default();
         let last_word = ctx.session_state.commit_history.last().map(|(_, w)| w.as_str());
+        let last_two = ctx.session_state.get_last_two_words();
 
         let query = SearchQuery {
             buffer: &ctx.session.buffer,
@@ -345,6 +346,7 @@ impl ProcessorActor {
             filter_mode: ctx.session.filter_mode.clone(),
             aux_filter: &ctx.session.aux_filter,
             context: last_word,
+            context_pair: last_two,
             fuzzy_enabled: ctx.session.fuzzy_activated,
         };
 

@@ -544,6 +544,17 @@ impl InputScheme for ChineseScheme {
                                         }
                                     }
                                 }
+                                // trigram 衔接评分 (统一从 profile_ngram 查询)
+                                for triple in words.windows(3) {
+                                    let key = format!("{}|{}", triple[0], triple[1]);
+                                    if let Some(entries) = profile_ngram.get(&key) {
+                                        if let Some((_, count)) = entries.iter().find(|(w, _)| w == &triple[2]) {
+                                            let effective = (*count).min(10) as f64;
+                                            ngram_bonus +=
+                                                ((effective + 1.0).ln() * 600_000.0) as u64;
+                                        }
+                                    }
+                                }
                             }
                             let total_score = total_freq + ngram_bonus;
                             compose_results.push((text, part.len(), total_score));
@@ -615,12 +626,12 @@ impl InputScheme for ChineseScheme {
         candidates: &mut Vec<SchemeCandidate>,
         context: &SchemeContext,
     ) {
-        // 简单粗暴排序：使用次数主导，次数相同按原始权重
         if let Some(profile) = context.active_profiles.first() {
             if context.config.input.enable_context_sorting {
-                if let Some(last_word) = context.last_word {
-                    let ngram_guard = context.ngram_history.load();
-                    if let Some(profile_ngram) = ngram_guard.get(profile) {
+                let ngram_guard = context.ngram_history.load();
+                if let Some(profile_ngram) = ngram_guard.get(profile) {
+                    // bigram: key=last_word
+                    if let Some(last_word) = context.last_word {
                         if let Some(entries) = profile_ngram.get(last_word) {
                             let ngram_map: std::collections::HashMap<String, u32> =
                                 entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
@@ -628,6 +639,22 @@ impl InputScheme for ChineseScheme {
                                 if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
                                     let effective = count.min(40) as u32;
                                     let boost = effective.saturating_mul(50_000_000);
+                                    c.weight = c.weight.saturating_add(boost);
+                                }
+                            }
+                        }
+                    }
+
+                    // trigram: key="prev2|prev1"
+                    if let Some((prev2, prev1)) = context.last_two_words {
+                        let trigram_key = format!("{}|{}", prev2, prev1);
+                        if let Some(entries) = profile_ngram.get(&trigram_key) {
+                            for c in &mut *candidates {
+                                if let Some(&count) = entries.iter()
+                                    .find(|(w, _)| w == c.simplified.as_str())
+                                    .map(|(_, c)| c)
+                                {
+                                    let boost = count.min(40).saturating_mul(60_000_000);
                                     c.weight = c.weight.saturating_add(boost);
                                 }
                             }

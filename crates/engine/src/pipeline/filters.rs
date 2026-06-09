@@ -16,6 +16,7 @@ pub trait Filter: Send + Sync {
         candidates: Vec<Candidate>,
         config: &Config,
         context: Option<&str>,
+        context_pair: Option<(&str, &str)>,
     ) -> Vec<Candidate>;
 }
 
@@ -29,6 +30,7 @@ impl Filter for MatchLevelScoringFilter {
         mut candidates: Vec<Candidate>,
         config: &Config,
         _context: Option<&str>,
+        _context_pair: Option<(&str, &str)>,
     ) -> Vec<Candidate> {
         let input_syllables = estimate_syllables(input);
 
@@ -74,6 +76,7 @@ impl Filter for TraditionalFilter {
         mut candidates: Vec<Candidate>,
         config: &Config,
         _context: Option<&str>,
+        _context_pair: Option<(&str, &str)>,
     ) -> Vec<Candidate> {
         if config.input.enable_traditional {
             for c in &mut candidates {
@@ -115,12 +118,13 @@ impl Filter for AdaptiveFilter {
         mut candidates: Vec<Candidate>,
         config: &Config,
         context: Option<&str>,
+        context_pair: Option<(&str, &str)>,
     ) -> Vec<Candidate> {
-        // 上下文 ngram 加成
         if config.input.enable_context_sorting {
-            if let Some(ctx) = context {
-                let ngram_guard = self.ngram_history.load();
-                if let Some(profile_ngram) = ngram_guard.get(&self.profile) {
+            let ngram_guard = self.ngram_history.load();
+            if let Some(profile_ngram) = ngram_guard.get(&self.profile) {
+                // bigram: key=last_word
+                if let Some(ctx) = context {
                     if let Some(entries) = profile_ngram.get(ctx) {
                         let ngram_map: std::collections::HashMap<String, u32> =
                             entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
@@ -133,6 +137,22 @@ impl Filter for AdaptiveFilter {
 
                         if let Ok(mut guard) = self.cached_ngram_map.write() {
                             *guard = Some(ngram_map);
+                        }
+                    }
+                }
+
+                // trigram: key="prev2|prev1"
+                if let Some((prev2, prev1)) = context_pair {
+                    let trigram_key = format!("{}|{}", prev2, prev1);
+                    if let Some(entries) = profile_ngram.get(&trigram_key) {
+                        for c in &mut candidates {
+                            if let Some(&count) = entries.iter()
+                                .find(|(w, _)| w == c.simplified.as_ref())
+                                .map(|(_, c)| c)
+                            {
+                                let effective = count.min(40) as f64;
+                                c.weight += effective * 60_000_000.0;
+                            }
                         }
                     }
                 }

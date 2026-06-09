@@ -120,13 +120,16 @@ pub(crate) fn commit_candidate(
             .map(|c| c.source.clone())
             .unwrap_or_default();
         let last_word_opt = ctx.session_state.get_last_word().map(|s| s.to_string());
-        crate::processor::learning::record_usage(ctx, &py, &cand, &source, last_word_opt.as_deref());
+        let last_two_opt = ctx.session_state.get_last_two_words()
+            .map(|(a, b)| (a.to_string(), b.to_string()));
+        crate::processor::learning::record_usage(
+            ctx, &py, &cand, &source,
+            last_word_opt.as_deref(),
+            last_two_opt.as_ref().map(|(a, b)| (a.as_str(), b.as_str())),
+        );
         ctx.session_state
             .add_to_history(py.clone(), cand.to_string());
 
-        for (py_c, word_c) in ctx.session_state.get_combination_candidates(8) {
-            crate::processor::learning::record_usage(ctx, &py_c, &word_c, &Arc::from(""), None);
-        }
         ctx.session_state.update_commit_time();
     }
 

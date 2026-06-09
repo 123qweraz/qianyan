@@ -90,7 +90,7 @@
     "enable_abbreviation_matching": true,
     "enable_auto_reorder": true,
     "enable_caps_selection": true,
-    "enable_context_sorting": false,
+    "enable_context_sorting": true,
     "enable_double_tap": true,
     "enable_english_filter": true,
     "enable_error_correction": true,
@@ -108,6 +108,7 @@
     "keyboard_layouts": {},
     "long_press_mappings": [],
     "long_press_timeout_ms": 400,
+    "long_term_threshold": 5,
     "mru_length": 2000,
     "prefix_matching_limit": 20,
     "profile_keys": [
@@ -144,6 +145,8 @@
     },
     "rare_char_mode": "common_only",
     "segmentation_delimiters": "'",
-    "swap_arrow_keys": false
+    "short_term_capacity": 200,
+    "swap_arrow_keys": false,
+    "word_learn_threshold": 2
   }
 }

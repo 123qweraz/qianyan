@@ -59,6 +59,7 @@ pub fn record_usage(
     word: &str,
     source: &std::sync::Arc<str>,
     context: Option<&str>,
+    context_pair: Option<(&str, &str)>,
 ) {
     if word.is_empty() {
         return;
@@ -78,11 +79,19 @@ pub fn record_usage(
         }
         ctx.engine.clear_cache();
 
-        // 上下文 ngram
+        // 上下文 bigram
         if let Some(ctx_str) = context {
             let updated =
                 update_mru(&ctx.config.ngram_history, &profile, ctx_str, word, false);
             ctx.config.insert_ngram(&profile, ctx_str, &updated);
+        }
+
+        // 上下文 trigram (统一存入 ngram_history, key="prev2|prev1")
+        if let Some((prev2, prev1)) = context_pair {
+            let trigram_key = format!("{}|{}", prev2, prev1);
+            let updated =
+                update_mru(&ctx.config.ngram_history, &profile, &trigram_key, word, false);
+            ctx.config.insert_ngram(&profile, &trigram_key, &updated);
         }
     }
 

@@ -296,7 +296,7 @@ mod tests {
         let mut config = Config::default_config();
         config.input.ranking.exact_match_bonus = 10_000_000.0;
         // "test" → 1 syllable estimate
-        let result = filter.filter("test", candidates, &config, None);
+        let result = filter.filter("test", candidates, &config, None, None);
         // exact (30M+10M+100 ≈ 40,000,100) > fuzzy (20M+3000 ≈ 20,003,000) > prefix (10M+5000 ≈ 10,005,000)
         assert_eq!(result[0].text.as_ref(), "exact");
         assert_eq!(result[1].text.as_ref(), "fuzzy");
@@ -320,7 +320,7 @@ mod tests {
         }];
 
         let config = Config::default_config();
-        let result = filter.filter("test", candidates, &config, None);
+        let result = filter.filter("test", candidates, &config, None, None);
         assert_eq!(result[0].text.as_ref(), "简化");
     }
 
@@ -460,6 +460,7 @@ mod tests {
             filter_mode: crate::processor::FilterMode::None,
             aux_filter: "",
             context: None,
+            context_pair: None,
             fuzzy_enabled: false,
         };
         let (candidates, _segments) = engine.search(query);

@@ -51,6 +51,7 @@ pub struct SchemeContext<'a> {
     pub active_profiles: &'a [String],
     pub candidate_count: usize,
     pub last_word: Option<&'a str>,
+    pub last_two_words: Option<(&'a str, &'a str)>,
     pub _filter_mode: FilterMode,
     pub _aux_filter: &'a str,
     pub effective_fuzzy: bool,

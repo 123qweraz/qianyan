@@ -689,6 +689,7 @@ mod tests {
             filter_mode: crate::processor::FilterMode::None,
             aux_filter: "",
             context: None,
+            context_pair: None,
             fuzzy_enabled: false,
         };
         let (candidates, _) = engine.search(query);
@@ -763,10 +764,11 @@ mod tests {
             limit: MAX_LOOKUP_LIMIT,
             filter_mode: crate::processor::FilterMode::None,
             aux_filter: "",
-            context: None,
-            fuzzy_enabled: false,
-        };
-        let (candidates, _) = engine.search(query);
+                context: None,
+                context_pair: None,
+                fuzzy_enabled: false,
+            };
+            let (candidates, _) = engine.search(query);
         println!("=== xianzai debug ===");
         for (i, c) in candidates.iter().enumerate().take(20) {
             println!("  [{}] {} match_level={} weight={}", i, c.text, c.match_level, c.weight);
@@ -841,6 +843,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -945,6 +948,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1032,6 +1036,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1110,6 +1115,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1223,6 +1229,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1311,6 +1318,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1396,6 +1404,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);
@@ -1500,6 +1509,7 @@ mod tests {
                 filter_mode: crate::processor::FilterMode::None,
                 aux_filter: "",
                 context: None,
+                context_pair: None,
                 fuzzy_enabled: false,
             };
             let (candidates, _) = engine.search(query);

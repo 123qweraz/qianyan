@@ -50,6 +50,9 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         .commit_history
         .last()
         .map(|(_, word)| word.as_str());
+    let last_two = ctx
+        .session_state
+        .get_last_two_words();
 
     let fuzzy_enabled = ctx.session.fuzzy_activated;
     let query = SearchQuery {
@@ -60,6 +63,7 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
         filter_mode: ctx.session.filter_mode.clone(),
         aux_filter: &ctx.session.aux_filter,
         context: last_word,
+        context_pair: last_two,
         fuzzy_enabled,
     };
     let (results, segments) = ctx.engine.search(query);

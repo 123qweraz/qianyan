@@ -65,23 +65,18 @@ impl SessionState {
         self.commit_history.last().map(|(_, w)| w.as_str())
     }
 
-    pub fn update_commit_time(&mut self) {
-        self.last_commit_time = Instant::now();
+    pub fn get_last_two_words(&self) -> Option<(&str, &str)> {
+        if self.commit_history.len() >= 2 {
+            let n2 = &self.commit_history[self.commit_history.len() - 2];
+            let n1 = self.commit_history.last().unwrap();
+            Some((n2.1.as_str(), n1.1.as_str()))
+        } else {
+            None
+        }
     }
 
-    pub fn get_combination_candidates(&self, max_len: usize) -> Vec<(String, String)> {
-        let mut results = Vec::new();
-        if self.commit_history.len() < 2 {
-            return results;
-        }
-        let prev = &self.commit_history[self.commit_history.len() - 2];
-        let last = self.commit_history.last().unwrap();
-        let combined_py = format!("{}{}", prev.0, last.0);
-        let combined_word = format!("{}{}", prev.1, last.1);
-        if combined_word.chars().count() <= max_len {
-            results.push((combined_py, combined_word));
-        }
-        results
+    pub fn update_commit_time(&mut self) {
+        self.last_commit_time = Instant::now();
     }
 
     pub fn get_current_profile(&self) -> String {

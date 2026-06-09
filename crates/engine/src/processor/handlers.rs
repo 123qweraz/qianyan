@@ -173,6 +173,9 @@ pub fn handle_composing(
             .commit_history
             .last()
             .map(|(_, word)| word.as_str());
+        let last_two = ctx
+            .session_state
+            .get_last_two_words();
         let context = crate::scheme::SchemeContext {
             config: &ctx.config.master_config,
             tries: &tries_map,
@@ -185,6 +188,7 @@ pub fn handle_composing(
             active_profiles: &ctx.session_state.active_profiles,
             candidate_count: ctx.session.candidates.len(),
             last_word,
+            last_two_words: last_two,
             _filter_mode: ctx.session.filter_mode.clone(),
             _aux_filter: &ctx.session.aux_filter,
             effective_fuzzy: ctx.session.fuzzy_activated

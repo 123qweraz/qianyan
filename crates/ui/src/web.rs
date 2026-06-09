@@ -2458,6 +2458,7 @@ async fn ime_search_handler(
         filter_mode: fm,
         aux_filter: &req.aux_filter,
         context: None,
+        context_pair: None,
         fuzzy_enabled: cfg.input.enable_fuzzy_pinyin,
     });
 

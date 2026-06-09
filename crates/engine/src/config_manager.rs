@@ -248,7 +248,6 @@ impl ConfigManager {
             .or_default()
             .insert(context.to_string(), entries.to_vec());
         self.ngram_history.store(Arc::new(current));
-        // ngram 也走 30s 防抖
         self.save_usage_if_due(profile);
     }
 

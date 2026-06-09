@@ -50,6 +50,7 @@ impl Pipeline {
         config: &Config,
         limit: usize,
         context: Option<&str>,
+        context_pair: Option<(&str, &str)>,
     ) -> Vec<Candidate> {
         let segments = {
             if let Ok(guard) = self.segment_cache.read() {
@@ -90,7 +91,7 @@ impl Pipeline {
             candidates.retain(|c| seen.insert(c.text.clone()));
         }
         for f in &self.filters {
-            candidates = f.filter(input, candidates, config, context);
+            candidates = f.filter(input, candidates, config, context, context_pair);
         }
         candidates.truncate(limit);
         candidates
@@ -124,6 +125,7 @@ pub struct SearchQuery<'a> {
     pub filter_mode: crate::processor::FilterMode,
     pub aux_filter: &'a str,
     pub context: Option<&'a str>,
+    pub context_pair: Option<(&'a str, &'a str)>,
     pub fuzzy_enabled: bool,
 }
 
@@ -183,6 +185,7 @@ impl SearchEngine {
                 active_profiles: &[query.profile.to_string()],
                 candidate_count: 0,
                 last_word: query.context,
+                last_two_words: query.context_pair,
                 _filter_mode: query.filter_mode.clone(),
                 _aux_filter: query.aux_filter,
                 effective_fuzzy,
@@ -276,6 +279,7 @@ impl SearchEngine {
                 config_ref,
                 search_limit,
                 query.context,
+                query.context_pair,
             );
             let segments = pipeline.segmentor.segment(
                 query.buffer,

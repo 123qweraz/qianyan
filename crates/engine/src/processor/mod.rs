@@ -524,6 +524,10 @@ impl Processor {
             .commit_history
             .last()
             .map(|(_, word)| word.as_str());
+        let last_two = self
+            .ctx
+            .session_state
+            .get_last_two_words();
 
         // Sync runtime toggle state to config before lookup so filters see it
         self.ctx.config.master_config.input.enable_traditional =
@@ -539,6 +543,7 @@ impl Processor {
             filter_mode: self.ctx.session.filter_mode.clone(),
             aux_filter: &self.ctx.session.aux_filter,
             context: last_word,
+            context_pair: last_two,
             fuzzy_enabled,
         };
         let (results, segments) = self.ctx.engine.search(query);
@@ -558,6 +563,7 @@ impl Processor {
                 filter_mode: self.ctx.session.filter_mode.clone(),
                 aux_filter: &self.ctx.session.aux_filter,
                 context: last_word,
+                context_pair: last_two,
                 fuzzy_enabled: true,
             };
             let (fuzzy_results, fuzzy_segments) = self.ctx.engine.search(fuzzy_query);
