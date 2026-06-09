@@ -1,7 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::user_data::UserDataManager;
 use arc_swap::ArcSwap;
-use qianyan_ime_core::config::{AntiTypoMode, Config, PhantomType, ProfileLayout, PunctuationEntry};
+use qianyan_ime_core::config::{Config, PhantomType, ProfileLayout, PunctuationEntry};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -461,10 +461,6 @@ impl ConfigManager {
 
     pub fn enable_auto_reorder(&self) -> bool {
         self.master_config.input.enable_auto_reorder
-    }
-
-    pub fn anti_typo_mode(&self) -> AntiTypoMode {
-        self.master_config.input.anti_typo_mode
     }
 
     pub fn auto_commit_unique_full_match(&self) -> bool {

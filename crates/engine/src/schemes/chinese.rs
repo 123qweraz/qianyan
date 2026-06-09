@@ -1,6 +1,5 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 use crate::FuzzyPinyinConfig;
-use fst::automaton::Levenshtein;
 use fst::{Automaton, IntoStreamer, Streamer};
 
 pub struct ChineseScheme;
@@ -102,8 +101,9 @@ impl ChineseScheme {
         current: &mut Vec<(usize, usize)>,
         result: &mut Vec<Vec<(usize, usize)>>,
         trie: &crate::trie::Trie,
+        fuzzy: Option<&FuzzyPinyinConfig>,
     ) {
-        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, trie)
+        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, trie, fuzzy)
     }
 
     /// 左到右贪心分段：先匹配最长全音节，否则匹配声母（zh/ch/sh 占 2 字符）
@@ -500,7 +500,12 @@ impl InputScheme for ChineseScheme {
                         // 说明用户可能正在输入一个较长的已知词，跳过组句
                     } else {
                         let mut all_partitions = Vec::new();
-                        self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d);
+                        let fuzzy_cfg = if context.config.input.enable_fuzzy_pinyin {
+                            Some(&context.config.input.fuzzy_config)
+                        } else {
+                            None
+                        };
+                        self.backtrack_partitions(&base, 0, &mut Vec::new(), &mut all_partitions, d, fuzzy_cfg);
                         if all_partitions.len() > 100 {
                             all_partitions.truncate(100);
                         }
@@ -607,42 +612,33 @@ impl InputScheme for ChineseScheme {
             }
         }
 
-        // 策略 4: 纠错 — 所有策略无结果时，用编辑距离找最近的 key
+        // 策略 4: 统一相似拼音纠错（换位 + 模糊 + Levenshtein）
         if final_results.is_empty() && !query.contains(' ')
             && context.config.input.enable_error_correction {
-            let pinyin_only = &pinyin_key;
             if let Some(d) = context.tries.get("chinese") {
-                if let Ok(lev) = Levenshtein::new(pinyin_only, 1u32) {
-                    // FST Levenshtein 自动机已保证所有返回 key 的距离 ≤ 1
-                    // 按 key 长度排序（更短更优），取前 5 个候选 key
-                    let mut corr_keys: Vec<String> = Vec::new();
-                    let mut stream = d.index.search(lev).into_stream();
-                    while let Some((key_bytes, _)) = stream.next() {
-                        if let Ok(key) = std::str::from_utf8(key_bytes) {
-                            corr_keys.push(key.to_string());
-                            if corr_keys.len() >= 20 { break; }
-                        }
-                    }
-                    corr_keys.sort_by_key(|a| a.len());
-                    corr_keys.truncate(5);
-                    for key in corr_keys {
-                        if let Some(entries) = d.get_all_exact(&key) {
-                            for tr in entries.iter() {
-                                if seen.insert(tr.word.to_string()) {
-                                    let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
-                                    cand.traditional = tr.trad.to_string();
-                                    cand.tone = tr.tone.to_string();
-                                    cand.english = tr.en.to_string();
-                                    cand.stroke_aux = tr.stroke_aux.to_string();
-                                    cand.match_level = 1;
-                                    cand.flags = tr.flags;
-                                    final_results.push(cand);
-                                    if final_results.len() >= max_results { break; }
-                                }
+                let fuzzy = if context.config.input.enable_fuzzy_pinyin {
+                    Some(&context.config.input.fuzzy_config)
+                } else {
+                    None
+                };
+                let similar = crate::pipeline::find_similar_pinyin(&pinyin_key, d, fuzzy);
+                for m in &similar {
+                    if let Some(entries) = d.get_all_exact(&m.pinyin) {
+                        for tr in entries.iter() {
+                            if seen.insert(tr.word.to_string()) {
+                                let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
+                                cand.traditional = tr.trad.to_string();
+                                cand.tone = tr.tone.to_string();
+                                cand.english = tr.en.to_string();
+                                cand.stroke_aux = tr.stroke_aux.to_string();
+                                cand.match_level = 1;
+                                cand.flags = tr.flags;
+                                final_results.push(cand);
+                                if final_results.len() >= max_results { break; }
                             }
                         }
-                        if final_results.len() >= max_results { break; }
                     }
+                    if final_results.len() >= max_results { break; }
                 }
             }
         }

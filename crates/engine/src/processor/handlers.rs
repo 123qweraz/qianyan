@@ -1,4 +1,4 @@
-use crate::compositor::{should_block_invalid_input, Compositor};
+use crate::compositor::Compositor;
 use crate::keys::VirtualKey;
 use crate::pipeline::lookup;
 use crate::processor::commands;
@@ -54,9 +54,6 @@ pub fn handle_idle(
                 if let Some(act) = lookup(ctx) {
                     return act;
                 }
-            }
-            if should_block_invalid_input(ctx, &ctx.session.buffer.clone()) {
-                return Action::Alert;
             }
             let _ = Compositor::update_phantom_action(ctx);
         } else {
@@ -119,6 +116,12 @@ pub fn handle_composing(
         if ctx.config.nav_delete_keys().contains(&key) {
             ctx.session.delete_at_cursor();
             return lookup(ctx).unwrap_or(Action::Consume);
+        }
+        if ctx.config.nav_fuzzy_keys().contains(&key) {
+            if ctx.session.toggle_syllable_fuzzy() {
+                return lookup(ctx).unwrap_or(Action::Consume);
+            }
+            return Action::Consume;
         }
         if ctx.config.nav_clear_keys().contains(&key) {
             ctx.session.clear_buffer();
@@ -337,9 +340,6 @@ pub fn handle_composing(
                     return act;
                 }
             }
-            if should_block_invalid_input(ctx, &ctx.session.buffer.clone()) {
-                return Action::Alert;
-            }
             if let Some(act) = Compositor::check_auto_commit(ctx) {
                 return act;
             }
@@ -517,15 +517,11 @@ pub fn handle_composing(
             } else if let Some(c) =
                 key_to_char(key, shift_pressed, ctx.session_state.caps_lock_enabled)
             {
-                let old_buffer = ctx.session.buffer.clone();
                 ctx.session.push_char(c);
                 if perform_lookup {
                     if let Some(act) = lookup(ctx) {
                         return act;
                     }
-                }
-                if should_block_invalid_input(ctx, &old_buffer) {
-                    return Action::Alert;
                 }
                 if let Some(act) = Compositor::check_auto_commit(ctx) {
                     return act;

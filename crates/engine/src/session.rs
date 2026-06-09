@@ -23,7 +23,6 @@ pub struct InputSession {
     pub best_segmentation: Vec<String>,
     pub phantom_text: String,
     pub preview_selected_candidate: bool,
-    pub last_blocked_buffer: String,
     pub has_dict_match: bool,
 
     pub quote_open: bool,
@@ -62,7 +61,6 @@ impl InputSession {
             best_segmentation: Vec::new(),
             phantom_text: String::new(),
             preview_selected_candidate: false,
-            last_blocked_buffer: String::new(),
             has_dict_match: false,
 
             quote_open: false,
@@ -150,6 +148,31 @@ impl InputSession {
     /// dd / Tab+DD: 清空缓冲区
     pub fn clear_buffer(&mut self) {
         self.reset();
+    }
+
+    /// Tab+S: 切换 buffer 最后一个音节的模糊音（zh↔z, ch↔c, sh↔s）
+    pub fn toggle_syllable_fuzzy(&mut self) -> bool {
+        if self.buffer.is_empty() {
+            return false;
+        }
+        let old = self.buffer.clone();
+        // 按顺序尝试替换整个 buffer（只匹配第一个出现的）
+        if self.buffer.contains("zh") {
+            self.buffer = self.buffer.replacen("zh", "z", 1);
+        } else if self.buffer.contains("ch") {
+            self.buffer = self.buffer.replacen("ch", "c", 1);
+        } else if self.buffer.contains("sh") {
+            self.buffer = self.buffer.replacen("sh", "s", 1);
+        } else if self.buffer.contains('z') {
+            self.buffer = self.buffer.replacen('z', "zh", 1);
+        } else if self.buffer.contains('c') {
+            self.buffer = self.buffer.replacen('c', "ch", 1);
+        } else if self.buffer.contains('s') {
+            self.buffer = self.buffer.replacen('s', "sh", 1);
+        } else {
+            return false;
+        }
+        self.buffer != old
     }
 
     pub fn next_candidate(&mut self, page_size: usize) {

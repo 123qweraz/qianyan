@@ -19,6 +19,9 @@ pub use word_discovery::*;
 pub mod search_helper;
 pub use search_helper::*;
 
+pub mod similarity;
+pub use similarity::*;
+
 // 调频衰减算法参数（乘法加成系数现在在 filters.rs 和 chinese.rs 中内联定义）
 
 

@@ -496,7 +496,7 @@ impl ComposeTranslator {
         current: &mut Vec<(usize, usize)>,
         result: &mut Vec<Vec<(usize, usize)>>,
     ) {
-        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, &self.trie)
+        crate::pipeline::compose_utils::backtrack_partitions(base, pos, current, result, &self.trie, None)
     }
 }
 

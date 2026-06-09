@@ -157,13 +157,6 @@ pub struct TextStyle {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
-pub enum AntiTypoMode {
-    None,
-    Strict,
-    Smart,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 pub enum PhantomType {
     None,
     Hanzi,
@@ -216,7 +209,6 @@ pub struct Input {
     pub commit_mode: String,
     pub default_profile: String,
     pub phantom_type: PhantomType,
-    pub anti_typo_mode: AntiTypoMode,
     pub enable_double_tap: bool,
     pub double_tap_timeout_ms: u64,
     pub double_taps: Vec<DoubleTap>,
@@ -929,7 +921,6 @@ impl Config {
                 commit_mode: "single".to_string(),
                 default_profile: "chinese".to_string(),
                 phantom_type: PhantomType::Pinyin,
-                anti_typo_mode: AntiTypoMode::None,
                 enable_double_tap: false,
                 double_tap_timeout_ms: 250,
                 double_taps: vec![],

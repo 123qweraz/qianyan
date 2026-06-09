@@ -200,34 +200,3 @@ pub fn start_global_filter(ctx: &mut EngineContext) {
     }
 }
 
-pub fn should_block_invalid_input(ctx: &mut EngineContext, old_buffer: &str) -> bool {
-    use qianyan_ime_core::config::AntiTypoMode;
-
-    if ctx.session.has_dict_match {
-        ctx.session.last_blocked_buffer.clear();
-        return false;
-    }
-    match ctx.config.anti_typo_mode() {
-        AntiTypoMode::None => false,
-        AntiTypoMode::Strict => {
-            ctx.session.buffer = old_buffer.to_string();
-            let _ = crate::pipeline::lookup(ctx);
-            true
-        }
-        AntiTypoMode::Smart => {
-            if !ctx.session.last_blocked_buffer.is_empty()
-                && ctx.session.buffer == ctx.session.last_blocked_buffer
-            {
-                ctx.session.last_blocked_buffer.clear();
-                false
-            } else {
-                ctx.session.last_blocked_buffer = ctx.session.buffer.clone();
-                ctx.session.buffer = old_buffer.to_string();
-                let _ = crate::pipeline::lookup(ctx);
-                true
-            }
-        }
-    }
-}
-
-

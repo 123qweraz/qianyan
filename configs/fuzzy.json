@@ -1,6 +1,6 @@
 {
   "input": {
-    "enable_fuzzy_pinyin": true,
+    "enable_fuzzy_pinyin": false,
     "fuzzy_config": {
       "an_ang": false,
       "c_ch": true,

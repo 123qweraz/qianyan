@@ -21,7 +21,7 @@
         <div class="note">
             <strong>📝 说明</strong><br>
             • 模糊音 — 输入近似音节也能匹配正确词汇（如 zui→zhui 追）。精确匹配始终排在模糊匹配之前。<br>
-            • 防呆/纠错 — 输入不完整或有误时自动补齐或纠正。
+            • 纠错 — 换位(gogn→gong)、模糊分段(leizui→leizhui)、单字符错(zhonf→zhong)，统一纠正。
         </div>
 
         <h2>模糊音设置</h2>
@@ -65,16 +65,8 @@
         <h2 style="margin-top:40px;">纠错行为</h2>
         <div class="card">
             <div class="setting-item">
-                <div class="info"><div class="title">纠错匹配</div><div class="desc">输入错误时自动纠错（如 zhonf → 中）</div></div>
+                <div class="info"><div class="title">纠错匹配</div><div class="desc">输入错误时自动纠错（如 zhonf→中, gogn→gong, leizui→累赘）</div></div>
                 <label class="switch"><input type="checkbox" id="enable_error_correction"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">防呆模式</div><div class="desc">容忍常见拼写错误：智能模式自动纠错，严格模式精准匹配</div></div>
-                <select id="anti_typo_mode" style="width:160px; padding:6px 10px; border-radius:8px; border:1px solid var(--apple-border); font-size:14px;">
-                    <option value="None">关闭</option>
-                    <option value="Strict">严格模式</option>
-                    <option value="Smart">智能模式</option>
-                </select>
             </div>
         </div>
     </div>
@@ -92,7 +84,6 @@
 
             bindInput('enable_fuzzy_pinyin', 'input');
             bindInput('enable_error_correction', 'input');
-            bindInput('anti_typo_mode', 'input');
 
             const presetIds = ['z_zh','c_ch','s_sh','n_l','r_l','f_h','an_ang','en_eng','in_ing','ian_iang','uan_uang','u_v'];
             presetIds.forEach(id => {

@@ -1519,4 +1519,90 @@ mod tests {
             println!("{}: total={} rare={} common={}", label, total, rare, common);
         }
     }
+
+    #[test]
+    fn test_unified_error_correction() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use crate::scheme::InputScheme;
+        use arc_swap::ArcSwap;
+        use std::collections::{HashMap, HashSet};
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+        let mut config = qianyan_ime_core::config::Config::load();
+        config.input.enable_abbreviation_matching = false;
+        config.input.enable_prefix_matching = false;
+        config.input.enable_fuzzy_pinyin = true;
+        config.input.fuzzy_config.z_zh = true;
+        config.input.enable_error_correction = true;
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let syllables: HashSet<String> = {
+            let path = root.join("dicts").join("chinese").join("syllable_freq.txt");
+            let alt = root.join("dicts").join("syllable_freq.txt");
+            let content = std::fs::read_to_string(if path.exists() { path } else { alt }).unwrap();
+            content.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+        };
+
+        let user_dict: Arc<ArcSwap<crate::config_manager::UserDictData>> =
+            Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+        let user_order: Arc<ArcSwap<crate::config_manager::OrderData>> =
+            Arc::new(ArcSwap::new(Arc::new(HashMap::new())));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(HashMap::new()),
+            user_dict.clone(),
+            user_dict,
+            user_order,
+            {
+                let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        fn search(engine: &SearchEngine, config: &qianyan_ime_core::Config, buffer: &str, syl: &HashSet<String>) -> Vec<String> {
+            let query = SearchQuery {
+                buffer,
+                profile: "chinese",
+                config,
+                limit: crate::pipeline::MAX_LOOKUP_LIMIT,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                context_pair: None,
+                fuzzy_enabled: config.input.enable_fuzzy_pinyin,
+            };
+            let (candidates, _) = engine.search(query);
+            candidates.iter().take(20).map(|c| c.text.to_string()).collect()
+        }
+
+        // Test 1: zhonf → zhong → 中 (Levenshtein substitution)
+        let r = search(&engine, &config, "zhonf", &syllables);
+        println!("zhonf: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "zhonf should not be empty");
+        assert!(r.contains(&"中".to_string()), "zhonf should contain 中, got {:?}", &r[..10.min(r.len())]);
+
+        // Test 2: gogn → gong → 工/共 etc (transposition)
+        let r = search(&engine, &config, "gogn", &syllables);
+        println!("gogn: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "gogn should not be empty (transposition correction)");
+
+        // Test 3: leizui → leizhui → 累赘 (fuzzy segment)
+        let r = search(&engine, &config, "leizui", &syllables);
+        println!("leizui top10: {:?}", &r[..10.min(r.len())]);
+        assert!(!r.is_empty(), "leizui should not be empty (fuzzy correction)");
+        let has_zhui_word = r.iter().any(|w| w == "累赘" || w == "赘" || w == "追");
+        assert!(has_zhui_word, "leizui should match leizhui words (累赘/赘/追), got {:?}", &r[..10.min(r.len())]);
+    }
 }
