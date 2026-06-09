@@ -41,6 +41,24 @@ pub struct LinuxConfig {
     pub fixed_y: i32,
     #[serde(default = "default_backend_type")]
     pub backend_type: String, // "auto", "evdev", "wayland"
+
+    #[serde(default = "default_keystroke_enabled")]
+    pub keystroke_enabled: bool,
+
+    #[serde(default)]
+    pub keystroke_position: String,
+
+    #[serde(default = "default_keystroke_timeout")]
+    pub keystroke_timeout_ms: u64,
+
+    #[serde(default = "default_keystroke_font_size")]
+    pub keystroke_font_size: u32,
+
+    #[serde(default = "default_keystroke_bg_color")]
+    pub keystroke_bg_color: String,
+
+    #[serde(default = "default_keystroke_text_color")]
+    pub keystroke_text_color: String,
 }
 
 fn default_true() -> bool {
@@ -77,6 +95,26 @@ fn default_fixed_y() -> i32 {
 
 fn default_backend_type() -> String {
     "auto".to_string()
+}
+
+fn default_keystroke_enabled() -> bool {
+    false
+}
+
+fn default_keystroke_timeout() -> u64 {
+    1500
+}
+
+fn default_keystroke_font_size() -> u32 {
+    22
+}
+
+fn default_keystroke_bg_color() -> String {
+    "rgba(0, 0, 0, 0.78)".to_string()
+}
+
+fn default_keystroke_text_color() -> String {
+    "#ffffff".to_string()
 }
 
 fn default_backspace_delay() -> u64 {
@@ -1106,6 +1144,12 @@ impl Config {
                 fixed_x: 10,
                 fixed_y: 10,
                 backend_type: "auto".to_string(),
+                keystroke_enabled: false,
+                keystroke_position: String::new(),
+                keystroke_timeout_ms: 1500,
+                keystroke_font_size: 22,
+                keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
+                keystroke_text_color: "#ffffff".to_string(),
             },
         }
     }

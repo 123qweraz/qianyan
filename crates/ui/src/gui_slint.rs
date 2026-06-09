@@ -1,4 +1,5 @@
 use crate::ipc::transport::{self, MainToGui, GuiToMain};
+use crate::keystroke_overlay::KeystrokeOverlay;
 use crate::slint_window::SlintDisplay;
 use crate::tray::TrayEvent;
 use crate::{CandidateDisplay, GuiEvent};
@@ -15,6 +16,10 @@ thread_local! {
     static DISPLAYS: RefCell<Vec<Box<dyn CandidateDisplay>>> = const { RefCell::new(Vec::new()) };
 }
 
+thread_local! {
+    static KEYSTROKE: RefCell<Option<KeystrokeOverlay>> = const { RefCell::new(None) };
+}
+
 pub fn start_gui(
     rx: Receiver<GuiEvent>,
     config: Arc<RwLock<Config>>,
@@ -26,6 +31,11 @@ pub fn start_gui(
         DISPLAYS.with(|d| {
             *d.borrow_mut() = initial;
         });
+        if cfg.linux.keystroke_enabled {
+            KEYSTROKE.with(|k| {
+                *k.borrow_mut() = KeystrokeOverlay::new(&cfg);
+            });
+        }
     }
 
     // Coalesce rapid events (SyncState, Update, MoveTo, etc.) to avoid
@@ -115,6 +125,11 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
     DISPLAYS.with(|d| {
         *d.borrow_mut() = displays;
     });
+    if config.linux.keystroke_enabled {
+        KEYSTROKE.with(|k| {
+            *k.borrow_mut() = KeystrokeOverlay::new(&config);
+        });
+    }
     let current_config = std::sync::Arc::new(std::sync::Mutex::new(config));
 
     // Notify main process we're ready
@@ -303,6 +318,8 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     let new_slint = new_config.linux.show_slint_window;
                     let new_notify = new_config.linux.show_notification;
                     let new_toggle_notify = new_config.linux.show_toggle_notification;
+                    let old_keystroke = config.linux.keystroke_enabled;
+                    let new_keystroke = new_config.linux.keystroke_enabled;
                     *config = new_config;
 
                     if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
@@ -316,9 +333,32 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                             display.apply_config(config);
                         }
                     }
+
+                    if new_keystroke != old_keystroke {
+                        KEYSTROKE.with(|k| {
+                            *k.borrow_mut() = if new_keystroke {
+                                KeystrokeOverlay::new(config)
+                            } else {
+                                None
+                            };
+                        });
+                    } else if new_keystroke {
+                        KEYSTROKE.with(|k| {
+                    if let Some(ref mut _ko) = *k.borrow_mut() {
+                                // Update timeout if changed
+                            }
+                        });
+                    }
                 } else {
                     log::warn!("[GUI IPC] invalid ApplyConfig JSON");
                 }
+            }
+            MainToGui::KeyEvent { keys, modifiers } => {
+                KEYSTROKE.with(|k| {
+                    if let Some(ref mut ko) = *k.borrow_mut() {
+                        ko.update_keys(keys, modifiers);
+                    }
+                });
             }
             _ => {}
         }
@@ -414,6 +454,13 @@ fn handle_event(
                     d.apply_config(&cfg);
                 }
             }
+        }
+        GuiEvent::KeyEvent { keys, modifiers } => {
+            KEYSTROKE.with(|k| {
+                if let Some(ref mut ko) = *k.borrow_mut() {
+                    ko.update_keys(&keys, &modifiers);
+                }
+            });
         }
         GuiEvent::HideAndAck(ack_tx) => {
             for d in displays.iter_mut() {

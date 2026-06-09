@@ -261,6 +261,17 @@ impl InputContext {
             return false;
         }
 
+        // Send keystroke visualization event
+        {
+            let mut mods = Vec::new();
+            if state & MOD_SHIFT != 0 { mods.push("Shift".into()); }
+            if state & MOD_CTRL != 0 { mods.push("Ctrl".into()); }
+            if state & MOD_ALT != 0 { mods.push("Alt".into()); }
+            let key_name = keyval_to_vk(keyval).map(|vk| vk.display_name().to_string()).unwrap_or_default();
+            let keys = if key_name.is_empty() { vec![] } else { vec![key_name] };
+            let _ = self.gui_tx.send(GuiEvent::KeyEvent { keys, modifiers: mods });
+        }
+
         // Get current gui snapshot to check state
         let gui = match self.processor.get_gui_snapshot() {
             Some(g) => g,

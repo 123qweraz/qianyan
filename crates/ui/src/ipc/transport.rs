@@ -75,6 +75,10 @@ pub enum MainToGui {
     ApplyConfig(String),
     /// GUI must respond with GuiToMain::Ack after hiding the candidate window.
     HideCandidate,
+    KeyEvent {
+        keys: Vec<String>,
+        modifiers: Vec<String>,
+    },
     Exit,
 }
 

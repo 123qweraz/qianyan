@@ -39,6 +39,12 @@ pub fn create_input_host(
             fixed_x: 40,
             fixed_y: 40,
             backend_type: "auto".into(),
+            keystroke_enabled: false,
+            keystroke_position: String::new(),
+            keystroke_timeout_ms: 1500,
+            keystroke_font_size: 22,
+            keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
+            keystroke_text_color: "#ffffff".to_string(),
         });
 
     let dev_path = linux_config.device_path.clone();

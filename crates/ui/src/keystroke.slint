@@ -1,0 +1,53 @@
+export component KeystrokeWindow inherits Window {
+    title: "QianyanIMEKeystroke";
+    in property <[string]> keys;
+    in property <[string]> modifiers;
+    in property <bool> is_visible: false;
+
+    no-frame: true;
+    background: transparent;
+    always-on-top: true;
+
+    width: main_rect.preferred-width;
+    height: main_rect.preferred-height;
+
+    main_rect := Rectangle {
+        visible: is_visible;
+        background: rgba(0, 0, 0, 180);
+        border-radius: 8px;
+
+        VerticalLayout {
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            spacing: 4px;
+            alignment: center;
+
+            if modifiers.length > 0 : HorizontalLayout {
+                spacing: 4px;
+                alignment: center;
+                for mod in modifiers : Rectangle {
+                    background: rgba(255, 255, 255, 30);
+                    border-radius: 4px;
+                    padding-left: 6px;
+                    padding-right: 6px;
+                    padding-top: 2px;
+                    padding-bottom: 2px;
+                    Text { text: mod; color: #cccccc; font-size: 14px; }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: center;
+                for key in keys : Text {
+                    text: key;
+                    color: #ffffff;
+                    font-size: 20px;
+                    font-weight: 700;
+                }
+            }
+        }
+    }
+}

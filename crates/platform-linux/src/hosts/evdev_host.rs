@@ -298,7 +298,8 @@ impl InputMethodHost for EvdevHost {
                     let val = ev.value();
 
                     // 1. 基础状态维护 (必须在任何可能 continue 的逻辑之前更新状态，确保 held_keys 始终同步)
-                    if val == 1 {
+                    let is_press = val == 1;
+                    if is_press {
                         held_keys.insert(key);
                         if key != Key::KEY_TAB {
                             self.tab_held_and_not_used = false;
@@ -306,6 +307,9 @@ impl InputMethodHost for EvdevHost {
                     } else if val == 0 {
                         held_keys.remove(&key);
                     }
+
+                    // 发送按键可视化事件
+                    send_keystroke_event(&self.gui_tx, &held_keys);
 
                     // 2. 检测修饰键状态
                     let is_meta_key = matches!(
@@ -450,6 +454,32 @@ impl InputMethodHost for EvdevHost {
         }
         Ok(())
     }
+}
+
+fn send_keystroke_event(gui_tx: &Option<Sender<GuiEvent>>, held_keys: &HashSet<Key>) {
+    let Some(ref tx) = gui_tx else { return };
+
+    let mut mods = Vec::new();
+    if held_keys.contains(&Key::KEY_LEFTSHIFT) || held_keys.contains(&Key::KEY_RIGHTSHIFT) { mods.push("Shift".into()); }
+    if held_keys.contains(&Key::KEY_LEFTCTRL) || held_keys.contains(&Key::KEY_RIGHTCTRL) { mods.push("Ctrl".into()); }
+    if held_keys.contains(&Key::KEY_LEFTALT) || held_keys.contains(&Key::KEY_RIGHTALT) { mods.push("Alt".into()); }
+    if held_keys.contains(&Key::KEY_LEFTMETA) || held_keys.contains(&Key::KEY_RIGHTMETA) { mods.push("Super".into()); }
+
+    let is_mod = |k: &Key| -> bool {
+        *k == Key::KEY_LEFTSHIFT || *k == Key::KEY_RIGHTSHIFT ||
+        *k == Key::KEY_LEFTCTRL || *k == Key::KEY_RIGHTCTRL ||
+        *k == Key::KEY_LEFTALT || *k == Key::KEY_RIGHTALT ||
+        *k == Key::KEY_LEFTMETA || *k == Key::KEY_RIGHTMETA ||
+        *k == Key::KEY_COMPOSE
+    };
+
+    let keys: Vec<String> = held_keys.iter()
+        .filter(|k| !is_mod(k))
+        .filter_map(|k| evdev_to_virtual(*k))
+        .map(|vk| vk.display_name().to_string())
+        .collect();
+
+    let _ = tx.send(GuiEvent::KeyEvent { keys, modifiers: mods });
 }
 
 fn send_gui_update(gui_tx: &Option<Sender<GuiEvent>>, snap: &GuiSnapshot) {

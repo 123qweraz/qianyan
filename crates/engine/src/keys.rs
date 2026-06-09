@@ -74,6 +74,38 @@ impl std::fmt::Display for VirtualKey {
     }
 }
 
+impl VirtualKey {
+    /// 返回人类可读的按键名称（用于按键可视化浮层）
+    pub fn display_name(self) -> &'static str {
+        use VirtualKey::*;
+        match self {
+            A => "A", B => "B", C => "C", D => "D", E => "E",
+            F => "F", G => "G", H => "H", I => "I", J => "J",
+            K => "K", L => "L", M => "M", N => "N", O => "O",
+            P => "P", Q => "Q", R => "R", S => "S", T => "T",
+            U => "U", V => "V", W => "W", X => "X", Y => "Y", Z => "Z",
+            Digit0 => "0", Digit1 => "1", Digit2 => "2", Digit3 => "3",
+            Digit4 => "4", Digit5 => "5", Digit6 => "6", Digit7 => "7",
+            Digit8 => "8", Digit9 => "9",
+            Space => "␣", Enter => "↵", Tab => "⇥", Backspace => "⌫",
+            Esc => "⎋", CapsLock => "⇪",
+            Shift => "⇧", Control => "Ctrl", Alt => "Alt",
+            Left => "←", Right => "→", Up => "↑", Down => "↓",
+            PageUp => "⇞", PageDown => "⇟",
+            Home => "↖", End => "↘", Delete => "⌦",
+            Grave => "`", Minus => "-", Equal => "=",
+            LeftBrace => "[", RightBrace => "]", Backslash => "\\",
+            Semicolon => ";", Apostrophe => "'",
+            Comma => ",", Dot => ".", Slash => "/",
+        }
+    }
+
+    /// 是否为修饰键
+    pub fn is_modifier(self) -> bool {
+        matches!(self, VirtualKey::Shift | VirtualKey::Control | VirtualKey::Alt)
+    }
+}
+
 impl std::str::FromStr for VirtualKey {
     type Err = ();
 
@@ -186,3 +218,97 @@ const _: fn() = || {
     let _ = VirtualKey::Digit9 as u32 - 35;
     let _ = VirtualKey::Slash as u32 - 64;
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_display_name_not_empty() {
+        let all = all_variants();
+        for vk in &all {
+            let name = vk.display_name();
+            assert!(!name.is_empty(), "display_name() empty for {:?}", vk);
+        }
+    }
+
+    #[test]
+    fn test_display_name_letters() {
+        assert_eq!(VirtualKey::A.display_name(), "A");
+        assert_eq!(VirtualKey::Z.display_name(), "Z");
+        assert_eq!(VirtualKey::M.display_name(), "M");
+    }
+
+    #[test]
+    fn test_display_name_digits() {
+        assert_eq!(VirtualKey::Digit0.display_name(), "0");
+        assert_eq!(VirtualKey::Digit5.display_name(), "5");
+        assert_eq!(VirtualKey::Digit9.display_name(), "9");
+    }
+
+    #[test]
+    fn test_display_name_modifiers() {
+        assert_eq!(VirtualKey::Shift.display_name(), "⇧");
+        assert_eq!(VirtualKey::Control.display_name(), "Ctrl");
+        assert_eq!(VirtualKey::Alt.display_name(), "Alt");
+    }
+
+    #[test]
+    fn test_display_name_special() {
+        assert_eq!(VirtualKey::Space.display_name(), "␣");
+        assert_eq!(VirtualKey::Enter.display_name(), "↵");
+        assert_eq!(VirtualKey::Tab.display_name(), "⇥");
+        assert_eq!(VirtualKey::Backspace.display_name(), "⌫");
+        assert_eq!(VirtualKey::Esc.display_name(), "⎋");
+        assert_eq!(VirtualKey::CapsLock.display_name(), "⇪");
+    }
+
+    #[test]
+    fn test_display_name_arrows() {
+        assert_eq!(VirtualKey::Left.display_name(), "←");
+        assert_eq!(VirtualKey::Right.display_name(), "→");
+        assert_eq!(VirtualKey::Up.display_name(), "↑");
+        assert_eq!(VirtualKey::Down.display_name(), "↓");
+    }
+
+    #[test]
+    fn test_display_name_symbols() {
+        assert_eq!(VirtualKey::Grave.display_name(), "`");
+        assert_eq!(VirtualKey::Minus.display_name(), "-");
+        assert_eq!(VirtualKey::Equal.display_name(), "=");
+        assert_eq!(VirtualKey::LeftBrace.display_name(), "[");
+        assert_eq!(VirtualKey::RightBrace.display_name(), "]");
+        assert_eq!(VirtualKey::Backslash.display_name(), "\\");
+    }
+
+    #[test]
+    fn test_is_modifier_true() {
+        assert!(VirtualKey::Shift.is_modifier());
+        assert!(VirtualKey::Control.is_modifier());
+        assert!(VirtualKey::Alt.is_modifier());
+    }
+
+    #[test]
+    fn test_is_modifier_false() {
+        assert!(!VirtualKey::A.is_modifier());
+        assert!(!VirtualKey::Digit1.is_modifier());
+        assert!(!VirtualKey::Space.is_modifier());
+        assert!(!VirtualKey::Enter.is_modifier());
+        assert!(!VirtualKey::Left.is_modifier());
+        assert!(!VirtualKey::Esc.is_modifier());
+    }
+
+    fn all_variants() -> Vec<VirtualKey> {
+        use VirtualKey::*;
+        vec![
+            A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+            Digit0, Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8, Digit9,
+            Space, Enter, Tab, Backspace, Esc, CapsLock,
+            Shift, Control, Alt,
+            Left, Right, Up, Down,
+            PageUp, PageDown, Home, End, Delete,
+            Grave, Minus, Equal, LeftBrace, RightBrace, Backslash,
+            Semicolon, Apostrophe, Comma, Dot, Slash,
+        ]
+    }
+}

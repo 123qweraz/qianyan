@@ -2,6 +2,8 @@ pub mod tray;
 pub mod web;
 pub mod gui_slint;
 #[cfg(target_os = "linux")]
+pub mod keystroke_overlay;
+#[cfg(target_os = "linux")]
 pub mod local_notify;
 pub mod slint_window;
 #[cfg(target_os = "linux")]
@@ -80,5 +82,10 @@ pub enum GuiEvent {
     OpenTrayMenu { x: i32, y: i32, chinese_enabled: bool, active_profile: String },
     /// 隐藏候选窗口并等待确认（用于避免 uinput 注入的 SPACE 被候选窗口拦截）
     HideAndAck(std::sync::mpsc::Sender<()>),
+    /// 按键事件（用于按键可视化浮层）
+    KeyEvent {
+        keys: Vec<String>,
+        modifiers: Vec<String>,
+    },
     Exit,
 }

@@ -62,6 +62,8 @@ struct WlState {
     forwarded_keys: HashSet<u32>,
     last_key_time: u32,
     seat: Option<WlSeat>,
+    held_keys: HashSet<u32>,
+    mods_depressed: u32,
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlState {
@@ -201,6 +203,15 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 if !state.active {
                     return;
                 }
+
+                // Track held keys for keystroke visualization
+                if key_state == WEnum::Value(KeyState::Pressed) {
+                    state.held_keys.insert(key);
+                } else if key_state == WEnum::Value(KeyState::Released) {
+                    state.held_keys.remove(&key);
+                }
+                state.send_keystroke_event();
+
                 if key_state == WEnum::Value(KeyState::Released) {
                     if state.forwarded_keys.remove(&key) {
                         state.forward_physical_key(key, 0);
@@ -284,6 +295,7 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 mods_locked,
                 group,
             } => {
+                state.mods_depressed = mods_depressed;
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
@@ -390,6 +402,26 @@ impl WlState {
         } else {
             xkb_to_vk_raw(keycode).map(|vk| (vk, String::new()))
         }
+    }
+
+    fn send_keystroke_event(&self) {
+        let mut mods = Vec::new();
+        if self.mods_depressed & 0x0001 != 0 { mods.push("Shift".into()); }
+        if self.mods_depressed & 0x0004 != 0 { mods.push("Ctrl".into()); }
+        if self.mods_depressed & 0x0008 != 0 { mods.push("Alt".into()); }
+        if self.mods_depressed & 0x0040 != 0 { mods.push("Super".into()); }
+
+        let is_mod = |k: u32| -> bool {
+            matches!(k, 29 | 42 | 56 | 97 | 100 | 125 | 126 | 127)
+        };
+
+        let keys: Vec<String> = self.held_keys.iter()
+            .filter(|k| !is_mod(**k))
+            .filter_map(|k| self.resolve_key(*k))
+            .map(|(vk, _)| vk.display_name().to_string())
+            .collect();
+
+        let _ = self.gui_tx.send(GuiEvent::KeyEvent { keys, modifiers: mods });
     }
 
     fn apply_state(
@@ -540,6 +572,8 @@ impl InputMethodHost for WaylandInputHost {
             forwarded_keys: HashSet::new(),
             last_key_time: 0,
             seat: Some(seat),
+            held_keys: HashSet::new(),
+            mods_depressed: 0,
         };
 
         if let Err(e) = event_queue.roundtrip(&mut state) {
