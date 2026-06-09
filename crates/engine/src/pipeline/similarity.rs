@@ -69,7 +69,7 @@ fn l1_fuzzy_variants(
         Some(f) => f,
         None => return,
     };
-    let segs = segment_by_trie(input, trie);
+    let segs = crate::pipeline::compose::segment_syllables(input);
     if segs.is_empty() || (segs.len() == 1 && segs[0].len() >= input.len()) {
         return;
     }
@@ -145,39 +145,4 @@ fn l3_levenshtein(
             }
         }
     }
-}
-
-/// 贪心分段：用 trie index 的最长匹配划分音节
-fn segment_by_trie(input: &str, trie: &Trie) -> Vec<String> {
-    let mut segs = Vec::new();
-    let mut pos = 0;
-    while pos < input.len() {
-        let max_len = (input.len() - pos).min(6);
-        let mut matched = false;
-        for len in (1..=max_len).rev() {
-            let end = pos + len;
-            if input.is_char_boundary(end) {
-                let part = &input[pos..end];
-                if trie.index.contains_key(part) {
-                    segs.push(part.to_string());
-                    pos = end;
-                    matched = true;
-                    break;
-                }
-            }
-        }
-        if !matched {
-            if input.len() - pos >= 2 {
-                let candidate = &input[pos..pos + 2];
-                if ["zh", "ch", "sh"].contains(&candidate) {
-                    segs.push(candidate.to_string());
-                    pos += 2;
-                    continue;
-                }
-            }
-            segs.push(input[pos..].to_string());
-            break;
-        }
-    }
-    segs
 }

@@ -137,7 +137,7 @@ impl SearchEngine {
         user_order: Arc<ArcSwap<OrderData>>,
         schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     ) -> Self {
-        Self {
+        let mut engine = Self {
             trie_paths,
             syllable_freq,
             base_syllables: Arc::new(HashSet::new()),
@@ -148,6 +148,26 @@ impl SearchEngine {
             schemes,
             pipelines: Arc::new(RwLock::new((HashMap::new(), std::collections::VecDeque::new()))),
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
+        };
+        engine.load_base_syllables();
+        engine
+    }
+
+    fn load_base_syllables(&mut self) {
+        let paths = [
+            std::path::PathBuf::from("dicts/chinese/single_syllables.txt"),
+            std::path::PathBuf::from("../dicts/chinese/single_syllables.txt"),
+            std::path::PathBuf::from("../../dicts/chinese/single_syllables.txt"),
+        ];
+        if let Some(content) = paths.iter().find_map(|p| std::fs::read_to_string(p).ok()) {
+            let set: HashSet<String> = content.lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| l.trim().to_string())
+                .collect();
+            if !set.is_empty() {
+                self.base_syllables = Arc::new(set.clone());
+                self.single_syllables = Arc::new(set);
+            }
         }
     }
 
@@ -259,7 +279,8 @@ impl SearchEngine {
                 results.iter().filter(|c| c.flags & 1 == 0).count(),
                 config_ref.input.rare_char_mode,
             );
-            return (results, vec![]);
+            let segs = DefaultSegmentor.segment(&pre_processed, "", &self.syllable_freq, &self.base_syllables);
+            return (results, segs);
         }
 
         if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {

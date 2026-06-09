@@ -165,7 +165,52 @@ mod tests {
     #[test]
     fn test_segment_syllables() {
         let segs = segment_syllables("wowangjichongdianle");
-        assert_eq!(segs, vec!["wo", "wang", "ji", "chong", "dian", "le"]);
+        assert_eq!(segs, vec!["wo","wang","ji","chong","dian","le"]);
+    }
+
+    #[test]
+    fn test_pipeline_segmentor() {
+        use std::path::PathBuf;
+        use std::sync::Arc;
+        use arc_swap::ArcSwap;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let mut trie_paths = std::collections::HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+        let syllable_freq: std::collections::HashMap<String, u64> = {
+            let path = root.join("dicts/chinese/syllable_freq.txt");
+            let content = std::fs::read_to_string(path).unwrap();
+            content.lines().filter_map(|l| {
+                let mut parts = l.trim().split_whitespace();
+                let key = parts.next()?.to_string();
+                let val: u64 = parts.next()?.parse().ok()?;
+                Some((key, val))
+            }).collect()
+        };
+        let shared = Arc::new(ArcSwap::new(Arc::new(
+            std::collections::HashMap::<String, std::collections::HashMap<String, Vec<(String, u32)>>>::new()
+        )));
+        let engine = crate::pipeline::SearchEngine::new(
+            trie_paths,
+            Arc::new(syllable_freq),
+            shared.clone(),
+            shared.clone(),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::new()))),
+            Arc::new(std::collections::HashMap::new()),
+        );
+        assert!(!engine.base_syllables.is_empty(), "base_syllables should be loaded");
+        println!("base_syllables loaded: {} entries", engine.base_syllables.len());
+
+        // Test Viterbi segmentation via engine's pipeline segmentor
+        let segmentor = crate::pipeline::segmentation::DefaultSegmentor;
+        use crate::pipeline::segmentation::Segmentor;
+        let segs = segmentor.segment("wowangjichongdianle", "", &engine.syllable_freq, &engine.base_syllables);
+        println!("segmentor({:?}) -> {:?}", "wowangjichongdianle", segs);
+        assert!(!segs.is_empty(), "segmentor should produce segments");
     }
 
     #[test]
