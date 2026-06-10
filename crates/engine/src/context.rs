@@ -94,27 +94,6 @@ impl EngineContext {
             self.session_state.active_profiles = vec!["chinese".to_string()];
         }
 
-        let enabled_list: Vec<String> = conf
-            .input
-            .enabled_profiles
-            .iter()
-            .filter(|p| self.engine.trie_paths.contains_key(&p.to_lowercase()))
-            .map(|p| p.to_lowercase())
-            .collect();
-        for profile in enabled_list {
-            let engine = self.engine.clone();
-            std::thread::Builder::new()
-                .name(format!("prewarm-{profile}"))
-                .spawn(move || {
-                    if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        engine.prewarm_profile(&profile);
-                    })) {
-                        log::error!("[Context] prewarm thread for {profile} panicked: {:?}", e);
-                    }
-                })
-                .ok();
-        }
-
         self.setup_default_keymap();
     }
 

@@ -477,14 +477,6 @@ impl SearchEngine {
         }
     }
 
-    pub fn prewarm_profile(&self, profile: &str) {
-        log::info!("prewarm_profile: profile={}", profile);
-
-        if let Some(trie) = self.get_or_load_trie(profile) {
-            trie.prewarm(PREWARM_ENTRIES);
-        }
-    }
-
     #[inline]
     pub fn matches_filter(
         &self,
@@ -530,5 +522,4 @@ impl SearchEngine {
     }
 }
 
-/// 预加载条目数
-const PREWARM_ENTRIES: usize = 1000;
+

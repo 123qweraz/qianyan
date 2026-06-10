@@ -129,22 +129,6 @@ impl Trie {
         }
     }
 
-    /// 预热词库：读取前 limit 条记录以填充 Page Cache
-    pub fn prewarm(&self, limit: usize) {
-        if matches!(self.data, TrieData::Memory(_)) {
-            return;
-        }
-        let mut stream = self.index.stream();
-        let mut count = 0;
-        while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
-            self.read_block(offset as usize, |_| {});
-            count += 1;
-            if count >= limit {
-                break;
-            }
-        }
-    }
-
     /// 快速前缀检查：FST 中是否有任何 key 以 prefix 开头（不读数据块）
     pub fn has_prefix(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
