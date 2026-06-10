@@ -317,7 +317,8 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     let old_toggle_notify = config.linux.show_toggle_notification;
                     let ks_changed = config.linux.keystroke_enabled != new_config.linux.keystroke_enabled
                         || config.linux.keystroke_position != new_config.linux.keystroke_position
-                        || config.linux.keystroke_timeout_ms != new_config.linux.keystroke_timeout_ms
+                        || config.linux.keystroke_hide_ms != new_config.linux.keystroke_hide_ms
+                        || config.linux.keystroke_display_ms != new_config.linux.keystroke_display_ms
                         || config.linux.keystroke_font_size != new_config.linux.keystroke_font_size
                         || config.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
                         || config.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
@@ -431,7 +432,8 @@ fn handle_event(
             let old_toggle_notify = old.linux.show_toggle_notification;
             let ks_changed = old.linux.keystroke_enabled != new_config.linux.keystroke_enabled
                 || old.linux.keystroke_position != new_config.linux.keystroke_position
-                || old.linux.keystroke_timeout_ms != new_config.linux.keystroke_timeout_ms
+                || old.linux.keystroke_hide_ms != new_config.linux.keystroke_hide_ms
+                || old.linux.keystroke_display_ms != new_config.linux.keystroke_display_ms
                 || old.linux.keystroke_font_size != new_config.linux.keystroke_font_size
                 || old.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
                 || old.linux.keystroke_text_color != new_config.linux.keystroke_text_color;

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>按键浮层 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .color-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .color-row input[type="color"] { width: 40px; height: 40px; border: 1px solid var(--apple-border); border-radius: 8px; cursor: pointer; padding: 2px; }
+        .color-row input[type="text"] { width: 200px; }
+        .color-row input[type="range"] { width: 140px; }
+        .color-row .opacity-label { min-width: 40px; text-align: right; font-size: 13px; color: var(--apple-secondary); }
+        .section-desc { font-size: 13px; color: var(--apple-secondary); margin-bottom: 16px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>⌨️ 按键浮层</h1>
+        </header>
+
+        <p class="section-desc">在屏幕上显示一个独立浮层，实时展示当前按下的按键，适合录屏、演示或打字练习时使用。</p>
+
+        <h2>基本设置</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">启用按键浮层</div><div class="desc">开启后会在屏幕上显示一个半透明浮层，实时展示当前按下的按键</div></div>
+                <label class="switch"><input type="checkbox" id="linux_keystroke_enabled"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">浮层位置</div>
+                    <div class="desc">按键浮层在屏幕上的锚定位置</div>
+                </div>
+                <select id="linux_keystroke_position">
+                    <option value="bottom">底部居中</option>
+                    <option value="top">顶部居中</option>
+                    <option value="bottom-right">右下角</option>
+                    <option value="bottom-left">左下角</option>
+                    <option value="top-right">右上角</option>
+                    <option value="top-left">左上角</option>
+                </select>
+            </div>
+        </div>
+
+        <h2>时间控制</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">按键显示时长 (ms)</div>
+                    <div class="desc">每个按键在浮层上停留多久后自动消失。调大可以看清连击，调小可以减少残留。（默认 800ms）</div>
+                </div>
+                <input type="number" id="linux_keystroke_display_ms" min="200" max="10000" step="100" style="width:120px;">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">窗口关闭延时 (ms)</div>
+                    <div class="desc">所有按键都消失后，再等多久才把浮层窗口关闭。（默认 2000ms）</div>
+                </div>
+                <input type="number" id="linux_keystroke_hide_ms" min="500" max="10000" step="100" style="width:120px;">
+            </div>
+        </div>
+
+        <h2>外观</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">浮层按键文字大小 (px)</div>
+                    <div class="desc">按键文字在浮层上的显示字号。修预键文字会自动等比缩放。（默认 22）</div>
+                </div>
+                <input type="number" id="linux_keystroke_font_size" min="12" max="48" step="1" style="width:100px;">
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">浮层背景颜色</div>
+                    <div class="desc">浮层背景色，支持透明度。格式为 rgba(r, g, b, a)。</div>
+                </div>
+                <div class="color-row">
+                    <input type="color" id="keystroke_bg_picker">
+                    <input type="text" id="keystroke_bg_hex" style="width:90px;" readonly>
+                    <span style="font-size:13px;color:var(--apple-secondary);">透明度</span>
+                    <input type="range" id="keystroke_bg_opacity" min="0" max="100" value="78">
+                    <span class="opacity-label" id="keystroke_bg_opacity_label">78%</span>
+                </div>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">按键文字颜色</div>
+                    <div class="desc">按键文字在浮层上的颜色。格式为 #rrggbb。</div>
+                </div>
+                <div class="color-row">
+                    <input type="color" id="keystroke_text_picker">
+                    <input type="text" id="keystroke_text_hex" style="width:90px;" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sticky-footer">
+        <button class="btn" onclick="save()">保存更改</button>
+        <button class="btn btn-danger" onclick="resetConfig('linux')">重置默认</button>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        function parseRgba(rgbaStr) {
+            if (!rgbaStr) return { r: 0, g: 0, b: 0, a: 78 };
+            const m = rgbaStr.match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s\/]+([\d.]+))?\)/);
+            if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] ? Math.round(parseFloat(m[4]) * 100) : 100 };
+            if (rgbaStr.startsWith('#')) {
+                return {
+                    r: parseInt(rgbaStr.slice(1,3), 16),
+                    g: parseInt(rgbaStr.slice(3,5), 16),
+                    b: parseInt(rgbaStr.slice(5,7), 16),
+                    a: 78
+                };
+            }
+            return { r: 0, g: 0, b: 0, a: 78 };
+        }
+
+        function buildRgba(r, g, b, a) {
+            return `rgba(${r}, ${g}, ${b}, ${(a / 100).toFixed(2)})`;
+        }
+
+        function toHex(r, g, b) {
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+
+        function initBgColor() {
+            const raw = config.linux.keystroke_bg_color || 'rgba(0, 0, 0, 0.78)';
+            const c = parseRgba(raw);
+            document.getElementById('keystroke_bg_picker').value = toHex(c.r, c.g, c.b);
+            document.getElementById('keystroke_bg_hex').value = toHex(c.r, c.g, c.b);
+            document.getElementById('keystroke_bg_opacity').value = c.a;
+            document.getElementById('keystroke_bg_opacity_label').textContent = c.a + '%';
+
+            const syncBg = () => {
+                const r = parseInt(keystroke_bg_picker.value.slice(1,3), 16);
+                const g = parseInt(keystroke_bg_picker.value.slice(3,5), 16);
+                const b = parseInt(keystroke_bg_picker.value.slice(5,7), 16);
+                const a = parseInt(keystroke_bg_opacity.value);
+                keystroke_bg_hex.value = keystroke_bg_picker.value;
+                keystroke_bg_opacity_label.textContent = a + '%';
+                config.linux.keystroke_bg_color = buildRgba(r, g, b, a);
+            };
+
+            keystroke_bg_picker.oninput = syncBg;
+            keystroke_bg_opacity.oninput = syncBg;
+        }
+
+        function initTextColor() {
+            const raw = config.linux.keystroke_text_color || '#ffffff';
+            const c = parseRgba(raw);
+            document.getElementById('keystroke_text_picker').value = toHex(c.r, c.g, c.b);
+            document.getElementById('keystroke_text_hex').value = toHex(c.r, c.g, c.b);
+
+            const sync = () => {
+                keystroke_text_hex.value = keystroke_text_picker.value;
+                config.linux.keystroke_text_color = keystroke_text_picker.value;
+            };
+            keystroke_text_picker.oninput = sync;
+        }
+
+        async function init() {
+            await loadConfig();
+            bindInput('linux_keystroke_enabled', 'linux', 'keystroke_enabled');
+            bindInput('linux_keystroke_position', 'linux', 'keystroke_position');
+            bindInput('linux_keystroke_display_ms', 'linux', 'keystroke_display_ms');
+            bindInput('linux_keystroke_hide_ms', 'linux', 'keystroke_hide_ms');
+            bindInput('linux_keystroke_font_size', 'linux', 'keystroke_font_size');
+            initBgColor();
+            initTextColor();
+        }
+
+        async function save() {
+            await saveConfig();
+        }
+
+        init();
+    </script>
+</body>
+</html>

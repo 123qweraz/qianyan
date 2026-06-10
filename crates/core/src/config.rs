@@ -48,8 +48,11 @@ pub struct LinuxConfig {
     #[serde(default)]
     pub keystroke_position: String,
 
-    #[serde(default = "default_keystroke_timeout")]
-    pub keystroke_timeout_ms: u64,
+    #[serde(default = "default_keystroke_hide_ms")]
+    pub keystroke_hide_ms: u64,
+
+    #[serde(default = "default_keystroke_display_ms")]
+    pub keystroke_display_ms: u64,
 
     #[serde(default = "default_keystroke_font_size")]
     pub keystroke_font_size: u32,
@@ -101,8 +104,12 @@ fn default_keystroke_enabled() -> bool {
     false
 }
 
-fn default_keystroke_timeout() -> u64 {
+fn default_keystroke_hide_ms() -> u64 {
     2000
+}
+
+fn default_keystroke_display_ms() -> u64 {
+    800
 }
 
 fn default_keystroke_font_size() -> u32 {
@@ -1146,7 +1153,8 @@ impl Config {
                 backend_type: "auto".to_string(),
                 keystroke_enabled: false,
                 keystroke_position: String::new(),
-                keystroke_timeout_ms: 2000,
+                keystroke_hide_ms: 2000,
+                keystroke_display_ms: 800,
                 keystroke_font_size: 22,
                 keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
                 keystroke_text_color: "#ffffff".to_string(),

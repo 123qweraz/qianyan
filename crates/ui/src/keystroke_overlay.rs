@@ -103,8 +103,10 @@ struct KeystrokeWlState {
     exit: AtomicBool,
     keys: Vec<String>,
     mods: Vec<String>,
-    hide_deadline: Option<Instant>,
-    timeout_ms: u64,
+    key_entries: Vec<(String, Instant)>,
+    all_gone_since: Option<Instant>,
+    display_ms: u64,
+    hide_ms: u64,
     font_size: f32,
     bg_color: skia_safe::Color,
     text_color: skia_safe::Color,
@@ -282,7 +284,8 @@ fn render_keystroke_pixels(
 
 fn wl_keystroke_thread(
     rx: Receiver<KSCmd>,
-    timeout_ms: u64,
+    hide_ms: u64,
+    display_ms: u64,
     position: Anchor,
     font_size: f32,
     bg_color: skia_safe::Color,
@@ -313,9 +316,10 @@ fn wl_keystroke_thread(
     let mut state = KeystrokeWlState {
         registry_state: RegistryState::new(&globals), compositor_state: compositor, shm,
         layer_shell: Some(ls), _output_state: OutputState::new(&globals, &qh),
-        _seat_state: SeatState::new(&globals, &qh), layer: None, pool: None,
+        _seat_state: SeatState::new(&globals, &qh),         layer: None, pool: None,
         exit: AtomicBool::new(false), keys: Vec::new(), mods: Vec::new(),
-        hide_deadline: None, timeout_ms, font_size, bg_color, text_color,
+        key_entries: Vec::new(), all_gone_since: None, display_ms, hide_ms,
+        font_size, bg_color, text_color,
     };
 
     {
@@ -341,9 +345,26 @@ fn wl_keystroke_thread(
         loop {
             match rx.try_recv() {
                 Ok(KSCmd::Show { keys, mods }) => {
-                    state.keys = keys;
+                    let now = Instant::now();
+
+                    // Expire old entries
+                    state.key_entries.retain(|(_, t)| now.duration_since(*t).as_millis() < state.display_ms as u128);
+
+                    // Add new entries
+                    for m in &mods {
+                        if !state.key_entries.iter().any(|(k, _)| k == m) {
+                            state.key_entries.push((m.clone(), now));
+                        }
+                    }
+                    for k in &keys {
+                        if !state.key_entries.iter().any(|(e, _)| e == k) {
+                            state.key_entries.push((k.clone(), now));
+                        }
+                    }
+
+                    state.keys = state.key_entries.iter().map(|(k, _)| k.clone()).collect();
                     state.mods = mods;
-                    state.hide_deadline = Some(Instant::now() + std::time::Duration::from_millis(state.timeout_ms));
+                    state.all_gone_since = None;
 
                     if state.keys.is_empty() && state.mods.is_empty() {
                         if let (Some(ref layer), Some(ref mut pool)) = (&state.layer, &mut state.pool) {
@@ -388,18 +409,23 @@ fn wl_keystroke_thread(
             }
         }
 
-        if let Some(deadline) = state.hide_deadline {
-            if Instant::now() >= deadline {
-                state.keys.clear();
+        // Expire old key entries and hide if all keys gone
+        {
+            let now = Instant::now();
+            state.key_entries.retain(|(_, t)| now.duration_since(*t).as_millis() < state.display_ms as u128);
+            state.keys = state.key_entries.iter().map(|(k, _)| k.clone()).collect();
+            if state.keys.is_empty() {
                 state.mods.clear();
-                state.hide_deadline = None;
-                if let (Some(ref layer), Some(ref mut pool)) = (&state.layer, &mut state.pool) {
-                    if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
-                        canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
-                        if buffer.attach_to(layer.wl_surface()).is_ok() {
-                            layer.set_size(1, 1);
-                            layer.wl_surface().damage_buffer(0, 0, 1, 1);
-                            layer.commit();
+                let now_gone = state.all_gone_since.get_or_insert(now);
+                if now.duration_since(*now_gone).as_millis() >= state.hide_ms as u128 {
+                    if let (Some(ref layer), Some(ref mut pool)) = (&state.layer, &mut state.pool) {
+                        if let Ok((buffer, canvas)) = pool.create_buffer(1, 1, 4, wl_shm::Format::Argb8888) {
+                            canvas[0..4].copy_from_slice(&[0, 0, 0, 0]);
+                            if buffer.attach_to(layer.wl_surface()).is_ok() {
+                                layer.set_size(1, 1);
+                                layer.wl_surface().damage_buffer(0, 0, 1, 1);
+                                layer.commit();
+                            }
                         }
                     }
                 }
@@ -438,8 +464,10 @@ struct SlintKeystroke {
     window: KeystrokeWindow,
     position: String,
     visible: bool,
-    hide_deadline: Option<Instant>,
-    timeout_ms: u64,
+    key_entries: Vec<(String, Instant)>,
+    all_gone_since: Option<Instant>,
+    display_ms: u64,
+    hide_ms: u64,
 }
 
 impl SlintKeystroke {
@@ -449,7 +477,6 @@ impl SlintKeystroke {
         window.set_key_font_size(config.linux.keystroke_font_size as f32);
         window.set_mod_font_size(config.linux.keystroke_font_size as f32 * 0.6);
 
-        // Must show then hide so the window gets created on the display server
         let _ = window.window().show();
         let _ = window.window().hide();
 
@@ -457,45 +484,52 @@ impl SlintKeystroke {
             window,
             position: config.linux.keystroke_position.clone(),
             visible: false,
-            hide_deadline: None,
-            timeout_ms: config.linux.keystroke_timeout_ms,
+            key_entries: Vec::new(),
+            all_gone_since: None,
+            display_ms: config.linux.keystroke_display_ms,
+            hide_ms: config.linux.keystroke_hide_ms,
         })
     }
 
     fn update(&mut self, keys: &[String], modifiers: &[String]) {
         let now = Instant::now();
 
-        let show = !keys.is_empty() || !modifiers.is_empty();
+        // Expire old entries
+        self.key_entries.retain(|(_, t)| now.duration_since(*t).as_millis() < self.display_ms as u128);
 
-        if show {
-            self.hide_deadline = Some(now + std::time::Duration::from_millis(self.timeout_ms));
+        // Add new entries (modifiers first, then keys)
+        for m in modifiers {
+            let icon = mod_icon(m).to_string();
+            if !self.key_entries.iter().any(|(k, _)| k == &icon) {
+                self.key_entries.push((icon, now));
+            }
+        }
+        for k in keys {
+            if !self.key_entries.iter().any(|(e, _)| e == k) {
+                self.key_entries.push((k.clone(), now));
+            }
         }
 
-        // Check if we need to hide
-        let should_hide = if !show {
-            self.hide_deadline.map_or(true, |d| now >= d)
-        } else {
-            false
-        };
+        let active_keys: Vec<String> = self.key_entries.iter().map(|(k, _)| k.clone()).collect();
 
-        if should_hide {
-            if self.visible {
-                self.window.set_is_visible(false);
-                let _ = self.window.window().hide();
-                self.visible = false;
+        if active_keys.is_empty() {
+            let now_gone = self.all_gone_since.get_or_insert(now);
+            if now.duration_since(*now_gone).as_millis() >= self.hide_ms as u128 {
+                if self.visible {
+                    self.window.set_is_visible(false);
+                    let _ = self.window.window().hide();
+                    self.visible = false;
+                }
             }
             return;
         }
 
-        let keys_vec: Vec<slint::SharedString> = keys.iter().map(|s| slint::SharedString::from(s.clone())).collect();
-        let mods_icons: Vec<slint::SharedString> = modifiers.iter()
-            .map(|m| slint::SharedString::from(mod_icon(m)))
-            .collect();
+        self.all_gone_since = None;
 
-        let full_keys: Vec<slint::SharedString> = mods_icons.into_iter().chain(keys_vec).collect();
+        let display: Vec<slint::SharedString> = active_keys.iter().map(|s| slint::SharedString::from(s.clone())).collect();
 
         self.window.set_keys(slint::ModelRc::from(
-            std::rc::Rc::new(slint::VecModel::from(full_keys)),
+            std::rc::Rc::new(slint::VecModel::from(display)),
         ));
         self.window.set_modifiers(slint::ModelRc::from(
             std::rc::Rc::new(slint::VecModel::from(Vec::<slint::SharedString>::new())),
@@ -546,7 +580,8 @@ impl KeystrokeOverlay {
     pub fn new(config: &Config) -> Option<Self> {
         // Try Wayland layer-shell first
         if std::env::var("WAYLAND_DISPLAY").is_ok() {
-            let timeout_ms = config.linux.keystroke_timeout_ms;
+            let hide_ms = config.linux.keystroke_hide_ms;
+            let display_ms = config.linux.keystroke_display_ms;
             let position = parse_position(&config.linux.keystroke_position);
             let font_size = config.linux.keystroke_font_size as f32;
             let bg_color = parse_color(&config.linux.keystroke_bg_color);
@@ -555,7 +590,7 @@ impl KeystrokeOverlay {
             let (tx, rx) = mpsc::channel();
             let join = std::thread::Builder::new()
                 .name("keystroke-wl".into())
-                .spawn(move || wl_keystroke_thread(rx, timeout_ms, position, font_size, bg_color, text_color))
+                .spawn(move || wl_keystroke_thread(rx, hide_ms, display_ms, position, font_size, bg_color, text_color))
                 .ok();
             if let Some(join) = join {
                 return Some(Self { wl_tx: Some(tx), wl_join: Some(join), slint_ks: None });

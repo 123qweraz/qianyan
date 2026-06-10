@@ -120,53 +120,6 @@
                 <input type="number" id="linux_backspace_delay_ms" min="0" max="100" step="1" style="width:100px;">
             </div>
         </div>
-
-        <h2>按键浮层</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">启用按键浮层</div><div class="desc">在屏幕上显示一个独立的浮层，实时展示当前按下的按键（录屏/演示时很有用）</div></div>
-                <label class="switch"><input type="checkbox" id="linux_keystroke_enabled"><span class="slider"></span></label>
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">浮层位置</div><div class="desc">按键浮层在屏幕上的显示位置</div></div>
-                <select id="linux_keystroke_position">
-                    <option value="bottom">底部居中</option>
-                    <option value="top">顶部居中</option>
-                    <option value="bottom-right">右下角</option>
-                    <option value="bottom-left">左下角</option>
-                    <option value="top-right">右上角</option>
-                    <option value="top-left">左上角</option>
-                </select>
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">显示超时 (ms)</div>
-                    <div class="desc">最后一个按键松开后多久隐藏浮层（默认 1500ms）</div>
-                </div>
-                <input type="number" id="linux_keystroke_timeout_ms" min="500" max="10000" step="100" style="width:120px;">
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">按键字体大小</div>
-                    <div class="desc">浮层中按键文字的字体大小（默认 22）</div>
-                </div>
-                <input type="number" id="linux_keystroke_font_size" min="12" max="48" step="1" style="width:100px;">
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">浮层背景颜色</div>
-                    <div class="desc">支持 #rrggbb、rgba(r, g, b, a) 格式（默认 rgba(0, 0, 0, 0.78)）</div>
-                </div>
-                <input type="text" id="linux_keystroke_bg_color" placeholder="rgba(0, 0, 0, 0.78)" style="width:200px;">
-            </div>
-            <div class="setting-item">
-                <div class="info">
-                    <div class="title">按键文字颜色</div>
-                    <div class="desc">支持 #rrggbb 格式（默认 #ffffff）</div>
-                </div>
-                <input type="text" id="linux_keystroke_text_color" placeholder="#ffffff" style="width:140px;">
-            </div>
-        </div>
     </div>
 
     <div class="sticky-footer">
@@ -195,13 +148,6 @@
             bindInput('linux_clipboard_delay_ms', 'linux', 'clipboard_delay_ms');
             bindInput('linux_backspace_delay_ms', 'linux', 'backspace_delay_ms');
             bindInput('linux_backend_type', 'linux', 'backend_type');
-
-            bindInput('linux_keystroke_enabled', 'linux', 'keystroke_enabled');
-            bindInput('linux_keystroke_position', 'linux', 'keystroke_position');
-            bindInput('linux_keystroke_timeout_ms', 'linux', 'keystroke_timeout_ms');
-            bindInput('linux_keystroke_font_size', 'linux', 'keystroke_font_size');
-            bindInput('linux_keystroke_bg_color', 'linux', 'keystroke_bg_color');
-            bindInput('linux_keystroke_text_color', 'linux', 'keystroke_text_color');
         }
 
         function loadCandidateDisplayMode() {

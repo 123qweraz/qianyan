@@ -49,7 +49,7 @@
     "keystroke_font_size": 40,
     "keystroke_position": "top-right",
     "keystroke_text_color": "#ffffff",
-    "keystroke_timeout_ms": 2000,
+    "keystroke_timeout_ms": 20,
     "paste_method": "shift_insert",
     "show_notification": false,
     "show_slint_window": true,
