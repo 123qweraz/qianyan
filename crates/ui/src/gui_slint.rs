@@ -315,11 +315,15 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                     let old_slint = config.linux.show_slint_window;
                     let old_notify = config.linux.show_notification;
                     let old_toggle_notify = config.linux.show_toggle_notification;
+                    let ks_changed = config.linux.keystroke_enabled != new_config.linux.keystroke_enabled
+                        || config.linux.keystroke_position != new_config.linux.keystroke_position
+                        || config.linux.keystroke_timeout_ms != new_config.linux.keystroke_timeout_ms
+                        || config.linux.keystroke_font_size != new_config.linux.keystroke_font_size
+                        || config.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
+                        || config.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
                     let new_slint = new_config.linux.show_slint_window;
                     let new_notify = new_config.linux.show_notification;
                     let new_toggle_notify = new_config.linux.show_toggle_notification;
-                    let old_keystroke = config.linux.keystroke_enabled;
-                    let new_keystroke = new_config.linux.keystroke_enabled;
                     *config = new_config;
 
                     if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
@@ -334,19 +338,13 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                         }
                     }
 
-                    if new_keystroke != old_keystroke {
+                    if ks_changed {
                         KEYSTROKE.with(|k| {
-                            *k.borrow_mut() = if new_keystroke {
+                            *k.borrow_mut() = if config.linux.keystroke_enabled {
                                 KeystrokeOverlay::new(config)
                             } else {
                                 None
                             };
-                        });
-                    } else if new_keystroke {
-                        KEYSTROKE.with(|k| {
-                    if let Some(ref mut _ko) = *k.borrow_mut() {
-                                // Update timeout if changed
-                            }
                         });
                     }
                 } else {
@@ -431,13 +429,16 @@ fn handle_event(
             let old_slint = old.linux.show_slint_window;
             let old_notify = old.linux.show_notification;
             let old_toggle_notify = old.linux.show_toggle_notification;
-            let new = &*new_config;
-            let new_slint = new.linux.show_slint_window;
-            let new_notify = new.linux.show_notification;
-            let new_toggle_notify = new.linux.show_toggle_notification;
+            let ks_changed = old.linux.keystroke_enabled != new_config.linux.keystroke_enabled
+                || old.linux.keystroke_position != new_config.linux.keystroke_position
+                || old.linux.keystroke_timeout_ms != new_config.linux.keystroke_timeout_ms
+                || old.linux.keystroke_font_size != new_config.linux.keystroke_font_size
+                || old.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
+                || old.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
+            let new_slint = new_config.linux.show_slint_window;
+            let new_notify = new_config.linux.show_notification;
+            let new_toggle_notify = new_config.linux.show_toggle_notification;
             drop(old);
-            log::debug!("[GUI_DEBUG] ApplyConfig: old(slint={},notify={},toggle_notify={}) new(slint={},notify={},toggle_notify={})",
-                old_slint, old_notify, old_toggle_notify, new_slint, new_notify, new_toggle_notify);
             *config.write().unwrap_or_else(|e| e.into_inner()) = *new_config;
 
             if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
@@ -453,6 +454,17 @@ fn handle_event(
                 for d in displays.iter_mut() {
                     d.apply_config(&cfg);
                 }
+            }
+
+            if ks_changed {
+                let cfg = config.read().unwrap_or_else(|e| e.into_inner());
+                KEYSTROKE.with(|k| {
+                    *k.borrow_mut() = if cfg.linux.keystroke_enabled {
+                        KeystrokeOverlay::new(&cfg)
+                    } else {
+                        None
+                    };
+                });
             }
         }
         GuiEvent::KeyEvent { keys, modifiers } => {

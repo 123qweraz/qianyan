@@ -446,6 +446,8 @@ impl SlintKeystroke {
     fn new(config: &Config) -> Option<Self> {
         let window = KeystrokeWindow::new().ok()?;
         window.set_is_visible(false);
+        window.set_key_font_size(config.linux.keystroke_font_size as f32);
+        window.set_mod_font_size(config.linux.keystroke_font_size as f32 * 0.6);
 
         // Must show then hide so the window gets created on the display server
         let _ = window.window().show();
@@ -501,13 +503,12 @@ impl SlintKeystroke {
 
         self.window.set_is_visible(true);
 
+        self.position_window();
+
         if !self.visible {
             let _ = self.window.window().show();
             self.visible = true;
         }
-
-        // Position at bottom center
-        self.position_window();
     }
 
     fn position_window(&self) {

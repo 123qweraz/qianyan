@@ -41,7 +41,7 @@ pub fn create_input_host(
             backend_type: "auto".into(),
             keystroke_enabled: false,
             keystroke_position: String::new(),
-            keystroke_timeout_ms: 1500,
+            keystroke_timeout_ms: 2000,
             keystroke_font_size: 22,
             keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
             keystroke_text_color: "#ffffff".to_string(),

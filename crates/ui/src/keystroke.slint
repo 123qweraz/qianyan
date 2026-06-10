@@ -3,6 +3,8 @@ export component KeystrokeWindow inherits Window {
     in property <[string]> keys;
     in property <[string]> modifiers;
     in property <bool> is_visible: false;
+    in property <length> key_font_size: 20px;
+    in property <length> mod_font_size: 14px;
 
     no-frame: true;
     background: transparent;
@@ -35,7 +37,7 @@ export component KeystrokeWindow inherits Window {
                         padding-right: 6px;
                         padding-top: 2px;
                         padding-bottom: 2px;
-                        Text { text: mod; color: #cccccc; font-size: 14px; }
+                        Text { text: mod; color: #cccccc; font-size: mod_font_size; }
                     }
                 }
             }
@@ -46,7 +48,7 @@ export component KeystrokeWindow inherits Window {
                 for key in keys : Text {
                     text: key;
                     color: #ffffff;
-                    font-size: 20px;
+                    font-size: key_font_size;
                     font-weight: 700;
                 }
             }

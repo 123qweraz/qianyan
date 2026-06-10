@@ -102,7 +102,7 @@ fn default_keystroke_enabled() -> bool {
 }
 
 fn default_keystroke_timeout() -> u64 {
-    1500
+    2000
 }
 
 fn default_keystroke_font_size() -> u32 {
@@ -1146,7 +1146,7 @@ impl Config {
                 backend_type: "auto".to_string(),
                 keystroke_enabled: false,
                 keystroke_position: String::new(),
-                keystroke_timeout_ms: 1500,
+                keystroke_timeout_ms: 2000,
                 keystroke_font_size: 22,
                 keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
                 keystroke_text_color: "#ffffff".to_string(),
