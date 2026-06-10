@@ -17,27 +17,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
             if entry.path().is_dir() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
 
-                // stroke 方案特殊处理：从 chinese/chars 编译，用 stroke_aux 作为 key
-                if dir_name == "stroke" {
-                    println!("[Compiler] 检查方案: stroke（从 chinese/chars 编译）");
-                    let src_path = "dicts/chinese/chars";
-                    let out_dir = "data/stroke";
-                    fs::create_dir_all(out_dir)?;
-                    let trie_dat = format!("{}/trie.data", out_dir);
-                    if should_compile(Path::new(src_path), Path::new(&trie_dat)) {
-                        println!("[Compiler] 方案 [stroke] 需要编译，正在执行...");
-                        let start = std::time::Instant::now();
-                        compile_dict_for_path(src_path, &format!("{}/trie", out_dir), false, Some("stroke_aux"))?;
-                        println!(
-                            "[Compiler] 方案 [stroke] 编译完成，耗时 {:?}",
-                            start.elapsed()
-                        );
-                    } else {
-                        println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
-                    }
-                    continue;
-                }
-
+                // stroke 方案在 dicts 中可能存在也可能不存在（源文件在 chinese/chars），额外处理
                 let src_path = format!("dicts/{}", dir_name);
                 let out_dir = format!("data/{}", dir_name);
 
@@ -48,8 +28,9 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                 if should_compile(Path::new(&src_path), Path::new(&trie_dat)) {
                     println!("[Compiler] 方案 [{}] 需要编译，正在执行...", dir_name);
                     let is_english = dir_name.contains("english");
+                    let skip_reverse = is_english || dir_name.contains("japanese");
                     let start = std::time::Instant::now();
-                    compile_dict_for_path(&src_path, &format!("{}/trie", out_dir), is_english, None)?;
+                    compile_dict_for_path(&src_path, &format!("{}/trie", out_dir), is_english, skip_reverse, None)?;
                     println!(
                         "[Compiler] 方案 [{}] 编译完成，耗时 {:?}",
                         dir_name,
@@ -62,6 +43,24 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
+
+    // stroke 方案：从 chinese/chars 编译，用 stroke_aux 作为 key（不依赖 dicts/stroke/ 目录）
+    {
+        let src_path = "dicts/chinese/chars";
+        let out_dir = "data/stroke";
+        println!("[Compiler] 检查方案: stroke（从 chinese/chars 编译）");
+        fs::create_dir_all(out_dir)?;
+        let trie_dat = format!("{}/trie.data", out_dir);
+        if should_compile(Path::new(src_path), Path::new(&trie_dat)) {
+            println!("[Compiler] 方案 [stroke] 需要编译，正在执行...");
+            let start = std::time::Instant::now();
+            compile_dict_for_path(src_path, &format!("{}/trie", out_dir), false, false, Some("stroke_aux"))?;
+            println!("[Compiler] 方案 [stroke] 编译完成，耗时 {:?}", start.elapsed());
+        } else {
+            println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
+        }
+    }
+
     Ok(())
 }
 
@@ -135,6 +134,7 @@ fn compile_dict_for_path(
     src_dir: &str,
     out_stem: &str,
     is_english: bool,
+    skip_reverse: bool,
     key_field: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
@@ -150,8 +150,8 @@ fn compile_dict_for_path(
         }
     }
     // 构建倒排 FST: word → pinyin (用于 has_word_in_dict / lookup_pinyin)
-    // 先按 word 排序再写入，满足 FST builder 的 lexicographic order 要求
-    {
+    // English/Japanese 不需要（键即是词本身，或无需反向查找）
+    if !skip_reverse {
         let word_map_path = format!("{}.word_map", out_stem);
         let pinyin_data_path = format!("{}.pinyin_data", out_stem);
         let mut word_pinyin_map: BTreeMap<&str, &str> = BTreeMap::new();

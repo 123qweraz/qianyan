@@ -38,8 +38,8 @@ impl AsRef<[u8]> for TrieData {
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
-    word_map: Map<TrieData>,
-    pinyin_data: TrieData,
+    word_map: Option<Map<TrieData>>,
+    pinyin_data: Option<TrieData>,
 }
 
 impl Trie {
@@ -82,15 +82,13 @@ impl Trie {
             return Err("Trie format too old (v1), please recompile dictionaries.".into());
         }
 
-        // 加载倒排 FST: word → pinyin
+        // 加载倒排 FST: word → pinyin（可选，English/Japanese 无此文件）
         let stem = index_path.as_ref().with_extension("");
         let word_map_path = stem.with_extension("word_map");
         let pinyin_data_path = stem.with_extension("pinyin_data");
-        let word_map_data = load_data(&word_map_path)
-            .map_err(|_| format!("Word map not found at {:?}, please recompile dictionaries (--compile-only)", word_map_path))?;
-        let word_map = Map::new(word_map_data)?;
-        let pinyin_data = load_data(&pinyin_data_path)
-            .map_err(|_| format!("Pinyin data not found at {:?}, please recompile dictionaries (--compile-only)", pinyin_data_path))?;
+        let word_map = load_data(&word_map_path).ok()
+            .and_then(|d| Map::new(d).ok());
+        let pinyin_data = load_data(&pinyin_data_path).ok();
 
         Ok(Self {
             index,
@@ -166,17 +164,22 @@ impl Trie {
     }
 
     /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
-    /// 基于倒排 FST word_map 的 O(len(word)) 查找
+    /// 有 word_map 时基于 FST 的 O(len(word)) 查找；否则回退到 index 键匹配
     pub fn has_word_in_dict(&self, word: &str) -> bool {
-        self.word_map.contains_key(word)
+        match &self.word_map {
+            Some(wm) => wm.contains_key(word),
+            None => self.index.contains_key(word.to_lowercase().as_str()),
+        }
     }
 
     /// 查询词对应的拼音，基于倒排 FST word_map + mmap pinyin_data
+    /// 无 word_map 时返回 None（如 English/Japanese profile）
     pub fn lookup_pinyin(&self, word: &str) -> Option<&str> {
-        let encoded = self.word_map.get(word)?;
+        let wm = self.word_map.as_ref()?;
+        let encoded = wm.get(word)?;
         let offset = (encoded >> 32) as usize;
         let len = (encoded & 0xFFFF_FFFF) as usize;
-        let data = self.pinyin_data.as_ref();
+        let data = self.pinyin_data.as_ref()?.as_ref();
         data.get(offset..offset + len)
             .and_then(|slice| std::str::from_utf8(slice).ok())
     }

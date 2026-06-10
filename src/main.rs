@@ -116,9 +116,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    if !root.join("data/chinese/trie.index").exists() {
-        let _ = compiler::check_and_compile_all();
-    }
+    // 检查所有方案是否需要编译（should_compile 内部会判断 mtime，已最新时极快）
+    let _ = compiler::check_and_compile_all();
 
     {
         let mut punctuations = HashMap::new();
