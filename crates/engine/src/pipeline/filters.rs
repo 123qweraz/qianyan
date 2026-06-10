@@ -95,7 +95,6 @@ impl Filter for TraditionalFilter {
 pub struct AdaptiveFilter {
     pub ngram_history: Arc<ArcSwap<UserDictData>>,
     pub profile: String,
-    cached_ngram_map: std::sync::RwLock<Option<std::collections::HashMap<String, u32>>>,
 }
 
 impl AdaptiveFilter {
@@ -106,7 +105,6 @@ impl AdaptiveFilter {
         Self {
             ngram_history,
             profile,
-            cached_ngram_map: std::sync::RwLock::new(None),
         }
     }
 }
@@ -133,10 +131,6 @@ impl Filter for AdaptiveFilter {
                                 let effective = count.min(40) as f64;
                                 c.weight += effective * 50_000_000.0;
                             }
-                        }
-
-                        if let Ok(mut guard) = self.cached_ngram_map.write() {
-                            *guard = Some(ngram_map);
                         }
                     }
                 }

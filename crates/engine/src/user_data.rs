@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 const DATA_VERSION: &str = "1.0";
 
@@ -43,7 +41,6 @@ struct JsonDataFile {
 
 pub struct UserDataManager {
     data_dir: PathBuf,
-    dirty: Arc<AtomicBool>,
 }
 
 impl UserDataManager {
@@ -53,7 +50,6 @@ impl UserDataManager {
         }
         Ok(Self {
             data_dir,
-            dirty: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -187,8 +183,6 @@ impl UserDataManager {
 
         let json = serde_json::to_string_pretty(&data_file)?;
         fs::write(&file_path, json)?;
-
-        self.dirty.store(false, Ordering::SeqCst);
         Ok(())
     }
 

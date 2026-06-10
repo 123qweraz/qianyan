@@ -78,10 +78,8 @@ fn build_word_graph(segments: &[String], trie: &Trie) -> Vec<WordSpan> {
             if let Some(entries) = trie.get_all_exact(&py) {
                 if let Some(tr) = entries.iter().max_by_key(|r| r.weight) {
                     let key = (start, end);
-                    if !best.contains_key(&key) || true {
-                        // 总是取最高频词
-                        best.entry(key).or_insert_with(|| (tr.word.to_string(), py.clone()));
-                    }
+                    // 总是取最高频词
+                    best.entry(key).or_insert_with(|| (tr.word.to_string(), py.clone()));
                 }
             }
         }

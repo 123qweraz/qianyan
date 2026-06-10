@@ -93,7 +93,6 @@ pub struct EvdevHost {
     gui_tx: Option<Sender<GuiEvent>>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     should_exit: Arc<AtomicBool>,
-    tab_held_and_not_used: bool,
     lookup_tx: std::sync::mpsc::Sender<()>,
     is_grabbed: bool,
     meta_was_pressed: bool,
@@ -218,7 +217,10 @@ impl EvdevHost {
                 while lookup_rx.try_recv().is_ok() {}
 
                 // Actor performs search internally and returns any action to execute
-                let pending_action = h_bg.perform_search().unwrap_or(None);
+                let pending_action = h_bg.perform_search().unwrap_or_else(|| {
+                    log::error!("[EvdevHost] perform_search returned None (actor may be dead)");
+                    None
+                });
 
                 if let Some(action) = pending_action {
                     if let Ok(vkbd) = v_bg.lock() {
@@ -239,7 +241,6 @@ impl EvdevHost {
             gui_tx,
             tray_tx,
             should_exit: Arc::new(AtomicBool::new(false)),
-            tab_held_and_not_used: false,
             lookup_tx,
             is_grabbed: true,
             meta_was_pressed: false,
@@ -301,9 +302,6 @@ impl InputMethodHost for EvdevHost {
                     let is_press = val == 1;
                     if is_press {
                         held_keys.insert(key);
-                        if key != Key::KEY_TAB {
-                            self.tab_held_and_not_used = false;
-                        }
                     } else if val == 0 {
                         held_keys.remove(&key);
                     }

@@ -6,11 +6,7 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
     let page_size = ctx.config.page_size();
     match cmd {
         Command::NextPage => {
-            let old_page = ctx.session.page;
             ctx.session.next_page(page_size);
-            if ctx.session.page == old_page && !ctx.session.candidates.is_empty() {
-                ctx.session.next_page(page_size);
-            }
             Action::Consume
         }
         Command::PrevPage => {
@@ -18,11 +14,7 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
             Action::Consume
         }
         Command::NextCandidate => {
-            let old_sel = ctx.session.selected;
             ctx.session.next_candidate(page_size);
-            if ctx.session.selected == old_sel && !ctx.session.candidates.is_empty() {
-                ctx.session.next_candidate(page_size);
-            }
             crate::compositor::Compositor::update_phantom_action(ctx)
         }
         Command::PrevCandidate => {

@@ -125,20 +125,24 @@ fn set_skip_taskbar_and_hide() -> bool {
 slint::include_modules!();
 
 fn screen_size() -> (i32, i32) {
-    if let Ok(out) = std::process::Command::new("xdotool")
-        .arg("getdisplaygeometry")
-        .output()
-    {
-        if let Ok(s) = String::from_utf8(out.stdout) {
-            let parts: Vec<&str> = s.split_whitespace().collect();
-            if parts.len() == 2 {
-                if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
-                    return (w, h);
+    use std::sync::OnceLock;
+    static CACHED: OnceLock<(i32, i32)> = OnceLock::new();
+    *CACHED.get_or_init(|| {
+        if let Ok(out) = std::process::Command::new("xdotool")
+            .arg("getdisplaygeometry")
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(out.stdout) {
+                let parts: Vec<&str> = s.split_whitespace().collect();
+                if parts.len() == 2 {
+                    if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
+                        return (w, h);
+                    }
                 }
             }
         }
-    }
-    (1920, 1080)
+        (1920, 1080)
+    })
 }
 
 pub struct SlintDisplay {

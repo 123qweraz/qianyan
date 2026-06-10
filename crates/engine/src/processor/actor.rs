@@ -299,7 +299,7 @@ impl ProcessorActor {
             page: current_page,
             total_pages,
             sentence: ctx.session.joined_sentence.clone(),
-            cursor_pos: ctx.session.cursor_pos,
+            cursor_pos: 0,
             commit_mode: ctx.config.commit_mode().to_string(),
             chinese_enabled: ctx.session_state.chinese_enabled,
             short_display,

@@ -1742,10 +1742,14 @@ fn is_chinese(c: char) -> bool {
 
 type S2TMap = HashMap<String, String>;
 
-static S2T_MAP: OnceLock<S2TMap> = OnceLock::new();
-static T2S_MAP: OnceLock<S2TMap> = OnceLock::new();
-static MAX_S2T_WORD_LEN: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
-static MAX_T2S_WORD_LEN: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+struct S2TData {
+    s2t: S2TMap,
+    t2s: S2TMap,
+    s2t_max_len: usize,
+    t2s_max_len: usize,
+}
+
+static S2T_DATA: OnceLock<S2TData> = OnceLock::new();
 
 fn load_s2t_t2s_maps() -> (S2TMap, S2TMap, usize, usize) {
     let root = qianyan_ime_core::utils::find_project_root();
@@ -1801,11 +1805,17 @@ fn load_s2t_t2s_maps() -> (S2TMap, S2TMap, usize, usize) {
     (s2t, t2s, s2t_max, t2s_max)
 }
 
-fn get_s2t_map() -> &'static S2TMap { S2T_MAP.get_or_init(|| load_s2t_t2s_maps().0) }
-fn get_t2s_map() -> &'static S2TMap { T2S_MAP.get_or_init(|| load_s2t_t2s_maps().1) }
-fn get_s2t_max_len() -> usize { *MAX_S2T_WORD_LEN.get_or_init(|| load_s2t_t2s_maps().2) }
-fn get_t2s_max_len() -> usize { *MAX_T2S_WORD_LEN.get_or_init(|| load_s2t_t2s_maps().3) }
-fn ensure_s2t_loaded() { let _ = get_s2t_map(); let _ = get_t2s_map(); }
+fn get_s2t_data() -> &'static S2TData {
+    S2T_DATA.get_or_init(|| {
+        let (s2t, t2s, s2t_max, t2s_max) = load_s2t_t2s_maps();
+        S2TData { s2t, t2s, s2t_max_len: s2t_max, t2s_max_len: t2s_max }
+    })
+}
+fn get_s2t_map() -> &'static S2TMap { &get_s2t_data().s2t }
+fn get_t2s_map() -> &'static S2TMap { &get_s2t_data().t2s }
+fn get_s2t_max_len() -> usize { get_s2t_data().s2t_max_len }
+fn get_t2s_max_len() -> usize { get_s2t_data().t2s_max_len }
+fn ensure_s2t_loaded() { let _ = get_s2t_data(); }
 
 fn convert_longest_match(text: &str, map: &S2TMap, max_len: usize) -> String {
     let chars: Vec<char> = text.chars().collect();

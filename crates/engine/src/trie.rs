@@ -71,7 +71,7 @@ impl Trie {
         // 检查版本头
         let data = data_data.as_ref();
         if data.len() >= 8 && &data[0..4] == TRIE_MAGIC {
-            let version = u32::from_le_bytes(data[4..8].try_into().unwrap());
+            let version = u32::from_le_bytes(data[4..8].try_into().map_err(|_| "Invalid trie header: need 4 bytes for version".to_string())?);
             if version != TRIE_VERSION {
                 return Err(format!(
                     "Trie version mismatch: expected {}, found {}",
@@ -532,11 +532,16 @@ impl Trie {
             return;
         }
 
-        let count = u32::from_le_bytes(
-            data[offset..offset + 4]
-                .try_into()
-                .unwrap_or_default(),
-        );
+        let count = match data[offset..offset + 4].try_into() {
+            Ok(bytes) => u32::from_le_bytes(bytes),
+            Err(_) => {
+                log::warn!("[Trie] read_block: invalid count at offset {}", offset);
+                0
+            }
+        };
+        if count == 0 && offset + 4 < data.len() {
+            log::warn!("[Trie] read_block: zero entries, possible corruption at offset {}", offset);
+        }
         let mut cursor = offset + 4;
 
         for _ in 0..count {
@@ -565,11 +570,13 @@ impl Trie {
                 log::warn!("[Trie] read_block: truncated weight at cursor {}", cursor);
                 break;
             }
-            let weight = u32::from_le_bytes(
-                data[cursor..cursor + 4]
-                    .try_into()
-                    .unwrap_or_default(),
-            );
+            let weight = match data[cursor..cursor + 4].try_into() {
+                Ok(bytes) => u32::from_le_bytes(bytes),
+                Err(_) => {
+                    log::warn!("[Trie] read_block: invalid weight at cursor {}", cursor);
+                    0
+                }
+            };
             cursor += 4;
 
             let flags = if cursor < data.len() { data[cursor] } else { 0 };
@@ -592,11 +599,13 @@ impl Trie {
             log::warn!("[Trie] read_block: truncated {} length at cursor {}", field_name, *cursor);
             return None;
         }
-        let len = u16::from_le_bytes(
-            data[*cursor..*cursor + 2]
-                .try_into()
-                .unwrap_or_default(),
-        ) as usize;
+        let len = match data[*cursor..*cursor + 2].try_into() {
+            Ok(bytes) => u16::from_le_bytes(bytes) as usize,
+            Err(_) => {
+                log::warn!("[Trie] read_str: invalid {} length at cursor {}", field_name, *cursor);
+                0
+            }
+        };
         *cursor += 2;
         if *cursor + len > data.len() {
             log::warn!("[Trie] read_block: truncated {} data at cursor {}", field_name, *cursor);

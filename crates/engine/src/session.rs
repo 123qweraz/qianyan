@@ -31,8 +31,6 @@ pub struct InputSession {
     /// Non-modifier key whose press was consumed by the IME.
     pub consumed_press_key: Option<VirtualKey>,
 
-    /// 预留：光标位置，当前未使用（恒为0）
-    pub cursor_pos: usize,
 }
 
 impl Default for InputSession {
@@ -67,8 +65,6 @@ impl InputSession {
             single_quote_open: false,
 
             consumed_press_key: None,
-
-            cursor_pos: 0,
         }
     }
 
@@ -95,7 +91,6 @@ impl InputSession {
         self.page_snapshot.clear();
         self.nav_mode = false;
         self.consumed_press_key = None;
-        self.cursor_pos = 0;
     }
 
     pub fn push_char(&mut self, c: char) {
@@ -351,5 +346,71 @@ mod tests {
             match_level: 3,
             flags: 0,
         }
+    }
+
+    #[test]
+    fn test_buffer_overflow_protection() {
+        let mut session = InputSession::new();
+        for _ in 0..200 {
+            session.push_char('a');
+        }
+        assert_eq!(session.buffer.len(), 64);
+    }
+
+    #[test]
+    fn test_push_str_overflow() {
+        let mut session = InputSession::new();
+        let long = "a".repeat(200);
+        assert!(session.push_str(&long));
+        assert_eq!(session.buffer.len(), 64);
+        assert!(!session.push_str(&long));
+    }
+
+    #[test]
+    fn test_page_boundary() {
+        let mut session = InputSession::new();
+        session.candidates = (0..5).map(|i| create_candidate(&i.to_string())).collect();
+
+        session.next_page(3);
+        assert_eq!(session.page, 3);
+
+        session.next_page(3);
+        assert_eq!(session.page, 3);
+
+        session.prev_page(3);
+        assert_eq!(session.page, 0);
+    }
+
+    #[test]
+    fn test_next_candidate_wraparound() {
+        let mut session = InputSession::new();
+        session.candidates = (0..3).map(|i| create_candidate(&i.to_string())).collect();
+
+        session.next_candidate(3);
+        assert_eq!(session.selected, 1);
+
+        session.next_candidate(3);
+        assert_eq!(session.selected, 2);
+
+        session.next_candidate(3);
+        assert_eq!(session.selected, 2);
+    }
+
+    #[test]
+    fn test_clear_composing_fields() {
+        let mut session = InputSession::new();
+        session.buffer = "test".to_string();
+        session.phantom_text = "phantom".to_string();
+        session.aux_filter = "f".to_string();
+        session.filter_mode = FilterMode::Page;
+        session.joined_sentence = "sentence".to_string();
+        session.clear_composing();
+
+        assert!(session.buffer.is_empty());
+        assert!(session.phantom_text.is_empty());
+        assert!(session.aux_filter.is_empty());
+        assert_eq!(session.filter_mode, FilterMode::None);
+        assert!(session.joined_sentence.is_empty());
+        assert_eq!(session.state, ImeState::Idle);
     }
 }
