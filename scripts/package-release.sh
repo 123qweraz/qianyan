@@ -11,10 +11,11 @@ cargo build --release
 
 cp target/release/qianyan-ime "$OUT/"
 cp target/release/qianyan-ime-gui "$OUT/"
+cp target/release/qianyan-web-settings "$OUT/"
 cp -r data dicts configs sounds picture "$OUT/"
 cp qianyan-ime.desktop "$OUT/"
 cp scripts/install/install.sh "$OUT/"
-strip "$OUT/qianyan-ime" "$OUT/qianyan-ime-gui" 2>/dev/null || true
+strip "$OUT/qianyan-ime" "$OUT/qianyan-ime-gui" "$OUT/qianyan-web-settings" 2>/dev/null || true
 
 cd release
 tar czf "${NAME}_${VERSION}.tar.gz" "$(basename "$OUT")"
