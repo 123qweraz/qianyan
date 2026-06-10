@@ -614,6 +614,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
         GuiEvent::MoveTo { x, y } => Some(MainToGui::MoveTo { x, y }),
         GuiEvent::SetVisible(v) => Some(MainToGui::SetVisible(v)),
         GuiEvent::ShowStatus(text, chinese) => Some(MainToGui::ShowStatus(text, chinese)),
+        GuiEvent::KeyEvent { keys, modifiers } => Some(MainToGui::KeyEvent { keys, modifiers }),
         GuiEvent::ApplyConfig(config) => {
             serde_json::to_string(&*config).ok().map(MainToGui::ApplyConfig)
         }

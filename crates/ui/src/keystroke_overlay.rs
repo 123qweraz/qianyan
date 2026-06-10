@@ -469,23 +469,20 @@ impl SlintKeystroke {
             self.hide_deadline = Some(now + std::time::Duration::from_millis(self.timeout_ms));
         }
 
-        // Check timeout
-        if !show {
-            if let Some(deadline) = self.hide_deadline {
-                if now >= deadline {
-                    self.hide_deadline = None;
-                } else {
-                    // Still within timeout, keep showing
-                    return;
-                }
-            } else {
-                // Not showing and no deadline — hide
-                if self.visible {
-                    let _ = self.window.window().hide();
-                    self.visible = false;
-                }
-                return;
+        // Check if we need to hide
+        let should_hide = if !show {
+            self.hide_deadline.map_or(true, |d| now >= d)
+        } else {
+            false
+        };
+
+        if should_hide {
+            if self.visible {
+                self.window.set_is_visible(false);
+                let _ = self.window.window().hide();
+                self.visible = false;
             }
+            return;
         }
 
         let keys_vec: Vec<slint::SharedString> = keys.iter().map(|s| slint::SharedString::from(s.clone())).collect();
@@ -501,6 +498,8 @@ impl SlintKeystroke {
         self.window.set_modifiers(slint::ModelRc::from(
             std::rc::Rc::new(slint::VecModel::from(Vec::<slint::SharedString>::new())),
         ));
+
+        self.window.set_is_visible(true);
 
         if !self.visible {
             let _ = self.window.window().show();
