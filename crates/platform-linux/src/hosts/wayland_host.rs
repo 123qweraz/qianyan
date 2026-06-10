@@ -229,8 +229,11 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
 
                 let prev_enabled = state.prev_chinese_enabled;
 
+                let shift = state.mods_depressed & 0x0001 != 0;
+                let ctrl = state.mods_depressed & 0x0004 != 0;
+                let alt = state.mods_depressed & 0x0008 != 0;
                 // Use handle_key_sync to get action + gui + status atomically
-                let (action, gui, status) = match state.processor.handle_key_sync(vk, 1, false, false, false) {
+                let (action, gui, status) = match state.processor.handle_key_sync(vk, 1, shift, ctrl, alt) {
                     Some(tuple) => tuple,
                     None => return,
                 };
@@ -447,18 +450,13 @@ impl WlState {
                 im.commit_string(insert.clone());
             }
             Action::PassThrough if utf8_text.is_empty() => {
-                if state.virtual_keyboard.is_some() {
-                    state.forward_physical_key(key, 1);
+                if let Some(vk) = &state.virtual_keyboard {
+                    vk.key(state.last_key_time, key, 1);
                     state.forwarded_keys.insert(key);
                 }
             }
             Action::PassThrough => {
-                if state.virtual_keyboard.is_some() && utf8_text.is_empty() {
-                    state.forward_physical_key(key, 1);
-                    state.forwarded_keys.insert(key);
-                } else {
-                    im.commit_string(utf8_text);
-                }
+                im.commit_string(utf8_text);
             }
             Action::Alert => {
                 Self::play_beep();

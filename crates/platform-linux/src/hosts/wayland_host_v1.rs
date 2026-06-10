@@ -46,6 +46,7 @@ struct WlState {
     context_serial: u32,
     xkb_context: xkb::Context,
     xkb_state: Option<xkb::State>,
+    mods_depressed: u32,
 }
 
 impl WlState {
@@ -283,7 +284,10 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     None => return,
                 };
 
-                let action = match state.processor.handle_key(vk, 1, false, false, false, true) {
+                let shift = state.mods_depressed & 0x0001 != 0;
+                let ctrl = state.mods_depressed & 0x0004 != 0;
+                let alt = state.mods_depressed & 0x0008 != 0;
+                let action = match state.processor.handle_key(vk, 1, shift, ctrl, alt, true) {
                     Some(a) => a,
                     None => return,
                 };
@@ -350,6 +354,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 mods_locked,
                 group,
             } => {
+                state.mods_depressed = mods_depressed;
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
@@ -405,6 +410,7 @@ impl InputMethodHost for WaylandInputHostV1 {
             context_serial: 0,
             xkb_context: xkb::Context::new(xkb::CONTEXT_NO_FLAGS),
             xkb_state: None,
+            mods_depressed: 0,
         };
 
         let _ = event_queue.roundtrip(&mut state)?;

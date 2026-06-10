@@ -454,7 +454,7 @@ impl InputScheme for ChineseScheme {
 
         // 策略 3: 统一相似拼音纠错（换位 + 模糊 + Levenshtein）
         // 仅在前面的策略都无结果时触发
-        println!("DEBUG s4 final={}", final_results.len()); if final_results.is_empty() && !query.contains(' ')
+        if final_results.is_empty() && !query.contains(' ')
             && context.config.input.enable_error_correction {
             if let Some(d) = context.tries.get("chinese") {
                 let similar = crate::pipeline::find_similar_pinyin(

@@ -527,12 +527,18 @@ struct CreateDictRequest {
 async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
     let group = req.group.unwrap_or_else(|| "user".to_string());
     let base = find_dicts_root();
-    let dir = base.join(&group);
+    let dir = match safe_join(&base, &group) {
+        Some(d) => d,
+        None => return StatusCode::BAD_REQUEST,
+    };
     if std::fs::create_dir_all(&dir).is_err() {
         return StatusCode::INTERNAL_SERVER_ERROR;
     }
     let filename = format!("{}.json", req.name);
-    let file_path = dir.join(&filename);
+    let file_path = match safe_join(&dir, &filename) {
+        Some(p) => p,
+        None => return StatusCode::BAD_REQUEST,
+    };
     if file_path.exists() {
         return StatusCode::CONFLICT;
     }
@@ -2952,14 +2958,14 @@ fn days_to_ymd(days: i64) -> (i64, u32, u32) {
 }
 
 fn uuid_v4() -> String {
-    use std::fmt::Write;
-    let mut s = String::with_capacity(32);
-    for _ in 0..8 { write!(s, "{:x}", rand_u8()).expect("write to String never fails"); }
-    s
-}
-
-fn rand_u8() -> u8 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().subsec_nanos();
-    ((nanos >> 16) ^ (nanos >> 8) ^ nanos) as u8
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let pid = std::process::id() as u64;
+    let cnt = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let combined = (ts as u64).wrapping_add(pid << 32).wrapping_add(cnt);
+    format!("{:016x}", combined)
 }

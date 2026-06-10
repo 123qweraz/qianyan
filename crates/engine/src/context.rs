@@ -103,9 +103,16 @@ impl EngineContext {
             .collect();
         for profile in enabled_list {
             let engine = self.engine.clone();
-            std::thread::spawn(move || {
-                engine.prewarm_profile(&profile);
-            });
+            std::thread::Builder::new()
+                .name(format!("prewarm-{profile}"))
+                .spawn(move || {
+                    if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        engine.prewarm_profile(&profile);
+                    })) {
+                        log::error!("[Context] prewarm thread for {profile} panicked: {:?}", e);
+                    }
+                })
+                .ok();
         }
 
         self.setup_default_keymap();

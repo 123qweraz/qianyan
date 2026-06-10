@@ -4,6 +4,8 @@ use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
 const HEADER_SIZE: usize = 4;
+/// Maximum allowed frame size (16 MB) to prevent OOM from crafted headers.
+const MAX_FRAME_SIZE: usize = 16 * 1024 * 1024;
 
 /// Read one length-delimited frame from a UnixStream.
 /// Returns None if the connection is closed.
@@ -19,6 +21,9 @@ pub fn read_frame(stream: &mut UnixStream) -> Result<Option<Vec<u8>>, String> {
         }
     }
     let len = u32::from_le_bytes(header) as usize;
+    if len > MAX_FRAME_SIZE {
+        return Err(format!("frame too large: {len} > {MAX_FRAME_SIZE}"));
+    }
     let mut buf = vec![0u8; len];
     let mut read = 0;
     while read < len {

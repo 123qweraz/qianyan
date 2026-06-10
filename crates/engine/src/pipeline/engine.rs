@@ -404,6 +404,14 @@ impl SearchEngine {
             }
         }
 
+        // Acquire write lock first, then double-check + create inside lock
+        // This prevents cache stampede where N threads all do the expensive
+        // pipeline construction simultaneously.
+        let mut cache = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
+        if let Some(p) = cache.0.get(profile) {
+            return Some(p.clone());
+        }
+
         let trie_arc = self.get_or_load_trie(profile)?;
 
         let mut pipeline = Pipeline::new(Box::new(DefaultSegmentor));
@@ -433,10 +441,6 @@ impl SearchEngine {
 
         let arc_p = Arc::new(pipeline);
 
-        let mut cache = self.pipelines.write().ok()?;
-        if let Some(p) = cache.0.get(profile) {
-            return Some(p.clone());
-        }
         if cache.0.len() >= MAX_CACHED_PIPELINES {
             if let Some(k) = cache.1.pop_front() {
                 cache.0.remove(&k);
