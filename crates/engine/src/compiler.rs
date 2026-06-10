@@ -149,6 +149,30 @@ fn compile_dict_for_path(
             process_yaml_file(path, &mut entries)?;
         }
     }
+    // 构建倒排 FST: word → pinyin (用于 has_word_in_dict / lookup_pinyin)
+    // 先按 word 排序再写入，满足 FST builder 的 lexicographic order 要求
+    {
+        let word_map_path = format!("{}.word_map", out_stem);
+        let pinyin_data_path = format!("{}.pinyin_data", out_stem);
+        let mut word_pinyin_map: BTreeMap<&str, &str> = BTreeMap::new();
+        for (pinyin, pairs) in &entries {
+            for entry in pairs {
+                word_pinyin_map.entry(&entry.word).or_insert(pinyin);
+            }
+        }
+        let mut pinyin_writer = BufWriter::new(File::create(&pinyin_data_path)?);
+        let mut word_map_builder = MapBuilder::new(File::create(&word_map_path)?)?;
+        let mut offset = 0u64;
+        for (word, pinyin) in &word_pinyin_map {
+            let pinyin_bytes = pinyin.as_bytes();
+            pinyin_writer.write_all(pinyin_bytes)?;
+            let value = (offset << 32) | (pinyin_bytes.len() as u64);
+            word_map_builder.insert(word, value)?;
+            offset += pinyin_bytes.len() as u64;
+        }
+        word_map_builder.finish()?;
+    }
+
     write_binary_dict(
         &format!("{}.index", out_stem),
         &format!("{}.data", out_stem),

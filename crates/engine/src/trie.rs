@@ -1,9 +1,8 @@
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
-use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
@@ -39,8 +38,8 @@ impl AsRef<[u8]> for TrieData {
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
-    word_pinyin: Arc<OnceLock<HashMap<Box<str>, Box<str>>>>,
-    rare_chars_cache: Arc<OnceLock<HashSet<String>>>,
+    word_map: Map<TrieData>,
+    pinyin_data: TrieData,
 }
 
 impl Trie {
@@ -80,15 +79,24 @@ impl Trie {
                 .into());
             }
         } else {
-            // 如果没有魔法数字，视为旧版本 v1
             return Err("Trie format too old (v1), please recompile dictionaries.".into());
         }
+
+        // 加载倒排 FST: word → pinyin
+        let stem = index_path.as_ref().with_extension("");
+        let word_map_path = stem.with_extension("word_map");
+        let pinyin_data_path = stem.with_extension("pinyin_data");
+        let word_map_data = load_data(&word_map_path)
+            .map_err(|_| format!("Word map not found at {:?}, please recompile dictionaries (--compile-only)", word_map_path))?;
+        let word_map = Map::new(word_map_data)?;
+        let pinyin_data = load_data(&pinyin_data_path)
+            .map_err(|_| format!("Pinyin data not found at {:?}, please recompile dictionaries (--compile-only)", pinyin_data_path))?;
 
         Ok(Self {
             index,
             data: data_data,
-            word_pinyin: Arc::new(OnceLock::new()),
-            rare_chars_cache: Arc::new(OnceLock::new()),
+            word_map,
+            pinyin_data,
         })
     }
 
@@ -123,26 +131,6 @@ impl Trie {
         }
     }
 
-    /// 获取生僻字集合（flags & 1），带内部缓存
-    pub fn get_rare_chars(&self) -> &HashSet<String> {
-        self.rare_chars_cache
-            .get_or_init(|| self.build_rare_chars())
-    }
-
-    /// 从二进制数据中提取生僻字集合（level-4, level-5, flags & 1）
-    pub fn build_rare_chars(&self) -> HashSet<String> {
-        let mut set = HashSet::new();
-        let mut stream = self.index.stream();
-        while let Some((_, offset)) = fst::Streamer::next(&mut stream) {
-            self.read_block(offset as usize, |tr| {
-                if tr.flags & 1 != 0 {
-                    set.insert(tr.word.to_string());
-                }
-            });
-        }
-        set
-    }
-
     /// 预热词库：读取前 limit 条记录以填充 Page Cache
     pub fn prewarm(&self, limit: usize) {
         if matches!(self.data, TrieData::Memory(_)) {
@@ -157,11 +145,6 @@ impl Trie {
                 break;
             }
         }
-    }
-
-    /// 预热 word_pinyin 索引，避免首次 has_word_in_dict 触发的全量扫描
-    pub fn ensure_word_index(&self) {
-        self.word_pinyin.get_or_init(|| self.build_word_pinyin());
     }
 
     /// 快速前缀检查：FST 中是否有任何 key 以 prefix 开头（不读数据块）
@@ -183,29 +166,19 @@ impl Trie {
     }
 
     /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
-    /// 使用 word_index 实现 O(1) 查找（首次调用时惰性构建索引，之后 O(1)）
+    /// 基于倒排 FST word_map 的 O(len(word)) 查找
     pub fn has_word_in_dict(&self, word: &str) -> bool {
-        let index = self.word_pinyin.get_or_init(|| self.build_word_pinyin());
-        index.contains_key(word)
+        self.word_map.contains_key(word)
     }
 
-    fn build_word_pinyin(&self) -> HashMap<Box<str>, Box<str>> {
-        let mut map = HashMap::with_capacity(50000);
-        let mut stream = self.index.stream();
-        while let Some((key, offset)) = fst::Streamer::next(&mut stream) {
-            self.read_block(offset as usize, |tr| {
-                let word: Box<str> = Box::from(tr.word);
-                if let Ok(key_str) = std::str::from_utf8(key) {
-                    map.entry(word).or_insert_with(|| Box::<str>::from(key_str));
-                }
-            });
-        }
-        map
-    }
-
+    /// 查询词对应的拼音，基于倒排 FST word_map + mmap pinyin_data
     pub fn lookup_pinyin(&self, word: &str) -> Option<&str> {
-        let index = self.word_pinyin.get_or_init(|| self.build_word_pinyin());
-        index.get(word).map(|s| s.as_ref())
+        let encoded = self.word_map.get(word)?;
+        let offset = (encoded >> 32) as usize;
+        let len = (encoded & 0xFFFF_FFFF) as usize;
+        let data = self.pinyin_data.as_ref();
+        data.get(offset..offset + len)
+            .and_then(|slice| std::str::from_utf8(slice).ok())
     }
 
     pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {

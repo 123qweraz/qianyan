@@ -467,16 +467,13 @@ impl SearchEngine {
         }
     }
 
-    /// 编译词库后调用，刷新 trie 缓存 + 预热 word 索引
+    /// 编译词库后调用，刷新 trie 缓存
     pub fn reload_tries(&self) {
         if let Ok(mut tc) = self.trie_cache.write() {
             tc.clear();
         }
-        // 立即重载并预热，避免首次查询卡顿
         for profile in self.trie_paths.keys() {
-            if let Some(trie) = self.get_or_load_trie(profile) {
-                trie.ensure_word_index();
-            }
+            self.get_or_load_trie(profile);
         }
     }
 
