@@ -28,6 +28,8 @@ use std::os::fd::AsRawFd;
 
 use qianyan_ime_core::Config;
 
+slint::include_modules!();
+
 // ── Color parsing ──
 
 fn parse_color(s: &str) -> skia_safe::Color {
@@ -68,6 +70,23 @@ fn parse_position(s: &str) -> Anchor {
         "top-left" => Anchor::TOP | Anchor::LEFT,
         _ => Anchor::BOTTOM,
     }
+}
+
+fn screen_size() -> (i32, i32) {
+    if let Ok(out) = std::process::Command::new("xdotool")
+        .arg("getdisplaygeometry")
+        .output()
+    {
+        if let Ok(s) = String::from_utf8(out.stdout) {
+            let parts: Vec<&str> = s.split_whitespace().collect();
+            if parts.len() == 2 {
+                if let (Ok(w), Ok(h)) = (parts[0].parse(), parts[1].parse()) {
+                    return (w, h);
+                }
+            }
+        }
+    }
+    (1920, 1080)
 }
 
 // ── Wayland keystroke renderer ──
@@ -111,19 +130,8 @@ impl ObjectData for ChildSurfaceData {
 }
 
 impl Dispatch<WlSurface, ()> for KeystrokeWlState {
-    fn event(
-        _state: &mut Self,
-        _proxy: &WlSurface,
-        _event: <WlSurface as wayland_client::Proxy>::Event,
-        _data: &(),
-        _conn: &Connection,
-        _qh: &QueueHandle<Self>,
-    ) {
-    }
-    fn event_created_child(
-        _opcode: u16,
-        _qh: &QueueHandle<Self>,
-    ) -> std::sync::Arc<dyn ObjectData> {
+    fn event(_state: &mut Self, _proxy: &WlSurface, _event: <WlSurface as wayland_client::Proxy>::Event, _data: &(), _conn: &Connection, _qh: &QueueHandle<Self>) {}
+    fn event_created_child(_opcode: u16, _qh: &QueueHandle<Self>) -> std::sync::Arc<dyn ObjectData> {
         std::sync::Arc::new(ChildSurfaceData)
     }
 }
@@ -185,7 +193,6 @@ fn render_keystroke_pixels(
     text_color: skia_safe::Color,
 ) -> (Vec<u8>, u32, u32) {
     let mod_font_size = font_size * 0.6;
-
     let font = skia_safe::Font::new(typeface, font_size);
     let mod_font = skia_safe::Font::new(typeface, mod_font_size);
 
@@ -222,13 +229,8 @@ fn render_keystroke_pixels(
         None,
     );
     let Some(mut surface) = skia_safe::surfaces::wrap_pixels(
-        &image_info,
-        pixels.as_mut_slice(),
-        (w * 4) as usize,
-        None,
-    ) else {
-        return (pixels, w, h);
-    };
+        &image_info, pixels.as_mut_slice(), (w * 4) as usize, None,
+    ) else { return (pixels, w, h); };
 
     let canvas = surface.canvas();
     canvas.clear(skia_safe::Color::TRANSPARENT);
@@ -245,13 +247,12 @@ fn render_keystroke_pixels(
     );
 
     let mut x = padding_x;
-
     let mut mod_bg_paint = skia_safe::Paint::default();
     mod_bg_paint.set_color(skia_safe::Color::from_argb(40, 255, 255, 255));
     mod_bg_paint.set_anti_alias(true);
-
     let mut text_paint = skia_safe::Paint::default();
     let mod_y = (overlay_height - mod_height) / 2.0 + 2.0;
+
     for m in mods {
         let mw = mod_font.measure_str(m, None).0 + 12.0;
         canvas.draw_rrect(
@@ -266,9 +267,7 @@ fn render_keystroke_pixels(
         x += mw + mod_gap;
     }
 
-    if !mods.is_empty() && !keys.is_empty() {
-        x += 4.0;
-    }
+    if !mods.is_empty() && !keys.is_empty() { x += 4.0; }
 
     let key_y = overlay_height * 0.68;
     text_paint.set_color(text_color);
@@ -291,60 +290,32 @@ fn wl_keystroke_thread(
 ) {
     let conn = match Connection::connect_to_env() {
         Ok(c) => c,
-        Err(e) => {
-            log::error!("[KSO] cannot connect to Wayland: {e}");
-            return;
-        }
+        Err(e) => { log::error!("[KSO] cannot connect to Wayland: {e}"); return; }
     };
-
     let (globals, mut event_queue) = match registry_queue_init(&conn) {
         Ok(g) => g,
-        Err(e) => {
-            log::error!("[KSO] registry init failed: {e}");
-            return;
-        }
+        Err(e) => { log::error!("[KSO] registry init failed: {e}"); return; }
     };
     let qh = event_queue.handle();
-
     let compositor = match CompositorState::bind(&globals, &qh) {
         Ok(c) => c,
-        Err(e) => {
-            log::error!("[KSO] no wl_compositor: {e}");
-            return;
-        }
+        Err(e) => { log::error!("[KSO] no wl_compositor: {e}"); return; }
     };
     let shm = match Shm::bind(&globals, &qh) {
         Ok(s) => s,
-        Err(e) => {
-            log::error!("[KSO] no wl_shm: {e}");
-            return;
-        }
+        Err(e) => { log::error!("[KSO] no wl_shm: {e}"); return; }
     };
     let ls = match LayerShell::bind(&globals, &qh) {
         Ok(ls) => ls,
-        Err(e) => {
-            log::error!("[KSO] no zwlr_layer_shell_v1: {e}");
-            return;
-        }
+        Err(e) => { log::error!("[KSO] no zwlr_layer_shell_v1: {e}"); return; }
     };
 
     let mut state = KeystrokeWlState {
-        registry_state: RegistryState::new(&globals),
-        compositor_state: compositor,
-        shm,
-        layer_shell: Some(ls),
-        _output_state: OutputState::new(&globals, &qh),
-        _seat_state: SeatState::new(&globals, &qh),
-        layer: None,
-        pool: None,
-        exit: AtomicBool::new(false),
-        keys: Vec::new(),
-        mods: Vec::new(),
-        hide_deadline: None,
-        timeout_ms,
-        font_size,
-        bg_color,
-        text_color,
+        registry_state: RegistryState::new(&globals), compositor_state: compositor, shm,
+        layer_shell: Some(ls), _output_state: OutputState::new(&globals, &qh),
+        _seat_state: SeatState::new(&globals, &qh), layer: None, pool: None,
+        exit: AtomicBool::new(false), keys: Vec::new(), mods: Vec::new(),
+        hide_deadline: None, timeout_ms, font_size, bg_color, text_color,
     };
 
     {
@@ -358,10 +329,7 @@ fn wl_keystroke_thread(
         layer.commit();
         state.layer = Some(layer);
     }
-    if let Ok(pool) = SlotPool::new(1_024_000, &state.shm) {
-        state.pool = Some(pool);
-    }
-
+    if let Ok(pool) = SlotPool::new(1_024_000, &state.shm) { state.pool = Some(pool); }
     let _ = event_queue.dispatch_pending(&mut state);
     let _ = event_queue.flush();
 
@@ -373,7 +341,6 @@ fn wl_keystroke_thread(
         loop {
             match rx.try_recv() {
                 Ok(KSCmd::Show { keys, mods }) => {
-                    log::debug!("[KSO] Show keys={:?} mods={:?}", keys, mods);
                     state.keys = keys;
                     state.mods = mods;
                     state.hide_deadline = Some(Instant::now() + std::time::Duration::from_millis(state.timeout_ms));
@@ -402,11 +369,8 @@ fn wl_keystroke_thread(
                         let stride = (w * 4) as i32;
                         let needed = (stride * h as i32) as usize;
                         if needed > pool.len() {
-                            let new_size = needed.next_power_of_two().max(1024);
-                            if pool.resize(new_size).is_err() {
-                                log::error!("[KSO] SHM pool resize failed");
-                                continue;
-                            }
+                            let ns = needed.next_power_of_two().max(1024);
+                            if pool.resize(ns).is_err() { continue; }
                         }
                         if let Ok((buffer, canvas)) = pool.create_buffer(w as i32, h as i32, stride, wl_shm::Format::Argb8888) {
                             canvas.copy_from_slice(&pixels);
@@ -442,10 +406,7 @@ fn wl_keystroke_thread(
             }
         }
 
-        if state.exit.load(Ordering::SeqCst) {
-            break;
-        }
-
+        if state.exit.load(Ordering::SeqCst) { break; }
         if event_queue.flush().is_err() { break; }
         if event_queue.dispatch_pending(&mut state).is_err() { break; }
 
@@ -460,39 +421,158 @@ fn wl_keystroke_thread(
     }
 }
 
+// ── X11 Slint window overlay ──
+
+/// X11 shortcut icons for modifiers
+fn mod_icon(name: &str) -> &str {
+    match name {
+        "Shift" => "⇧",
+        "Ctrl" => "⌃",
+        "Alt" => "⌥",
+        "Super" => "◆",
+        _ => name,
+    }
+}
+
+struct SlintKeystroke {
+    window: KeystrokeWindow,
+    position: String,
+    visible: bool,
+    hide_deadline: Option<Instant>,
+    timeout_ms: u64,
+}
+
+impl SlintKeystroke {
+    fn new(config: &Config) -> Option<Self> {
+        let window = KeystrokeWindow::new().ok()?;
+        window.set_is_visible(false);
+
+        // Must show then hide so the window gets created on the display server
+        let _ = window.window().show();
+        let _ = window.window().hide();
+
+        Some(Self {
+            window,
+            position: config.linux.keystroke_position.clone(),
+            visible: false,
+            hide_deadline: None,
+            timeout_ms: config.linux.keystroke_timeout_ms,
+        })
+    }
+
+    fn update(&mut self, keys: &[String], modifiers: &[String]) {
+        let now = Instant::now();
+
+        let show = !keys.is_empty() || !modifiers.is_empty();
+
+        if show {
+            self.hide_deadline = Some(now + std::time::Duration::from_millis(self.timeout_ms));
+        }
+
+        // Check timeout
+        if !show {
+            if let Some(deadline) = self.hide_deadline {
+                if now >= deadline {
+                    self.hide_deadline = None;
+                } else {
+                    // Still within timeout, keep showing
+                    return;
+                }
+            } else {
+                // Not showing and no deadline — hide
+                if self.visible {
+                    let _ = self.window.window().hide();
+                    self.visible = false;
+                }
+                return;
+            }
+        }
+
+        let keys_vec: Vec<slint::SharedString> = keys.iter().map(|s| slint::SharedString::from(s.clone())).collect();
+        let mods_icons: Vec<slint::SharedString> = modifiers.iter()
+            .map(|m| slint::SharedString::from(mod_icon(m)))
+            .collect();
+
+        let full_keys: Vec<slint::SharedString> = mods_icons.into_iter().chain(keys_vec).collect();
+
+        self.window.set_keys(slint::ModelRc::from(
+            std::rc::Rc::new(slint::VecModel::from(full_keys)),
+        ));
+        self.window.set_modifiers(slint::ModelRc::from(
+            std::rc::Rc::new(slint::VecModel::from(Vec::<slint::SharedString>::new())),
+        ));
+
+        if !self.visible {
+            let _ = self.window.window().show();
+            self.visible = true;
+        }
+
+        // Position at bottom center
+        self.position_window();
+    }
+
+    fn position_window(&self) {
+        let (sw, sh) = screen_size();
+        let size = self.window.window().size();
+        let pos_str = if self.position.is_empty() { "bottom" } else { &self.position };
+
+        let (x, y) = match pos_str {
+            "bottom" => ((sw - size.width as i32) / 2, sh - size.height as i32 - 80),
+            "top" => ((sw - size.width as i32) / 2, 40),
+            "bottom-right" => (sw - size.width as i32 - 20, sh - size.height as i32 - 80),
+            "bottom-left" => (20, sh - size.height as i32 - 80),
+            "top-right" => (sw - size.width as i32 - 20, 40),
+            "top-left" => (20, 40),
+            _ => ((sw - size.width as i32) / 2, sh - size.height as i32 - 80),
+        };
+
+        let _ = self.window.window().set_position(
+            slint::WindowPosition::Physical(slint::PhysicalPosition::new(x, y))
+        );
+    }
+}
+
 // ── KeystrokeOverlay ──
 
 pub struct KeystrokeOverlay {
+    // Wayland path
     wl_tx: Option<mpsc::Sender<KSCmd>>,
     wl_join: Option<std::thread::JoinHandle<()>>,
+    // X11 fallback
+    slint_ks: Option<SlintKeystroke>,
 }
 
 impl KeystrokeOverlay {
     pub fn new(config: &Config) -> Option<Self> {
-        let timeout_ms = config.linux.keystroke_timeout_ms;
-        let position = parse_position(&config.linux.keystroke_position);
-        let font_size = config.linux.keystroke_font_size as f32;
-        let bg_color = parse_color(&config.linux.keystroke_bg_color);
-        let text_color = parse_color(&config.linux.keystroke_text_color);
+        // Try Wayland layer-shell first
+        if std::env::var("WAYLAND_DISPLAY").is_ok() {
+            let timeout_ms = config.linux.keystroke_timeout_ms;
+            let position = parse_position(&config.linux.keystroke_position);
+            let font_size = config.linux.keystroke_font_size as f32;
+            let bg_color = parse_color(&config.linux.keystroke_bg_color);
+            let text_color = parse_color(&config.linux.keystroke_text_color);
 
-        let (tx, rx) = mpsc::channel();
-        let join = std::thread::Builder::new()
-            .name("keystroke-wl".into())
-            .spawn(move || wl_keystroke_thread(rx, timeout_ms, position, font_size, bg_color, text_color))
-            .ok()?;
+            let (tx, rx) = mpsc::channel();
+            let join = std::thread::Builder::new()
+                .name("keystroke-wl".into())
+                .spawn(move || wl_keystroke_thread(rx, timeout_ms, position, font_size, bg_color, text_color))
+                .ok();
+            if let Some(join) = join {
+                return Some(Self { wl_tx: Some(tx), wl_join: Some(join), slint_ks: None });
+            }
+        }
 
-        Some(Self {
-            wl_tx: Some(tx),
-            wl_join: Some(join),
-        })
+        // X11 fallback: use Slint window
+        log::info!("[KSO] Wayland not available, using Slint window fallback");
+        let slint_ks = SlintKeystroke::new(config)?;
+        Some(Self { wl_tx: None, wl_join: None, slint_ks: Some(slint_ks) })
     }
 
     pub fn update_keys(&mut self, keys: &[String], modifiers: &[String]) {
         if let Some(ref tx) = self.wl_tx {
-            let _ = tx.send(KSCmd::Show {
-                keys: keys.to_vec(),
-                mods: modifiers.to_vec(),
-            });
+            let _ = tx.send(KSCmd::Show { keys: keys.to_vec(), mods: modifiers.to_vec() });
+        } else if let Some(ref mut ks) = self.slint_ks {
+            ks.update(keys, modifiers);
         }
     }
 }

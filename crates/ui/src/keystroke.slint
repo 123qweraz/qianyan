@@ -30,11 +30,13 @@ export component KeystrokeWindow inherits Window {
                 for mod in modifiers : Rectangle {
                     background: rgba(255, 255, 255, 30);
                     border-radius: 4px;
-                    padding-left: 6px;
-                    padding-right: 6px;
-                    padding-top: 2px;
-                    padding-bottom: 2px;
-                    Text { text: mod; color: #cccccc; font-size: 14px; }
+                    HorizontalLayout {
+                        padding-left: 6px;
+                        padding-right: 6px;
+                        padding-top: 2px;
+                        padding-bottom: 2px;
+                        Text { text: mod; color: #cccccc; font-size: 14px; }
+                    }
                 }
             }
 
