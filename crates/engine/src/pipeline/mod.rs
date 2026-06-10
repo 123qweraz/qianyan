@@ -420,11 +420,9 @@ mod tests {
     #[test]
     fn test_trie_cache_does_not_create_pipeline() {
         let engine = create_test_engine();
-        // 没有 trie_paths，get_or_load_trie 应该返回 None 但不崩溃
         assert!(engine.get_or_load_trie("nonexistent").is_none());
-        // 确保没有 pipeline 被创建
-        let cache = engine.pipelines.read().unwrap();
-        assert!(cache.0.is_empty());
+        let cache = engine.trie_cache.read().unwrap();
+        assert!(cache.is_empty());
     }
 
     #[test]

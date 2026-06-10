@@ -1,5 +1,5 @@
 use crate::keys::VirtualKey;
-use crate::processor::{Action, FilterMode};
+use crate::processor::Action;
 use crate::trie::Trie;
 use qianyan_ime_core::config::Config;
 use std::collections::HashMap;
@@ -41,7 +41,7 @@ use std::sync::Arc;
 /// 方案执行时的上下文环境
 pub struct SchemeContext<'a> {
     pub config: &'a Config,
-    pub tries: &'a HashMap<String, Trie>,
+    pub tries: &'a HashMap<String, Arc<Trie>>,
     pub syllable_freq: &'a HashMap<String, u64>,
     pub base_syllables: &'a std::collections::HashSet<String>,
     pub single_syllables: &'a std::collections::HashSet<String>,
@@ -52,8 +52,6 @@ pub struct SchemeContext<'a> {
     pub candidate_count: usize,
     pub last_word: Option<&'a str>,
     pub last_two_words: Option<(&'a str, &'a str)>,
-    pub _filter_mode: FilterMode,
-    pub _aux_filter: &'a str,
 }
 
 /// 输入方案接口定义

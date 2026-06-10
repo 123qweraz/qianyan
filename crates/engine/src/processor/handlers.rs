@@ -186,10 +186,8 @@ pub fn handle_composing(
     if let Some(scheme) = ctx.engine.schemes.get(&current_profile) {
         let mut tries_map = std::collections::HashMap::with_capacity(ctx.session_state.active_profiles.len());
         for profile in &ctx.session_state.active_profiles {
-            if let Some(pipeline) = ctx.engine.get_or_create_pipeline(profile) {
-                if let Some(trie) = ctx.engine.get_trie_from_pipeline(pipeline.as_ref()) {
-                    tries_map.insert(profile.clone(), trie.clone());
-                }
+            if let Some(trie) = ctx.engine.get_or_load_trie(profile) {
+                tries_map.insert(profile.clone(), trie);
             }
         }
         let last_word = ctx
@@ -213,8 +211,6 @@ pub fn handle_composing(
             candidate_count: ctx.session.candidates.len(),
             last_word,
             last_two_words: last_two,
-            _filter_mode: ctx.session.filter_mode.clone(),
-            _aux_filter: &ctx.session.aux_filter,
         };
         let act_opt: Option<Action> =
             scheme.handle_special_key(key, &mut ctx.session.buffer, &context);

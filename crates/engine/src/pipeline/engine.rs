@@ -8,99 +8,10 @@ use crate::config_manager::{UserDictData, OrderData};
 use crate::Config;
 use crate::Trie;
 
-use super::filters::{AdaptiveFilter, Filter, MatchLevelScoringFilter, TraditionalFilter};
 use super::segmentation::{DefaultSegmentor, Segmentor};
-use super::translators::{ComposeTranslator, TableTranslator, Translator, UserDictTranslator};
-use super::{Candidate, MAX_LOOKUP_LIMIT};
+use super::Candidate;
 
-/// 核心管道定义
-pub struct Pipeline {
-    pub segmentor: Box<dyn Segmentor>,
-    pub translators: Vec<Box<dyn Translator>>,
-    pub filters: Vec<Box<dyn Filter>>,
-    pub syllable_freq: Arc<HashMap<String, u64>>,
-    pub base_syllables: Arc<HashSet<String>>,
-    segment_cache: std::sync::RwLock<std::collections::HashMap<String, Vec<String>>>,
-}
-
-impl Pipeline {
-    pub fn new(segmentor: Box<dyn Segmentor>) -> Self {
-        Self {
-            segmentor,
-            translators: Vec::new(),
-            filters: Vec::new(),
-            syllable_freq: Arc::new(HashMap::new()),
-            base_syllables: Arc::new(HashSet::new()),
-            segment_cache: std::sync::RwLock::new(std::collections::HashMap::new()),
-        }
-    }
-
-    pub fn add_translator(&mut self, t: Box<dyn Translator>) {
-        self.translators.push(t);
-    }
-
-    pub fn add_filter(&mut self, f: Box<dyn Filter>) {
-        self.filters.push(f);
-    }
-
-    #[inline]
-    pub fn run(
-        &self,
-        input: &str,
-        config: &Config,
-        limit: usize,
-        context: Option<&str>,
-        context_pair: Option<(&str, &str)>,
-    ) -> Vec<Candidate> {
-        let segments = {
-            if let Ok(guard) = self.segment_cache.read() {
-                if let Some(cached) = guard.get(input) {
-                    cached.clone()
-                } else {
-                    drop(guard);
-                    let segments = self.segmentor.segment(
-                        input,
-                        &config.input.segmentation_delimiters,
-                        &self.syllable_freq,
-                        &self.base_syllables,
-                    );
-                    if let Ok(mut guard) = self.segment_cache.write() {
-                        if guard.len() < 100 {
-                            guard.insert(input.to_string(), segments.clone());
-                        }
-                    }
-                    segments
-                }
-            } else {
-                self.segmentor.segment(
-                    input,
-                    &config.input.segmentation_delimiters,
-                    &self.syllable_freq,
-                    &self.base_syllables,
-                )
-            }
-        };
-
-        let mut candidates = Vec::new();
-        for t in &self.translators {
-            candidates.extend(t.translate(input, &segments, config, limit));
-        }
-
-        {
-            let mut seen = std::collections::HashSet::new();
-            candidates.retain(|c| seen.insert(c.text.clone()));
-        }
-        for f in &self.filters {
-            candidates = f.filter(input, candidates, config, context, context_pair);
-        }
-        candidates.truncate(limit);
-        candidates
-    }
-}
-
-type PipelineCache = (HashMap<String, Arc<Pipeline>>, std::collections::VecDeque<String>);
-
-/// 搜索引擎：协调所有的 Pipeline
+/// 搜索引擎：协调所有的方案
 #[derive(Clone)]
 pub struct SearchEngine {
     pub trie_paths: HashMap<String, (PathBuf, PathBuf)>,
@@ -111,11 +22,8 @@ pub struct SearchEngine {
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub(crate) user_order: Arc<ArcSwap<OrderData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
-    pub(crate) pipelines: Arc<RwLock<PipelineCache>>,
     pub(crate) trie_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
 }
-
-const MAX_CACHED_PIPELINES: usize = 10;
 
 pub struct SearchQuery<'a> {
     pub buffer: &'a str,
@@ -146,7 +54,6 @@ impl SearchEngine {
             ngram_history,
             user_order,
             schemes,
-            pipelines: Arc::new(RwLock::new((HashMap::new(), std::collections::VecDeque::new()))),
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
         };
         engine.load_base_syllables();
@@ -187,7 +94,7 @@ impl SearchEngine {
         if let Some(scheme) = self.schemes.get(query.profile) {
             let mut tries_map = HashMap::with_capacity(1);
             if let Some(trie) = self.get_or_load_trie(query.profile) {
-                tries_map.insert(query.profile.to_string(), (*trie).clone());
+                tries_map.insert(query.profile.to_string(), trie);
             }
             let context = crate::scheme::SchemeContext {
                 config: config_ref,
@@ -202,8 +109,6 @@ impl SearchEngine {
                 candidate_count: 0,
                 last_word: query.context,
                 last_two_words: query.context_pair,
-                _filter_mode: query.filter_mode.clone(),
-                _aux_filter: query.aux_filter,
             };
 
             let pre_processed = scheme.pre_process(query.buffer, &context);
@@ -213,22 +118,14 @@ impl SearchEngine {
             let mut results = Vec::new();
             for sc in scheme_candidates {
                 let hint = Arc::from(match config_ref.input.display_mode {
-                    crate::DisplayMode::CharacterOnly => String::new(),
+                    crate::DisplayMode::CharacterOnly => "",
                     crate::DisplayMode::CharacterWithEnglish => {
-                        if sc.english.is_empty() {
-                            String::new()
-                        } else {
-                            sc.english.clone()
-                        }
+                        sc.english.as_str()
                     }
                     crate::DisplayMode::CharacterWithStroke => {
-                        if sc.stroke_aux.is_empty() {
-                            String::new()
-                        } else {
-                            sc.stroke_aux.clone()
-                        }
+                        sc.stroke_aux.as_str()
                     }
-                    crate::DisplayMode::CharacterWithTone => sc.tone.clone(),
+                    crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
                 });
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {
@@ -266,7 +163,6 @@ impl SearchEngine {
                 qianyan_ime_core::config::RareCharMode::IncludeRare => {}
             }
 
-            // CommonOnly 保持原有上限，IncludeRare/OnlyRare 放宽到更大值以显示全部生僻字
             let effective_limit = match config_ref.input.rare_char_mode {
                 qianyan_ime_core::config::RareCharMode::CommonOnly => query.limit,
                 _ => query.limit.max(2000),
@@ -281,64 +177,8 @@ impl SearchEngine {
             );
             let delims = &query.config.input.segmentation_delimiters;
             let segs = DefaultSegmentor.segment(&pre_processed, delims, &self.syllable_freq, &self.base_syllables);
-            // 退化为全单字符 → 输入不完整，保持原始 buffer 显示
             let non_degen = !segs.is_empty() && !(segs.len() == pre_processed.len() && segs.iter().all(|s| s.len() == 1));
             return (results, if non_degen { segs } else { vec![] });
-        }
-
-        if let Some(pipeline) = self.get_or_create_pipeline(query.profile) {
-            let search_limit = if !query.aux_filter.is_empty() {
-                MAX_LOOKUP_LIMIT
-            } else {
-                query.limit
-            };
-
-            let results = pipeline.run(
-                query.buffer,
-                config_ref,
-                search_limit,
-                query.context,
-                query.context_pair,
-            );
-            let segments = pipeline.segmentor.segment(
-                query.buffer,
-                &config_ref.input.segmentation_delimiters,
-                &pipeline.syllable_freq,
-                &pipeline.base_syllables,
-            );
-
-            let mut final_results = results;
-            if query.filter_mode == crate::processor::FilterMode::Global
-                && !query.aux_filter.is_empty()
-            {
-                final_results.retain(|c| {
-                    self.matches_filter(c, query.aux_filter, config_ref.input.english_aux_mode)
-                });
-            }
-
-            match config_ref.input.rare_char_mode {
-                qianyan_ime_core::config::RareCharMode::CommonOnly => {
-                    final_results.retain(|c| c.flags & 1 == 0);
-                }
-                qianyan_ime_core::config::RareCharMode::OnlyRare => {
-                    final_results.retain(|c| c.flags & 1 != 0);
-                }
-                qianyan_ime_core::config::RareCharMode::IncludeRare => {}
-            }
-
-            let effective_limit = match config_ref.input.rare_char_mode {
-                qianyan_ime_core::config::RareCharMode::CommonOnly => query.limit,
-                _ => query.limit.max(2000),
-            };
-            final_results.truncate(effective_limit);
-            log::info!(
-                "engine_search: pipeline results total={}, rare={}, common={}, mode={:?}",
-                final_results.len(),
-                final_results.iter().filter(|c| c.flags & 1 != 0).count(),
-                final_results.iter().filter(|c| c.flags & 1 == 0).count(),
-                config_ref.input.rare_char_mode,
-            );
-            return (final_results, segments);
         }
 
         (vec![], vec![])
@@ -383,73 +223,8 @@ impl SearchEngine {
         false
     }
 
-    pub fn get_trie_from_pipeline<'a>(&self, pipeline: &'a Pipeline) -> Option<&'a Trie> {
-        for t in &pipeline.translators {
-            if let Some(table) = t.as_any().downcast_ref::<TableTranslator>() {
-                return Some(&table.trie);
-            }
-        }
-        None
-    }
-
     pub fn get_trie(&self, profile: &str) -> Option<Arc<Trie>> {
         self.get_or_load_trie(profile)
-    }
-
-    pub fn get_or_create_pipeline(&self, profile: &str) -> Option<Arc<Pipeline>> {
-        // Fast path: read lock only — no write-lock LRU update on every lookup
-        if let Ok(cache) = self.pipelines.read() {
-            if let Some(p) = cache.0.get(profile) {
-                return Some(p.clone());
-            }
-        }
-
-        // Acquire write lock first, then double-check + create inside lock
-        // This prevents cache stampede where N threads all do the expensive
-        // pipeline construction simultaneously.
-        let mut cache = self.pipelines.write().unwrap_or_else(|e| e.into_inner());
-        if let Some(p) = cache.0.get(profile) {
-            return Some(p.clone());
-        }
-
-        let trie_arc = self.get_or_load_trie(profile)?;
-
-        let mut pipeline = Pipeline::new(Box::new(DefaultSegmentor));
-        pipeline.syllable_freq = self.syllable_freq.clone();
-        pipeline.base_syllables = self.base_syllables.clone();
-        pipeline.add_translator(Box::new(UserDictTranslator {
-            user_dict: self.learned_words.clone(),
-            profile: profile.to_string(),
-            trie: Some(trie_arc.clone()),
-        }));
-        pipeline.add_translator(Box::new(TableTranslator::new(
-            trie_arc.clone(),
-            self.syllable_freq.clone(),
-            profile == "chinese",
-        )));
-        pipeline.add_translator(Box::new(ComposeTranslator::new(
-            trie_arc.clone(),
-            self.base_syllables.clone(),
-            self.syllable_freq.clone(),
-        )));
-        pipeline.add_filter(Box::new(MatchLevelScoringFilter));
-        pipeline.add_filter(Box::new(AdaptiveFilter::new(
-            self.ngram_history.clone(),
-            profile.to_string(),
-        )));
-        pipeline.add_filter(Box::new(TraditionalFilter));
-
-        let arc_p = Arc::new(pipeline);
-
-        if cache.0.len() >= MAX_CACHED_PIPELINES {
-            if let Some(k) = cache.1.pop_front() {
-                cache.0.remove(&k);
-            }
-        }
-        cache.0.insert(profile.to_string(), arc_p.clone());
-        cache.1.push_back(profile.to_string());
-
-        Some(arc_p)
     }
 
     #[inline]
@@ -461,9 +236,8 @@ impl SearchEngine {
     }
 
     pub fn clear_cache(&self) {
-        if let Ok(mut cache) = self.pipelines.write() {
-            cache.0.clear();
-            cache.1.clear();
+        if let Ok(mut cache) = self.trie_cache.write() {
+            cache.clear();
         }
     }
 

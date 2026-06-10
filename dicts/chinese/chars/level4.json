@@ -2937,15 +2937,6 @@
     },
     {
       "category": "level-4",
-      "char": "芔",
-      "stroke_aux": "bjh",
-      "tone": "huì",
-      "trad": "芔",
-      "weight": 0,
-      "strokes": "522523522"
-    },
-    {
-      "category": "level-4",
       "char": "噦",
       "stroke_aux": "mwh",
       "tone": "huì",
@@ -5899,15 +5890,6 @@
   "ben": [
     {
       "category": "level-4",
-      "char": "犇",
-      "stroke_aux": "tfb",
-      "tone": "bēn",
-      "trad": "犇",
-      "weight": 0,
-      "strokes": "311231213112"
-    },
-    {
-      "category": "level-4",
       "char": "翉",
       "stroke_aux": "fyb",
       "tone": "běn",
@@ -8316,15 +8298,6 @@
       "trad": "瘓",
       "weight": 0,
       "strokes": "41341352534134"
-    },
-    {
-      "category": "level-4",
-      "char": "睆",
-      "stroke_aux": "mqh",
-      "tone": "huàn",
-      "trad": "睆",
-      "weight": 0,
-      "strokes": "251114451135"
     },
     {
       "category": "level-4",
@@ -21145,15 +21118,6 @@
     },
     {
       "category": "level-4",
-      "char": "菈",
-      "stroke_aux": "ftl",
-      "tone": "lā",
-      "trad": "菈",
-      "weight": 0,
-      "strokes": "12212141431"
-    },
-    {
-      "category": "level-4",
       "char": "柆",
       "stroke_aux": "ftl",
       "tone": "lā",
@@ -21295,15 +21259,6 @@
       "trad": "磖",
       "weight": 0,
       "strokes": "1325154154132511"
-    },
-    {
-      "category": "level-4",
-      "char": "揦",
-      "stroke_aux": "fjl",
-      "tone": "lá",
-      "trad": "揦",
-      "weight": 0,
-      "strokes": "121125123422"
     },
     {
       "category": "level-4",
@@ -23798,15 +23753,6 @@
       "trad": "揱",
       "weight": 0,
       "strokes": "2432511223112"
-    },
-    {
-      "category": "level-4",
-      "char": "咲",
-      "stroke_aux": "mwx",
-      "tone": "xiào",
-      "trad": "咲",
-      "weight": 0,
-      "strokes": "251431134"
     },
     {
       "category": "level-4",
@@ -33264,15 +33210,6 @@
     },
     {
       "category": "level-4",
-      "char": "丼",
-      "stroke_aux": "glj",
-      "tone": "jǐng",
-      "trad": "丼",
-      "weight": 0,
-      "strokes": "11324"
-    },
-    {
-      "category": "level-4",
       "char": "涇",
       "stroke_aux": "ohj",
       "tone": "jīng",
@@ -41567,15 +41504,6 @@
     },
     {
       "category": "level-4",
-      "char": "嬢",
-      "stroke_aux": "vwn",
-      "tone": "niáng",
-      "trad": "嬢",
-      "weight": 0,
-      "strokes": "5314134112213534"
-    },
-    {
-      "category": "level-4",
       "char": "釀",
       "stroke_aux": "fwn",
       "tone": "niàng",
@@ -43273,15 +43201,6 @@
       "trad": "鏚",
       "weight": 0,
       "strokes": "3411243113211234534"
-    },
-    {
-      "category": "level-4",
-      "char": "炁",
-      "stroke_aux": "aoq",
-      "tone": "qì",
-      "trad": "炁",
-      "weight": 0,
-      "strokes": "15354444"
     },
     {
       "category": "level-4",
@@ -63943,15 +63862,6 @@
     },
     {
       "category": "level-4",
-      "char": "屄",
-      "stroke_aux": "nwb",
-      "tone": "bī",
-      "trad": "屄",
-      "weight": 0,
-      "strokes": "51344534"
-    },
-    {
-      "category": "level-4",
       "char": "鐴",
       "stroke_aux": "wfb",
       "tone": "bì",
@@ -66729,15 +66639,6 @@
     },
     {
       "category": "level-4",
-      "char": "鲶",
-      "stroke_aux": "qon",
-      "tone": "nián",
-      "trad": "鲶",
-      "weight": 0,
-      "strokes": "3525121134454544"
-    },
-    {
-      "category": "level-4",
       "char": "秥",
       "stroke_aux": "tnn",
       "tone": "nián",
@@ -67480,30 +67381,12 @@
     },
     {
       "category": "level-4",
-      "char": "牠",
-      "stroke_aux": "tmt",
-      "tone": "tā",
-      "trad": "牠",
-      "weight": 0,
-      "strokes": "3121525"
-    },
-    {
-      "category": "level-4",
       "char": "蹹",
       "stroke_aux": "myt",
       "tone": "tá",
       "trad": "蹹",
       "weight": 0,
       "strokes": "2512121341251541541"
-    },
-    {
-      "category": "level-4",
-      "char": "祂",
-      "stroke_aux": "pat",
-      "tone": "tā",
-      "trad": "祂",
-      "weight": 0,
-      "strokes": "4524515"
     },
     {
       "category": "level-4",
@@ -71763,15 +71646,6 @@
     },
     {
       "category": "level-4",
-      "char": "薙",
-      "stroke_aux": "fht",
-      "tone": "tì",
-      "trad": "薙",
-      "weight": 0,
-      "strokes": "1223113432411121"
-    },
-    {
-      "category": "level-4",
       "char": "稊",
       "stroke_aux": "tkt",
       "tone": "tí",
@@ -73219,15 +73093,6 @@
       "trad": "調",
       "weight": 0,
       "strokes": "411125135121251"
-    },
-    {
-      "category": "level-4",
-      "char": "屌",
-      "stroke_aux": "nbd",
-      "tone": "diǎo",
-      "trad": "屌",
-      "weight": 0,
-      "strokes": "513251252"
     },
     {
       "category": "level-4",
@@ -77968,15 +77833,6 @@
     },
     {
       "category": "level-4",
-      "char": "珮",
-      "stroke_aux": "gbp",
-      "tone": "pèi",
-      "trad": "珮",
-      "weight": 0,
-      "strokes": "1121351252"
-    },
-    {
-      "category": "level-4",
       "char": "蓜",
       "stroke_aux": "fap",
       "tone": "pèi",
@@ -78255,15 +78111,6 @@
       "trad": "犛",
       "weight": 0,
       "strokes": "112343134133112"
-    },
-    {
-      "category": "level-4",
-      "char": "冇",
-      "stroke_aux": "dmm",
-      "tone": "mǎo",
-      "trad": "冇",
-      "weight": 0,
-      "strokes": "1325"
     },
     {
       "category": "level-4",
@@ -80996,15 +80843,6 @@
     },
     {
       "category": "level-4",
-      "char": "觍",
-      "stroke_aux": "mqt",
-      "tone": "tiǎn",
-      "trad": "觍",
-      "weight": 0,
-      "strokes": "251221342535"
-    },
-    {
-      "category": "level-4",
       "char": "睓",
       "stroke_aux": "mwt",
       "tone": "tiǎn",
@@ -83590,15 +83428,6 @@
       "trad": "琹",
       "weight": 0,
       "strokes": "112111211234"
-    },
-    {
-      "category": "level-4",
-      "char": "螓",
-      "stroke_aux": "mwq",
-      "tone": "qín",
-      "trad": "螓",
-      "weight": 0,
-      "strokes": "2512141113431234"
     },
     {
       "category": "level-4",
@@ -90756,15 +90585,6 @@
     },
     {
       "category": "level-4",
-      "char": "凃",
-      "stroke_aux": "ywt",
-      "tone": "tú",
-      "trad": "凃",
-      "weight": 0,
-      "strokes": "413411234"
-    },
-    {
-      "category": "level-4",
       "char": "鵌",
       "stroke_aux": "rwt",
       "tone": "tú",
@@ -97143,15 +96963,6 @@
     },
     {
       "category": "level-4",
-      "char": "卻",
-      "stroke_aux": "wbq",
-      "tone": "què",
-      "trad": "卻",
-      "weight": 0,
-      "strokes": "343425152"
-    },
-    {
-      "category": "level-4",
       "char": "礐",
       "stroke_aux": "rnq",
       "tone": "què",
@@ -99868,15 +99679,6 @@
       "trad": "氋",
       "weight": 0,
       "strokes": "12245113533343115"
-    },
-    {
-      "category": "level-4",
-      "char": "濛",
-      "stroke_aux": "owm",
-      "tone": "méng",
-      "trad": "濛",
-      "weight": 0,
-      "strokes": "4411224511353334"
     },
     {
       "category": "level-4",
@@ -104979,15 +104781,6 @@
     },
     {
       "category": "level-4",
-      "char": "卍",
-      "stroke_aux": "bfw",
-      "tone": "wàn",
-      "trad": "卍",
-      "weight": 0,
-      "strokes": "5212"
-    },
-    {
-      "category": "level-4",
       "char": "輓",
       "stroke_aux": "fqw",
       "tone": "wǎn",
@@ -108504,15 +108297,6 @@
     },
     {
       "category": "level-4",
-      "char": "艹",
-      "stroke_aux": "fjc",
-      "tone": "cao",
-      "trad": "艹",
-      "weight": 0,
-      "strokes": "122"
-    },
-    {
-      "category": "level-4",
       "char": "騲",
       "stroke_aux": "ffc",
       "tone": "cǎo",
@@ -108555,15 +108339,6 @@
       "trad": "艸",
       "weight": 0,
       "strokes": "523522"
-    },
-    {
-      "category": "level-4",
-      "char": "肏",
-      "stroke_aux": "wwc",
-      "tone": "cào",
-      "trad": "肏",
-      "weight": 0,
-      "strokes": "34253434"
     }
   ],
   "shui": [
@@ -115757,15 +115532,6 @@
     },
     {
       "category": "level-4",
-      "char": "囧",
-      "stroke_aux": "mnj",
-      "tone": "jiǒng",
-      "trad": "囧",
-      "weight": 0,
-      "strokes": "2534251"
-    },
-    {
-      "category": "level-4",
       "char": "冋",
       "stroke_aux": "mnj",
       "tone": "jiōng",
@@ -116249,15 +116015,6 @@
     }
   ],
   "ei": [
-    {
-      "category": "level-4",
-      "char": "诶",
-      "stroke_aux": "pwe",
-      "tone": "éi",
-      "trad": "诶",
-      "weight": 0,
-      "strokes": "455431134"
-    },
     {
       "category": "level-4",
       "char": "誒",
@@ -117173,30 +116930,12 @@
     },
     {
       "category": "level-4",
-      "char": "車",
-      "stroke_aux": "ffc",
-      "tone": "chē",
-      "trad": "車",
-      "weight": 0,
-      "strokes": "1251112"
-    },
-    {
-      "category": "level-4",
       "char": "撦",
       "stroke_aux": "fgc",
       "tone": "chě",
       "trad": "撦",
       "weight": 0,
       "strokes": "12113412132511"
-    },
-    {
-      "category": "level-4",
-      "char": "屮",
-      "stroke_aux": "bjc",
-      "tone": "chè",
-      "trad": "屮",
-      "weight": 0,
-      "strokes": "522"
     },
     {
       "category": "level-4",
@@ -118185,17 +117924,6 @@
       "trad": "喲",
       "weight": 0,
       "strokes": "251554444354"
-    }
-  ],
-  "rua": [
-    {
-      "category": "level-4",
-      "char": "挼",
-      "stroke_aux": "ftr",
-      "tone": "ruá",
-      "trad": "挼",
-      "weight": 0,
-      "strokes": "1213443531"
     }
   ],
   "re": [
