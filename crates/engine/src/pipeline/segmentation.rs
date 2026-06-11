@@ -42,112 +42,76 @@ impl Segmentor for DefaultSegmentor {
 }
 
 impl DefaultSegmentor {
-    /// 尝试相邻字母换位纠错（处理 guna→guan、guagn→guang 等常见 finger slip）
-    fn try_transpose(
-        part: &str,
-        syllable_freq: &HashMap<String, u64>,
-        base_syllables: &HashSet<String>,
-    ) -> Option<(u64, String)> {
-        let bytes = part.as_bytes();
-        for i in 0..bytes.len().saturating_sub(1) {
-            let mut swapped = bytes.to_vec();
-            swapped.swap(i, i + 1);
-            if let Ok(candidate) = String::from_utf8(swapped) {
-                if let Some(&freq) = syllable_freq.get(&candidate) {
-                    return Some((freq / 2, candidate));
+    /// Pass1: 只用 base_syllables 贪心最长匹配，切成纯单音节
+    fn segment_single(input: &str, base_syllables: &HashSet<String>) -> Vec<String> {
+        let mut segs = Vec::new();
+        let mut pos = 0;
+        while pos < input.len() {
+            let max_len = 6.min(input.len() - pos);
+            let mut matched = false;
+            for len in (1..=max_len).rev() {
+                let end = pos + len;
+                if input.is_char_boundary(end) && base_syllables.contains(&input[pos..end]) {
+                    segs.push(input[pos..end].to_string());
+                    pos = end;
+                    matched = true;
+                    break;
                 }
-                if base_syllables.contains(&candidate) {
-                    return Some((0, candidate));
+            }
+            if !matched {
+                break;
+            }
+        }
+        segs
+    }
+
+    /// Pass2: DP 合并相邻单音节，用 syllable_freq 最大化总频次
+    pub(crate) fn merge_by_freq(segs: &[String], syll_freq: &HashMap<String, u64>) -> Vec<String> {
+        let n = segs.len();
+        if n == 0 { return vec![]; }
+        let mut dp = vec![(0u64, 0usize); n + 1];
+
+        for i in 0..n {
+            let cur_score = dp[i].0;
+            // 不合并：保留单音节
+            if cur_score >= dp[i + 1].0 {
+                dp[i + 1] = (cur_score, i);
+            }
+            // 合并 k 个相邻音节
+            for k in 2..=4.min(n - i) {
+                let py: String = segs[i..i + k].concat();
+                if let Some(&freq) = syll_freq.get(&py) {
+                    let score = cur_score + freq;
+                    if score > dp[i + k].0 {
+                        dp[i + k] = (score, i);
+                    }
                 }
             }
         }
-        None
+
+        let mut result = Vec::new();
+        let mut pos = n;
+        while pos > 0 {
+            let prev = dp[pos].1;
+            let py: String = segs[prev..pos].concat();
+            result.push(py);
+            pos = prev;
+        }
+        result.reverse();
+        result
     }
 
-    /// 单轮 Viterbi DP 切分：直接在原始字符串上做最优切分，避免两轮法中的贪心锁定问题
+    /// 两趟法切分：Pass1 切单音节 → Pass2 合并多音节
     pub(crate) fn viterbi_segment(
         input: &str,
         syllable_freq: &HashMap<String, u64>,
         base_syllables: &HashSet<String>,
     ) -> Vec<String> {
-        let n = input.len();
-        if n == 0 {
+        let singles = Self::segment_single(input, base_syllables);
+        if singles.is_empty() {
             return vec![];
         }
-
-        let mut dp: Vec<Option<(u64, usize, usize)>> = vec![None; n + 1];
-        dp[0] = Some((0, 0, 0));
-        let mut corrected: Vec<String> = vec![String::new(); n + 1];
-
-        for i in 0..n {
-            let Some((cur_freq, cur_seg, _)) = dp[i] else {
-                continue;
-            };
-            let max_len = 12.min(n - i);
-
-            for len in 1..=max_len {
-                if !input.is_char_boundary(i + len) {
-                    continue;
-                }
-                let part = &input[i..i + len];
-
-                let (freq, seg_text) = if base_syllables.contains(part) {
-                    (syllable_freq.get(part).copied().unwrap_or(0), None)
-                } else if len == 1 {
-                    (0, None)
-                } else if let Some((xfreq, xtext)) =
-                    Self::try_transpose(part, syllable_freq, base_syllables)
-                {
-                    (xfreq, Some(xtext))
-                } else {
-                    continue;
-                };
-
-                let total = cur_freq + freq;
-                let seg_cnt = cur_seg + 1;
-                let entry = &mut dp[i + len];
-
-                let should_replace = match entry {
-                    None => true,
-                    Some((best_freq, best_seg, _)) => {
-                        total > *best_freq || (total == *best_freq && seg_cnt < *best_seg)
-                    }
-                };
-
-                if should_replace {
-                    *entry = Some((total, seg_cnt, i));
-                    if let Some(text) = seg_text {
-                        corrected[i + len] = text;
-                    }
-                }
-            }
-        }
-
-        let mut segments: Vec<String> = Vec::new();
-        let mut pos = n;
-        while pos > 0 {
-            match dp[pos] {
-                Some((_, _, prev)) if prev < pos => {
-                    if !corrected[pos].is_empty() {
-                        segments.push(corrected[pos].clone());
-                    } else {
-                        segments.push(input[prev..pos].to_string());
-                    }
-                    pos = prev;
-                }
-                _ => {
-                    let prev = input[..pos]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(pos.saturating_sub(1));
-                    segments.push(input[prev..pos].to_string());
-                    pos = prev;
-                }
-            }
-        }
-        segments.reverse();
-        segments
+        Self::merge_by_freq(&singles, syllable_freq)
     }
 
     #[inline]

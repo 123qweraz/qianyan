@@ -19,15 +19,12 @@ pub fn is_initial(s: &str) -> bool {
     }
 }
 
-/// 用 Viterbi DP 分割拼音串为音节序列
+/// 两趟法切分：Pass1 切单音节 → Pass2 合并多音节
 pub fn segment_base(
     input: &str,
     syllable_freq: &HashMap<String, u64>,
     base_syllables: &HashSet<String>,
 ) -> Vec<String> {
-    if input.is_empty() {
-        return vec![];
-    }
     DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables)
 }
 
@@ -79,6 +76,47 @@ pub fn segment_for_abbreviation(input: &str, trie: &Trie) -> Vec<(String, bool)>
         } else {
             break;
         }
+    }
+
+    result
+}
+
+/// 简拼切分：只用 base_syllables 检测音节，不含 trie 复合词
+pub fn segment_by_syllables(input: &str, base_syllables: &HashSet<String>) -> Vec<(String, bool)> {
+    let mut result = Vec::new();
+    let n = input.len();
+    let mut pos = 0;
+
+    while pos < n {
+        let max_len = 6.min(n - pos);
+        let mut matched = false;
+
+        for len in (2..=max_len).rev() {
+            if input.is_char_boundary(pos + len) && base_syllables.contains(&input[pos..pos + len]) {
+                result.push((input[pos..pos + len].to_string(), false));
+                pos += len;
+                matched = true;
+                break;
+            }
+        }
+        if matched { continue; }
+
+        if n - pos >= 2 && is_initial(&input[pos..pos + 2]) {
+            result.push((input[pos..pos + 2].to_string(), true));
+            pos += 2;
+            continue;
+        }
+
+        if let Some(ch) = input[pos..].chars().next() {
+            let s = ch.to_string();
+            if is_initial(&s) {
+                result.push((s, true));
+                pos += ch.len_utf8();
+                continue;
+            }
+        }
+
+        break;
     }
 
     result

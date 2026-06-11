@@ -19,38 +19,63 @@ pub struct ComposePath {
     pub score: f64,
 }
 
-/// 用 Viterbi DP 分割拼音串为音节序列（给外部简单调用用）
+/// 两趟法切分：Pass1 切单音节 → Pass2 合并多音节
 pub fn segment_syllables(
     pinyin: &str,
     syllable_freq: &HashMap<String, u64>,
     base_syllables: &HashSet<String>,
 ) -> Vec<String> {
-    if pinyin.is_empty() {
-        return vec![];
-    }
     DefaultSegmentor::viterbi_segment(pinyin, syllable_freq, base_syllables)
 }
 
-/// 智能切分：Viterbi DP 切分后检测是否含简拼声母段，标记 is_initial
+/// 两趟法切分 + 标记声母段
 fn segment_for_compose(
     input: &str,
     trie: &Trie,
     syllable_freq: &HashMap<String, u64>,
     base_syllables: &HashSet<String>,
 ) -> Vec<(String, bool)> {
-    let viterbi_segs = DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables);
-
-    if viterbi_segs.is_empty() {
+    let segs = DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables);
+    if !segs.is_empty() {
+        return segs.into_iter().map(|s| {
+            let is_init = s.len() <= 2
+                && !base_syllables.contains(s.as_str())
+                && compose_utils::is_initial(s.as_str());
+            (s, is_init)
+        }).collect();
+    }
+    // 简拼输入 → 简拼+单音节混合切分 → 再对单音节部分 Pass2 合并
+    let raw = compose_utils::segment_by_syllables(input, base_syllables);
+    if raw.is_empty() {
         return compose_utils::segment_for_abbreviation(input, trie);
     }
-
-    // Viterbi 切分结果上直接标记声母段
-    viterbi_segs.into_iter().map(|s| {
-        let is_init = s.len() <= 2
-            && !base_syllables.contains(s.as_str())
-            && compose_utils::is_initial(s.as_str());
-        (s, is_init)
-    }).collect()
+    // 收集连续全拼段的位置
+    let mut merged = Vec::new();
+    let mut seg_start = 0usize;
+    for (i, (_, is_init)) in raw.iter().enumerate() {
+        if *is_init {
+            // 声母段直接推入
+            if i > seg_start {
+                // 推入前面的全拼段（合并后）
+                let segs: Vec<String> = raw[seg_start..i].iter().map(|(s,_)| s.clone()).collect();
+                let m = DefaultSegmentor::merge_by_freq(&segs, syllable_freq);
+                for ms in m {
+                    merged.push((ms, false));
+                }
+            }
+            merged.push(raw[i].clone());
+            seg_start = i + 1;
+        }
+    }
+    // 尾部全拼段
+    if seg_start < raw.len() {
+        let segs: Vec<String> = raw[seg_start..].iter().map(|(s,_)| s.clone()).collect();
+        let m = DefaultSegmentor::merge_by_freq(&segs, syllable_freq);
+        for ms in m {
+            merged.push((ms, false));
+        }
+    }
+    merged
 }
 
 pub fn compose(
@@ -226,7 +251,7 @@ mod tests {
         let freq = load_syllable_freq(&root);
         let base = load_base_syllables(&root);
         let segs = segment_syllables("wowangjichongdianle", &freq, &base);
-        assert_eq!(segs, vec!["wo","wang","ji","chong","dian","le"]);
+        assert_eq!(segs, vec!["wo","wangji","chongdian","le"]);
     }
 
     #[test]
