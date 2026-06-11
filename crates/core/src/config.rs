@@ -125,7 +125,7 @@ fn default_keystroke_text_color() -> String {
 }
 
 fn default_backspace_delay() -> u64 {
-    10
+    2
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]

@@ -33,13 +33,13 @@
       "japanese",
       "stroke"
     ],
-    "phantom_type": "Pinyin",
-    "phantom_separator": ">"
+    "phantom_separator": ">",
+    "phantom_type": "Pinyin"
   },
   "linux": {
     "backend_type": "auto",
-    "backspace_delay_ms": 10,
-    "clipboard_delay_ms": 50,
+    "backspace_delay_ms": 3,
+    "clipboard_delay_ms": 0,
     "corner": "bottom-right",
     "device_path": "/dev/input/event4",
     "fixed_position": true,

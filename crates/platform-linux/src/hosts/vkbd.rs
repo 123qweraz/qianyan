@@ -350,18 +350,12 @@ impl Vkbd {
         if count == 0 {
             return;
         }
-        // 使用空格+回删技巧来强制中断应用程序（如 Firefox 地址栏）的联想功能
-        Self::do_tap(dev, Key::KEY_SPACE);
-        Self::do_tap(dev, Key::KEY_BACKSPACE);
-
         for _ in 0..count {
-            Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 1);
-            Self::do_emit_raw(dev, Key::KEY_BACKSPACE, 0);
+            Self::do_tap(dev, Key::KEY_BACKSPACE);
             if delay_ms > 0 {
                 thread::sleep(Duration::from_millis(delay_ms));
             }
         }
-        eprintln!("[Vkbd BG] do_backspace({}) done (sent 1 SPACE + 1 BS trick + {} BS)", count, count);
     }
 
     fn do_tap(dev: &Arc<Mutex<VirtualDevice>>, key: Key) {
