@@ -248,12 +248,18 @@ pub enum RareCharMode {
     OnlyRare,
 }
 
+fn default_phantom_separator() -> String {
+    ">".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Input {
     pub autostart: bool,
     pub commit_mode: String,
     pub default_profile: String,
     pub phantom_type: PhantomType,
+    #[serde(default = "default_phantom_separator")]
+    pub phantom_separator: String,
     pub enable_double_tap: bool,
     pub double_tap_timeout_ms: u64,
     pub double_taps: Vec<DoubleTap>,
@@ -619,7 +625,7 @@ impl Config {
         &'static [&'static str],
         &'static [&'static str],
     )] = &[
-        ("system", &["files", "linux"], &["autostart", "enabled_profiles", "phantom_type"], &["show_candidates", "show_tray"]),
+        ("system", &["files", "linux"], &["autostart", "enabled_profiles", "phantom_type", "phantom_separator"], &["show_candidates", "show_tray"]),
         ("fuzzy", &[], &["fuzzy_config"], &[]),
         ("doublepinyin", &[], &["enable_double_pinyin", "double_pinyin_scheme"], &[]),
         ("punctuation", &["punctuations"], &["enable_punctuation_long_press", "punctuation_long_press_mappings"], &[]),
@@ -979,6 +985,7 @@ impl Config {
                 commit_mode: "single".to_string(),
                 default_profile: "chinese".to_string(),
                 phantom_type: PhantomType::Pinyin,
+                phantom_separator: ">".to_string(),
                 enable_double_tap: false,
                 double_tap_timeout_ms: 250,
                 double_taps: vec![],

@@ -520,4 +520,8 @@ impl ConfigManager {
             self.master_config.input.phantom_type
         }
     }
+
+    pub fn phantom_separator(&self) -> &str {
+        &self.master_config.input.phantom_separator
+    }
 }

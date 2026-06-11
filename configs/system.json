@@ -33,7 +33,8 @@
       "japanese",
       "stroke"
     ],
-    "phantom_type": "Pinyin"
+    "phantom_type": "Pinyin",
+    "phantom_separator": ">"
   },
   "linux": {
     "backend_type": "auto",

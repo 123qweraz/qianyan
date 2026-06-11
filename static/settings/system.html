@@ -73,6 +73,10 @@
                 </select>
             </div>
             <div class="setting-item">
+                <div class="info"><div class="title">编辑器预览分隔符</div><div class="desc">在编辑器预览内容前添加的分隔符，默认为 >，留空则不加</div></div>
+                <input type="text" id="phantom_separator" placeholder=">" maxlength="4" style="width:80px;">
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">内置候选栏固定位置</div><div class="desc">开启后将候选栏固定在屏幕角落，解决某些桌面环境下无法跟随光标的问题</div></div>
                 <label class="switch"><input type="checkbox" id="linux_fixed_position"><span class="slider"></span></label>
             </div>
@@ -141,6 +145,7 @@
 
             bindInput('linux_show_toggle_notification', 'linux', 'show_toggle_notification');
             bindInput('phantom_type', 'input');
+            bindInput('phantom_separator', 'input');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');
             bindInput('linux_corner', 'linux', 'corner');
             bindInput('linux_paste_method', 'linux', 'paste_method');

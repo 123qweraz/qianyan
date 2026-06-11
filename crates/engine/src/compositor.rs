@@ -74,7 +74,7 @@ impl Compositor {
             return "[方案切换]".to_string();
         }
 
-        match ctx.config.phantom_type() {
+        let base = match ctx.config.phantom_type() {
             PhantomType::Pinyin => {
                 if ctx
                     .session_state
@@ -84,7 +84,7 @@ impl Compositor {
                 {
                     let converted = crate::schemes::stroke::encode_stroke_digits(&ctx.session.buffer);
                     if !converted.is_empty() {
-                        return converted;
+                        return Self::with_separator(ctx, converted);
                     }
                 }
                 ctx.session.buffer.clone()
@@ -104,6 +104,20 @@ impl Compositor {
                 }
             }
             _ => String::new(),
+        };
+
+        Self::with_separator(ctx, base)
+    }
+
+    fn with_separator(ctx: &EngineContext, text: String) -> String {
+        if text.is_empty() {
+            return text;
+        }
+        let sep = ctx.config.phantom_separator();
+        if sep.is_empty() {
+            text
+        } else {
+            format!("{}{}", sep, text)
         }
     }
 
