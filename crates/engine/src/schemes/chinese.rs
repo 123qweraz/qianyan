@@ -455,6 +455,13 @@ impl InputScheme for ChineseScheme {
         // 纯 weight 降序排序
         candidates.sort_by(|a, b| b.weight.cmp(&a.weight));
 
+        // 固定首词：保存排序第一名
+        let pinned: Option<String> = if context.config.input.enable_pin_first_word {
+            candidates.first().map(|c| c.text.to_string())
+        } else {
+            None
+        };
+
         // 全局 MRU：最近选的词排最前（不按拼音分组，同词不同拼音也能置顶）
         if context.config.input.enable_auto_reorder {
             if let Some(profile) = context.active_profiles.first() {
@@ -465,6 +472,18 @@ impl InputScheme for ChineseScheme {
                             let cand = candidates.remove(idx);
                             candidates.insert(0, cand);
                         }
+                    }
+                }
+            }
+        }
+
+        // 恢复固定首词（MRU 移动了第一名时）
+        if let Some(ref pw) = pinned {
+            if candidates.first().map_or(true, |c| c.text.as_str() != pw.as_str()) {
+                if let Some(idx) = candidates.iter().position(|c| c.text.as_str() == pw.as_str()) {
+                    if idx > 0 {
+                        let cand = candidates.remove(idx);
+                        candidates.insert(0, cand);
                     }
                 }
             }

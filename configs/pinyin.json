@@ -97,6 +97,7 @@
     "enable_keyboard_voice": false,
     "enable_long_press": false,
     "enable_number_selection": true,
+    "enable_pin_first_word": true,
     "enable_prefix_matching": true,
     "enable_smart_backspace": false,
     "enable_traditional": false,

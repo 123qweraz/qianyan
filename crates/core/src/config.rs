@@ -295,6 +295,8 @@ pub struct Input {
     #[serde(default = "default_long_term_threshold")]
     pub long_term_threshold: u32,
     pub enable_auto_reorder: bool,
+    #[serde(default)]
+    pub enable_pin_first_word: bool,
     #[serde(default = "default_mru_length")]
     pub mru_length: u32,
     #[serde(default = "default_ngram_synthesis_threshold")]
@@ -1033,6 +1035,7 @@ impl Config {
                 short_term_capacity: 200,
                 long_term_threshold: 5,
                 enable_auto_reorder: true,
+                enable_pin_first_word: false,
                 mru_length: 2000,
                 enable_smart_backspace: false,
                 enable_context_sorting: true,

@@ -60,6 +60,10 @@
                         <div class="info"><div class="title">MRU 记忆数量</div><div class="desc">最多记住最近选过的多少个词（默认2000）</div></div>
                         <div><input type="number" id="mru_length" min="5" max="10000" step="10" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
                     </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">固定首词</div><div class="desc">字典频率最高的词始终排在候选首位，不受 MRU 改变</div></div>
+                        <div><label class="switch"><input type="checkbox" id="enable_pin_first_word"><span class="slider"></span></label></div>
+                    </div>
                 </div>
                 <div style="flex:1; min-width:250px;">
                     <h4 style="margin:0 0 8px 0; font-size:14px; color:var(--apple-accent);">ngram算法</h4>
@@ -150,6 +154,7 @@
             // bind switch toggles
             bindInput('enable_auto_reorder', 'input');
             bindInput('mru_length', 'input');
+            bindInput('enable_pin_first_word', 'input');
             bindInput('enable_context_sorting', 'input');
             bindInput('enable_word_discovery', 'input');
             bindInput('word_learn_threshold', 'input');
