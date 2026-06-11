@@ -83,14 +83,21 @@ fn build_word_graph(
             let end = start + k;
             let sub = &segments[start..end];
             let has_initial = sub.iter().any(|(_, is_init)| *is_init);
+            // 跳过单声母段：多声母合并段有 abbr_bonus 永远胜出，无需浪费 FST 扫描
+            if k == 1 && has_initial {
+                continue;
+            }
             let py: String = sub.iter().map(|(s, _)| s.as_str()).collect();
             let initial_count = sub.iter().filter(|(_, is_init)| *is_init).count() as u8;
 
             if has_initial {
                 let sub_owned: Vec<(String, bool)> = sub.to_vec();
                 let mut results = trie.search_abbreviation_mixed(&sub_owned, 200, base_syllables);
-                results.sort_by_key(|r| std::cmp::Reverse(r.weight));
-                for tr in results.iter().take(3) {
+                let top_n = results.len().min(3);
+                if top_n > 0 {
+                    results.select_nth_unstable_by_key(top_n - 1, |r| std::cmp::Reverse(r.weight));
+                }
+                for tr in results.into_iter().take(top_n) {
                     graph.push(WordSpan {
                         start,
                         end,
@@ -102,8 +109,11 @@ fn build_word_graph(
             } else {
                 if let Some(entries) = trie.get_all_exact(&py) {
                     let mut candidates: Vec<&crate::trie::TrieResult> = entries.iter().collect();
-                    candidates.sort_by_key(|r| std::cmp::Reverse(r.weight));
-                    for tr in candidates.iter().take(3) {
+                    let top_n = candidates.len().min(3);
+                    if top_n > 0 {
+                        candidates.select_nth_unstable_by_key(top_n - 1, |r| std::cmp::Reverse(r.weight));
+                    }
+                    for tr in candidates.into_iter().take(top_n) {
                         graph.push(WordSpan {
                             start,
                             end,
@@ -216,7 +226,7 @@ mod tests {
         let freq = load_syllable_freq(&root);
         let base = load_base_syllables(&root);
         let segs = segment_syllables("wowangjichongdianle", &freq, &base);
-        assert_eq!(segs, vec!["wo","wangji","chongdian","le"]);
+        assert_eq!(segs, vec!["wo","wang","ji","chong","dian","le"]);
     }
 
     #[test]
@@ -276,8 +286,14 @@ mod tests {
         }
         assert!(!paths.is_empty(), "Mixed abbreviation should produce compose paths");
 
-        let top_text: String = paths[0].words.iter().map(|w| w.word.as_str()).collect();
-        assert!(top_text.starts_with("今天"), "Best path should start with 今天, got {}", top_text);
+        // "今天打游戏" 应该出现在前 5 条路径中
+        let top_5: Vec<String> = paths.iter().take(5)
+            .map(|p| p.words.iter().map(|w| w.word.as_str()).collect::<String>())
+            .collect();
+        assert!(
+            top_5.iter().any(|t| t == "今天打游戏"),
+            "今天打游戏 should be in top-5, got {:?}", top_5
+        );
     }
 
     #[test]

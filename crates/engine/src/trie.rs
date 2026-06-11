@@ -876,6 +876,7 @@ mod tests {
         std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_auto_reorder = true;
+        config.input.enable_pin_first_word = false;
         config.input.enable_abbreviation_matching = false;
         config.input.enable_prefix_matching = false;
 
@@ -962,6 +963,7 @@ mod tests {
         std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
         let mut config = qianyan_ime_core::config::Config::load();
         config.input.enable_auto_reorder = true;
+        config.input.enable_pin_first_word = false;
 
         let mut trie_paths = std::collections::HashMap::new();
         trie_paths.insert("chinese".to_string(), (
