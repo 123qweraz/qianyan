@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::trie::Trie;
 use crate::pipeline::segmentation::DefaultSegmentor;
+use crate::pipeline::compose_utils;
 
 #[derive(Debug, Clone)]
 pub struct WordSpan {
@@ -9,6 +10,7 @@ pub struct WordSpan {
     pub end: usize,
     pub word: String,
     pub pinyin: String,
+    pub initial_count: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -17,7 +19,7 @@ pub struct ComposePath {
     pub score: f64,
 }
 
-/// 用 Viterbi DP 分割拼音串为音节序列
+/// 用 Viterbi DP 分割拼音串为音节序列（给外部简单调用用）
 pub fn segment_syllables(
     pinyin: &str,
     syllable_freq: &HashMap<String, u64>,
@@ -29,6 +31,28 @@ pub fn segment_syllables(
     DefaultSegmentor::viterbi_segment(pinyin, syllable_freq, base_syllables)
 }
 
+/// 智能切分：Viterbi DP 切分后检测是否含简拼声母段，标记 is_initial
+fn segment_for_compose(
+    input: &str,
+    trie: &Trie,
+    syllable_freq: &HashMap<String, u64>,
+    base_syllables: &HashSet<String>,
+) -> Vec<(String, bool)> {
+    let viterbi_segs = DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables);
+
+    if viterbi_segs.is_empty() {
+        return compose_utils::segment_for_abbreviation(input, trie);
+    }
+
+    // Viterbi 切分结果上直接标记声母段
+    viterbi_segs.into_iter().map(|s| {
+        let is_init = s.len() <= 2
+            && !base_syllables.contains(s.as_str())
+            && compose_utils::is_initial(s.as_str());
+        (s, is_init)
+    }).collect()
+}
+
 pub fn compose(
     pinyin: &str,
     trie: &Trie,
@@ -37,31 +61,57 @@ pub fn compose(
     base_syllables: &std::collections::HashSet<String>,
     profile: &str,
 ) -> Vec<ComposePath> {
-    let segs = segment_syllables(pinyin, syllable_freq, base_syllables);
-    if segs.len() < 2 { return Vec::new(); }
-    let graph = build_word_graph(&segs, trie);
+    let segs = segment_for_compose(pinyin, trie, syllable_freq, base_syllables);
+    if segs.len() < 2 {
+        return Vec::new();
+    }
+    let graph = build_word_graph(&segs, trie, base_syllables);
     viterbi_compose(&graph, segs.len(), syllable_freq, ngram, profile)
 }
 
-fn build_word_graph(segments: &[String], trie: &Trie) -> Vec<WordSpan> {
+fn build_word_graph(
+    segments: &[(String, bool)],
+    trie: &Trie,
+    base_syllables: &HashSet<String>,
+) -> Vec<WordSpan> {
     let n = segments.len();
     let mut graph = Vec::new();
+
     for start in 0..n {
         let max_k = 4.min(n - start);
         for k in 1..=max_k {
             let end = start + k;
-            let py: String = segments[start..end].concat();
-            if let Some(entries) = trie.get_all_exact(&py) {
-                // 每个拼音段保留 top-3 词，增加 Viterbi 路径多样性
-                let mut candidates: Vec<&crate::trie::TrieResult> = entries.iter().collect();
-                candidates.sort_by_key(|r| std::cmp::Reverse(r.weight));
-                for tr in candidates.iter().take(3) {
+            let sub = &segments[start..end];
+            let has_initial = sub.iter().any(|(_, is_init)| *is_init);
+            let py: String = sub.iter().map(|(s, _)| s.as_str()).collect();
+            let initial_count = sub.iter().filter(|(_, is_init)| *is_init).count() as u8;
+
+            if has_initial {
+                let sub_owned: Vec<(String, bool)> = sub.to_vec();
+                let mut results = trie.search_abbreviation_mixed(&sub_owned, 200, base_syllables);
+                results.sort_by_key(|r| std::cmp::Reverse(r.weight));
+                for tr in results.iter().take(3) {
                     graph.push(WordSpan {
                         start,
                         end,
                         word: tr.word.to_string(),
                         pinyin: py.clone(),
+                        initial_count,
                     });
+                }
+            } else {
+                if let Some(entries) = trie.get_all_exact(&py) {
+                    let mut candidates: Vec<&crate::trie::TrieResult> = entries.iter().collect();
+                    candidates.sort_by_key(|r| std::cmp::Reverse(r.weight));
+                    for tr in candidates.iter().take(3) {
+                        graph.push(WordSpan {
+                            start,
+                            end,
+                            word: tr.word.to_string(),
+                            pinyin: py.clone(),
+                            initial_count,
+                        });
+                    }
                 }
             }
         }
@@ -93,6 +143,13 @@ fn viterbi_compose(
 
                 let word_len_bonus = (span.word.chars().count().saturating_sub(1)) as f64 * 200.0;
 
+                // 多声母合并成词奖励：有词组词，没词才退成字
+                let abbr_bonus = if span.initial_count >= 2 {
+                    span.initial_count as f64 * 5000.0
+                } else {
+                    0.0
+                };
+
                 let ngram_bonus = if let (Some(last), Some(pn)) = (
                     prev.words.last().map(|w| w.word.as_str()),
                     ngram.get(profile),
@@ -105,7 +162,7 @@ fn viterbi_compose(
                     0.0
                 };
 
-                let score = prev.score + freq_score + ngram_bonus + word_len_bonus;
+                let score = prev.score + freq_score + ngram_bonus + word_len_bonus + abbr_bonus;
 
                 dp[span.end].push(ComposePath { words, score });
             }
@@ -160,6 +217,67 @@ mod tests {
         let base = load_base_syllables(&root);
         let segs = segment_syllables("wowangjichongdianle", &freq, &base);
         assert_eq!(segs, vec!["wo","wangji","chongdian","le"]);
+    }
+
+    #[test]
+    fn test_segment_for_compose_mixed_pinyin() {
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = crate::trie::Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+        let freq = load_syllable_freq(&root);
+        let base = load_base_syllables(&root);
+
+        // 混拼: jtdayouxi = j(beginning) t(beginning) da(full) youxi(full)
+        let segs = segment_for_compose("jtdayouxi", &trie, &freq, &base);
+        let pinyins: Vec<&str> = segs.iter().map(|(s, _)| s.as_str()).collect();
+        let initials: Vec<bool> = segs.iter().map(|(_, is_init)| *is_init).collect();
+        println!("segs: {:?}, initials: {:?}", pinyins, initials);
+        // 应该能分出声母段和全拼段
+        assert_eq!(pinyins, vec!["j", "t", "da", "youxi"]);
+        assert_eq!(initials, vec![true, true, false, false]);
+
+        // 纯全拼不应该被误判为混拼
+        let segs2 = segment_for_compose("wowangjichongdianle", &trie, &freq, &base);
+        let initials2: Vec<bool> = segs2.iter().map(|(_, is_init)| *is_init).collect();
+        assert!(initials2.iter().all(|b| !b), "full pinyin should not have initials");
+    }
+
+    #[test]
+    fn test_compose_mixed_abbreviation() {
+        use std::path::PathBuf;
+        use arc_swap::ArcSwap;
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = crate::trie::Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+
+        let freq = load_syllable_freq(&root);
+        let base = load_base_syllables(&root);
+
+        let ngram = Arc::new(ArcSwap::new(Arc::new(
+            HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()
+        )));
+
+        // 混拼: jtdayouxi → "有词组词"，今天(2声母)胜于就/太(单声母)
+        let paths = compose("jtdayouxi", &trie, &ngram.load(), &freq, &base, "chinese");
+        println!("Mixed compose paths: {} found", paths.len());
+        for p in &paths {
+            let text: String = p.words.iter().map(|w| w.word.as_str()).collect();
+            println!("  path: {} (score={:.3})", text, p.score);
+        }
+        assert!(!paths.is_empty(), "Mixed abbreviation should produce compose paths");
+
+        let top_text: String = paths[0].words.iter().map(|w| w.word.as_str()).collect();
+        assert!(top_text.starts_with("今天"), "Best path should start with 今天, got {}", top_text);
     }
 
     #[test]

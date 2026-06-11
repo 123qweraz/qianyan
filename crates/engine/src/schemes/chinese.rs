@@ -78,54 +78,7 @@ impl ChineseScheme {
     /// 左到右贪心分段：先匹配最长全音节，否则匹配声母（zh/ch/sh 占 2 字符）
     /// 返回 (segment, is_initial) 对
     pub fn segment_for_abbreviation(input: &str, trie: &crate::trie::Trie) -> Vec<(String, bool)> {
-        let two_initials: &[&str] = &["zh", "ch", "sh"];
-        let single_initials: &[char] = &['b','p','m','f','d','t','n','l','g','k','h',
-            'j','q','x','r','z','c','s','y','w'];
-
-        let mut result = Vec::new();
-        let n = input.len();
-        let mut pos = 0;
-
-        while pos < n {
-            let max_len = (n - pos).min(6);
-            let mut matched = false;
-            for len in (2..=max_len).rev() {
-                if input.is_char_boundary(pos + len) {
-                    let candidate = &input[pos..pos + len];
-                    if trie.index.contains_key(candidate) {
-                        result.push((candidate.to_string(), false));
-                        pos += len;
-                        matched = true;
-                        break;
-                    }
-                }
-            }
-            if matched { continue; }
-
-            // 2. 尝试双字符声母 zh ch sh
-            if n - pos >= 2 {
-                let candidate = &input[pos..pos + 2];
-                if two_initials.contains(&candidate) {
-                    result.push((candidate.to_string(), true));
-                    pos += 2;
-                    continue;
-                }
-            }
-
-            // 3. 单字符声母
-            let ch = match input[pos..].chars().next() {
-                Some(c) => c,
-                None => break,
-            };
-            if single_initials.contains(&ch) {
-                result.push((ch.to_string(), true));
-                pos += ch.len_utf8();
-            } else {
-                break;
-            }
-        }
-
-        result
+        crate::pipeline::compose_utils::segment_for_abbreviation(input, trie)
     }
 }
 

@@ -3,6 +3,22 @@ use std::collections::{HashMap, HashSet};
 use crate::trie::Trie;
 use crate::pipeline::segmentation::DefaultSegmentor;
 
+/// 合法拼音声母（含双字符 zh/ch/sh）
+pub const TWO_INITIALS: &[&str] = &["zh", "ch", "sh"];
+pub const SINGLE_INITIALS: &[char] = &[
+    'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h',
+    'j', 'q', 'x', 'r', 'z', 'c', 's', 'y', 'w',
+];
+
+/// 判断字符串是否为合法拼音声母
+pub fn is_initial(s: &str) -> bool {
+    match s.len() {
+        2 => TWO_INITIALS.contains(&s),
+        1 => s.chars().next().is_some_and(|c| SINGLE_INITIALS.contains(&c)),
+        _ => false,
+    }
+}
+
 /// 用 Viterbi DP 分割拼音串为音节序列
 pub fn segment_base(
     input: &str,
@@ -13,6 +29,59 @@ pub fn segment_base(
         return vec![];
     }
     DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables)
+}
+
+/// 左到右贪心分段：先匹配最长全音节，否则匹配声母
+/// 返回 (segment, is_initial) 对
+pub fn segment_for_abbreviation(input: &str, trie: &Trie) -> Vec<(String, bool)> {
+    let mut result = Vec::new();
+    let n = input.len();
+    let mut pos = 0;
+
+    while pos < n {
+        let max_len = (n - pos).min(6);
+        let mut matched = false;
+
+        // 1. 尝试匹配完整拼音音节（2~6字符）
+        for len in (2..=max_len).rev() {
+            if input.is_char_boundary(pos + len) {
+                let candidate = &input[pos..pos + len];
+                if trie.index.contains_key(candidate) {
+                    result.push((candidate.to_string(), false));
+                    pos += len;
+                    matched = true;
+                    break;
+                }
+            }
+        }
+        if matched {
+            continue;
+        }
+
+        // 2. 尝试双字符声母 zh ch sh
+        if n - pos >= 2 {
+            let candidate = &input[pos..pos + 2];
+            if TWO_INITIALS.contains(&candidate) {
+                result.push((candidate.to_string(), true));
+                pos += 2;
+                continue;
+            }
+        }
+
+        // 3. 单字符声母
+        let ch = match input[pos..].chars().next() {
+            Some(c) => c,
+            None => break,
+        };
+        if SINGLE_INITIALS.contains(&ch) {
+            result.push((ch.to_string(), true));
+            pos += ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+
+    result
 }
 
 /// 回溯生成所有合法分割（每段 1~4 个 base 音节，且 pinyin 必须在 trie 有词）
