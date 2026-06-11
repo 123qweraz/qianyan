@@ -74,6 +74,25 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
             let out = Arc::from(ctx.session.buffer.as_str());
             commit_candidate(ctx, out, 99)
         }
+        Command::CommitEnglishAux => {
+            if ctx.session.candidates.is_empty() {
+                return Action::Consume;
+            }
+            let idx = ctx.session.selected;
+            if let Some(cand) = ctx.session.candidates.get(idx) {
+                let english = cand.english_aux.to_string();
+                if english.is_empty() {
+                    return Action::Consume;
+                }
+                let del = ctx.session.phantom_text.chars().count();
+                ctx.session.clear_composing();
+                return Action::DeleteAndEmit {
+                    delete: del,
+                    insert: english,
+                };
+            }
+            Action::Consume
+        }
         Command::Clear => {
             ctx.session_state.commit_history.clear();
             let del = ctx.session.phantom_text.chars().count();

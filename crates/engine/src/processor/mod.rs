@@ -263,6 +263,7 @@ impl Processor {
                         VirtualKey::L => return self.execute_command(Command::NextCandidate),
                         VirtualKey::J => return self.execute_command(Command::NextPage),
                         VirtualKey::K => return self.execute_command(Command::PrevPage),
+                        VirtualKey::O => return self.execute_command(Command::CommitEnglishAux),
                         _ => {
                             self.ctx.session.nav_mode = false;
                         }
@@ -371,6 +372,10 @@ impl Processor {
             if matches!(self.ctx.session.state, ImeState::Composing | ImeState::Selecting)
                 && has_candidates
             {
+                // Alt+Space: 输出当前候选词的英文释义
+                if key == VirtualKey::Space && alt_pressed && !ctrl_pressed {
+                    return self.execute_command(Command::CommitEnglishAux);
+                }
                 if self.ctx.config.page_up_keys().contains(&key) {
                     return self.execute_command(Command::PrevPage);
                 }

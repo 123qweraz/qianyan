@@ -33,6 +33,7 @@ pub enum Command {
     SelectChar(usize),
     Commit,
     CommitRaw,
+    CommitEnglishAux,
     Clear,
 }
 

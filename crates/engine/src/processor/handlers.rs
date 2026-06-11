@@ -110,6 +110,7 @@ pub fn handle_composing(
             VirtualKey::L => return commands::execute_command(ctx, Command::NextCandidate),
             VirtualKey::K => return commands::execute_command(ctx, Command::PrevPage),
             VirtualKey::J => return commands::execute_command(ctx, Command::NextPage),
+            VirtualKey::O => return commands::execute_command(ctx, Command::CommitEnglishAux),
             _ => {}
         }
         // 导航编辑键（可通过配置修改）
