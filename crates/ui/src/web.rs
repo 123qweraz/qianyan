@@ -136,8 +136,27 @@ impl WebServer {
             .fallback(index_handler)
             .layer(middleware::from_fn(activity_layer))
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
-            .layer(Extension(ime_handle))
+            .layer(Extension(ime_handle.clone()))
             .with_state(state);
+
+        // Idle timeout: 如果 5 分钟内无 HTTP 请求则自动关闭
+        let last_activity = ime_handle.last_activity.clone();
+        let shutdown_tx_idle = ime_handle.shutdown_tx.clone();
+        let idle_timeout = std::time::Duration::from_secs(300);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                let last = last_activity.load(std::sync::atomic::Ordering::Relaxed);
+                if last > 0 && now - last > idle_timeout.as_secs() {
+                    let _ = shutdown_tx_idle.send(true);
+                    break;
+                }
+            }
+        });
 
         let mut current_port = self.port;
         loop {

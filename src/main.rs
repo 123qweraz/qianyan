@@ -412,8 +412,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     }
                                 }
                             }
-                            // Subprocess disconnected; allow restart
+                            // Subprocess disconnected; kill child if still alive, allow restart
                             if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
+                                if let Some(ref mut child) = *c {
+                                    let _ = child.kill();
+                                    let _ = child.wait();
+                                }
                                 *c = None;
                             }
                             WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
