@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::trie::Trie;
 use fst::{IntoStreamer, Streamer};
 use qianyan_ime_core::config::FuzzyPinyinConfig;
@@ -14,6 +16,8 @@ pub fn find_similar_pinyin(
     input: &str,
     trie: &Trie,
     fuzzy: Option<&FuzzyPinyinConfig>,
+    syllable_freq: &HashMap<String, u64>,
+    base_syllables: &HashSet<String>,
 ) -> Vec<PinyinMatch> {
     // 长输入只做 L0+L1（精确+模糊），跳过昂贵的 L2+L3
     let long_input = input.len() > 12;
@@ -24,7 +28,7 @@ pub fn find_similar_pinyin(
     try_add(input.to_string(), 0.0, trie, &mut seen, &mut matches);
 
     // L1: segment-based fuzzy variants — cost 0.2 per fuzzy segment
-    l1_fuzzy_variants(input, trie, fuzzy, &mut seen, &mut matches);
+    l1_fuzzy_variants(input, trie, fuzzy, syllable_freq, base_syllables, &mut seen, &mut matches);
 
     // L2: adjacent transposition — cost 0.5 per swap
     if !long_input {
@@ -62,6 +66,8 @@ fn l1_fuzzy_variants(
     input: &str,
     trie: &Trie,
     fuzzy: Option<&FuzzyPinyinConfig>,
+    syllable_freq: &HashMap<String, u64>,
+    base_syllables: &HashSet<String>,
     seen: &mut std::collections::HashSet<String>,
     matches: &mut Vec<PinyinMatch>,
 ) {
@@ -69,7 +75,7 @@ fn l1_fuzzy_variants(
         Some(f) => f,
         None => return,
     };
-    let segs = crate::pipeline::compose::segment_syllables(input);
+    let segs = crate::pipeline::compose::segment_syllables(input, syllable_freq, base_syllables);
     if segs.is_empty() || (segs.len() == 1 && segs[0].len() >= input.len()) {
         return;
     }

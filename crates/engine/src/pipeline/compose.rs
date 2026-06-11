@@ -1,11 +1,14 @@
+use std::collections::{HashMap, HashSet};
+
 use crate::trie::Trie;
+use crate::pipeline::segmentation::DefaultSegmentor;
 
 #[derive(Debug, Clone)]
 pub struct WordSpan {
     pub start: usize,
     pub end: usize,
     pub word: String,
-    pub pinyin: String,  // 该词对应的拼音，用于查 syllable_freq
+    pub pinyin: String,
 }
 
 #[derive(Debug, Clone)]
@@ -14,44 +17,16 @@ pub struct ComposePath {
     pub score: f64,
 }
 
-fn load_syllables() -> std::collections::HashSet<String> {
-    static SYLLABLES: std::sync::OnceLock<std::collections::HashSet<String>> = std::sync::OnceLock::new();
-    let set = SYLLABLES.get_or_init(|| {
-        let paths = [
-            std::path::PathBuf::from("dicts/chinese/single_syllables.txt"),
-            std::path::PathBuf::from("../dicts/chinese/single_syllables.txt"),
-            std::path::PathBuf::from("../../dicts/chinese/single_syllables.txt"),
-        ];
-        match paths.iter().find_map(|p| std::fs::read_to_string(p).ok()) {
-            Some(c) => c.lines().filter(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()).collect(),
-            None => std::collections::HashSet::new(),
-        }
-    });
-    set.clone()
-}
-
-pub fn segment_syllables(pinyin: &str) -> Vec<String> {
-    let sylls = load_syllables();
-    let mut segs = Vec::new();
-    let mut pos = 0;
-    while pos < pinyin.len() {
-        let max_len = (pinyin.len() - pos).min(6);
-        let mut matched = false;
-        for len in (1..=max_len).rev() {
-            let end = pos + len;
-            if pinyin.is_char_boundary(end) && sylls.contains(&pinyin[pos..end]) {
-                segs.push(pinyin[pos..end].to_string());
-                pos = end;
-                matched = true;
-                break;
-            }
-        }
-        if !matched {
-            segs.push(pinyin[pos..].to_string());
-            break;
-        }
+/// 用 Viterbi DP 分割拼音串为音节序列
+pub fn segment_syllables(
+    pinyin: &str,
+    syllable_freq: &HashMap<String, u64>,
+    base_syllables: &HashSet<String>,
+) -> Vec<String> {
+    if pinyin.is_empty() {
+        return vec![];
     }
-    segs
+    DefaultSegmentor::viterbi_segment(pinyin, syllable_freq, base_syllables)
 }
 
 pub fn compose(
@@ -59,9 +34,10 @@ pub fn compose(
     trie: &Trie,
     ngram: &crate::config_manager::UserDictData,
     syllable_freq: &std::collections::HashMap<String, u64>,
+    base_syllables: &std::collections::HashSet<String>,
     profile: &str,
 ) -> Vec<ComposePath> {
-    let segs = segment_syllables(pinyin);
+    let segs = segment_syllables(pinyin, syllable_freq, base_syllables);
     if segs.len() < 2 { return Vec::new(); }
     let graph = build_word_graph(&segs, trie);
     viterbi_compose(&graph, segs.len(), syllable_freq, ngram, profile)
@@ -69,32 +45,25 @@ pub fn compose(
 
 fn build_word_graph(segments: &[String], trie: &Trie) -> Vec<WordSpan> {
     let n = segments.len();
-    let mut best: std::collections::HashMap<(usize, usize), (String, String)> = std::collections::HashMap::new();
+    let mut graph = Vec::new();
     for start in 0..n {
         let max_k = 4.min(n - start);
         for k in 1..=max_k {
             let end = start + k;
             let py: String = segments[start..end].concat();
             if let Some(entries) = trie.get_all_exact(&py) {
-                if let Some(tr) = entries.iter().max_by_key(|r| r.weight) {
-                    let key = (start, end);
-                    // 总是取最高频词
-                    best.entry(key).or_insert_with(|| (tr.word.to_string(), py.clone()));
+                // 每个拼音段保留 top-3 词，增加 Viterbi 路径多样性
+                let mut candidates: Vec<&crate::trie::TrieResult> = entries.iter().collect();
+                candidates.sort_by_key(|r| std::cmp::Reverse(r.weight));
+                for tr in candidates.iter().take(3) {
+                    graph.push(WordSpan {
+                        start,
+                        end,
+                        word: tr.word.to_string(),
+                        pinyin: py.clone(),
+                    });
                 }
             }
-        }
-    }
-    // 也对每个key取最高频的：重新扫描一次确保是全局最高
-    let mut graph = Vec::new();
-    for ((start, end), (word, py)) in best {
-        // 重新取一次确保是最高频
-        let py_check = segments[start..end].concat();
-        if let Some(entries) = trie.get_all_exact(&py_check) {
-            if let Some(tr) = entries.iter().max_by_key(|r| r.weight) {
-                graph.push(WordSpan { start, end, word: tr.word.to_string(), pinyin: py_check });
-            }
-        } else {
-            graph.push(WordSpan { start, end, word, pinyin: py });
         }
     }
     graph
@@ -119,21 +88,24 @@ fn viterbi_compose(
                 let mut words = prev.words.clone();
                 words.push(span.clone());
 
-                // 核心：用 syllable_freq 作为主得分（不在表 = 0 = 惩罚单字）
                 let freq = *syllable_freq.get(&span.pinyin).unwrap_or(&0) as f64;
+                let freq_score = if freq > 0.0 { freq.log2() * 100.0 } else { 0.0 };
+
+                let word_len_bonus = (span.word.chars().count().saturating_sub(1)) as f64 * 200.0;
+
                 let ngram_bonus = if let (Some(last), Some(pn)) = (
                     prev.words.last().map(|w| w.word.as_str()),
                     ngram.get(profile),
                 ) {
                     pn.get(last)
                         .and_then(|e| e.iter().find(|(w, _)| w == &span.word))
-                        .map(|(_, c)| ((*c).min(10) as f64 + 1.0).ln() * 3.0)
+                        .map(|(_, c)| (*c).min(10) as f64 * 500.0)
                         .unwrap_or(0.0)
                 } else {
                     0.0
                 };
 
-                let score = prev.score + freq * 0.001 + ngram_bonus;
+                let score = prev.score + freq_score + ngram_bonus + word_len_bonus;
 
                 dp[span.end].push(ComposePath { words, score });
             }
@@ -160,55 +132,34 @@ fn viterbi_compose(
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_segment_syllables() {
-        let segs = segment_syllables("wowangjichongdianle");
-        assert_eq!(segs, vec!["wo","wang","ji","chong","dian","le"]);
+    fn load_syllable_freq(root: &std::path::Path) -> HashMap<String, u64> {
+        let path = root.join("dicts/chinese/syllable_freq.txt");
+        let content = std::fs::read_to_string(path).unwrap();
+        content.lines().filter_map(|l| {
+            let mut parts = l.trim().split_whitespace();
+            let key = parts.next()?.to_string();
+            let val: u64 = parts.next()?.parse().ok()?;
+            Some((key, val))
+        }).collect()
+    }
+
+    fn load_base_syllables(root: &std::path::Path) -> HashSet<String> {
+        let paths = [
+            root.join("dicts/chinese/single_syllables.txt"),
+        ];
+        paths.iter().find_map(|p| std::fs::read_to_string(p).ok())
+            .map(|c| c.lines().filter(|l| !l.trim().is_empty()).map(|l| l.trim().to_string()).collect())
+            .unwrap_or_default()
     }
 
     #[test]
-    fn test_pipeline_segmentor() {
-        use std::path::PathBuf;
-        use std::sync::Arc;
-        use arc_swap::ArcSwap;
-
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    fn test_segment_syllables() {
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let root = manifest_dir.parent().unwrap().parent().unwrap();
-        let mut trie_paths = std::collections::HashMap::new();
-        trie_paths.insert("chinese".to_string(), (
-            root.join("data/chinese/trie.index"),
-            root.join("data/chinese/trie.data"),
-        ));
-        let syllable_freq: std::collections::HashMap<String, u64> = {
-            let path = root.join("dicts/chinese/syllable_freq.txt");
-            let content = std::fs::read_to_string(path).unwrap();
-            content.lines().filter_map(|l| {
-                let mut parts = l.trim().split_whitespace();
-                let key = parts.next()?.to_string();
-                let val: u64 = parts.next()?.parse().ok()?;
-                Some((key, val))
-            }).collect()
-        };
-        let shared = Arc::new(ArcSwap::new(Arc::new(
-            std::collections::HashMap::<String, std::collections::HashMap<String, Vec<(String, u32)>>>::new()
-        )));
-        let engine = crate::pipeline::SearchEngine::new(
-            trie_paths,
-            Arc::new(syllable_freq),
-            shared.clone(),
-            shared.clone(),
-            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::new()))),
-            Arc::new(std::collections::HashMap::new()),
-        );
-        assert!(!engine.base_syllables.is_empty(), "base_syllables should be loaded");
-        println!("base_syllables loaded: {} entries", engine.base_syllables.len());
-
-        // Test Viterbi segmentation via engine's pipeline segmentor
-        let segmentor = crate::pipeline::segmentation::DefaultSegmentor;
-        use crate::pipeline::segmentation::Segmentor;
-        let segs = segmentor.segment("wowangjichongdianle", "", &engine.syllable_freq, &engine.base_syllables);
-        println!("segmentor({:?}) -> {:?}", "wowangjichongdianle", segs);
-        assert!(!segs.is_empty(), "segmentor should produce segments");
+        let freq = load_syllable_freq(&root);
+        let base = load_base_syllables(&root);
+        let segs = segment_syllables("wowangjichongdianle", &freq, &base);
+        assert_eq!(segs, vec!["wo","wangji","chongdian","le"]);
     }
 
     #[test]
@@ -225,23 +176,13 @@ mod tests {
             true,
         ).expect("Failed to load trie");
 
-        // Load syllable_freq.txt
-        let freq: std::collections::HashMap<String, u64> = {
-            let content = std::fs::read_to_string(
-                root.join("dicts/chinese/syllable_freq.txt")
-            ).unwrap();
-            content.lines().map(|l| {
-                let mut parts = l.trim().split_whitespace();
-                let key = parts.next().unwrap_or("").to_string();
-                let val: u64 = parts.next().unwrap_or("0").parse().unwrap_or(0);
-                (key, val)
-            }).collect()
-        };
+        let freq = load_syllable_freq(&root);
+        let base = load_base_syllables(&root);
 
         let ngram = Arc::new(ArcSwap::new(Arc::new(
             std::collections::HashMap::<String, std::collections::HashMap<String, Vec<(String, u32)>>>::new()
         )));
-        let paths = compose("wowangjichongdianle", &trie, &ngram.load(), &freq, "chinese");
+        let paths = compose("wowangjichongdianle", &trie, &ngram.load(), &freq, &base, "chinese");
         println!("Compose paths: {} found", paths.len());
         for p in &paths {
             let text: String = p.words.iter().map(|w| w.word.as_str()).collect();

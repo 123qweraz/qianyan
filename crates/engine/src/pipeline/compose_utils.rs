@@ -1,30 +1,18 @@
-use crate::trie::Trie;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-/// 只用 base_syllables 做最长贪心匹配（第一遍，不做 DP 合并）
-pub fn segment_base(input: &str, base_syllables: &HashSet<String>) -> Vec<String> {
-    let mut segs = Vec::new();
-    let mut pos = 0;
-    while pos < input.len() {
-        let max_len = 12.min(input.len() - pos);
-        let mut matched = false;
-        for len in (1..=max_len).rev() {
-            let end = pos + len;
-            if input.is_char_boundary(end) {
-                let part = &input[pos..end];
-                if base_syllables.contains(part) {
-                    segs.push(part.to_string());
-                    pos = end;
-                    matched = true;
-                    break;
-                }
-            }
-        }
-        if !matched {
-            break;
-        }
+use crate::trie::Trie;
+use crate::pipeline::segmentation::DefaultSegmentor;
+
+/// 用 Viterbi DP 分割拼音串为音节序列
+pub fn segment_base(
+    input: &str,
+    syllable_freq: &HashMap<String, u64>,
+    base_syllables: &HashSet<String>,
+) -> Vec<String> {
+    if input.is_empty() {
+        return vec![];
     }
-    segs
+    DefaultSegmentor::viterbi_segment(input, syllable_freq, base_syllables)
 }
 
 /// 回溯生成所有合法分割（每段 1~4 个 base 音节，且 pinyin 必须在 trie 有词）

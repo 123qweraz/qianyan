@@ -484,9 +484,8 @@ impl ComposeTranslator {
         Self { trie, base_syllables, syllable_freq }
     }
 
-    // TODO: extract segment_base to shared utility (duplicated in schemes/chinese.rs)
     fn segment_base(&self, input: &str) -> Vec<String> {
-        crate::pipeline::compose_utils::segment_base(input, &self.base_syllables)
+        crate::pipeline::compose_utils::segment_base(input, &self.syllable_freq, &self.base_syllables)
     }
 
     fn backtrack_partitions(

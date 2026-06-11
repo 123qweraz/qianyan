@@ -177,24 +177,15 @@ impl InputScheme for ChineseScheme {
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        // 根据生僻字模式调整候选上限：显示生僻字时需要更多结果空间
-        let min_results_needed = match context.config.input.rare_char_mode {
-            qianyan_ime_core::config::RareCharMode::CommonOnly => 500,
-            _ => 2000, // IncludeRare / OnlyRare 需要更大的结果空间
-        };
         let max_results = match context.config.input.rare_char_mode {
             qianyan_ime_core::config::RareCharMode::CommonOnly => 500,
             _ => 2000,
         };
+        let min_results_needed = max_results;
 
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
 
-    // 用户词典精确匹配（最高优先级，排在最前）
-    // 前缀匹配延后到所有策略之后，避免阻塞简拼/组句/纠错
-    let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
-    if let Some(profile) = context.active_profiles.first() {
-        let dict = context.user_dict.load();
-        // 辅助函数：从系统词典查词，返回 (trad, tone, en, stroke_aux, flags)
+        // 辅助函数：从系统词典查词
         let lookup_aux = |word: &str, py: &str| -> (String, String, String, String, u8) {
             if let Some(trie) = context.tries.get("chinese") {
                 if let Some(entries) = trie.get_all_exact(py) {
@@ -206,80 +197,80 @@ impl InputScheme for ChineseScheme {
             }
             (word.to_string(), String::new(), String::new(), String::new(), 0)
         };
-        if let Some(profile_dict) = dict.get(profile) {
-            let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
-            let threshold = context.config.input.word_learn_threshold;
-            if has_vowel {
-                // 精确匹配
-                if let Some(words) = profile_dict.get(&pinyin_key) {
-                    for (word, weight) in words {
-                        if *weight < threshold { continue; }
-                        if seen.insert(word.clone()) {
-                            let (trad, tone, en, sa, flags) = lookup_aux(word, &pinyin_key);
-                            final_results.push(SchemeCandidate {
-                                text: word.clone(),
-                                simplified: word.clone(),
-                                traditional: trad,
-                                tone,
-                                english: en,
-                                stroke_aux: sa,
-                                weight: *weight,
-                                match_level: 3,
-                                flags,
-                            });
+
+        fn build_cand(
+            word: String, trad: String, tone: String, en: String, sa: String,
+            weight: u32, match_level: u8, flags: u8,
+        ) -> SchemeCandidate {
+            let mut cand = SchemeCandidate::new(word.clone(), weight);
+            cand.simplified = word;
+            cand.traditional = trad;
+            cand.tone = tone;
+            cand.english = en;
+            cand.stroke_aux = sa;
+            cand.match_level = match_level;
+            cand.flags = flags;
+            cand
+        }
+
+        // ── 用户词典匹配 ──
+        let mut user_prefix_matches: Vec<SchemeCandidate> = Vec::new();
+        if let Some(profile) = context.active_profiles.first() {
+            let dict = context.user_dict.load();
+            if let Some(profile_dict) = dict.get(profile) {
+                let has_vowel = pinyin_key.chars().any(|c| matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'v'));
+                let threshold = context.config.input.word_learn_threshold;
+                if has_vowel {
+                    // 精确匹配
+                    if let Some(words) = profile_dict.get(&pinyin_key) {
+                        for (word, weight) in words {
+                            if *weight < threshold { continue; }
+                            if seen.insert(word.clone()) {
+                                let (trad, tone, en, sa, flags) = lookup_aux(word, &pinyin_key);
+                                final_results.push(build_cand(
+                                    word.clone(), trad, tone, en, sa, *weight, 3, flags,
+                                ));
+                            }
                         }
                     }
-                } else {
-                    // 前缀匹配 → 暂存到末尾再推入，不阻塞其他策略
-                    let max_extra = pinyin_key.len() + 5;
-                    let mut prefix_keys: Vec<&String> = profile_dict
-                        .keys()
-                        .filter(|k| k.starts_with(&pinyin_key) && k.len() <= max_extra)
-                        .collect();
-                    prefix_keys.sort_by_key(|k| k.len());
-                    for key in prefix_keys {
-                        if let Some(words) = profile_dict.get(key) {
-                            for (word, weight) in words {
-                                if *weight < threshold { continue; }
-                                if seen.insert(word.clone()) {
-                                    let (trad, tone, en, sa, flags) = lookup_aux(word, key);
-                                    user_prefix_matches.push(SchemeCandidate {
-                                        text: word.clone(),
-                                        simplified: word.clone(),
-                                        traditional: trad,
-                                        tone,
-                                        english: en,
-                                        stroke_aux: sa,
-                                        weight: ((*weight as f64 * 0.8).max(1.0)) as u32,
-                                        match_level: 0,
-                                        flags,
-                                    });
+                    // 前缀匹配 → match_level=1，参与正常排序
+                    {
+                        let max_extra = pinyin_key.len() + 5;
+                        let mut prefix_keys: Vec<&String> = profile_dict
+                            .keys()
+                            .filter(|k| k.starts_with(&pinyin_key) && k.len() <= max_extra && *k != &pinyin_key)
+                            .collect();
+                        prefix_keys.sort_by_key(|k| k.len());
+                        for key in prefix_keys {
+                            if let Some(words) = profile_dict.get(key) {
+                                for (word, weight) in words {
+                                    if *weight < threshold { continue; }
+                                    if seen.insert(word.clone()) {
+                                        let (trad, tone, en, sa, flags) = lookup_aux(word, key);
+                                        user_prefix_matches.push(build_cand(
+                                            word.clone(), trad, tone, en, sa,
+                                            ((*weight as f64 * 0.8).max(1.0)) as u32, 1, flags,
+                                        ));
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } else if context.config.input.enable_abbreviation_matching {
-                if let Some(trie) = context.tries.get("chinese") {
-                    let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, trie);
-                    if !abbr_segs.is_empty() {
-                        for (pinyin, words) in profile_dict.iter() {
-                            if match_user_dict_abbreviation(pinyin, &abbr_segs, trie, context.single_syllables) {
-                                for (word, weight) in words {
-                                    if *weight < threshold { continue; }
-                                    if seen.insert(word.clone()) {
-                                        let (trad, tone, en, sa, flags) = lookup_aux(word, pinyin);
-                                        user_prefix_matches.push(SchemeCandidate {
-                                            text: word.clone(),
-                                            simplified: word.clone(),
-                                            traditional: trad,
-                                            tone,
-                                            english: en,
-                                            stroke_aux: sa,
-                                            weight: ((*weight as f64 * 0.8).max(1.0)) as u32,
-                                            match_level: 0,
-                                            flags,
-                                        });
+                } else if context.config.input.enable_abbreviation_matching {
+                    if let Some(trie) = context.tries.get("chinese") {
+                        let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, trie);
+                        if !abbr_segs.is_empty() {
+                            for (pinyin, words) in profile_dict.iter() {
+                                if match_user_dict_abbreviation(pinyin, &abbr_segs, trie, context.single_syllables) {
+                                    for (word, weight) in words {
+                                        if *weight < threshold { continue; }
+                                        if seen.insert(word.clone()) {
+                                            let (trad, tone, en, sa, flags) = lookup_aux(word, pinyin);
+                                            user_prefix_matches.push(build_cand(
+                                                word.clone(), trad, tone, en, sa,
+                                                ((*weight as f64 * 0.8).max(1.0)) as u32, 1, flags,
+                                            ));
+                                        }
                                     }
                                 }
                             }
@@ -288,10 +279,8 @@ impl InputScheme for ChineseScheme {
                 }
             }
         }
-    }
 
-        // 策略 1: 全量/简拼/前缀匹配
-        // 原始切分检索
+        // ── 策略 1: 逐段精确 / 前缀匹配 ──
         let mut last_matches_raw = Vec::new();
         for (i, part) in raw_parsed.iter().enumerate() {
             let mut matches = Vec::new();
@@ -306,64 +295,40 @@ impl InputScheme for ChineseScheme {
                         }
                         for tr in exact.iter().take(n) {
                             matches.push((
-                                tr.word.to_string(),
-                                tr.trad.to_string(),
-                                tr.tone.to_string(),
-                                tr.en.to_string(),
-                                tr.stroke_aux.to_string(),
-                                tr.weight,
-                                3,
-                                tr.flags,
+                                tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
+                                tr.en.to_string(), tr.stroke_aux.to_string(), tr.weight, 3u8, tr.flags,
                             ));
                         }
-                    } else if context.config.input.enable_prefix_matching && !py.is_empty() {
-                            let matcher = fst::automaton::Str::new(py).starts_with();
-                            let mut comp_keys: Vec<String> = Vec::new();
-                            let max_key_len = if py.len() <= 3 { 6usize } else { py.len() + 2 };
-                            let mut stream = d.index.search(matcher).into_stream();
-                            while let Some((key_bytes, _)) = stream.next() {
-                                if let Ok(key) = std::str::from_utf8(key_bytes) {
-                                    let klen = key.len();
-                                    if klen > py.len() && klen <= max_key_len {
-                                        comp_keys.push(key.to_string());
-                                        if comp_keys.len() >= 30 { break; }
-                                    }
-                                }
-                            }
-                            if comp_keys.is_empty() {
-                                // 无前缀补全匹配，留空让简拼分支处理
-                            } else {
-                                comp_keys.sort_by_key(|a| a.len());
-                            }
-                            comp_keys.truncate(10);
-                            for key in comp_keys {
-                                if let Some(entries) = d.get_all_exact(&key) {
-                                    if py.len() <= 3 && !entries.iter().any(|tr| tr.word.chars().count() == 1) {
-                                        continue;
-                                    }
-                                    for tr in entries.iter() {
-                                        matches.push((
-                                            tr.word.to_string(),
-                                            tr.trad.to_string(),
-                                            tr.tone.to_string(),
-                                            tr.en.to_string(),
-                                            tr.stroke_aux.to_string(),
-                                            tr.weight,
-                                            1,
-                                            tr.flags,
-                                        ));
-                                        if matches.len() >= max_results {
-                                            break;
-                                        }
-                                    }
-                                }
-                                if matches.len() >= max_results {
-                                    break;
+                    }
+                    if i == raw_parsed.len() - 1 && context.config.input.enable_prefix_matching && !py.is_empty() {
+                        let matcher = fst::automaton::Str::new(py).starts_with();
+                        let mut comp_keys: Vec<String> = Vec::new();
+                        let max_key_len = if py.len() <= 3 { 6usize } else { py.len() + 2 };
+                        let mut stream = d.index.search(matcher).into_stream();
+                        while let Some((key_bytes, _)) = stream.next() {
+                            if let Ok(key) = std::str::from_utf8(key_bytes) {
+                                let klen = key.len();
+                                if klen > py.len() && klen <= max_key_len {
+                                    comp_keys.push(key.to_string());
+                                    if comp_keys.len() >= 30 { break; }
                                 }
                             }
                         }
-                    if matches.len() >= max_results {
-                        break;
+                        comp_keys.sort_by_key(|a| a.len());
+                        comp_keys.truncate(10);
+                        for key in comp_keys {
+                            if let Some(entries) = d.get_all_exact(&key) {
+                                if py.len() <= 3 && !entries.iter().any(|tr| tr.word.chars().count() == 1) {
+                                    continue;
+                                }
+                                for tr in entries.iter() {
+                                    matches.push((
+                                        tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
+                                        tr.en.to_string(), tr.stroke_aux.to_string(), tr.weight, 1u8, tr.flags,
+                                    ));
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -377,36 +342,20 @@ impl InputScheme for ChineseScheme {
             let last_part = raw_parsed.last();
             if let Some(aux) = last_part.and_then(|p| p.stroke_aux.as_ref()) {
                 let aux_lower = aux.to_lowercase();
-                let stroke_aux_lower = m.4.to_lowercase();
-                if !stroke_aux_lower.starts_with(&aux_lower) {
-                    continue;
-                }
+                if !m.4.to_lowercase().starts_with(&aux_lower) { continue; }
             }
             if let Some(aux) = last_part.and_then(|p| p.english_aux.as_ref()) {
                 let aux_lower = aux.to_lowercase();
-                if !m
-                    .3
-                    .to_lowercase()
-                    .split(',')
-                    .any(|part: &str| part.trim().starts_with(&aux_lower))
-                {
+                if !m.3.to_lowercase().split(',').any(|part: &str| part.trim().starts_with(&aux_lower)) {
                     continue;
                 }
             }
-
             if seen.insert(m.0.clone()) {
-                let mut cand = SchemeCandidate::new(m.0, m.5);
-                cand.traditional = m.1;
-                cand.tone = m.2;
-                cand.english = m.3;
-                cand.stroke_aux = m.4;
-                cand.match_level = m.6;
-                cand.flags = m.7;
-                final_results.push(cand);
+                final_results.push(build_cand(m.0, m.1, m.2, m.3, m.4, m.5, m.6, m.7));
             }
         }
 
-        // 策略 2: 混拼/简拼检索 —— 仅在前缀补全无结果时触发
+        // ── 策略 2: 混拼/简拼检索 —— 仅策略 1 无结果时触发 ──
         if final_results.is_empty()
             && context.config.input.enable_abbreviation_matching
         {
@@ -416,62 +365,46 @@ impl InputScheme for ChineseScheme {
                     let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, 200, context.single_syllables);
                     abbr_results.sort_by_key(|r| std::cmp::Reverse(r.weight));
                     for tr in abbr_results {
-                        if final_results.len() >= max_results {
-                            break;
-                        }
+                        if final_results.len() >= max_results { break; }
                         let last_part = raw_parsed.last();
                         if let Some(aux) = last_part.and_then(|p| p.stroke_aux.as_ref()) {
                             let aux_lower = aux.to_lowercase();
-                            if !tr.stroke_aux.to_lowercase().starts_with(&aux_lower) {
-                                continue;
-                            }
+                            if !tr.stroke_aux.to_lowercase().starts_with(&aux_lower) { continue; }
                         }
                         if let Some(aux) = last_part.and_then(|p| p.english_aux.as_ref()) {
                             let aux_lower = aux.to_lowercase();
-                            if !tr
-                                .en
-                                .to_lowercase()
-                                .split(',')
-                                .any(|part: &str| part.trim().starts_with(&aux_lower))
-                            {
+                            if !tr.en.to_lowercase().split(',').any(|part: &str| part.trim().starts_with(&aux_lower)) {
                                 continue;
                             }
                         }
                         if seen.insert(tr.word.to_string()) {
-                            let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
-                            cand.traditional = tr.trad.to_string();
-                            cand.tone = tr.tone.to_string();
-                            cand.english = tr.en.to_string();
-                            cand.stroke_aux = tr.stroke_aux.to_string();
-                            cand.match_level = 2;
-                            cand.flags = tr.flags;
-                            final_results.push(cand);
+                            final_results.push(build_cand(
+                                tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
+                                tr.en.to_string(), tr.stroke_aux.to_string(), tr.weight, 2, tr.flags,
+                            ));
                         }
                     }
                 }
             }
         }
 
-        // 策略 3: 统一相似拼音纠错（换位 + 模糊 + Levenshtein）
-        // 仅在前面的策略都无结果时触发
+        // ── 策略 3: 相似拼音纠错 —— 仅前面策略都无结果时触发 ──
         if final_results.is_empty() && !query.contains(' ')
-            && context.config.input.enable_error_correction {
+            && context.config.input.enable_error_correction
+        {
             if let Some(d) = context.tries.get("chinese") {
                 let similar = crate::pipeline::find_similar_pinyin(
-                    &pinyin_key, d, Some(&context.config.input.fuzzy_config)
+                    &pinyin_key, d, Some(&context.config.input.fuzzy_config),
+                    context.syllable_freq, context.base_syllables,
                 );
                 for m in &similar {
                     if let Some(entries) = d.get_all_exact(&m.pinyin) {
                         for tr in entries.iter() {
                             if seen.insert(tr.word.to_string()) {
-                                let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
-                                cand.traditional = tr.trad.to_string();
-                                cand.tone = tr.tone.to_string();
-                                cand.english = tr.en.to_string();
-                                cand.stroke_aux = tr.stroke_aux.to_string();
-                                cand.match_level = 1;
-                                cand.flags = tr.flags;
-                                final_results.push(cand);
+                                final_results.push(build_cand(
+                                    tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
+                                    tr.en.to_string(), tr.stroke_aux.to_string(), tr.weight, 1, tr.flags,
+                                ));
                                 if final_results.len() >= max_results { break; }
                             }
                         }
@@ -481,22 +414,23 @@ impl InputScheme for ChineseScheme {
             }
         }
 
-        // 策略 4: 词图 Viterbi 组句 — 仅前面策略无结果时触发
+        // ── 策略 4: 词图 Viterbi 组句 —— 仅前面策略都无结果时触发 ──
         if final_results.is_empty() && !query.contains(' ') && !raw_parsed.is_empty() {
             if let Some(d) = context.tries.get("chinese") {
                 if pinyin_key.len() <= 24 {
                     let ngram_guard = context.ngram_history.load();
                     let profile = context.active_profiles.first().cloned().unwrap_or_default();
                     let paths = crate::pipeline::compose::compose(
-                        &pinyin_key, d, &ngram_guard, context.syllable_freq, &profile,
+                        &pinyin_key, d, &ngram_guard, context.syllable_freq, context.base_syllables, &profile,
                     );
                     for path in &paths {
                         let text: String = path.words.iter().map(|w| w.word.as_str()).collect();
                         if seen.insert(text.clone()) {
                             let weight = (path.score * 1000.0) as u32;
-                            let mut cand = SchemeCandidate::new(text, weight.max(1));
-                            cand.match_level = 3;
-                            final_results.push(cand);
+                            final_results.push(build_cand(
+                                text.clone(), text, String::new(), String::new(), String::new(),
+                                weight.max(1), 3, 0,
+                            ));
                             if final_results.len() >= max_results { break; }
                         }
                     }
@@ -504,7 +438,7 @@ impl InputScheme for ChineseScheme {
             }
         }
 
-        // 方案 4 结束 → 追加用户词前缀匹配（最低优先级，不阻塞其他策略）
+        // ── 追加用户词前缀匹配（不阻塞其他策略，但比系统结果优先级低）──
         final_results.append(&mut user_prefix_matches);
 
         final_results
@@ -552,6 +486,17 @@ impl InputScheme for ChineseScheme {
                     }
                 }
             }
+        }
+
+        // 添加 match_level 基础分，确保不同策略结果可比较
+        for c in &mut *candidates {
+            let level_base = match c.match_level {
+                3 => 30_000_000u32,
+                2 => 20_000_000,
+                1 => 10_000_000,
+                _ => 0,
+            };
+            c.weight = c.weight.saturating_add(level_base);
         }
 
         // 纯 weight 降序排序
