@@ -3,7 +3,6 @@ use crate::hosts::vkbd::Vkbd;
 use crate::hosts::evdev_host;
 use crate::hosts::wayland_host::WaylandInputHost;
 use crate::hosts::wayland_host_v1::WaylandInputHostV1;
-use qianyan_ime_core::config::LinuxConfig;
 use qianyan_ime_core::Config;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::processor::actor::ProcessorHandle;
@@ -23,30 +22,14 @@ pub fn create_input_host(
     tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>,
     _app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
 ) -> InputHostResult {
-    let linux_config = config
-        .read()
-        .map(|c| c.linux.clone())
-        .unwrap_or(LinuxConfig {
-            device_path: "/dev/input/event4".into(),
-            paste_method: "shift_insert".into(),
-            clipboard_delay_ms: 50,
-            backspace_delay_ms: 10,
-            show_slint_window: true,
-            show_notification: false,
-            show_toggle_notification: false,
-            fixed_position: true,
-            corner: "bottom-right".into(),
-            fixed_x: 40,
-            fixed_y: 40,
-            backend_type: "auto".into(),
-            keystroke_enabled: false,
-            keystroke_position: String::new(),
-            keystroke_hide_ms: 2000,
-            keystroke_display_ms: 800,
-            keystroke_font_size: 22,
-            keystroke_bg_color: "rgba(0, 0, 0, 0.78)".to_string(),
-            keystroke_text_color: "#ffffff".to_string(),
-        });
+    let linux_config = match config.read() {
+        Ok(c) => c.linux.clone(),
+        Err(e) => {
+            log::warn!("[Runtime] Config lock poisoned, using fallback device path");
+            e.into_inner().linux.clone()
+        }
+    };
+
 
     let dev_path = linux_config.device_path.clone();
     let backend = parse_backend(args, &linux_config.backend_type);

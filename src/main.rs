@@ -499,7 +499,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     std::process::exit(0);
                 }
-                qianyan_ime_ui::tray::TrayEvent::SendKey(_) => {}
+                qianyan_ime_ui::tray::TrayEvent::SendKey(key) => {
+                    log::warn!("[Tray] SendKey event not implemented: key={}", key);
+                }
             }
         }
     });

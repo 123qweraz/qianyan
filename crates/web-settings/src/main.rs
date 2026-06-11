@@ -44,15 +44,22 @@ fn main() {
     if control_port > 0 {
         std::thread::spawn(move || {
             let addr = format!("127.0.0.1:{}", control_port);
-            let stream = loop {
-                match TcpStream::connect(&addr) {
-                    Ok(s) => break s,
-                    Err(_) => {
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                        continue;
+
+            // Try to connect with max retries
+            let stream = 'connect: loop {
+                for _ in 0..50 {
+                    match TcpStream::connect(&addr) {
+                        Ok(s) => break 'connect s,
+                        Err(_) => {
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                            continue;
+                        }
                     }
                 }
+                eprintln!("[WebSettings] Failed to connect to parent after 50 retries");
+                return;
             };
+
             let mut writer = std::io::BufWriter::new(&stream);
             while let Ok(event) = tray_rx.recv() {
                 let value = match event {
@@ -73,9 +80,13 @@ fn main() {
                     _ => continue,
                 };
                 let json = serde_json::to_string(&value).unwrap_or_default();
-                let _ = writer.write_all(json.as_bytes());
-                let _ = writer.write_all(b"\n");
-                let _ = writer.flush();
+                if writer.write_all(json.as_bytes()).is_err()
+                    || writer.write_all(b"\n").is_err()
+                    || writer.flush().is_err()
+                {
+                    eprintln!("[WebSettings] Connection to parent lost, stopping event forwarder");
+                    break;
+                }
             }
         });
     }

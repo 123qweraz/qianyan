@@ -254,6 +254,10 @@ fn find_dicts_root() -> std::path::PathBuf {
 
 /// 安全地将用户提供的路径解析到基准目录下。
 /// 拒绝绝对路径、`..` 穿越，并通过 canonicalize 验证最终路径在 base 内。
+fn valid_profile_name(name: &str) -> bool {
+    !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 fn safe_join(base: &std::path::Path, user_path: &str) -> Option<std::path::PathBuf> {
     use std::path::Component;
     let p = std::path::Path::new(user_path);
@@ -1099,6 +1103,9 @@ async fn clear_user_dict(
         }
         let _ = tray_tx.send(TrayEvent::ClearUserDict(None));
     } else if let Some(ref profile) = req.profile {
+        if !valid_profile_name(profile) {
+            return StatusCode::BAD_REQUEST;
+        }
         let profile_dir = root.join(profile);
         if profile_dir.exists() {
             for file_name in &["learned.json", "usage.json", "ngrams.json"] {
@@ -1385,6 +1392,9 @@ async fn delete_user_dict_entry(
     State((_, _, tray_tx)): State<WebState>,
     Json(req): Json<DeleteUserDictRequest>,
 ) -> StatusCode {
+    if !valid_profile_name(&req.profile) {
+        return StatusCode::BAD_REQUEST;
+    }
     let root = user_dict_root();
     let profile_dir = root.join(&req.profile);
 
@@ -2736,6 +2746,9 @@ async fn import_user_data(
 
     if let Some(user_data) = body.get("user_data").and_then(|v| v.as_object()) {
         for (profile, data) in user_data {
+            if !valid_profile_name(profile) {
+                continue;
+            }
             let profile_dir = root.join(profile);
             let _ = std::fs::create_dir_all(&profile_dir);
             if let Some(data_obj) = data.as_object() {
@@ -2757,6 +2770,9 @@ async fn import_user_data(
     // 如果是旧格式 {data: {profile: {pinyin: [...]}}} 直接合并到 learned.json
     if let Some(data) = body.get("data").and_then(|v| v.as_object()) {
         for (profile, pinyin_map) in data {
+            if !valid_profile_name(profile) {
+                continue;
+            }
             let profile_dir = root.join(profile);
             let _ = std::fs::create_dir_all(&profile_dir);
             let learned_path = profile_dir.join("learned.json");
@@ -2959,13 +2975,20 @@ fn days_to_ymd(days: i64) -> (i64, u32, u32) {
 
 fn uuid_v4() -> String {
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::hash::{Hash, Hasher};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
-    let pid = std::process::id() as u64;
+    let pid = std::process::id();
+    let tid = std::thread::current().id();
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    pid.hash(&mut hasher);
+    tid.hash(&mut hasher);
+    let thread_hash = hasher.finish();
     let cnt = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let combined = (ts as u64).wrapping_add(pid << 32).wrapping_add(cnt);
-    format!("{:016x}", combined)
+    let high = (ts as u64).wrapping_mul(thread_hash).wrapping_add(cnt);
+    let low = ((ts >> 64) as u64).wrapping_mul(pid as u64).wrapping_add(cnt.wrapping_mul(thread_hash));
+    format!("{:016x}{:016x}", high, low)
 }

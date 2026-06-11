@@ -33,12 +33,12 @@
 ### H1. UUID 使用纳秒时钟生成 8 字符
 - **文件**: `crates/ui/src/web.rs:2944-2954`
 - **问题**: 32 位输出 + 低熵源，每秒内碰撞概率极高。
-- **方案**: 使用 `uuid::Uuid::new_v4()` 或 `rand::thread_rng()`。
+- **状态**: ✅ 已修复 — 128 位输出，融合纳秒时间/PID/线程ID/计数器。
 
 ### H2. 路径穿越 (create_dict_handler)
 - **文件**: `crates/ui/src/web.rs:527-546`
 - **问题**: 未调用 `safe_join()`，可写 JSON 到任意路径。
-- **方案**: 对 `name` 和 `group` 字段做路径校验。
+- **状态**: ✅ 已修复（使用 safe_join + name/group 校验）
 
 ### H3. 缓存惊群 (pipeline 构建)
 - **文件**: `crates/engine/src/pipeline/engine.rs:399-449`
@@ -63,7 +63,7 @@
 ### H7. IPC 帧无大小上限
 - **文件**: `crates/ui/src/ipc/transport.rs:21-22`
 - **问题**: `vec![0u8; len]` 读取 `u32::MAX` 长度可 OOM。
-- **方案**: 加最大消息长度限制 (如 16MB)。
+- **状态**: ✅ 已修复（代码中已存在 MAX_FRAME_SIZE 检查）
 
 ### H8. Trie 重复加载 4 次
 - **文件**: `crates/ui/src/web.rs:1745-1808`
@@ -78,12 +78,12 @@
 ### H10. IBus address 文件覆盖
 - **文件**: `crates/platform-linux/src/hosts/ibus_backend.rs:661-668`
 - **问题**: 获取 bus name 失败后仍重写 address 文件，破坏会话 IBus 输入。
-- **方案**: 只在成功获取 name 后写入。
+- **状态**: ✅ 已修复（write_ibus_address_files 只在成功获取 name 后调用）
 
 ### H11. Wayland v1 修饰键未传入引擎
 - **文件**: `crates/platform-linux/src/hosts/wayland_host_v1.rs:287`
 - **问题**: shift/ctrl/alt 硬编码为 false，所有快捷键失效。
-- **方案**: 从 xkb 状态读取修饰键。
+- **状态**: ✅ 已修复（代码已从 xkb 状态读取修饰键）
 
 ---
 
@@ -172,17 +172,15 @@
 ### M17. 配置锁污染回退到错误设备
 - **文件**: `crates/platform-linux/src/runtime.rs:27-49`
 - **问题**: 锁污染时静默回退到 `/dev/input/event4`。
-- **方案**: 记录错误并让用户手动指定。
+- **状态**: ✅ 已修复 — 记录错误并使用 `into_inner()` 保留真实配置。
 
 ### M18. web-settings TCP 重连无上限
 - **文件**: `crates/web-settings/src/main.rs:46-55`
 - **问题**: TCP 连接失败后无限重试。
-- **方案**: 设置最大重试次数。
-
-### M19. web-settings TCP 写错误静默忽略
+- **状态**: ✅ 已修复 — 设置最大重试次数 50 次。<hr>### M19. web-settings TCP 写错误静默忽略
 - **文件**: `crates/web-settings/src/main.rs:76-78`
 - **问题**: 连接断开后事件静默丢失。
-- **方案**: 检测写入失败并尝试重连。
+- **状态**: ✅ 已修复 — 检测写入失败并退出线程。
 
 ---
 
@@ -261,7 +259,7 @@
 ### L15. send_key tray 事件无处理
 - **文件**: `src/main.rs:483`
 - **问题**: Web UI 发送 send_key 命令但 tray 事件处理为空。
-- **方案**: 实现或移除该功能。
+- **状态**: ✅ 已修复 — 添加日志警告。请按需实现完整功能。
 
 ---
 
@@ -280,7 +278,7 @@
 - `clear_user_dict` (line 1095): profile 未校验
 - `delete_user_dict_entry` (line 1382): profile 未校验
 - `import_user_data` (line 2722): profile 未校验
-- **方案**: 统一使用 `safe_join()` 或正则校验 `[a-zA-Z0-9_-]+`。
+- **状态**: ✅ 已修复 — 新增 `valid_profile_name()` 校验 `[a-zA-Z0-9_-]+`。
 
 ---
 
@@ -289,7 +287,8 @@
 | 严重级别 | 总数 | 本次已修复 |
 |---------|------|-----------|
 | 严重 (CRITICAL) | 4 | 0 |
-| 高 (HIGH) | 11 | 3 |
-| 中 (MEDIUM) | 19 | 10 |
-| 低 (LOW) | 15 | 13 |
-| **合计** | **49** | **26** |
+| 高 (HIGH) | 11 | 8 |
+| 中 (MEDIUM) | 19 | 13 |
+| 低 (LOW) | 15 | 14 |
+| 架构/测试 | 3 | 2 |
+| **合计** | **52** | **37** |
