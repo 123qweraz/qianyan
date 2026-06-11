@@ -11,6 +11,7 @@ pub struct WordSpan {
     pub word: String,
     pub pinyin: String,
     pub initial_count: u8,
+    pub weight: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +130,7 @@ fn build_word_graph(
                         word: tr.word.to_string(),
                         pinyin: py.clone(),
                         initial_count,
+                        weight: tr.weight,
                     });
                 }
             } else {
@@ -145,6 +147,7 @@ fn build_word_graph(
                             word: tr.word.to_string(),
                             pinyin: py.clone(),
                             initial_count,
+                            weight: tr.weight,
                         });
                     }
                 }
@@ -185,6 +188,9 @@ fn viterbi_compose(
                     0.0
                 };
 
+                // 词典权重：常用词优先
+                let dict_bonus = span.weight as f64 * 0.01;
+
                 let ngram_bonus = if let (Some(last), Some(pn)) = (
                     prev.words.last().map(|w| w.word.as_str()),
                     ngram.get(profile),
@@ -197,7 +203,7 @@ fn viterbi_compose(
                     0.0
                 };
 
-                let score = prev.score + freq_score + ngram_bonus + word_len_bonus + abbr_bonus;
+                let score = prev.score + freq_score + ngram_bonus + word_len_bonus + abbr_bonus + dict_bonus;
 
                 dp[span.end].push(ComposePath { words, score });
             }
