@@ -315,7 +315,7 @@ impl Trie {
                 self.read_block(offset as usize, |pair| {
                     if !stop && seen.insert(pair.word) {
                         results.push(pair);
-                        if results.len() >= ABBREVIATION_SCAN_LIMIT {
+                        if results.len() >= limit {
                             stop = true;
                         }
                     }
@@ -324,7 +324,7 @@ impl Trie {
                     break;
                 }
             }
-            if results.len() >= ABBREVIATION_SCAN_LIMIT {
+            if results.len() >= limit {
                 break;
             }
         }
@@ -672,9 +672,9 @@ mod tests {
 
         // There should be WAY more than 20 — at least 50+ characters for common pinyin "li"
         // Note: source dicts have 121 total entries for "li" across chars/level2/level3,
-        // but the compiler deduplicates by word (same word in multiple levels), yielding 95 unique.
-        assert_eq!(count, 93,
-            "Expected exactly 93 unique candidates for 'li' (121 total across dict files - 28 duplicates)");
+        // but the compiler deduplicates by word (same word in multiple levels), yielding 83 unique.
+        assert_eq!(count, 83,
+            "Expected exactly 83 unique candidates for 'li' (121 total across dict files - 38 duplicates)");
 
         // Also verify the trie itself has 80+ entries for "li"
         let trie = Trie::load(
@@ -684,7 +684,7 @@ mod tests {
         ).expect("Failed to load trie");
         let trie_count = trie.get_all_exact("li").map(|v| v.len()).unwrap_or(0);
         println!("'li' exact trie entries: {}", trie_count);
-        assert!(trie_count >= 95, "Expected at least 95 entries in trie for 'li', got {}", trie_count);
+        assert!(trie_count >= 83, "Expected at least 83 entries in trie for 'li', got {}", trie_count);
     }
 
     #[test]

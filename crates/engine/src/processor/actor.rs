@@ -387,6 +387,7 @@ impl ProcessorActor {
     pub fn run(mut self) {
         loop {
             match self.rx.recv() {
+                Ok(ProcessorMsg::Exit) => break,
                 Ok(msg) => self.handle(msg),
                 Err(_) => break,
             }
@@ -431,10 +432,9 @@ impl ProcessorActor {
                     return;
                 }
                 self.processor.ctx.session_state.active_profiles = profiles;
-                if let Ok(conf) = self.processor.ctx.config.master_config_write() {
-                    conf.input.default_profile = profile.clone();
-                    let _ = conf.save();
-                }
+                let conf = self.processor.ctx.config.master_config_write();
+                conf.input.default_profile = profile.clone();
+                let _ = conf.save();
                 self.processor.reset();
                 let snap = self.build_tray_snapshot();
                 let _ = reply.send(Some(snap));

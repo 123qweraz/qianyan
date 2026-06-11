@@ -346,8 +346,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
-                    if !WEB_SERVER_RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
-                        WEB_SERVER_RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
+                    if WEB_SERVER_RUNNING.compare_exchange(false, true, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok() {
                         let root_web = root_for_tray.clone();
 
                         // Start TCP control server for IPC from subprocess
@@ -363,32 +362,52 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let tray_tx_control = tray_tx_for_main_loop.clone();
 
                         std::thread::spawn(move || {
-                            if let Ok((stream, _)) = control_listener.accept() {
-                                let reader = std::io::BufReader::new(&stream);
-                                for line in reader.lines() {
-                                    if let Ok(line) = line {
-                                        if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                                            let cmd = msg.get("cmd").and_then(|c| c.as_str());
-                                            match cmd {
-                                                Some("reload_config") => {
-                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
-                                                }
-                                                Some("notify") => {
-                                                    if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
-                                                        let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
-                                                    }
-                                                }
-                                                Some("clear_user_dict") => {
-                                                    let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
-                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
-                                                }
-                                                Some("send_key") => {
-                                                    if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
-                                                        let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
-                                                    }
-                                                }
-                                                _ => {}
+                            // 10 秒超时等待子进程连接
+                            let _ = control_listener.set_nonblocking(true);
+                            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+                            let stream = loop {
+                                match control_listener.accept() {
+                                    Ok((s, _)) => break s,
+                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                        if std::time::Instant::now() > deadline {
+                                            log::warn!("[Web] 等待子进程连接超时");
+                                            WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                                            return;
+                                        }
+                                        std::thread::sleep(std::time::Duration::from_millis(100));
+                                        continue;
+                                    }
+                                    Err(e) => {
+                                        log::error!("[Web] Control listener accept error: {}", e);
+                                        WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                                        return;
+                                    }
+                                }
+                            };
+                            let reader = std::io::BufReader::new(&stream);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+                                        let cmd = msg.get("cmd").and_then(|c| c.as_str());
+                                        match cmd {
+                                            Some("reload_config") => {
+                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
                                             }
+                                            Some("notify") => {
+                                                if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
+                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
+                                                }
+                                            }
+                                            Some("clear_user_dict") => {
+                                                let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
+                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
+                                            }
+                                            Some("send_key") => {
+                                                if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
+                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
+                                                }
+                                            }
+                                            _ => {}
                                         }
                                     }
                                 }
@@ -400,30 +419,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
                         });
 
-                        // Find and spawn subprocess binary
-                        let subprocess_path = std::env::current_exe()
-                            .ok()
-                            .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
-                            .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
+                        // Spawn subprocess in background to avoid blocking tray
+                        std::thread::spawn(move || {
+                            let subprocess_path = std::env::current_exe()
+                                .ok()
+                                .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
+                                .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
 
-                        let root_str = root_web.to_string_lossy().to_string();
-                        match std::process::Command::new(&subprocess_path)
-                            .arg("--port").arg("18765")
-                            .arg("--control-port").arg(control_port.to_string())
-                            .arg("--root").arg(&root_str)
-                            .spawn()
-                        {
-                            Ok(child) => {
-                                if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
-                                    *c = Some(child);
+                            let root_str = root_web.to_string_lossy().to_string();
+                            match std::process::Command::new(&subprocess_path)
+                                .arg("--port").arg("18765")
+                                .arg("--control-port").arg(control_port.to_string())
+                                .arg("--root").arg(&root_str)
+                                .spawn()
+                            {
+                                Ok(child) => {
+                                    if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
+                                        *c = Some(child);
+                                    }
                                 }
-                                std::thread::sleep(std::time::Duration::from_millis(500));
+                                Err(e) => {
+                                    log::error!("[Web] Failed to launch subprocess: {}", e);
+                                    WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                                }
                             }
-                            Err(e) => {
-                                log::error!("[Web] Failed to launch subprocess: {}", e);
-                                WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                            }
-                        }
+                        });
                     }
                     #[cfg(target_os = "linux")]
                     {

@@ -67,8 +67,8 @@ impl ConfigManager {
         }
     }
 
-    pub fn master_config_write(&mut self) -> Result<&mut Config, String> {
-        Ok(&mut self.master_config)
+    pub fn master_config_write(&mut self) -> &mut Config {
+        &mut self.master_config
     }
 
     pub fn apply_config(&mut self, conf: &Config) {
@@ -242,12 +242,14 @@ impl ConfigManager {
     }
 
     pub fn insert_ngram(&self, profile: &str, context: &str, entries: &[(String, u32)]) {
-        let mut current = (**self.ngram_history.load()).clone();
-        current
-            .entry(profile.to_string())
-            .or_default()
-            .insert(context.to_string(), entries.to_vec());
-        self.ngram_history.store(Arc::new(current));
+        self.ngram_history.rcu(|hist| {
+            let mut clone = (**hist).clone();
+            clone
+                .entry(profile.to_string())
+                .or_default()
+                .insert(context.to_string(), entries.to_vec());
+            Arc::new(clone)
+        });
         self.save_usage_if_due(profile);
     }
 

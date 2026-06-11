@@ -729,7 +729,7 @@ pub(crate) fn keysym_to_vk(sym: xkb::Keysym) -> Option<VirtualKey> {
         keysyms::KEY_KP_Page_Down => Some(VirtualKey::PageDown),
         keysyms::KEY_KP_Begin => Some(VirtualKey::Digit5),
 
-        keysyms::KEY_Super_L | keysyms::KEY_Super_R => Some(VirtualKey::Control),
+        keysyms::KEY_Super_L | keysyms::KEY_Super_R => None,
 
         _ => {
             let utf8 = xkb::keysym_to_utf8(sym);

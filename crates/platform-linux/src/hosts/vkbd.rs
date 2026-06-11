@@ -292,21 +292,23 @@ impl Vkbd {
         delay: u64,
         text: &str,
     ) -> bool {
-        static CLIPBOARD_INSTANCE: OnceLock<Option<Mutex<Clipboard>>> = OnceLock::new();
+        static CLIPBOARD_INSTANCE: OnceLock<Mutex<Option<Clipboard>>> = OnceLock::new();
 
-        let cb_opt = CLIPBOARD_INSTANCE.get_or_init(|| {
-            match Clipboard::new() {
-                Ok(c) => Some(Mutex::new(c)),
-                Err(e) => {
-                    log::warn!("[Vkbd] 无法初始化 arboard: {e}");
-                    None
+        let cb_mutex = CLIPBOARD_INSTANCE.get_or_init(|| Mutex::new(None));
+
+        if let Ok(mut guard) = cb_mutex.lock() {
+            if guard.is_none() {
+                match Clipboard::new() {
+                    Ok(c) => *guard = Some(c),
+                    Err(e) => {
+                        log::warn!("[Vkbd] 无法初始化 arboard: {e}");
+                        return false;
+                    }
                 }
             }
-        });
-
-        if let Some(cb_mutex) = cb_opt {
-            if let Ok(mut cb) = cb_mutex.lock() {
+            if let Some(cb) = guard.as_mut() {
                 if cb.set_text(text.to_string()).is_ok() {
+                    drop(guard);
                     thread::sleep(Duration::from_millis(delay));
                     Self::perform_paste(dev, mode);
                     return true;

@@ -250,7 +250,7 @@ impl InputScheme for ChineseScheme {
                                         tone,
                                         english: en,
                                         stroke_aux: sa,
-                                        weight: (*weight as f64 * 0.8) as u32,
+                                        weight: ((*weight as f64 * 0.8).max(1.0)) as u32,
                                         match_level: 0,
                                         flags,
                                     });
@@ -276,7 +276,7 @@ impl InputScheme for ChineseScheme {
                                             tone,
                                             english: en,
                                             stroke_aux: sa,
-                                            weight: (*weight as f64 * 0.8) as u32,
+                                            weight: ((*weight as f64 * 0.8).max(1.0)) as u32,
                                             match_level: 0,
                                             flags,
                                         });

@@ -23,6 +23,9 @@ impl Default for SoundManager {
 impl Drop for SoundManager {
     fn drop(&mut self) {
         drop(self.tx.take());
+        if let Some(handle) = self._thread.take() {
+            let _ = handle.join();
+        }
     }
 }
 

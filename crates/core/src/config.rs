@@ -670,8 +670,20 @@ impl Config {
 
     /// 加载单个 JSON 文件到 Value
     fn load_json(path: &std::path::Path) -> Option<Value> {
-        std::fs::File::open(path).ok()
-            .and_then(|f| serde_json::from_reader(std::io::BufReader::new(f)).ok())
+        let file = match std::fs::File::open(path) {
+            Ok(f) => f,
+            Err(e) => {
+                log::warn!("[Config] 无法打开配置文件 {:?}: {}", path, e);
+                return None;
+            }
+        };
+        match serde_json::from_reader(std::io::BufReader::new(file)) {
+            Ok(val) => Some(val),
+            Err(e) => {
+                log::warn!("[Config] 配置文件损坏 {:?}: {}", path, e);
+                None
+            }
+        }
     }
 
     /// 保存单个 JSON 文件

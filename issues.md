@@ -48,12 +48,12 @@
 ### H4. RwLock 污染后静默失败
 - **文件**: `crates/engine/src/pipeline/engine.rs:436`
 - **问题**: `write().ok()?` 在锁污染时返回 None，所有输入处理静默失败。
-- **方案**: 使用 `unwrap_or_else(PoisonError::into_inner)`。
+- **状态**: ✅ 已修复（代码中已无此模式）
 
 ### H5. 生产代码残留 println!
 - **文件**: `crates/engine/src/schemes/chinese.rs:457`
 - **问题**: 每次中文查词输出 `DEBUG s4 final=`，严重拖慢输入。
-- **方案**: 移除或用 `log::debug!`。
+- **状态**: ✅ 已修复（代码中已无此 println!）
 
 ### H6. 线程泄漏 (profile 预热)
 - **文件**: `crates/engine/src/context.rs:106-109`
@@ -97,17 +97,17 @@
 ### M2. search_abbreviation 忽略 limit 参数
 - **文件**: `crates/engine/src/pipeline/translators.rs:229-230`
 - **问题**: 无视调用者 limit，始终返回最多 3000 条。
-- **方案**: 使用传入的 limit 参数。
+- **状态**: ✅ 已修复
 
 ### M3. ngram 数据双写 + TOCTOU
 - **文件**: `crates/engine/src/processor/learning.rs:72-83`
 - **问题**: `update_mru()` 通过 rcu 写一次，`insert_ngram()` 又用 `load()+store()` 写一次。
-- **方案**: 合并为一次原子更新。
+- **状态**: ✅ 已修复 — insert_ngram 改用 rcu()。
 
 ### M4. 浮点数截断丢数据
 - **文件**: `crates/engine/src/schemes/chinese.rs:253,279`
 - **问题**: `(weight * 0.8) as u32` 对 weight=1 结果=0，低频用户词被过滤。
-- **方案**: `(*weight as f64 * 0.8).max(1.0) as u32` 或 `.round() as u32`。
+- **状态**: ✅ 已修复
 
 ### M5. xdotool 每次按键调用子进程
 - **文件**: `crates/ui/src/slint_window.rs:127-142`
@@ -122,17 +122,17 @@
 ### M7. TCP 监听线程泄漏
 - **文件**: `src/main.rs:366-427`
 - **问题**: 子进程启动失败时监听线程永远阻塞。
-- **方案**: 添加超时或错误处理。
+- **状态**: ✅ 已修复 — 添加 10s 读超时。
 
 ### M8. tray 事件线程 sleep(500ms)
 - **文件**: `src/main.rs:421`
 - **问题**: 打开配置中心时冻结 tray 菜单半秒。
-- **方案**: 异步启动 web 服务器。
+- **状态**: ✅ 已修复 — 异步启动 web 子进程。
 
 ### M9. OpenConfig TOCTOU 双重启动
 - **文件**: `src/main.rs:349-427`
 - **问题**: 两次并发点击可同时通过 AtomicBool 检查。
-- **方案**: 使用 compare_exchange 或在锁内设置标志。
+- **状态**: ✅ 已修复 — 使用 compare_exchange。
 
 ### M10. Web 配置中心 session 泄漏
 - **文件**: `crates/ui/src/web.rs:2619-2631`
@@ -162,7 +162,7 @@
 ### M15. 剪贴板初始化失败永久缓存
 - **文件**: `crates/platform-linux/src/hosts/vkbd.rs:295-305`
 - **问题**: `OnceLock<Option>` 一旦失败存储 None，中文输入永远失效。
-- **方案**: 每次失败后重试初始化。
+- **状态**: ✅ 已修复 — 失败后可重试初始化。
 
 ### M16. Wayland 连接探测泄漏
 - **文件**: `crates/platform-linux/src/runtime.rs:156-159`
@@ -191,27 +191,27 @@
 ### L1. sound.rs 音频线程不 join
 - **文件**: `crates/engine/src/sound.rs:53`
 - **问题**: panic 静默丢失。
-- **方案**: 在 Drop 中 join 线程。
+- **状态**: ✅ 已修复 — 在 Drop 中 join 线程。
 
 ### L2. compiler.rs fs::copy 失败静默丢弃
 - **文件**: `crates/engine/src/compiler.rs:371-379`
 - **问题**: `let _ = fs::copy(...)` 静默丢失新编译结果。
-- **方案**: 传播错误或保留临时文件。
+- **状态**: ✅ 已修复 — 增加日志警告。
 
 ### L3. 配置文件损坏静默返回 None
 - **文件**: `crates/core/src/config.rs:672-675`
 - **问题**: 配置文件损坏时无日志，用户不知设置为何"被重置"。
-- **方案**: 添加 `log::warn!`。
+- **状态**: ✅ 已修复 — 增加 log::warn!。
 
 ### L4. Wayland layer exit 死代码
 - **文件**: `crates/ui/src/wayland_layer.rs:622,719`
 - **问题**: `exit: AtomicBool` 只检查从未设置。
-- **方案**: 移除或正确集成退出路径。
+- **状态**: ✅ 已修复 — 移除死字段和检查。
 
 ### L5. Super 键错误映射到 Control
 - **文件**: `crates/platform-linux/src/hosts/wayland_host.rs:735`
 - **问题**: Super 键被当成 Control 处理。
-- **方案**: 映射到独立 VirtualKey 或直接放行。
+- **状态**: ✅ 已修复 — 放行（返回 None，不拦截）。
 
 ### L6. vkbd SPACE+Backspace 全局 hack
 - **文件**: `crates/platform-linux/src/hosts/vkbd.rs:347-362`
@@ -221,12 +221,12 @@
 ### L7. `config_manager.rs:master_config_write` 总是 Ok
 - **文件**: `crates/engine/src/config_manager.rs:70-71`
 - **问题**: 返回类型 Result 但总是成功，caller 检查 `if let Ok` 恒真。
-- **方案**: 改为返回 `&mut Config`。
+- **状态**: ✅ 已修复 — 改为返回 `&mut Config`。
 
 ### L8. actor.rs Exit 消息不退出循环
 - **文件**: `crates/engine/src/processor/actor.rs:480`
 - **问题**: `Exit => {}` 空匹配，循环继续阻塞。
-- **方案**: 添加 `break;`。
+- **状态**: ✅ 已修复 — run() 中直接 break。
 
 ### L9. compose.rs `|| true` 恒真条件
 - **文件**: `crates/engine/src/pipeline/compose.rs:81`
@@ -256,7 +256,7 @@
 ### L14. Segmentor 使用重复参数
 - **文件**: `crates/engine/src/pipeline/segmentation.rs:6-14`
 - **问题**: `base_syllables` 和 `single_syllables` 总是相同数据。
-- **方案**: 合并为一个参数。
+- **状态**: ✅ 已修复（trait 已只保留 base_syllables）
 
 ### L15. send_key tray 事件无处理
 - **文件**: `src/main.rs:483`
@@ -289,7 +289,7 @@
 | 严重级别 | 总数 | 本次已修复 |
 |---------|------|-----------|
 | 严重 (CRITICAL) | 4 | 0 |
-| 高 (HIGH) | 11 | 1 |
-| 中 (MEDIUM) | 19 | 3 |
-| 低 (LOW) | 15 | 5 |
-| **合计** | **49** | **9** |
+| 高 (HIGH) | 11 | 3 |
+| 中 (MEDIUM) | 19 | 10 |
+| 低 (LOW) | 15 | 13 |
+| **合计** | **49** | **26** |

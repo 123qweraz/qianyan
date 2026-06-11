@@ -180,10 +180,9 @@ impl Processor {
         self.ctx.session_state.active_profiles = vec![next.clone()];
         
         // Persist to config
-        if let Ok(conf) = self.ctx.config.master_config_write() {
-            conf.input.default_profile = next.clone();
-            let _ = conf.save();
-        }
+        let conf = self.ctx.config.master_config_write();
+        conf.input.default_profile = next.clone();
+        let _ = conf.save();
 
         self.reset();
         next

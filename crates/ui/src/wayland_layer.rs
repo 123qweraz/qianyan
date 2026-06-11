@@ -314,7 +314,6 @@ struct WlState {
     _seat_state: SeatState,
     candidate_layer: Option<LayerSurface>,
     candidate_pool: Option<SlotPool>,
-    exit: AtomicBool,
     pixel_pool: PixelPool,
     layer_closed: bool,
     configured_width: u32,
@@ -619,7 +618,6 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool,
         _seat_state: SeatState::new(&globals, &qh),
         candidate_layer: None,
         candidate_pool: None,
-        exit: AtomicBool::new(false),
         pixel_pool: pixel_pool.clone(),
         layer_closed: false,
         configured_width: 0,
@@ -714,11 +712,6 @@ fn wl_thread_main_inner(rx: Receiver<WlCmd>, pixel_pool: PixelPool,
                     return;
                 }
             }
-        }
-
-        if state.exit.load(Ordering::SeqCst) {
-            log::debug!("[WL_DEBUG] Wayland thread exit flag set, terminating");
-            break;
         }
 
         // Flush outgoing requests to compositor
