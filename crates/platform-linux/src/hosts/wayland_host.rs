@@ -449,7 +449,9 @@ impl WlState {
                 im.delete_surrounding_text(u32::try_from(*delete).unwrap_or(0), 0);
                 im.commit_string(insert.clone());
             }
-            Action::PassThrough if utf8_text.is_empty() => {
+            Action::PassThrough if utf8_text.is_empty()
+                || utf8_text.chars().next().is_some_and(|c| c.is_control()) =>
+            {
                 if let Some(vk) = &state.virtual_keyboard {
                     vk.key(state.last_key_time, key, 1);
                     state.forwarded_keys.insert(key);

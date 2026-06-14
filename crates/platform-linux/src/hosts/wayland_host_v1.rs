@@ -84,10 +84,12 @@ impl WlState {
                 ctx.commit_string(self.context_serial, insert.clone());
             }
             Action::PassThrough => {
-                if !utf8_text.is_empty() {
-                    ctx.commit_string(self.context_serial, utf8_text);
-                } else {
+                if utf8_text.is_empty()
+                    || utf8_text.chars().next().is_some_and(|c| c.is_control())
+                {
                     ctx.key(key_serial, time, key, state);
+                } else {
+                    ctx.commit_string(self.context_serial, utf8_text);
                 }
             }
             Action::Alert => {

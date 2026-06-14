@@ -263,9 +263,15 @@ impl InputMethodHost for EvdevHost {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // 延迟接管键盘，让命令行启动时的 Enter 事件正常流向 KDE 终端
+        println!("[EvdevHost] 等待 500ms 后接管键盘...");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
         // 使用 RAII Guard 自动管理 grab 生命周期
         let mut grab_guard = GrabGuard::new(self.dev.clone());
         let mut held_keys = HashSet::new();
+        let mut passed_through: HashSet<Key> = HashSet::new();
+
         println!("[EvdevHost] 正在运行硬件拦截循环...");
 
         while !self.should_exit.load(Ordering::Relaxed) {
@@ -374,7 +380,6 @@ impl InputMethodHost for EvdevHost {
 
                     if let Some(vk) = evdev_to_virtual(key) {
                         let is_sync_key = vk == VirtualKey::Space
-                            || vk == VirtualKey::Enter
                             || vk == VirtualKey::CapsLock
                             || vk == VirtualKey::Tab
                             || (vk.to_u32() >= VirtualKey::Digit0.to_u32()
@@ -429,9 +434,20 @@ impl InputMethodHost for EvdevHost {
                             let fast_action =
                                 self.processor.handle_key(vk, val, shift, ctrl, alt, false);
 
-                            if let Some(action) = fast_action {
-                                if let Ok(vkbd) = self.vkbd.lock() {
-                                    execute_action(&vkbd, &self.gui_tx, action, Some((key, val)));
+                            // 对 release 事件，只注入我们亲眼见过 press 的按键
+                            // 防止命令行启动时残留的 Enter release 被错误注入
+                            let is_orphan_release = val == 0 && !passed_through.contains(&key);
+
+                            if let Some(ref action) = fast_action {
+                                if !is_orphan_release {
+                                    if let Ok(vkbd) = self.vkbd.lock() {
+                                        execute_action(&vkbd, &self.gui_tx, action.clone(), Some((key, val)));
+                                    }
+                                } else if val == 0 {
+                                    passed_through.remove(&key);
+                                }
+                                if is_press && *action == Action::PassThrough {
+                                    passed_through.insert(key);
                                 }
                             }
 

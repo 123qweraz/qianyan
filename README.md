@@ -68,12 +68,27 @@ qianyan-ime
 ```
 
 #### 方式二：从源码编译
-```bash
-# 安装依赖 (Ubuntu/Debian)
-sudo apt install rustc cargo libevdev-dev libdbus-1-dev clang
 
-# 编译并安装
+**系统依赖 (Ubuntu/Debian):**
+```bash
+sudo apt install pkg-config build-essential clang \
+    rustc cargo \
+    libevdev-dev libdbus-1-dev \
+    libasound2-dev \
+    libfreetype-dev libfontconfig-dev \
+    libxkbcommon-dev
+```
+
+**编译:**
+```bash
 cargo build --release
+
+# 生成的二进制文件在 target/release/ 目录下:
+# - qianyan-ime        (主程序)
+# - qianyan-ime-gui    (GUI界面)
+# - qianyan-web-settings (Web配置中心)
+
+# 可选: 安装到系统
 sudo cp target/release/qianyan-ime /usr/local/bin/
 ```
 

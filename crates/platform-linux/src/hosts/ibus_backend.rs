@@ -36,7 +36,7 @@ fn should_bypass_empty_composition(keyval: u32, mods: u32, has_content: bool) ->
     }
     matches!(
         keyval,
-        0xff08 | 0xffff | 0xff09 | 0xff0d | 0xff1b | 0xff50..=0xff58 | 0xff8d
+        0xff08 | 0xffff | 0xff09 | 0xff1b | 0xff50..=0xff58
     )
 }
 
@@ -288,22 +288,6 @@ impl InputContext {
                 let _ = self.gui_tx.send(GuiEvent::SetVisible(false));
             }
             return false;
-        }
-
-        // Enter key with active composition -> commit preedit
-        if is_enter_key(keyval) && !gui.pinyin.is_empty() {
-            let text = gui.sentence.clone();
-            if !text.is_empty() {
-                let ov = ibus_text_value(&text);
-                if let Ok(v) = zvariant::Value::try_from(&ov) {
-                    let _ = InputContext::commit_text(&ctxt, v).await;
-                }
-            }
-            let _ = self.processor.reset();
-            let _ = InputContext::hide_preedit_text(&ctxt).await;
-            let _ = InputContext::hide_lookup_table(&ctxt).await;
-            let _ = self.gui_tx.send(GuiEvent::SetVisible(false));
-            return true;
         }
 
         // Convert keyval to VirtualKey
@@ -677,5 +661,61 @@ async fn run_ibus(
     // Keep alive
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const KEY_BACKSPACE: u32 = 0xff08;
+    const KEY_DELETE: u32 = 0xffff;
+    const KEY_TAB: u32 = 0xff09;
+    const KEY_RETURN: u32 = 0xff0d;
+    const KEY_ESCAPE: u32 = 0xff1b;
+    const KEY_KP_ENTER: u32 = 0xff8d;
+
+    #[test]
+    fn test_bypass_when_no_content() {
+        assert!(should_bypass_empty_composition(KEY_RETURN, 0, false));
+        assert!(should_bypass_empty_composition(KEY_BACKSPACE, 0, false));
+    }
+
+    #[test]
+    fn test_bypass_ctrl_alt() {
+        assert!(should_bypass_empty_composition(KEY_RETURN, MOD_CTRL, true));
+        assert!(should_bypass_empty_composition(KEY_RETURN, MOD_ALT, true));
+    }
+
+    #[test]
+    fn test_enter_not_bypassed_with_content() {
+        assert!(!should_bypass_empty_composition(KEY_RETURN, 0, true));
+        assert!(!should_bypass_empty_composition(KEY_KP_ENTER, 0, true));
+    }
+
+    #[test]
+    fn test_backspace_bypassed_with_content() {
+        assert!(should_bypass_empty_composition(KEY_BACKSPACE, 0, true));
+    }
+
+    #[test]
+    fn test_tab_bypassed_with_content() {
+        assert!(should_bypass_empty_composition(KEY_TAB, 0, true));
+    }
+
+    #[test]
+    fn test_escape_bypassed_with_content() {
+        assert!(should_bypass_empty_composition(KEY_ESCAPE, 0, true));
+    }
+
+    #[test]
+    fn test_delete_bypassed_with_content() {
+        assert!(should_bypass_empty_composition(KEY_DELETE, 0, true));
+    }
+
+    #[test]
+    fn test_letter_not_bypassed() {
+        let key_a: u32 = 0xff41;
+        assert!(!should_bypass_empty_composition(key_a, 0, true));
     }
 }
