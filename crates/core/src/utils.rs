@@ -7,10 +7,15 @@ use serde_json::Value;
 use crate::config::PunctuationEntry;
 
 pub fn find_project_root() -> PathBuf {
+    // Helper: 检查路径是否为合法的项目根目录（必须有编译后的 trie 词典）
+    fn is_project_root(p: &Path) -> bool {
+        p.join("data/chinese/trie.index").exists()
+    }
+
     // 1. 检查可执行文件同级目录 (适用于绿色版/便携版)
     if let Ok(mut exe_path) = env::current_exe() {
         exe_path.pop();
-        if exe_path.join("data").exists() || exe_path.join("dicts").exists() {
+        if is_project_root(&exe_path) {
             return exe_path;
         }
     }
@@ -27,7 +32,7 @@ pub fn find_project_root() -> PathBuf {
     // 3. 检查当前工作目录及其父目录 (适用于开发环境)
     let mut curr = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     for _ in 0..4 {
-        if curr.join("dicts").exists() || curr.join("data").exists() {
+        if is_project_root(&curr) {
             return curr;
         }
         if !curr.pop() {
