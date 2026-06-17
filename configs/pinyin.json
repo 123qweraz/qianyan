@@ -87,9 +87,7 @@
     ],
     "double_taps": [],
     "enable_abbreviation_matching": true,
-    "enable_auto_reorder": true,
     "enable_caps_selection": true,
-    "enable_context_sorting": true,
     "enable_double_tap": false,
     "enable_english_filter": true,
     "enable_error_correction": true,
@@ -97,20 +95,15 @@
     "enable_keyboard_voice": false,
     "enable_long_press": false,
     "enable_number_selection": true,
-    "enable_pin_first_word": true,
     "enable_prefix_matching": true,
     "enable_smart_backspace": false,
     "enable_traditional": false,
-    "enable_word_discovery": true,
     "english_aux_mode": "Prefix",
     "filter_proper_nouns_by_case": true,
     "keyboard_layouts": {},
     "long_press_mappings": [],
     "long_press_timeout_ms": 400,
     "long_press_uppercase_keys": [],
-    "long_term_threshold": 3,
-    "mru_length": 2000,
-    "ngram_synthesis_threshold": 1,
     "prefix_matching_limit": 20,
     "profile_keys": [
       {
@@ -138,28 +131,8 @@
         "profile": "shengpizi"
       }
     ],
-    "ranking": {
-      "exact_match_bonus": 10000000.0,
-      "length_penalty": 50000.0,
-      "single_char_bonus": 1000000.0,
-      "user_dict_bonus": 10000000.0,
-      "match_level_exact": 30000000.0,
-      "match_level_fuzzy": 20000000.0,
-      "match_level_prefix": 10000000.0,
-      "context_boost_bigram": 50000000.0,
-      "context_boost_trigram": 60000000.0,
-      "context_boost_cap": 40,
-      "compose_freq_multiplier": 100.0,
-      "compose_word_len_bonus": 200.0,
-      "compose_abbr_bonus": 5000.0,
-      "compose_dict_scale": 0.01,
-      "compose_ngram_bonus": 500.0,
-      "compose_ngram_cap": 10
-    },
     "rare_char_mode": "common_only",
     "segmentation_delimiters": "'",
-    "short_term_capacity": 200,
-    "swap_arrow_keys": false,
-    "word_learn_threshold": 2
+    "swap_arrow_keys": false
   }
 }
