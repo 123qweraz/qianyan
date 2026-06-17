@@ -1,5 +1,8 @@
+use std::sync::atomic::{AtomicI32, Ordering};
 use crate::text_service::TextService;
 use windows::{core::*, Win32::Foundation::*, Win32::System::Com::*};
+
+pub(crate) static LOCK_COUNT: AtomicI32 = AtomicI32::new(0);
 
 #[implement(IClassFactory)]
 pub struct ClassFactory {}
@@ -40,8 +43,16 @@ impl IClassFactory_Impl for ClassFactory {
         }
     }
 
-    fn LockServer(&self, _f_lock: BOOL) -> Result<()> {
-        // 可以用来锁定 DLL 不被卸载，这里暂时留空
+    fn LockServer(&self, f_lock: BOOL) -> Result<()> {
+        if f_lock.0 != 0 {
+            LOCK_COUNT.fetch_add(1, Ordering::Relaxed);
+        } else {
+            LOCK_COUNT.fetch_sub(1, Ordering::Relaxed);
+        }
         Ok(())
     }
+}
+
+pub(crate) fn can_unload_now() -> bool {
+    LOCK_COUNT.load(Ordering::Relaxed) == 0
 }
