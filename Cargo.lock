@@ -4957,6 +4957,7 @@ version = "0.1.0"
 dependencies = [
  "arc-swap",
  "fst",
+ "libc",
  "log",
  "memmap2",
  "qianyan-ime-core",

@@ -1,3 +1,4 @@
+use crate::file_lock;
 use crate::trie::{TRIE_MAGIC, TRIE_VERSION};
 use fst::MapBuilder;
 use serde_json::Value;
@@ -342,6 +343,11 @@ fn write_binary_dict(
     let tmp_idx = format!("{}.tmp", idx_path);
     let tmp_dat = format!("{}.tmp", dat_path);
 
+    // Acquire exclusive lock to prevent readers from mmaping during replacement.
+    let lock_path = std::path::Path::new(dat_path).with_extension("data.lock");
+    let _write_lock = file_lock::lock_exclusive(&lock_path)
+        .map_err(|e| format!("[Compiler] 无法获取排他文件锁 {}: {}", lock_path.display(), e))?;
+
     {
         let mut data_writer = BufWriter::new(File::create(&tmp_dat)?);
         let mut index_builder = MapBuilder::new(File::create(&tmp_idx)?)?;
@@ -384,25 +390,26 @@ fn write_binary_dict(
         index_builder.finish()?;
     }
 
-    // Windows 兼容处理：如果文件正在被 Mmap 映射，rename 会失败
-    #[cfg(target_os = "windows")]
-    {
-        // 尝试先删除旧文件（通常也会失败，但能触发明确的错误）
-        let _ = fs::remove_file(idx_path);
-        let _ = fs::remove_file(dat_path);
-    }
-
+    // Atomically replace files. On Linux, rename is safe even if old file is mmap'd
+    // (the old inode remains accessible to existing mmaps). On Windows, the exclusive
+    // lock above prevents readers from mmaping during replacement.
+    // We never use fs::copy as fallback — that would overwrite the same inode and
+    // corrupt existing mmap'd data.
     if let Err(e) = fs::rename(&tmp_idx, idx_path) {
-        log::warn!("[Compiler] 无法重命名索引文件 (可能正在被使用): {}", e);
-        // 如果 rename 失败，尝试直接拷贝（虽然通常也会失败，但作为最后尝试）
-        if let Err(e) = fs::copy(&tmp_idx, idx_path) {
-            log::warn!("[Compiler] 无法拷贝索引文件: {}", e);
+        log::error!("[Compiler] 重命名索引文件失败: {} — 词库文件可能受损", e);
+        // Try remove + rename as fallback on platforms where rename-to-existing fails
+        let _ = fs::remove_file(idx_path);
+        if let Err(e2) = fs::rename(&tmp_idx, idx_path) {
+            log::error!("[Compiler] 重命名索引文件失败(重试后): {}", e2);
+            return Err(e2.into());
         }
     }
     if let Err(e) = fs::rename(&tmp_dat, dat_path) {
-        log::warn!("[Compiler] 无法重命名数据文件 (可能正在被使用): {}", e);
-        if let Err(e) = fs::copy(&tmp_dat, dat_path) {
-            log::warn!("[Compiler] 无法拷贝数据文件: {}", e);
+        log::error!("[Compiler] 重命名数据文件失败: {} — 词库文件可能受损", e);
+        let _ = fs::remove_file(dat_path);
+        if let Err(e2) = fs::rename(&tmp_dat, dat_path) {
+            log::error!("[Compiler] 重命名数据文件失败(重试后): {}", e2);
+            return Err(e2.into());
         }
     }
 

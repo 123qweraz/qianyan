@@ -39,7 +39,9 @@ impl TextService {
         unsafe {
             let session = EditSession::new(context.clone(), text.to_string(), delete_count);
             let session_ptr: ITfEditSession = session.into();
-            let _ = context.RequestEditSession(client_id, &session_ptr, TF_ES_READWRITE);
+            // TF_ES_SYNC is essential: without it, the EditSession callback fires
+            // asynchronously after the local session object is dropped → use-after-free.
+            let _ = context.RequestEditSession(client_id, &session_ptr, TF_ES_READWRITE | TF_ES_SYNC);
         }
         Ok(())
     }

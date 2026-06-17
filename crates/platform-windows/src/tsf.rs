@@ -1,25 +1,25 @@
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::mpsc::Sender;
-use crate::platform::traits::{InputMethodHost, Rect};
-use crate::engine::Processor;
-use crate::ui::GuiEvent;
-use crate::Config;
+use qianyan_ime_core::{InputMethodHost, Rect};
+use qianyan_ime_core::Config;
+use qianyan_ime_engine::Processor;
+use qianyan_ime_ui::GuiEvent;
 
 pub struct TsfHost {
     processor: Arc<Mutex<Processor>>,
     gui_tx: Option<Sender<GuiEvent>>,
-    tray_tx: Sender<crate::ui::tray::TrayEvent>,
+    tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     config: Arc<RwLock<Config>>,
-    app_state: Arc<Mutex<crate::ui::AppState>>,
+    app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
 }
 
 impl TsfHost {
-    pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>, config: Arc<RwLock<Config>>, tray_tx: Sender<crate::ui::tray::TrayEvent>, app_state: Arc<Mutex<crate::ui::AppState>>) -> Self {
+    pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>, config: Arc<RwLock<Config>>, tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) -> Self {
         Self { processor, gui_tx, tray_tx, config, app_state }
     }
 }
 
-fn update_gui_impl(gui_tx: &Option<Sender<GuiEvent>>, processor: &Arc<Mutex<Processor>>, app_state: &Arc<Mutex<crate::ui::AppState>>) {
+fn update_gui_impl(gui_tx: &Option<Sender<GuiEvent>>, processor: &Arc<Mutex<Processor>>, app_state: &Arc<Mutex<qianyan_ime_ui::AppState>>) {
     if let Some(ref tx) = gui_tx {
         let (short_display, chinese_enabled, buffer_empty, buffer, best_segmentation, nav_mode, aux_filter, candidates, candidate_hints, selected) = {
             if let Ok(p) = processor.lock() {
@@ -61,11 +61,12 @@ fn update_gui_impl(gui_tx: &Option<Sender<GuiEvent>>, processor: &Arc<Mutex<Proc
                     pinyin.push_str(&display_aux);
                 }
                 state.pinyin = pinyin;
-                state.candidates = candidates.iter().map(|c| crate::ui::DisplayCandidate {
+                state.candidates = candidates.iter().map(|c| qianyan_ime_ui::DisplayCandidate {
                     text: c.text.to_string(),
-                    label: "".into(), // Will be filled by UI or during pre-format
+                    label: String::new(),
                     hint: c.hint.to_string(),
-                    group: false,
+                    full_display: String::new(),
+                    is_fuzzy: false,
                 }).collect();
                 state.selected_index = selected;
             }
@@ -149,9 +150,9 @@ fn is_hk_match(config_key: &str, pressed_key_code: u32, ctrl: bool, alt: bool, s
 }
 
 #[cfg(target_os = "windows")]
-unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: std::sync::Arc<std::sync::Mutex<crate::engine::Processor>>, gui_tx: Option<std::sync::mpsc::Sender<crate::ui::GuiEvent>>, tray_tx: std::sync::mpsc::Sender<crate::ui::tray::TrayEvent>, config: Arc<RwLock<Config>>, app_state: Arc<Mutex<crate::ui::AppState>>) {
+unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: std::sync::Arc<std::sync::Mutex<qianyan_ime_engine::Processor>>, gui_tx: Option<std::sync::mpsc::Sender<qianyan_ime_ui::GuiEvent>>, tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>, config: Arc<RwLock<Config>>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) {
     use windows::Win32::Storage::FileSystem::*;
-    use crate::engine::processor::Action;
+    use qianyan_ime_engine::processor::Action;
     let mut buffer = [0u8; 1024];
     loop {
         let mut bytes_read = 0;
@@ -184,7 +185,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
             let mut x = i32::from_le_bytes([buffer[6], buffer[7], buffer[8], buffer[9]]);
             let mut y = i32::from_le_bytes([buffer[10], buffer[11], buffer[12], buffer[13]]);
             if x == 0 && y == 0 { if let Some((sx, sy)) = get_system_cursor_pos() { x = sx; y = sy; } }
-            if (x != 0 || y != 0) && gui_tx.is_some() { let _ = gui_tx.as_ref().expect("gui_tx is some").send(crate::ui::GuiEvent::MoveTo { x, y }); }
+            if (x != 0 || y != 0) && gui_tx.is_some() { let _ = gui_tx.as_ref().expect("gui_tx is some").send(qianyan_ime_ui::GuiEvent::MoveTo { x, y }); }
         }
 
         // 核心热键判定
@@ -205,7 +206,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
                     let _ = p.toggle();
                     let enabled = p.chinese_enabled; let profile = p.get_current_profile_display();
                     drop(p);
-                    let _ = tray_tx.send(crate::ui::tray::TrayEvent::SyncStatus { chinese_enabled: enabled, active_profile: profile });
+                    let _ = tray_tx.send(qianyan_ime_ui::tray::TrayEvent::SyncStatus { chinese_enabled: enabled, active_profile: profile });
                     update_gui_impl(&gui_tx, &processor, &app_state);
                 }
             }
@@ -222,15 +223,15 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
         }
 
         let key = match key_code {
-            0x41..=0x5A => crate::engine::keys::VirtualKey::from_u32(key_code - 0x41),
-            0x30..=0x39 => crate::engine::keys::VirtualKey::from_u32(key_code - 0x30 + 26),
-            0x10 | 0xA0 | 0xA1 => Some(crate::engine::keys::VirtualKey::Shift),
-            0x11 | 0xA2 | 0xA3 => Some(crate::engine::keys::VirtualKey::Control),
-            0x12 | 0xA4 | 0xA5 => Some(crate::engine::keys::VirtualKey::Alt),
-            0x20 => Some(crate::engine::keys::VirtualKey::Space), 0x08 => Some(crate::engine::keys::VirtualKey::Backspace), 0x0D => Some(crate::engine::keys::VirtualKey::Enter), 0x1B => Some(crate::engine::keys::VirtualKey::Esc), 0x14 => Some(crate::engine::keys::VirtualKey::CapsLock), 0x09 => Some(crate::engine::keys::VirtualKey::Tab),
-            0x25 => Some(crate::engine::keys::VirtualKey::Left), 0x26 => Some(crate::engine::keys::VirtualKey::Up), 0x27 => Some(crate::engine::keys::VirtualKey::Right), 0x28 => Some(crate::engine::keys::VirtualKey::Down),
-            0xBB => Some(crate::engine::keys::VirtualKey::Equal), 0xBD => Some(crate::engine::keys::VirtualKey::Minus), 0xBC => Some(crate::engine::keys::VirtualKey::Comma), 0xBE => Some(crate::engine::keys::VirtualKey::Dot), 0xBF => Some(crate::engine::keys::VirtualKey::Slash),
-            0xBA => Some(crate::engine::keys::VirtualKey::Semicolon), 0xDE => Some(crate::engine::keys::VirtualKey::Apostrophe), 0xDB => Some(crate::engine::keys::VirtualKey::LeftBrace), 0xDD => Some(crate::engine::keys::VirtualKey::RightBrace), 0xDC => Some(crate::engine::keys::VirtualKey::Backslash), 0xC0 => Some(crate::engine::keys::VirtualKey::Grave),
+            0x41..=0x5A => qianyan_ime_engine::keys::VirtualKey::from_u32(key_code - 0x41),
+            0x30..=0x39 => qianyan_ime_engine::keys::VirtualKey::from_u32(key_code - 0x30 + 26),
+            0x10 | 0xA0 | 0xA1 => Some(qianyan_ime_engine::keys::VirtualKey::Shift),
+            0x11 | 0xA2 | 0xA3 => Some(qianyan_ime_engine::keys::VirtualKey::Control),
+            0x12 | 0xA4 | 0xA5 => Some(qianyan_ime_engine::keys::VirtualKey::Alt),
+            0x20 => Some(qianyan_ime_engine::keys::VirtualKey::Space), 0x08 => Some(qianyan_ime_engine::keys::VirtualKey::Backspace), 0x0D => Some(qianyan_ime_engine::keys::VirtualKey::Enter), 0x1B => Some(qianyan_ime_engine::keys::VirtualKey::Esc), 0x14 => Some(qianyan_ime_engine::keys::VirtualKey::CapsLock), 0x09 => Some(qianyan_ime_engine::keys::VirtualKey::Tab),
+            0x25 => Some(qianyan_ime_engine::keys::VirtualKey::Left), 0x26 => Some(qianyan_ime_engine::keys::VirtualKey::Up), 0x27 => Some(qianyan_ime_engine::keys::VirtualKey::Right), 0x28 => Some(qianyan_ime_engine::keys::VirtualKey::Down),
+            0xBB => Some(qianyan_ime_engine::keys::VirtualKey::Equal), 0xBD => Some(qianyan_ime_engine::keys::VirtualKey::Minus), 0xBC => Some(qianyan_ime_engine::keys::VirtualKey::Comma), 0xBE => Some(qianyan_ime_engine::keys::VirtualKey::Dot), 0xBF => Some(qianyan_ime_engine::keys::VirtualKey::Slash),
+            0xBA => Some(qianyan_ime_engine::keys::VirtualKey::Semicolon), 0xDE => Some(qianyan_ime_engine::keys::VirtualKey::Apostrophe), 0xDB => Some(qianyan_ime_engine::keys::VirtualKey::LeftBrace), 0xDD => Some(qianyan_ime_engine::keys::VirtualKey::RightBrace), 0xDC => Some(qianyan_ime_engine::keys::VirtualKey::Backslash), 0xC0 => Some(qianyan_ime_engine::keys::VirtualKey::Grave),
             _ => None,
         };
 
@@ -259,7 +260,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
                                     state.chinese_enabled = active;
                                 }
                             }
-                            let _ = tray_tx.send(crate::ui::tray::TrayEvent::SyncStatus { chinese_enabled: active, active_profile: profile });
+                            let _ = tray_tx.send(qianyan_ime_ui::tray::TrayEvent::SyncStatus { chinese_enabled: active, active_profile: profile });
                             update_gui_impl(&gui_tx, &processor, &app_state);
                             response.push(2); 
                         }

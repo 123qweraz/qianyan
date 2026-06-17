@@ -16,3 +16,6 @@ fst = { workspace = true, features = ["levenshtein"] }
 memmap2 = { workspace = true }
 arc-swap = { workspace = true }
 rayon = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = { workspace = true }

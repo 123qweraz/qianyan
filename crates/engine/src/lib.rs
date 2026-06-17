@@ -3,6 +3,7 @@ pub mod compositor;
 pub mod config_manager;
 pub mod context;
 pub mod dispatcher;
+pub mod file_lock;
 pub mod keys;
 pub mod pipeline;
 pub mod processor;

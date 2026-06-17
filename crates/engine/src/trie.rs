@@ -1,3 +1,4 @@
+use crate::file_lock::LockGuard;
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
 use std::fs::File;
@@ -40,6 +41,9 @@ pub struct Trie {
     data: TrieData,
     word_map: Option<Map<TrieData>>,
     pinyin_data: Option<TrieData>,
+    /// Held shared lock guard — dropped when Trie is dropped/cloned away.
+    /// Ensures the mmap'd files are not concurrently overwritten.
+    _lock: Option<Arc<LockGuard>>,
 }
 
 impl Trie {
@@ -48,16 +52,28 @@ impl Trie {
         data_path: P,
         force_memory: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        // Acquire a shared lock on a lock file next to trie.data.
+        // If the compiler holds an exclusive lock (writing), fall back to memory.
+        let lock_path = data_path.as_ref().with_extension("data.lock");
+        let lock_guard = if force_memory {
+            None
+        } else {
+            match LockGuard::try_shared(&lock_path) {
+                Ok(Some(guard)) => Some(Arc::new(guard)),
+                _ => {
+                    log::info!("[Trie] 无法获取共享文件锁，降级到内存模式加载");
+                    None
+                }
+            }
+        };
+        let use_mmap = lock_guard.is_some();
+
         let load_data = |path: &Path| -> Result<TrieData, Box<dyn std::error::Error>> {
-            if force_memory {
+            if force_memory || !use_mmap {
                 let buffer = std::fs::read(path)?;
                 Ok(TrieData::Memory(Arc::new(buffer)))
             } else {
                 let file = File::open(path)?;
-                // SAFETY: The mapped file is a read-only dictionary (trie.data or trie.index)
-                // that is never modified after initial creation. No other code writes to it.
-                // Mmap::map is unsafe because the underlying file could be modified concurrently
-                // by another process, but in practice these data files are static assets.
                 let mmap = unsafe { Mmap::map(&file)? };
                 Ok(TrieData::Mmap(Arc::new(mmap)))
             }
@@ -95,6 +111,7 @@ impl Trie {
             data: data_data,
             word_map,
             pinyin_data,
+            _lock: lock_guard,
         })
     }
 
