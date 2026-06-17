@@ -45,19 +45,25 @@ fn main() {
         std::thread::spawn(move || {
             let addr = format!("127.0.0.1:{}", control_port);
 
-            // Try to connect with max retries
-            let stream = 'connect: loop {
-                for _ in 0..50 {
-                    match TcpStream::connect(&addr) {
-                        Ok(s) => break 'connect s,
-                        Err(_) => {
-                            std::thread::sleep(std::time::Duration::from_millis(100));
-                            continue;
+            // Try to connect with max 50 retries (~5 seconds)
+            let stream = match TcpStream::connect(&addr) {
+                Ok(s) => s,
+                Err(_) => {
+                    let mut retries = 0;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        match TcpStream::connect(&addr) {
+                            Ok(s) => break s,
+                            Err(_) => {
+                                retries += 1;
+                                if retries >= 50 {
+                                    eprintln!("[WebSettings] Failed to connect after 50 retries");
+                                    return;
+                                }
+                            }
                         }
                     }
-                }
-                eprintln!("[WebSettings] Failed to connect to parent after 50 retries");
-                return;
+                },
             };
 
             let mut writer = std::io::BufWriter::new(&stream);

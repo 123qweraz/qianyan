@@ -16,6 +16,7 @@ pub fn lock_exclusive(path: &Path) -> io::Result<LockGuard> {
     let file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(path)?;
     lock_file_exclusive(&file)?;
     Ok(LockGuard { file })
@@ -72,6 +73,7 @@ impl LockGuard {
         let file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(path)?;
         try_lock_exclusive(&file).map(|acquired| {
             if acquired { Some(LockGuard { file }) } else { None }
