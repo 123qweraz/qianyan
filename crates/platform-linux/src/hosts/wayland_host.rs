@@ -455,6 +455,9 @@ impl WlState {
                 if let Some(vk) = &state.virtual_keyboard {
                     vk.key(state.last_key_time, key, 1);
                     state.forwarded_keys.insert(key);
+                } else if !utf8_text.is_empty() {
+                    // 无虚拟键盘时至少把文本转发出去，避免按键被静默吞掉
+                    im.commit_string(utf8_text);
                 }
             }
             Action::PassThrough => {
