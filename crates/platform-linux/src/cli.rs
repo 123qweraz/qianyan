@@ -91,9 +91,6 @@ fn run_bench_mode() {
     processor.apply_config(&Config::load());
     processor.ctx.session_state.active_profiles = vec!["chinese".to_string()];
 
-    println!("词库加载完成，正在等待后台预热 (1s)...");
-    std::thread::sleep(std::time::Duration::from_secs(1));
-    println!("预热等待结束，开始测试。");
 
     println!("[Bench] 检查 FST 中是否存在 \"zhuomian\"...");
     let has_zm = processor
