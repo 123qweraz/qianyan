@@ -29,13 +29,40 @@ pub fn format_guid(guid: &GUID) -> String {
     .to_uppercase()
 }
 
+/// RAII 回滚守卫：成功时调用 commit() 提交，失败时自动逆序回滚。
+struct Rollback {
+    actions: Vec<Box<dyn FnOnce()>>,
+    committed: bool,
+}
+
+impl Rollback {
+    fn new() -> Self {
+        Self { actions: Vec::new(), committed: false }
+    }
+    fn add<F: FnOnce() + 'static>(&mut self, f: F) {
+        self.actions.push(Box::new(f));
+    }
+    fn commit(mut self) {
+        self.committed = true;
+    }
+}
+
+impl Drop for Rollback {
+    fn drop(&mut self) {
+        if !self.committed {
+            for f in self.actions.drain(..).rev() {
+                f();
+            }
+        }
+    }
+}
+
 pub unsafe fn register_server(
     dll_instance: HINSTANCE,
     clsid: &GUID,
     description: &str,
     dll_path_override: Option<&str>,
 ) -> Result<()> {
-    // 1. 获取 DLL 路径
     let dll_path = if let Some(path) = dll_path_override {
         path.to_string()
     } else {
@@ -48,52 +75,65 @@ pub unsafe fn register_server(
         String::from_utf16_lossy(&path[..len as usize])
     };
     let clsid_str = format_guid(clsid);
+    let clsid_owned = *clsid;
+
+    let mut rb = Rollback::new();
 
     // 2. 注册 COM CLSID
-    // HKCR\CLSID\{GUID}
     let key_path = format!(r"CLSID\{}", clsid_str);
     set_reg_key(HKEY_CLASSES_ROOT, &key_path, None, description)?;
+    let key_path_w = to_pcwstr(&key_path);
+    rb.add(move || { let _ = RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(key_path_w.as_ptr())); });
 
-    // HKCR\CLSID\{GUID}\InProcServer32
     let inproc_key = format!(r"{}\InProcServer32", key_path);
     set_reg_key(HKEY_CLASSES_ROOT, &inproc_key, None, &dll_path)?;
-    set_reg_key(
-        HKEY_CLASSES_ROOT,
-        &inproc_key,
-        Some("ThreadingModel"),
-        "Apartment",
-    )?;
+    let inproc_key_w = to_pcwstr(&inproc_key);
+    rb.add(move || { let _ = RegDeleteTreeW(HKEY_CLASSES_ROOT, PCWSTR(inproc_key_w.as_ptr())); });
 
-    // 3. 注册 TSF 配置文件 (ITfInputProcessorProfiles)
-    // 这一步告诉 TSF 这是一个文本输入处理器
+    set_reg_key(HKEY_CLASSES_ROOT, &inproc_key, Some("ThreadingModel"), "Apartment")?;
+
+    // 3. 注册 TSF 配置文件
     let profiles: ITfInputProcessorProfiles =
         CoCreateInstance(&CLSID_TF_InputProcessorProfiles, None, CLSCTX_INPROC_SERVER)?;
 
-    // 注册中文 (简体) 配置文件
-    // 0x0804 是 zh-CN 的 LCID
-    profiles.Register(clsid)?;
+    profiles.Register(&clsid_owned)?;
+    let p = profiles.clone();
+    rb.add(move || { let _ = p.Unregister(&clsid_owned); });
 
     let desc_w = to_pcwstr(description);
     let dll_path_w = to_pcwstr(&dll_path);
-    profiles.AddLanguageProfile(
-        clsid,
-        0x0804,
-        &crate::LANG_PROFILE_ID,
-        &desc_w,
-        &dll_path_w,
-        0,
-    )?;
-    // 启用语言配置文件
-    profiles.EnableLanguageProfile(clsid, 0x0804, &crate::LANG_PROFILE_ID, true)?;
+    profiles.AddLanguageProfile(&clsid_owned, 0x0804, &crate::LANG_PROFILE_ID, &desc_w, &dll_path_w, 0)?;
+    profiles.EnableLanguageProfile(&clsid_owned, 0x0804, &crate::LANG_PROFILE_ID, true)?;
 
-    // 4. (可选) 注册到 Category
+    // 4. 注册 Category
     let category_mgr: ITfCategoryMgr =
         CoCreateInstance(&CLSID_TF_CategoryMgr, None, CLSCTX_INPROC_SERVER)?;
-    category_mgr.RegisterCategory(clsid, &GUID_TFCAT_TIP_KEYBOARD, clsid)?;
-    category_mgr.RegisterCategory(clsid, &GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, clsid)?;
-    category_mgr.RegisterCategory(clsid, &GUID_TFCAT_TIPCAP_UIELEMENTENABLED, clsid)?;
-    category_mgr.RegisterCategory(clsid, &GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT, clsid)?;
 
+    category_mgr.RegisterCategory(&clsid_owned, &GUID_TFCAT_TIP_KEYBOARD, &clsid_owned)?;
+    {
+        let cm = category_mgr.clone();
+        rb.add(move || { let _ = cm.UnregisterCategory(&clsid_owned, &GUID_TFCAT_TIP_KEYBOARD, &clsid_owned); });
+    }
+
+    category_mgr.RegisterCategory(&clsid_owned, &GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, &clsid_owned)?;
+    {
+        let cm = category_mgr.clone();
+        rb.add(move || { let _ = cm.UnregisterCategory(&clsid_owned, &GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER, &clsid_owned); });
+    }
+
+    category_mgr.RegisterCategory(&clsid_owned, &GUID_TFCAT_TIPCAP_UIELEMENTENABLED, &clsid_owned)?;
+    {
+        let cm = category_mgr.clone();
+        rb.add(move || { let _ = cm.UnregisterCategory(&clsid_owned, &GUID_TFCAT_TIPCAP_UIELEMENTENABLED, &clsid_owned); });
+    }
+
+    category_mgr.RegisterCategory(&clsid_owned, &GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT, &clsid_owned)?;
+    {
+        let cm = category_mgr.clone();
+        rb.add(move || { let _ = cm.UnregisterCategory(&clsid_owned, &GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT, &clsid_owned); });
+    }
+
+    rb.commit();
     Ok(())
 }
 
