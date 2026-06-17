@@ -40,10 +40,6 @@ fn should_bypass_empty_composition(keyval: u32, mods: u32, has_content: bool) ->
     )
 }
 
-fn is_enter_key(keyval: u32) -> bool {
-    matches!(keyval, 0xff0d | 0xff8d)
-}
-
 fn is_shift_key(keyval: u32) -> bool {
     matches!(keyval, 0xffe1 | 0xffe2)
 }

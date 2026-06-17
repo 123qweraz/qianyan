@@ -11,8 +11,6 @@ enum GtkCmd {
         pinyin: String,
         candidates: Vec<DisplayCandidate>,
         selected: usize,
-        page: usize,
-        total_pages: usize,
     },
     MoveTo { x: i32, y: i32 },
     SetVisible(bool),
@@ -30,15 +28,13 @@ impl CandidateDisplay for GtkWaylandDisplay {
         pinyin: &str,
         candidates: Vec<DisplayCandidate>,
         selected: usize,
-        page: usize,
-        total_pages: usize,
+        _page: usize,
+        _total_pages: usize,
     ) {
         let _ = self.tx.send(GtkCmd::UpdateCandidates {
             pinyin: pinyin.to_string(),
             candidates,
             selected,
-            page,
-            total_pages,
         });
     }
 
@@ -456,7 +452,6 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
                     pinyin,
                     candidates,
                     selected,
-                    ..
                 } => {
                     update_candidates_inner(&mut s, &pinyin, &candidates, selected);
                 }
