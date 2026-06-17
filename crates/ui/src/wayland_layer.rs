@@ -400,12 +400,21 @@ impl WlState {
     fn update_screen_size(&mut self) {
         for output in self._output_state.outputs() {
             if let Some(info) = self._output_state.info(&output) {
+                // 优先使用 logical_size（已考虑缩放），如不可用则用 mode.dimensions 除以 scale_factor
+                if let Some((w, h)) = info.logical_size {
+                    self.screen_w.store(w, Ordering::Relaxed);
+                    self.screen_h.store(h, Ordering::Relaxed);
+                    log::info!("[WL_POS] wl_output logical size: {}x{}", w, h);
+                    return;
+                }
                 for mode in &info.modes {
                     if mode.current {
                         let (w, h) = mode.dimensions;
-                        self.screen_w.store(w, Ordering::Relaxed);
-                        self.screen_h.store(h, Ordering::Relaxed);
-                        log::info!("[WL_POS] wl_output screen size: {}x{}", w, h);
+                        let scale = info.scale_factor.max(1);
+                        self.screen_w.store(w / scale, Ordering::Relaxed);
+                        self.screen_h.store(h / scale, Ordering::Relaxed);
+                        log::info!("[WL_POS] wl_output physical size: {}x{} / scale={} = {}x{}",
+                            w, h, scale, w / scale, h / scale);
                         return;
                     }
                 }
