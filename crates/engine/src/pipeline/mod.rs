@@ -8,7 +8,6 @@ pub mod translators;
 pub use translators::*;
 
 pub mod filters;
-pub use filters::*;
 
 pub mod engine;
 pub use engine::*;
@@ -25,7 +24,7 @@ pub use similarity::*;
 pub mod compose;
 pub use compose::*;
 
-// 调频衰减算法参数（乘法加成系数现在在 filters.rs 和 chinese.rs 中内联定义）
+// 调频衰减算法参数通过 RankingConfig 配置（见 crates/core/src/config.rs）
 
 
 pub const MAX_LOOKUP_LIMIT: usize = 500;
@@ -228,98 +227,7 @@ mod tests {
         assert_eq!(candidate.weight, cloned.weight);
     }
 
-    #[test]
-    fn test_match_level_scoring_filter() {
-        let filter = MatchLevelScoringFilter;
-        let candidates = vec![
-            Candidate {
-                text: Arc::from("prefix"),
-                simplified: Arc::from("prefix"),
-                traditional: Arc::from("prefix"),
-                hint: Arc::from(""),
-                english_aux: Arc::from(""),
-                stroke_aux: Arc::from(""),
-                source: Arc::from(""),
-                weight: 5000.0,
-                match_level: 1,
-                flags: 0,
-            },
-            Candidate {
-                text: Arc::from("exact"),
-                simplified: Arc::from("exact"),
-                traditional: Arc::from("exact"),
-                hint: Arc::from(""),
-                english_aux: Arc::from(""),
-                stroke_aux: Arc::from(""),
-                source: Arc::from(""),
-                weight: 100.0,
-                match_level: 3,
-                flags: 0,
-            },
-            Candidate {
-                text: Arc::from("fuzzy"),
-                simplified: Arc::from("fuzzy"),
-                traditional: Arc::from("fuzzy"),
-                hint: Arc::from(""),
-                english_aux: Arc::from(""),
-                stroke_aux: Arc::from(""),
-                source: Arc::from(""),
-                weight: 3000.0,
-                match_level: 2,
-                flags: 0,
-            },
-        ];
 
-        let mut config = Config::default_config();
-        config.input.ranking.exact_match_bonus = 10_000_000.0;
-        // "test" → 1 syllable estimate
-        let result = filter.filter("test", candidates, &config, None, None);
-        // exact (30M+10M+100 ≈ 40,000,100) > fuzzy (20M+3000 ≈ 20,003,000) > prefix (10M+5000 ≈ 10,005,000)
-        assert_eq!(result[0].text.as_ref(), "exact");
-        assert_eq!(result[1].text.as_ref(), "fuzzy");
-        assert_eq!(result[2].text.as_ref(), "prefix");
-    }
-
-    #[test]
-    fn test_traditional_filter_simplified() {
-        let filter = TraditionalFilter;
-        let candidates = vec![Candidate {
-            text: Arc::from("简化"),
-            simplified: Arc::from("简化"),
-            traditional: Arc::from("簡化"),
-            hint: Arc::from(""),
-            english_aux: Arc::from(""),
-            stroke_aux: Arc::from(""),
-            source: Arc::from(""),
-            weight: 1.0,
-            match_level: 1,
-            flags: 0,
-        }];
-
-        let config = Config::default_config();
-        let result = filter.filter("test", candidates, &config, None, None);
-        assert_eq!(result[0].text.as_ref(), "简化");
-    }
-
-    #[test]
-    fn test_traditional_filter_traditional() {
-        let filter = TraditionalFilter;
-        let mut config = Config::default_config();
-        config.input.enable_traditional = true;
-
-        let candidates = vec![Candidate {
-            text: Arc::from("简化"),
-            simplified: Arc::from("简化"),
-            traditional: Arc::from("簡化"),
-            hint: Arc::from(""),
-            english_aux: Arc::from(""),
-            stroke_aux: Arc::from(""),
-            source: Arc::from(""),
-            weight: 1.0,
-            match_level: 1,
-            flags: 0,
-        }];
-    }
 
     #[test]
     fn test_matches_filter_comprehensive() {

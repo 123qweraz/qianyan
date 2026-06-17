@@ -375,6 +375,7 @@ impl InputScheme for ChineseScheme {
                     let profile = context.active_profiles.first().cloned().unwrap_or_default();
                     let paths = crate::pipeline::compose::compose(
                         &pinyin_key, d, &ngram_guard, context.syllable_freq, context.base_syllables, &profile,
+                        &context.config.input.ranking,
                     );
                     for path in &paths {
                         let text: String = path.words.iter().map(|w| w.word.as_str()).collect();
@@ -403,10 +404,12 @@ impl InputScheme for ChineseScheme {
         candidates: &mut Vec<SchemeCandidate>,
         context: &SchemeContext,
     ) {
+        let rank = &context.config.input.ranking;
         if let Some(profile) = context.active_profiles.first() {
             if context.config.input.enable_context_sorting {
                 let ngram_guard = context.ngram_history.load();
                 if let Some(profile_ngram) = ngram_guard.get(profile) {
+                    let cap = rank.context_boost_cap;
                     // bigram: key=last_word
                     if let Some(last_word) = context.last_word {
                         if let Some(entries) = profile_ngram.get(last_word) {
@@ -414,8 +417,7 @@ impl InputScheme for ChineseScheme {
                                 entries.iter().map(|(w, c)| (w.clone(), *c)).collect();
                             for c in &mut *candidates {
                                 if let Some(&count) = ngram_map.get(c.simplified.as_str()) {
-                                    let effective = count.min(40) as u32;
-                                    let boost = effective.saturating_mul(50_000_000);
+                                    let boost = (count.min(cap) as f64 * rank.context_boost_bigram) as u32;
                                     c.weight = c.weight.saturating_add(boost);
                                 }
                             }
@@ -431,7 +433,7 @@ impl InputScheme for ChineseScheme {
                                     .find(|(w, _)| w == c.simplified.as_str())
                                     .map(|(_, c)| c)
                                 {
-                                    let boost = count.min(40).saturating_mul(60_000_000);
+                                    let boost = (count.min(cap) as f64 * rank.context_boost_trigram) as u32;
                                     c.weight = c.weight.saturating_add(boost);
                                 }
                             }
@@ -444,9 +446,9 @@ impl InputScheme for ChineseScheme {
         // 添加 match_level 基础分，确保不同策略结果可比较
         for c in &mut *candidates {
             let level_base = match c.match_level {
-                3 => 30_000_000u32,
-                2 => 20_000_000,
-                1 => 10_000_000,
+                3 => rank.match_level_exact as u32,
+                2 => rank.match_level_fuzzy as u32,
+                1 => rank.match_level_prefix as u32,
                 _ => 0,
             };
             c.weight = c.weight.saturating_add(level_base);

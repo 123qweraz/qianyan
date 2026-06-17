@@ -152,6 +152,38 @@ pub fn record_usage(
                 }
             }
         }
+
+        // Trigram 驱动 3 词合成："prev2|prev1" → word 达到阈值时合成为三字词
+        if let Some((prev2, prev1)) = context_pair {
+            let trigram_key = format!("{}|{}", prev2, prev1);
+            let ngram_guard = ctx.config.ngram_history.load();
+            if let Some(profile_ngram) = ngram_guard.get(&profile) {
+                if let Some(entries) = profile_ngram.get(&trigram_key) {
+                    if let Some((_, count)) = entries.iter().find(|(w, _)| w == word) {
+                        if *count >= threshold {
+                            let combined = format!("{}{}{}", prev2, prev1, word);
+                            if combined.chars().count() > 2
+                                && !ctx.engine.has_word_in_dict(&profile, &combined)
+                            {
+                                if let Some(t) = ctx.engine.get_or_load_trie(&profile) {
+                                    let py2 = t.lookup_pinyin(prev2).unwrap_or_default();
+                                    let py1 = t.lookup_pinyin(prev1).unwrap_or_default();
+                                    let py0 = t.lookup_pinyin(word).unwrap_or_default();
+                                    if !py2.is_empty() && !py1.is_empty() && !py0.is_empty() {
+                                        let combined_py = format!("{}{}{}", py2, py1, py0);
+                                        let updated = update_mru(
+                                            &ctx.config.learned_words, &profile,
+                                            &combined_py, &combined, true,
+                                        );
+                                        ctx.config.insert_learned(&profile, &combined_py, &updated);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

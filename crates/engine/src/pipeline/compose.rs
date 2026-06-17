@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use qianyan_ime_core::config::RankingConfig;
+
 use crate::trie::Trie;
 use crate::pipeline::segmentation::DefaultSegmentor;
 use crate::pipeline::compose_utils;
@@ -86,13 +88,14 @@ pub fn compose(
     syllable_freq: &std::collections::HashMap<String, u64>,
     base_syllables: &std::collections::HashSet<String>,
     profile: &str,
+    rank: &RankingConfig,
 ) -> Vec<ComposePath> {
     let segs = segment_for_compose(pinyin, trie, syllable_freq, base_syllables);
     if segs.len() < 2 {
         return Vec::new();
     }
     let graph = build_word_graph(&segs, trie, base_syllables);
-    viterbi_compose(&graph, segs.len(), syllable_freq, ngram, profile)
+    viterbi_compose(&graph, segs.len(), syllable_freq, ngram, profile, rank)
 }
 
 fn build_word_graph(
@@ -163,6 +166,7 @@ fn viterbi_compose(
     syllable_freq: &std::collections::HashMap<String, u64>,
     ngram: &crate::config_manager::UserDictData,
     profile: &str,
+    rank: &RankingConfig,
 ) -> Vec<ComposePath> {
     let n = n_segments + 1;
     let mut dp: Vec<Vec<ComposePath>> = vec![Vec::new(); n];
@@ -177,19 +181,19 @@ fn viterbi_compose(
                 words.push(span.clone());
 
                 let freq = *syllable_freq.get(&span.pinyin).unwrap_or(&0) as f64;
-                let freq_score = if freq > 0.0 { freq.log2() * 100.0 } else { 0.0 };
+                let freq_score = if freq > 0.0 { freq.log2() * rank.compose_freq_multiplier } else { 0.0 };
 
-                let word_len_bonus = (span.word.chars().count().saturating_sub(1)) as f64 * 200.0;
+                let word_len_bonus = (span.word.chars().count().saturating_sub(1)) as f64 * rank.compose_word_len_bonus;
 
                 // 多声母合并成词奖励：有词组词，没词才退成字
                 let abbr_bonus = if span.initial_count >= 2 {
-                    span.initial_count as f64 * 5000.0
+                    span.initial_count as f64 * rank.compose_abbr_bonus
                 } else {
                     0.0
                 };
 
                 // 词典权重：常用词优先
-                let dict_bonus = span.weight as f64 * 0.01;
+                let dict_bonus = span.weight as f64 * rank.compose_dict_scale;
 
                 let ngram_bonus = if let (Some(last), Some(pn)) = (
                     prev.words.last().map(|w| w.word.as_str()),
@@ -197,7 +201,7 @@ fn viterbi_compose(
                 ) {
                     pn.get(last)
                         .and_then(|e| e.iter().find(|(w, _)| w == &span.word))
-                        .map(|(_, c)| (*c).min(10) as f64 * 500.0)
+                        .map(|(_, c)| (*c).min(rank.compose_ngram_cap) as f64 * rank.compose_ngram_bonus)
                         .unwrap_or(0.0)
                 } else {
                     0.0
@@ -308,8 +312,27 @@ mod tests {
             HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()
         )));
 
+        let rank = RankingConfig {
+            length_penalty: 50000.0,
+            user_dict_bonus: 10000000.0,
+            exact_match_bonus: 10000000.0,
+            single_char_bonus: 1000000.0,
+            match_level_exact: 30_000_000.0,
+            match_level_fuzzy: 20_000_000.0,
+            match_level_prefix: 10_000_000.0,
+            context_boost_bigram: 50_000_000.0,
+            context_boost_trigram: 60_000_000.0,
+            context_boost_cap: 40,
+            compose_freq_multiplier: 100.0,
+            compose_word_len_bonus: 200.0,
+            compose_abbr_bonus: 5000.0,
+            compose_dict_scale: 0.01,
+            compose_ngram_bonus: 500.0,
+            compose_ngram_cap: 10,
+        };
+
         // 混拼: jtdayouxi → "有词组词"，今天(2声母)胜于就/太(单声母)
-        let paths = compose("jtdayouxi", &trie, &ngram.load(), &freq, &base, "chinese");
+        let paths = compose("jtdayouxi", &trie, &ngram.load(), &freq, &base, "chinese", &rank);
         println!("Mixed compose paths: {} found", paths.len());
         for p in &paths {
             let text: String = p.words.iter().map(|w| w.word.as_str()).collect();
@@ -347,7 +370,25 @@ mod tests {
         let ngram = Arc::new(ArcSwap::new(Arc::new(
             std::collections::HashMap::<String, std::collections::HashMap<String, Vec<(String, u32)>>>::new()
         )));
-        let paths = compose("wowangjichongdianle", &trie, &ngram.load(), &freq, &base, "chinese");
+        let rank = RankingConfig {
+            length_penalty: 50000.0,
+            user_dict_bonus: 10000000.0,
+            exact_match_bonus: 10000000.0,
+            single_char_bonus: 1000000.0,
+            match_level_exact: 30_000_000.0,
+            match_level_fuzzy: 20_000_000.0,
+            match_level_prefix: 10_000_000.0,
+            context_boost_bigram: 50_000_000.0,
+            context_boost_trigram: 60_000_000.0,
+            context_boost_cap: 40,
+            compose_freq_multiplier: 100.0,
+            compose_word_len_bonus: 200.0,
+            compose_abbr_bonus: 5000.0,
+            compose_dict_scale: 0.01,
+            compose_ngram_bonus: 500.0,
+            compose_ngram_cap: 10,
+        };
+        let paths = compose("wowangjichongdianle", &trie, &ngram.load(), &freq, &base, "chinese", &rank);
         println!("Compose paths: {} found", paths.len());
         for p in &paths {
             let text: String = p.words.iter().map(|w| w.word.as_str()).collect();

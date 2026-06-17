@@ -88,6 +88,54 @@ fn default_ngram_synthesis_threshold() -> u32 {
     2
 }
 
+fn default_match_level_exact() -> f64 {
+    30_000_000.0
+}
+
+fn default_match_level_fuzzy() -> f64 {
+    20_000_000.0
+}
+
+fn default_match_level_prefix() -> f64 {
+    10_000_000.0
+}
+
+fn default_context_boost_bigram() -> f64 {
+    50_000_000.0
+}
+
+fn default_context_boost_trigram() -> f64 {
+    60_000_000.0
+}
+
+fn default_context_boost_cap() -> u32 {
+    40
+}
+
+fn default_compose_freq_multiplier() -> f64 {
+    100.0
+}
+
+fn default_compose_word_len_bonus() -> f64 {
+    200.0
+}
+
+fn default_compose_abbr_bonus() -> f64 {
+    5000.0
+}
+
+fn default_compose_dict_scale() -> f64 {
+    0.01
+}
+
+fn default_compose_ngram_bonus() -> f64 {
+    500.0
+}
+
+fn default_compose_ngram_cap() -> u32 {
+    10
+}
+
 fn default_fixed_x() -> i32 {
     10
 }
@@ -329,6 +377,33 @@ pub struct RankingConfig {
     pub user_dict_bonus: f64,
     pub exact_match_bonus: f64,
     pub single_char_bonus: f64,
+
+    #[serde(default = "default_match_level_exact")]
+    pub match_level_exact: f64,
+    #[serde(default = "default_match_level_fuzzy")]
+    pub match_level_fuzzy: f64,
+    #[serde(default = "default_match_level_prefix")]
+    pub match_level_prefix: f64,
+
+    #[serde(default = "default_context_boost_bigram")]
+    pub context_boost_bigram: f64,
+    #[serde(default = "default_context_boost_trigram")]
+    pub context_boost_trigram: f64,
+    #[serde(default = "default_context_boost_cap")]
+    pub context_boost_cap: u32,
+
+    #[serde(default = "default_compose_freq_multiplier")]
+    pub compose_freq_multiplier: f64,
+    #[serde(default = "default_compose_word_len_bonus")]
+    pub compose_word_len_bonus: f64,
+    #[serde(default = "default_compose_abbr_bonus")]
+    pub compose_abbr_bonus: f64,
+    #[serde(default = "default_compose_dict_scale")]
+    pub compose_dict_scale: f64,
+    #[serde(default = "default_compose_ngram_bonus")]
+    pub compose_ngram_bonus: f64,
+    #[serde(default = "default_compose_ngram_cap")]
+    pub compose_ngram_cap: u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -1098,6 +1173,18 @@ impl Config {
                     user_dict_bonus: 10000000.0,
                     exact_match_bonus: 10000000.0,
                     single_char_bonus: 1000000.0,
+                    match_level_exact: default_match_level_exact(),
+                    match_level_fuzzy: default_match_level_fuzzy(),
+                    match_level_prefix: default_match_level_prefix(),
+                    context_boost_bigram: default_context_boost_bigram(),
+                    context_boost_trigram: default_context_boost_trigram(),
+                    context_boost_cap: default_context_boost_cap(),
+                    compose_freq_multiplier: default_compose_freq_multiplier(),
+                    compose_word_len_bonus: default_compose_word_len_bonus(),
+                    compose_abbr_bonus: default_compose_abbr_bonus(),
+                    compose_dict_scale: default_compose_dict_scale(),
+                    compose_ngram_bonus: default_compose_ngram_bonus(),
+                    compose_ngram_cap: default_compose_ngram_cap(),
                 },
                 segmentation_delimiters: "'".to_string(),
             },

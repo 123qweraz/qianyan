@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>学习算法 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>学习算法</h1>
+        </header>
+
+        <div class="note">
+            <strong>💡 说明</strong><br>
+            • <strong>频率算法</strong> — 记录用户选词顺序，让常用词自动排到候选首位<br>
+            • <strong>ngram算法</strong> — 根据上下文词语关系，自动调整后续候选顺序<br>
+            • <strong>记忆算法</strong> — 自动造词、短期记忆与长期记忆晋升机制
+        </div>
+
+        <div class="card">
+            <div style="display:flex; gap:24px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:280px;">
+                    <h4 style="margin:0 0 8px 0; font-size:14px; color:var(--apple-accent);">频率算法</h4>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">用户选词顺序排序</div><div class="desc">选过的词自动排到该拼音候选的首位</div></div>
+                        <div><label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">MRU 记忆数量</div><div class="desc">最多记住最近选过的多少个词（默认2000）</div></div>
+                        <div><input type="number" id="mru_length" min="5" max="10000" step="10" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">固定首词</div><div class="desc">字典频率最高的词始终排在候选首位，不受 MRU 改变</div></div>
+                        <div><label class="switch"><input type="checkbox" id="enable_pin_first_word"><span class="slider"></span></label></div>
+                    </div>
+                </div>
+                <div style="flex:1; min-width:280px;">
+                    <h4 style="margin:0 0 8px 0; font-size:14px; color:var(--apple-accent);">ngram算法</h4>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文词语关系调整候选顺序</div></div>
+                        <div><label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">新词合成阈值</div><div class="desc">同一对词连续出现多少次时自动合并为新词（默认2）</div></div>
+                        <div><input type="number" id="ngram_synthesis_threshold" min="1" max="20" step="1" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
+                    </div>
+                </div>
+                <div style="flex:1; min-width:280px;">
+                    <h4 style="margin:0 0 8px 0; font-size:14px; color:var(--apple-accent);">记忆算法</h4>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的多字词自动加入用户词典</div></div>
+                        <div><label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">候选出现条件</div><div class="desc">同一个词出现多少次才作为候选（1=立即出现，默认2）</div></div>
+                        <div><input type="number" id="word_learn_threshold" min="1" max="10" step="1" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">短期记忆容量</div><div class="desc">最多保留的词条数（默认200），超限淘汰使用最少的</div></div>
+                        <div><input type="number" id="short_term_capacity" min="10" max="10000" step="10" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="info"><div class="title">晋升长期记忆次数</div><div class="desc">短期记忆的词被使用此次数后晋升长期记忆（默认5）</div></div>
+                        <div><input type="number" id="long_term_threshold" min="2" max="100" step="1" style="width:80px; padding:6px 10px; border-radius:8px; border:1px solid #ccc; text-align:center;"></div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding-top:12px;">
+                <button class="btn" onclick="saveSwitches()" style="font-size:13px; padding:8px 18px;">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+
+    <script src="/static/js/settings.js"></script>
+    <script>
+        async function init() {
+            await loadConfig();
+            bindInput('enable_auto_reorder', 'input');
+            bindInput('mru_length', 'input');
+            bindInput('enable_pin_first_word', 'input');
+            bindInput('enable_context_sorting', 'input');
+            bindInput('enable_word_discovery', 'input');
+            bindInput('word_learn_threshold', 'input');
+            bindInput('ngram_synthesis_threshold', 'input');
+            bindInput('short_term_capacity', 'input');
+            bindInput('long_term_threshold', 'input');
+        }
+
+        async function saveSwitches() {
+            await saveConfig();
+            showToast('设置已保存', 'success');
+        }
+
+        init();
+    </script>
+</body>
+</html>
