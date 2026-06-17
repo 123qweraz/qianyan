@@ -113,7 +113,7 @@ fn create_wayland_host(
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
     // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set.
-    // On this private socket only zwp_input_method_v1 is available — skip the probe.
+    // On this private socket only zwp_input_method_v1 is available.
     let kwin_socket = crate::kwin::is_kwin_virtual_keyboard();
     if kwin_socket {
         log::info!("[Main] KWin Virtual Keyboard mode detected (WAYLAND_SOCKET)");
@@ -123,42 +123,13 @@ fn create_wayland_host(
         return Ok((Box::new(host), vkbd, " Wayland v1 (KWin)"));
     }
 
-    struct DummyState;
-    impl wayland_client::Dispatch<wayland_client::protocol::wl_registry::WlRegistry, wayland_client::globals::GlobalListContents> for DummyState {
-        fn event(
-            _state: &mut Self,
-            _: &wayland_client::protocol::wl_registry::WlRegistry,
-            _event: <wayland_client::protocol::wl_registry::WlRegistry as wayland_client::Proxy>::Event,
-            _data: &wayland_client::globals::GlobalListContents,
-            _conn: &wayland_client::Connection,
-            _qh: &wayland_client::QueueHandle<Self>,
-        ) {
-        }
-    }
-
-    let conn = wayland_client::Connection::connect_to_env()
-        .map_err(|_| "Cannot connect to Wayland compositor")?;
-    let (globals, _event_queue) = wayland_client::globals::registry_queue_init::<DummyState>(&conn)
-        .map_err(|_| "Cannot initialize Wayland registry")?;
-
-    let globals_list = globals.contents().clone_list();
-
-    let has_v2 = globals_list.iter().any(|g| g.interface == "zwp_input_method_manager_v2");
-    let has_v1 = globals_list.iter().any(|g| g.interface == "zwp_input_method_v1");
-
-    if has_v2 {
-        let host = WaylandInputHost::new(processor.clone(), gui_tx.clone(), tray_tx.clone())
-            .ok_or("Wayland v2 host init failed")?;
-        let vkbd = host.vkbd();
-        Ok((Box::new(host), vkbd, " Wayland v2"))
-    } else if has_v1 {
-        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx)
-            .ok_or("Wayland v1 host init failed")?;
-        let vkbd = host.vkbd();
-        Ok((Box::new(host), vkbd, " Wayland v1"))
-    } else {
-        Err("No zwp_input_method (v1 or v2) global available".into())
-    }
+    // Normal Wayland compositor: zwp_input_method_manager_v2 is the modern standard
+    // (supported by KDE, GNOME, Sway/wlroots, Weston since ~2018).
+    // The protocol is bound lazily in `run()`, so no separate probe connection needed.
+    let host = WaylandInputHost::new(processor, gui_tx, tray_tx)
+        .ok_or("Wayland v2 host init failed")?;
+    let vkbd = host.vkbd();
+    Ok((Box::new(host), vkbd, " Wayland v2"))
 }
 
 enum BackendType {
