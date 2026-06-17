@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::sync::mpsc::Sender;
 use qianyan_ime_core::{InputMethodHost, Rect};
@@ -11,11 +12,18 @@ pub struct TsfHost {
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     config: Arc<RwLock<Config>>,
     app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
+    running: Arc<AtomicBool>,
 }
 
 impl TsfHost {
     pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>, config: Arc<RwLock<Config>>, tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) -> Self {
-        Self { processor, gui_tx, tray_tx, config, app_state }
+        Self { processor, gui_tx, tray_tx, config, app_state, running: Arc::new(AtomicBool::new(true)) }
+    }
+}
+
+impl Drop for TsfHost {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
     }
 }
 
@@ -114,11 +122,13 @@ impl InputMethodHost for TsfHost {
             let sd_ptr = &sd as *const _ as usize; 
             let processor = self.processor.clone(); let gui_tx = self.gui_tx.clone(); let tray_tx = self.tray_tx.clone(); let config = self.config.clone();
             let app_state = self.app_state.clone();
+            let running = self.running.clone();
             for _i in 0..3 {
                 let pipe_name_u16 = pipe_name_w.clone(); let p = processor.clone(); let g = gui_tx.clone(); let t = tray_tx.clone(); let c = config.clone();
                 let a = app_state.clone();
+                let r = running.clone();
                 std::thread::spawn(move || {
-                    loop {
+                    while r.load(Ordering::Relaxed) {
                         unsafe {
                             let sa = SECURITY_ATTRIBUTES { nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32, lpSecurityDescriptor: sd_ptr as *mut _, bInheritHandle: false.into() };
                             let h = CreateNamedPipeW(PCWSTR(pipe_name_u16.as_ptr()), PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, 1024, 1024, 0, Some(&sa));
@@ -132,7 +142,7 @@ impl InputMethodHost for TsfHost {
                     }
                 });
             }
-            loop { std::thread::park(); }
+            while running.load(Ordering::Relaxed) { std::thread::sleep(std::time::Duration::from_millis(100)); }
         }
         #[cfg(not(target_os = "windows"))] { Err("TsfHost 仅支持 Windows。".into()) }
     }
