@@ -200,6 +200,10 @@ impl SearchEngine {
         let trie_arc = Arc::new(trie);
 
         if let Ok(mut cache) = self.trie_cache.write() {
+            // Double-check: another thread may have loaded + cached while we were loading
+            if let Some(cached) = cache.get(profile) {
+                return Some(cached.clone());
+            }
             cache.entry(profile.to_string()).or_insert(trie_arc.clone());
         }
         Some(trie_arc)
