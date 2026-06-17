@@ -703,6 +703,7 @@ impl Config {
         ("fuzzy", &[], &["fuzzy_config"], &[]),
         ("doublepinyin", &[], &["enable_double_pinyin", "double_pinyin_scheme"], &[]),
         ("punctuation", &["punctuations"], &["enable_punctuation_long_press", "punctuation_long_press_mappings"], &[]),
+        ("hotkeys", &["hotkeys"], &[], &[]),
         ("algorithms", &[],
             &["enable_auto_reorder", "mru_length", "enable_pin_first_word",
               "enable_context_sorting", "ngram_synthesis_threshold",
@@ -805,7 +806,7 @@ impl Config {
             }
         }
 
-        // pinyin.json —— 包含 hotkeys + input（减去其他页的子字段）
+        // pinyin.json —— 包含 input（减去其他页的子字段；hotkeys 已独立）
         {
             let path = config_dir.join("pinyin.json");
             if let Some(val) = Self::load_json(&path) {
@@ -933,12 +934,9 @@ impl Config {
             Self::save_json(&config_dir.join(format!("{}.json", file)), &page)?;
         }
 
-        // pinyin.json: hotkeys + input（减去其他页拥有字段）
+        // pinyin.json: input（减去其他页拥有字段；hotkeys 已独立到 hotkeys.json）
         {
             let mut page = Value::Object(serde_json::Map::new());
-            if let Some(hotkeys) = full.get("hotkeys") {
-                page.as_object_mut().expect("page is always a JSON object").insert("hotkeys".into(), hotkeys.clone());
-            }
             if let Some(input_val) = full.get("input") {
                 let mut input_owned = input_val.clone();
                 // 移除其他页拥有的 input 子字段

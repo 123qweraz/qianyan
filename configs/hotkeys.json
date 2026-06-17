@@ -1,0 +1,51 @@
+{
+  "hotkeys": {
+    "enable_ctrl_capslock_commit": true,
+    "enable_ctrl_space_toggle": true,
+    "enable_tab_toggle": false,
+    "nav_clear": [
+      "R"
+    ],
+    "nav_delete": [
+      "D"
+    ],
+    "nav_fuzzy": [
+      "S"
+    ],
+    "next_candidate": [
+      "Right"
+    ],
+    "page_down": [
+      "Down",
+      "PageDown",
+      "=",
+      ".",
+      "]"
+    ],
+    "page_up": [
+      "Up",
+      "PageUp",
+      "-",
+      "["
+    ],
+    "prev_candidate": [
+      "Left"
+    ],
+    "switch_language": {
+      "description": "核心: 切换中/英文模式",
+      "key": "CapsLock"
+    },
+    "toggle_traditional": {
+      "description": "繁简体切换",
+      "key": "CapsLock+F"
+    },
+    "word_to_char": [
+      "9",
+      "0"
+    ],
+    "word_to_char_shift": [
+      "1",
+      "2"
+    ]
+  }
+}
