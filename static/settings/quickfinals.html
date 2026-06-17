@@ -154,7 +154,7 @@
 
         async function resetAll() {
             if (!confirm('确定重置拼音相关设置到默认值吗？此操作不可撤销。')) return;
-            await fetch('/api/config/reset/input,hotkeys,quickfinals', { method: 'POST' });
+            await fetch('/api/config/reset/input,quickfinals', { method: 'POST' });
             location.reload();
         }
 

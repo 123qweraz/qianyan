@@ -5,7 +5,7 @@
         '<div class="qy-sidebar-logo"><h2>千言输入法</h2><span class="version">v0.1.0</span></div>' +
         '<div class="qy-sidebar-search"><input type="text" id="qy-sidebar-search-input" placeholder="搜索..." oninput="filterSidebar()"></div>' +
         '<nav class="qy-sidebar-nav" id="qy-sidebar-nav">' +
-        '<a href="#section-settings" data-keywords="系统 拼音 候选栏 模糊音 双拼 快速 CapsLock 外观 键盘布局">⚙️ 设置部分</a>' +
+        '<a href="#section-settings" data-keywords="系统 拼音 候选栏 模糊音 双拼 快速 CapsLock 外观 键盘布局 快捷键 翻页 以词定字 导航">⚙️ 设置部分</a>' +
         '<a href="#section-dicts" data-keywords="词典 词库 用户词典 自造词 新词 编译 编辑 算法 学习 频率 ngram 记忆 自动造词">📖 词典工具</a>' +
         '<a href="#section-learning" data-keywords="学习 练习 笔画码 文章 打字 辅助码">✍️ 学习部分</a>' +
         '<a href="#section-tools" data-keywords="工具 emoji 表情 符号 转换 虚拟键盘 网页输入 大写 日期">🧰 额外功能</a>' +
