@@ -4,20 +4,6 @@
     <meta charset="UTF-8">
     <title>学习算法 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .algo-section { margin-bottom: 20px; }
-        .algo-section h2 { font-size: 15px; font-weight: 600; color: var(--apple-accent); margin: 0 0 6px 0; }
-        .algo-section > .desc { font-size: 12px; color: var(--apple-secondary); margin-bottom: 10px; line-height: 1.5; }
-        .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2px; }
-        .param-item { display: flex; align-items: center; padding: 10px 14px; background: var(--apple-card-bg); border-radius: 8px; gap: 12px; }
-        .param-item .info { flex: 1; min-width: 0; }
-        .param-item .info .title { font-size: 13px; font-weight: 500; }
-        .param-item .info .desc { font-size: 11px; color: var(--apple-secondary); line-height: 1.4; margin-top: 2px; }
-        .param-item .ctrl { flex-shrink: 0; }
-        .param-item .ctrl input[type=number] { width: 72px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--apple-border); text-align: center; font-size: 13px; }
-        .param-item .ctrl .tag { display: inline-block; font-size: 10px; color: var(--apple-secondary); background: var(--apple-border); padding: 1px 6px; border-radius: 4px; margin-top: 2px; }
-        .save-bar { display: flex; gap: 10px; align-items: center; padding: 14px 0; margin-top: 8px; }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -31,149 +17,137 @@
             所有学习算法的开关和权重参数集中管理，改完记得点保存。
         </div>
 
-        <!-- ─── 候选排序 ─── -->
-        <div class="algo-section">
-            <h2>🏷️ 候选排序</h2>
-            <div class="desc">控制候选项的排列顺序。基础分越高，对应匹配类型（精确/模糊/前缀）的候选整体越靠前。</div>
-            <div class="card" style="padding:14px;">
-                <div class="param-grid">
-                    <div class="param-item">
-                        <div class="info"><div class="title">用户选词顺序排序</div><div class="desc">选过的词自动排到该拼音候选的首位</div></div>
-                        <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">MRU 记忆数量</div><div class="desc">最多记住最近选过的多少个词</div></div>
-                        <div class="ctrl"><input type="number" id="mru_length" min="5" max="10000" step="10"><div class="tag">默认 2000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">固定首词</div><div class="desc">字典频率最高的词始终排在首位，不受 MRU 改变</div></div>
-                        <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_pin_first_word"><span class="slider"></span></label></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">精确匹配基础分</div><div class="desc">拼音精确命中字典的基础得分</div></div>
-                        <div class="ctrl"><input type="number" id="match_level_exact" min="0" step="1000000"><div class="tag">默认 30,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">模糊/简拼基础分</div><div class="desc">模糊音、简拼匹配的基础得分</div></div>
-                        <div class="ctrl"><input type="number" id="match_level_fuzzy" min="0" step="1000000"><div class="tag">默认 20,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">前缀匹配基础分</div><div class="desc">拼音前缀匹配的基础得分</div></div>
-                        <div class="ctrl"><input type="number" id="match_level_prefix" min="0" step="1000000"><div class="tag">默认 10,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">精确匹配额外加成</div><div class="desc">精确匹配在基础分之上的额外加分</div></div>
-                        <div class="ctrl"><input type="number" id="exact_match_bonus" min="0" step="1000000"><div class="tag">默认 10,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">单字奖励</div><div class="desc">单字候选的额外加分</div></div>
-                        <div class="ctrl"><input type="number" id="single_char_bonus" min="0" step="100000"><div class="tag">默认 1,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">用户词典权重</div><div class="desc">用户自造词的基础加分</div></div>
-                        <div class="ctrl"><input type="number" id="user_dict_bonus" min="0" step="1000000"><div class="tag">默认 10,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">长度惩罚</div><div class="desc">候选项每比拼音多一个字的扣分</div></div>
-                        <div class="ctrl"><input type="number" id="length_penalty" min="0" step="1000"><div class="tag">默认 50,000</div></div>
-                    </div>
-                </div>
+        <h2 id="ranking">候选排序</h2>
+        <div class="card">
+            <div class="note" style="margin:0 0 16px;">
+                控制候选项的排列顺序。基础分越高，对应匹配类型（精确/模糊/前缀）的候选整体越靠前。
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">用户选词顺序排序</div><div class="desc">选过的词自动排到该拼音候选的首位</div></div>
+                <label class="switch"><input type="checkbox" id="enable_auto_reorder"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">MRU 记忆数量</div><div class="desc">最多记住最近选过的多少个词（默认2000）</div></div>
+                <input type="number" id="mru_length" min="5" max="10000" step="10" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">固定首词</div><div class="desc">字典频率最高的词始终排在首位，不受 MRU 改变</div></div>
+                <label class="switch"><input type="checkbox" id="enable_pin_first_word"><span class="slider"></span></label>
+            </div>
+            <hr style="margin:12px 0;border:0;border-top:1px dashed var(--apple-border);">
+            <div class="setting-item">
+                <div class="info"><div class="title">精确匹配基础分</div><div class="desc">拼音精确命中字典的基础得分（默认 30,000,000）</div></div>
+                <input type="number" id="match_level_exact" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">模糊/简拼基础分</div><div class="desc">模糊音、简拼匹配的基础得分（默认 20,000,000）</div></div>
+                <input type="number" id="match_level_fuzzy" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">前缀匹配基础分</div><div class="desc">拼音前缀匹配的基础得分（默认 10,000,000）</div></div>
+                <input type="number" id="match_level_prefix" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">精确匹配额外加成</div><div class="desc">精确匹配在基础分之上的额外加分（默认 10,000,000）</div></div>
+                <input type="number" id="exact_match_bonus" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">单字奖励</div><div class="desc">单字候选的额外加分（默认 1,000,000）</div></div>
+                <input type="number" id="single_char_bonus" min="0" step="100000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">用户词典权重</div><div class="desc">用户自造词的基础加分（默认 10,000,000）</div></div>
+                <input type="number" id="user_dict_bonus" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">长度惩罚</div><div class="desc">候选项每比拼音多一个字的扣分（默认 50,000）</div></div>
+                <input type="number" id="length_penalty" min="0" step="1000" style="width:80px;text-align:center;">
             </div>
         </div>
 
-        <!-- ─── 上下文联想 ─── -->
-        <div class="algo-section">
-            <h2>🔗 上下文联想</h2>
-            <div class="desc">根据前文已上屏的词，提升后续相关的候选项排序。bigram 看上一个词，trigram 看上两个词。</div>
-            <div class="card" style="padding:14px;">
-                <div class="param-grid">
-                    <div class="param-item">
-                        <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文关系调整候选项顺序</div></div>
-                        <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">Bigram 权重加成</div><div class="desc">上一个词 → 当前词，每个计数的加分</div></div>
-                        <div class="ctrl"><input type="number" id="context_boost_bigram" min="0" step="1000000"><div class="tag">默认 50,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">Trigram 权重加成</div><div class="desc">上两个词 → 当前词，每个计数的加分</div></div>
-                        <div class="ctrl"><input type="number" id="context_boost_trigram" min="0" step="1000000"><div class="tag">默认 60,000,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">上下文计数上限</div><div class="desc">超过此次数后不再增加权重（防止过度拟合）</div></div>
-                        <div class="ctrl"><input type="number" id="context_boost_cap" min="1" max="200" step="1"><div class="tag">默认 40</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">新词合成阈值</div><div class="desc">相邻词连续出现多少次后自动合并为新词（如 张+三+丰 → 张三丰）</div></div>
-                        <div class="ctrl"><input type="number" id="ngram_synthesis_threshold" min="1" max="20" step="1"><div class="tag">默认 2</div></div>
-                    </div>
-                </div>
+        <h2 id="context">上下文联想</h2>
+        <div class="card">
+            <div class="note" style="margin:0 0 16px;">
+                根据前文已上屏的词，提升后续相关的候选项排序。bigram 看上一个词，trigram 看上两个词。
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">上下文联想排序</div><div class="desc">根据上文关系调整候选项顺序</div></div>
+                <label class="switch"><input type="checkbox" id="enable_context_sorting"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">Bigram 权重加成</div><div class="desc">上一个词 → 当前词，每个计数的加分（默认 50,000,000）</div></div>
+                <input type="number" id="context_boost_bigram" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">Trigram 权重加成</div><div class="desc">上两个词 → 当前词，每个计数的加分（默认 60,000,000）</div></div>
+                <input type="number" id="context_boost_trigram" min="0" step="1000000" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">上下文计数上限</div><div class="desc">超过此次数后不再增加权重（默认 40）</div></div>
+                <input type="number" id="context_boost_cap" min="1" max="200" step="1" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">新词合成阈值</div><div class="desc">相邻词连续出现多少次后自动合并为新词，如 张+三+丰 → 张三丰（默认 2）</div></div>
+                <input type="number" id="ngram_synthesis_threshold" min="1" max="20" step="1" style="width:80px;text-align:center;">
             </div>
         </div>
 
-        <!-- ─── 自动造词与记忆 ─── -->
-        <div class="algo-section">
-            <h2>🧠 自动造词与记忆</h2>
-            <div class="desc">控制用户词典的自动学习、存储容量和短期→长期记忆的晋升机制。</div>
-            <div class="card" style="padding:14px;">
-                <div class="param-grid">
-                    <div class="param-item">
-                        <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的多字词自动加入用户词典</div></div>
-                        <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">候选出现条件</div><div class="desc">同一个词出现多少次后才作为候选项（1=立即）</div></div>
-                        <div class="ctrl"><input type="number" id="word_learn_threshold" min="1" max="10" step="1"><div class="tag">默认 2</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">短期记忆容量</div><div class="desc">自动造词最多保留的词条数，超限淘汰使用最少的</div></div>
-                        <div class="ctrl"><input type="number" id="short_term_capacity" min="10" max="10000" step="10"><div class="tag">默认 200</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">晋升长期记忆次数</div><div class="desc">短期记忆的词被选择此次数后晋升为长期记忆（永久保留）</div></div>
-                        <div class="ctrl"><input type="number" id="long_term_threshold" min="2" max="100" step="1"><div class="tag">默认 5</div></div>
-                    </div>
-                </div>
+        <h2 id="memory">自动造词与记忆</h2>
+        <div class="card">
+            <div class="note" style="margin:0 0 16px;">
+                控制用户词典的自动学习、存储容量和短期→长期记忆的晋升机制。
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">启用造词记录</div><div class="desc">将上屏的多字词自动加入用户词典</div></div>
+                <label class="switch"><input type="checkbox" id="enable_word_discovery"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">候选出现条件</div><div class="desc">同一个词出现多少次后才作为候选项，1=立即出现（默认 2）</div></div>
+                <input type="number" id="word_learn_threshold" min="1" max="10" step="1" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">短期记忆容量</div><div class="desc">自动造词最多保留的词条数，超限淘汰使用最少的（默认 200）</div></div>
+                <input type="number" id="short_term_capacity" min="10" max="10000" step="10" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">晋升长期记忆次数</div><div class="desc">短期记忆的词被选择此次数后晋升为长期记忆，永久保留（默认 5）</div></div>
+                <input type="number" id="long_term_threshold" min="2" max="100" step="1" style="width:80px;text-align:center;">
             </div>
         </div>
 
-        <!-- ─── 组句评分 ─── -->
-        <div class="algo-section">
-            <h2>✏️ 组句评分</h2>
-            <div class="desc">Viterbi 词图组句（长句全拼输入）的各项权重。数值越高对应因素对组句路径的影响越大。</div>
-            <div class="card" style="padding:14px;">
-                <div class="param-grid">
-                    <div class="param-item">
-                        <div class="info"><div class="title">音节频率权重</div><div class="desc">音节在语料中出现频率的 log 值乘以此系数</div></div>
-                        <div class="ctrl"><input type="number" id="compose_freq_multiplier" min="0" step="10"><div class="tag">默认 100</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">词长奖励</div><div class="desc">每多一个汉字增加的奖励分（鼓励切分成长词）</div></div>
-                        <div class="ctrl"><input type="number" id="compose_word_len_bonus" min="0" step="10"><div class="tag">默认 200</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">简拼组合奖励</div><div class="desc">多个声母合并成词的奖励分</div></div>
-                        <div class="ctrl"><input type="number" id="compose_abbr_bonus" min="0" step="100"><div class="tag">默认 5,000</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">词典权重系数</div><div class="desc">字典词频乘以此系数影响组句</div></div>
-                        <div class="ctrl"><input type="number" id="compose_dict_scale" min="0" step="0.001"><div class="tag">默认 0.01</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">组句 ngram 加成</div><div class="desc">组句时上下文关联词（bigram）的加分</div></div>
-                        <div class="ctrl"><input type="number" id="compose_ngram_bonus" min="0" step="10"><div class="tag">默认 500</div></div>
-                    </div>
-                    <div class="param-item">
-                        <div class="info"><div class="title">组句 ngram 上限</div><div class="desc">组句时 bigram 计数超过此值后不再加分</div></div>
-                        <div class="ctrl"><input type="number" id="compose_ngram_cap" min="1" max="100" step="1"><div class="tag">默认 10</div></div>
-                    </div>
-                </div>
+        <h2 id="compose">组句评分</h2>
+        <div class="card">
+            <div class="note" style="margin:0 0 16px;">
+                Viterbi 词图组句（长句全拼输入）的各项权重。数值越高对应因素对组句路径的影响越大。
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">音节频率权重</div><div class="desc">音节在语料中出现频率的 log 值乘以此系数（默认 100）</div></div>
+                <input type="number" id="compose_freq_multiplier" min="0" step="10" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">词长奖励</div><div class="desc">每多一个汉字增加的奖励分，鼓励切分成长词（默认 200）</div></div>
+                <input type="number" id="compose_word_len_bonus" min="0" step="10" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">简拼组合奖励</div><div class="desc">多个声母合并成词的奖励分（默认 5,000）</div></div>
+                <input type="number" id="compose_abbr_bonus" min="0" step="100" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">词典权重系数</div><div class="desc">字典词频乘以此系数影响组句（默认 0.01）</div></div>
+                <input type="number" id="compose_dict_scale" min="0" step="0.001" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">组句 ngram 加成</div><div class="desc">组句时上下文关联词 bigram 的加分（默认 500）</div></div>
+                <input type="number" id="compose_ngram_bonus" min="0" step="10" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">组句 ngram 上限</div><div class="desc">组句时 bigram 计数超过此值后不再加分（默认 10）</div></div>
+                <input type="number" id="compose_ngram_cap" min="1" max="100" step="1" style="width:80px;text-align:center;">
             </div>
         </div>
 
-        <div class="save-bar">
-            <button class="btn" onclick="saveSwitches()" style="font-size:14px; padding:10px 24px;">💾 保存全部设置</button>
-            <span style="font-size:12px; color:var(--apple-secondary);">修改后需点击保存才能生效</span>
+        <div class="sticky-footer">
+            <button class="btn" onclick="saveSwitches()">保存更改</button>
         </div>
     </div>
 
@@ -183,7 +157,6 @@
     <script>
         async function init() {
             await loadConfig();
-            // 候选排序
             bindInput('enable_auto_reorder', 'input');
             bindInput('mru_length', 'input');
             bindInput('enable_pin_first_word', 'input');
@@ -194,18 +167,15 @@
             bindInput('single_char_bonus', 'input', 'ranking.single_char_bonus');
             bindInput('user_dict_bonus', 'input', 'ranking.user_dict_bonus');
             bindInput('length_penalty', 'input', 'ranking.length_penalty');
-            // 上下文联想
             bindInput('enable_context_sorting', 'input');
             bindInput('context_boost_bigram', 'input', 'ranking.context_boost_bigram');
             bindInput('context_boost_trigram', 'input', 'ranking.context_boost_trigram');
             bindInput('context_boost_cap', 'input', 'ranking.context_boost_cap');
             bindInput('ngram_synthesis_threshold', 'input');
-            // 自动造词与记忆
             bindInput('enable_word_discovery', 'input');
             bindInput('word_learn_threshold', 'input');
             bindInput('short_term_capacity', 'input');
             bindInput('long_term_threshold', 'input');
-            // 组句评分
             bindInput('compose_freq_multiplier', 'input', 'ranking.compose_freq_multiplier');
             bindInput('compose_word_len_bonus', 'input', 'ranking.compose_word_len_bonus');
             bindInput('compose_abbr_bonus', 'input', 'ranking.compose_abbr_bonus');

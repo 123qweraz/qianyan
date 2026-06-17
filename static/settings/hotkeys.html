@@ -4,18 +4,6 @@
     <meta charset="UTF-8">
     <title>快捷键 - 千言输入法</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .key-group { margin-bottom: 6px; }
-        .key-group h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px 0; color: var(--apple-text); }
-        .key-group .desc { font-size: 11px; color: var(--apple-secondary); margin-bottom: 6px; }
-        .hotkey-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 2px; }
-        .hotkey-item { display: flex; align-items: center; padding: 10px 14px; background: var(--apple-card-bg); border-radius: 8px; gap: 12px; }
-        .hotkey-item .info { flex: 1; min-width: 0; }
-        .hotkey-item .info .title { font-size: 13px; font-weight: 500; }
-        .hotkey-item .info .desc { font-size: 11px; color: var(--apple-secondary); line-height: 1.4; margin-top: 2px; }
-        .hotkey-item .ctrl { flex-shrink: 0; }
-        .hotkey-item .ctrl input[type=text] { width: 200px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--apple-border); text-align: right; font-size: 13px; }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -31,85 +19,76 @@
             • Tab 导航模式快捷键说明见 <a href="/static/settings/nav_mode.html" style="color:var(--apple-accent);">导航模式帮助</a>
         </div>
 
-        <h2 style="font-size:15px; font-weight:600; margin:0 0 10px;">翻页与选择</h2>
-        <div class="card" style="padding:14px;">
-            <div class="hotkey-grid">
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">翻到上一页</div><div class="desc">触发翻页的按键列表</div></div>
-                    <div class="ctrl"><input type="text" id="page_up_input" placeholder="Up,PageUp,-"></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">翻到下一页</div><div class="desc">触发翻页的按键列表</div></div>
-                    <div class="ctrl"><input type="text" id="page_down_input" placeholder="Down,PageDown,="></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">选择上一词</div><div class="desc">触发选择上一个候选词的按键列表</div></div>
-                    <div class="ctrl"><input type="text" id="prev_candidate_input" placeholder="Left"></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">选择下一词</div><div class="desc">触发选择下一个候选词的按键列表</div></div>
-                    <div class="ctrl"><input type="text" id="next_candidate_input" placeholder="Right"></div>
-                </div>
+        <h2 id="nav-page">翻页与选择</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">翻到上一页</div><div class="desc">触发翻页的按键列表</div></div>
+                <input type="text" id="page_up_input" style="width:250px;text-align:right;" placeholder="Up,PageUp,-">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">翻到下一页</div><div class="desc">触发翻页的按键列表</div></div>
+                <input type="text" id="page_down_input" style="width:250px;text-align:right;" placeholder="Down,PageDown,=">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">选择上一词</div><div class="desc">触发选择上一个候选词的按键列表</div></div>
+                <input type="text" id="prev_candidate_input" style="width:250px;text-align:right;" placeholder="Left">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">选择下一词</div><div class="desc">触发选择下一个候选词的按键列表</div></div>
+                <input type="text" id="next_candidate_input" style="width:250px;text-align:right;" placeholder="Right">
             </div>
         </div>
 
-        <h2 style="font-size:15px; font-weight:600; margin:18px 0 10px;">以词定字</h2>
-        <div class="card" style="padding:14px;">
-            <div class="hotkey-grid">
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，9=第1字，0=第2字</div></div>
-                    <div class="ctrl"><input type="text" id="word_to_char_input" placeholder="9,0"></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键，1=第1字，2=第2字</div></div>
-                    <div class="ctrl"><input type="text" id="word_to_char_shift_input" placeholder="1,2"></div>
-                </div>
+        <h2 id="word-to-char">以词定字</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，9=第1字，0=第2字</div></div>
+                <input type="text" id="word_to_char_input" style="width:250px;text-align:right;" placeholder="9,0">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键，1=第1字，2=第2字</div></div>
+                <input type="text" id="word_to_char_shift_input" style="width:250px;text-align:right;" placeholder="1,2">
             </div>
         </div>
 
-        <h2 style="font-size:15px; font-weight:600; margin:18px 0 10px;">Tab 导航模式</h2>
-        <div class="card" style="padding:14px;">
-            <div class="note" style="margin:0 0 12px; font-size:12px;">
+        <h2 id="nav-mode">Tab 导航模式</h2>
+        <div class="card">
+            <div class="note" style="margin:0 0 16px;">
                 进入 Tab 导航模式后可用，详细说明见 <a href="/static/settings/nav_mode.html" style="color:var(--apple-accent);">导航模式帮助 →</a>
             </div>
-            <div class="hotkey-grid">
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">导航 - 删除</div><div class="desc">删除拼音末尾一个字符并重新查词</div></div>
-                    <div class="ctrl"><input type="text" id="nav_delete_input" placeholder="D"></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">导航 - 模糊音切换</div><div class="desc">切换当前音节模糊音（zh↔z、ch↔c、sh↔s）并重新查词</div></div>
-                    <div class="ctrl"><input type="text" id="nav_fuzzy_input" placeholder="S"></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">导航 - 清空拼音</div><div class="desc">清空整个拼音缓冲区</div></div>
-                    <div class="ctrl"><input type="text" id="nav_clear_input" placeholder="R"></div>
-                </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">导航 - 删除</div><div class="desc">删除拼音末尾一个字符并重新查词（默认 D）</div></div>
+                <input type="text" id="nav_delete_input" style="width:250px;text-align:right;" placeholder="D">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">导航 - 模糊音切换</div><div class="desc">切换当前音节模糊音 zh↔z ch↔c sh↔s 并重新查词（默认 S）</div></div>
+                <input type="text" id="nav_fuzzy_input" style="width:250px;text-align:right;" placeholder="S">
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">导航 - 清空拼音</div><div class="desc">清空整个拼音缓冲区（默认 R）</div></div>
+                <input type="text" id="nav_clear_input" style="width:250px;text-align:right;" placeholder="R">
             </div>
         </div>
 
-        <h2 style="font-size:15px; font-weight:600; margin:18px 0 10px;">开关与切换</h2>
-        <div class="card" style="padding:14px;">
-            <div class="hotkey-grid">
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">Ctrl + Space 切换输入法</div><div class="desc">经典的中/英文输入法切换组合键</div></div>
-                    <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式</div></div>
-                    <div class="ctrl"><label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label></div>
-                </div>
-                <div class="hotkey-item">
-                    <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）</div></div>
-                    <div class="ctrl"><input type="text" id="toggle_traditional_input" style="width:160px;" placeholder="CapsLock+F"></div>
-                </div>
+        <h2 id="toggles">开关与切换</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">Ctrl + Space 切换输入法</div><div class="desc">经典的中/英文输入法切换组合键</div></div>
+                <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式</div></div>
+                <label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）</div></div>
+                <input type="text" id="toggle_traditional_input" style="width:200px;text-align:right;" placeholder="CapsLock+F">
             </div>
         </div>
 
-        <div class="save-bar" style="display:flex; gap:10px; align-items:center; padding:14px 0; margin-top:8px;">
-            <button class="btn" onclick="save()" style="font-size:14px; padding:10px 24px;">💾 保存快捷键</button>
-            <button class="btn btn-danger" onclick="resetHotkeys()" style="font-size:13px; padding:8px 16px;">重置默认</button>
-            <span style="font-size:12px; color:var(--apple-secondary);">修改后需点击保存才能生效</span>
+        <div class="sticky-footer">
+            <button class="btn" onclick="save()">保存更改</button>
+            <button class="btn btn-danger" onclick="resetHotkeys()">重置默认</button>
         </div>
     </div>
 
