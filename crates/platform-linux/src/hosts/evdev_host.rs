@@ -326,7 +326,10 @@ impl InputMethodHost for EvdevHost {
                     // 3. Meta (Win) 键特殊处理：自动释放 grab 以支持系统快捷键
                     if is_meta_key && val == 1 {
                         self.meta_was_pressed = true;
-                        // 强制清除所有修饰键状态，防止 Meta 弹窗时 Shift 等被锁定在按下状态
+                        // 只向 uinput 转发修饰键 release（让应用感知释放），
+                        // 但不修改 held_keys（held_keys 跟踪物理按键真实状态）。
+                        // 这样当用户松开物理按键时，held_keys.remove 正常工作，
+                        // 不会出现修饰键卡死。
                         for mod_key in [
                             Key::KEY_LEFTSHIFT,
                             Key::KEY_RIGHTSHIFT,
@@ -336,9 +339,10 @@ impl InputMethodHost for EvdevHost {
                             Key::KEY_LEFTALT,
                             Key::KEY_RIGHTALT,
                         ] {
-                            held_keys.remove(&mod_key);
-                            if let Ok(vkbd) = self.vkbd.lock() {
-                                vkbd.emit_raw(mod_key, 0);
+                            if held_keys.contains(&mod_key) {
+                                if let Ok(vkbd) = self.vkbd.lock() {
+                                    vkbd.emit_raw(mod_key, 0);
+                                }
                             }
                         }
                         if self.is_grabbed {
