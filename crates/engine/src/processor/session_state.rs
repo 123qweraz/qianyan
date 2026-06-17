@@ -68,7 +68,7 @@ impl SessionState {
     pub fn get_last_two_words(&self) -> Option<(&str, &str)> {
         if self.commit_history.len() >= 2 {
             let n2 = &self.commit_history[self.commit_history.len() - 2];
-            let n1 = self.commit_history.last().unwrap();
+            let n1 = &self.commit_history[self.commit_history.len() - 1];
             Some((n2.1.as_str(), n1.1.as_str()))
         } else {
             None

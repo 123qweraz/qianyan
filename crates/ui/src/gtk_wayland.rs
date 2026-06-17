@@ -463,7 +463,9 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
                 }
                 GtkCmd::ApplyConfig(config) => {
                     s.config = Some(config);
-                    apply_css(s.config.as_ref().unwrap());
+                    if let Some(c) = s.config.as_ref() {
+                        apply_css(c);
+                    }
                 }
                 GtkCmd::Exit => {
                     main_loop_clone.quit();

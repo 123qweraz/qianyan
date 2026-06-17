@@ -323,8 +323,12 @@ fn wl_keystroke_thread(
     };
 
     {
+        let layer_shell = match state.layer_shell.as_ref() {
+            Some(ls) => ls,
+            None => return,
+        };
         let surf = state.compositor_state.create_surface(&qh);
-        let layer = state.layer_shell.as_ref().unwrap()
+        let layer = layer_shell
             .create_layer_surface(&qh, surf, Layer::Overlay, Some("qianyan-ime-keystroke"), None);
         layer.set_exclusive_zone(-1);
         layer.set_keyboard_interactivity(KeyboardInteractivity::None);
