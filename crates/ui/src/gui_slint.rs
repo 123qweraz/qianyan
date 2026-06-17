@@ -368,16 +368,19 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     let mut displays: Vec<Box<dyn CandidateDisplay>> = Vec::new();
     log::debug!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
 
-    // On Wayland, use layer-shell overlay instead of Slint winit windows
-    // to avoid taskbar icons. Fall back to SlintDisplay if layer shell is
-    // unavailable (e.g. compositor like niri doesn't support zwlr_layer_shell_v1).
+    // On Wayland, use GTK4 layer-shell overlay for proper
+    // fractional scaling support. Falls back to WaylandLayerDisplay
+    // if GTK4 is unavailable, then to SlintDisplay.
     #[cfg(target_os = "linux")]
     if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
-            log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay");
+        if let Some(gtk_display) = crate::gtk_wayland::GtkWaylandDisplay::new(config.clone()) {
+            log::debug!("[GUI_DEBUG] Using GtkWaylandDisplay");
+            displays.push(Box::new(gtk_display));
+        } else if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
+            log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay (fallback)");
             displays.push(Box::new(wl_display));
         } else {
-            log::warn!("WaylandLayerDisplay failed, falling back to Slint window (XWayland)");
+            log::warn!("Both GtkWaylandDisplay and WaylandLayerDisplay failed, falling back to Slint window (XWayland)");
             displays.push(Box::new(SlintDisplay::new(config.clone())));
         }
     } else {

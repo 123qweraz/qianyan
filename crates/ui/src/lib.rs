@@ -8,6 +8,8 @@ pub mod local_notify;
 pub mod slint_window;
 #[cfg(target_os = "linux")]
 pub mod wayland_layer;
+#[cfg(target_os = "linux")]
+pub mod gtk_wayland;
 pub mod platform;
 #[cfg(target_os = "linux")]
 pub mod ipc;

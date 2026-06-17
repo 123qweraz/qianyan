@@ -35,6 +35,8 @@ memmap2 = { workspace = true }
 wayland-client = "0.31"
 bytemuck = "1"
 libc = "0.2"
+gtk4 = { version = "0.11", default-features = false, features = ["v4_22"] }
+gtk4-layer-shell = "0.8"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.52", features = ["Win32_System_Registry", "Win32_Foundation"] }
