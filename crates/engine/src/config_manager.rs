@@ -470,10 +470,6 @@ impl ConfigManager {
         self.master_config.input.auto_commit_stroke
     }
 
-    pub fn firefox_space_interrupt(&self) -> bool {
-        self.master_config.input.firefox_space_interrupt
-    }
-
     pub fn swap_arrow_keys(&self) -> bool {
         self.master_config.input.swap_arrow_keys
     }

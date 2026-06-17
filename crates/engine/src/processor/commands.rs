@@ -46,16 +46,6 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                 return Action::PassThrough;
             }
 
-            if ctx.config.firefox_space_interrupt() {
-                let out = ctx.session.buffer.clone();
-                let delete_count = out.chars().count() + 1;
-                ctx.reset();
-                return Action::DeleteAndEmit {
-                    delete: delete_count,
-                    insert: out,
-                };
-            }
-
             if !ctx.session.candidates.is_empty() {
                 let idx = ctx.session.selected;
                 if let Some(cand) = ctx.session.candidates.get(idx) {

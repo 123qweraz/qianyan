@@ -319,7 +319,6 @@ pub struct Input {
     pub ranking: RankingConfig,
     #[serde(default = "default_true")]
     pub enable_context_sorting: bool,
-    pub firefox_space_interrupt: bool,
     #[serde(default = "default_segmentation_delimiters")]
     pub segmentation_delimiters: String,
 }
@@ -1100,7 +1099,6 @@ impl Config {
                     exact_match_bonus: 10000000.0,
                     single_char_bonus: 1000000.0,
                 },
-                firefox_space_interrupt: false,
                 segmentation_delimiters: "'".to_string(),
             },
             hotkeys: Hotkeys {
