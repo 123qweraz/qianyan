@@ -158,6 +158,25 @@ impl WebServer {
             }
         });
 
+        // Periodic IME session cleanup: 每 5 分钟清理过期 session
+        let cleanup_handle = ime_handle.clone();
+        let mut cleanup_shutdown_rx = ime_handle.shutdown_tx.subscribe();
+        tokio::spawn(async move {
+            let interval = std::time::Duration::from_secs(SESSION_TTL_SECS / 2);
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep(interval) => {
+                        let now = std::time::Instant::now();
+                        let ttl = std::time::Duration::from_secs(SESSION_TTL_SECS);
+                        if let Ok(mut sessions) = cleanup_handle.sessions.lock() {
+                            sessions.retain(|_, s| now.duration_since(s.created) < ttl);
+                        }
+                    }
+                    _ = cleanup_shutdown_rx.changed() => break,
+                }
+            }
+        });
+
         let mut current_port = self.port;
         loop {
             let addr = format!("127.0.0.1:{}", current_port);
