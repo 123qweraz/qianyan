@@ -321,6 +321,12 @@ fn update_candidates_inner(
         .as_ref()
         .is_some_and(|c| c.appearance.candidate_layout == "horizontal");
 
+    state.candidate_list.set_orientation(if is_horizontal {
+        gtk4::Orientation::Horizontal
+    } else {
+        gtk4::Orientation::Vertical
+    });
+
     for (i, c) in candidates.iter().enumerate() {
         let row = gtk4::Box::new(
             if is_horizontal {
@@ -435,7 +441,6 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
     main_box.append(&candidate_list);
 
     apply_css(&config);
-    window.set_visible(true);
 
     let state = RefCell::new(GtkWlState {
         window,
