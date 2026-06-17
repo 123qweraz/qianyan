@@ -436,7 +436,7 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
     }
 
     let main_loop_clone = main_loop.clone();
-    glib::idle_add_local(move || {
+    glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
         loop {
             let cmd = match rx.try_recv() {
                 Ok(cmd) => cmd,
