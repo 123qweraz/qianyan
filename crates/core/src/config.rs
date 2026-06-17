@@ -706,7 +706,7 @@ impl Config {
         ("hotkeys", &["hotkeys"], &[], &[]),
         ("algorithms", &[],
             &["enable_auto_reorder", "mru_length", "enable_pin_first_word",
-              "enable_context_sorting", "ngram_synthesis_threshold",
+              "enable_context_sorting", "ngram_synthesis_threshold", "auto_sentence_min_syllables",
               "enable_word_discovery", "word_learn_threshold", "short_term_capacity", "long_term_threshold",
               "ranking.length_penalty", "ranking.user_dict_bonus", "ranking.exact_match_bonus",
               "ranking.single_char_bonus", "ranking.match_level_exact", "ranking.match_level_fuzzy",

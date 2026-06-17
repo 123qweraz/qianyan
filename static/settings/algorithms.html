@@ -121,6 +121,10 @@
                 Viterbi 词图组句（长句全拼输入）的各项权重。数值越高对应因素对组句路径的影响越大。
             </div>
             <div class="setting-item">
+                <div class="info"><div class="title">自动造句起始音节数</div><div class="desc">拼音音节数达到多少个时开始自动组句（默认4，调大可减少误组句）</div></div>
+                <input type="number" id="auto_sentence_min_syllables" min="2" max="12" step="1" style="width:80px;text-align:center;">
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">音节频率权重</div><div class="desc">音节在语料中出现频率的 log 值乘以此系数（默认 100）</div></div>
                 <input type="number" id="compose_freq_multiplier" min="0" step="10" style="width:80px;text-align:center;">
             </div>
@@ -176,6 +180,7 @@
             bindInput('word_learn_threshold', 'input');
             bindInput('short_term_capacity', 'input');
             bindInput('long_term_threshold', 'input');
+            bindInput('auto_sentence_min_syllables', 'input');
             bindInput('compose_freq_multiplier', 'input', 'ranking.compose_freq_multiplier');
             bindInput('compose_word_len_bonus', 'input', 'ranking.compose_word_len_bonus');
             bindInput('compose_abbr_bonus', 'input', 'ranking.compose_abbr_bonus');

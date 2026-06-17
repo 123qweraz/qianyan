@@ -9,6 +9,7 @@
     "word_learn_threshold": 2,
     "short_term_capacity": 200,
     "long_term_threshold": 3,
+    "auto_sentence_min_syllables": 4,
     "ranking": {
       "length_penalty": 50000.0,
       "user_dict_bonus": 10000000.0,
