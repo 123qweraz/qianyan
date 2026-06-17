@@ -19,20 +19,6 @@
         .sub-link { font-size: 13px; color: var(--apple-accent); text-decoration: none; margin-left: 8px; }
         .sub-link:hover { text-decoration: underline; }
 
-        .page-with-sidebar { display: flex; gap: 24px; align-items: flex-start; }
-        .sidebar {
-            flex: 0 0 180px;
-            position: sticky; top: 20px;
-            display: flex; flex-direction: column; gap: 4px;
-            padding: 12px 0;
-        }
-        .sidebar a {
-            display: block; padding: 8px 12px; border-radius: 6px;
-            color: var(--apple-secondary); font-size: 13px; text-decoration: none;
-            transition: background .15s, color .15s;
-        }
-        .sidebar a:hover { background: rgba(9,105,218,0.06); color: var(--apple-accent); }
-        .main-content { flex: 1; min-width: 0; }
     </style>
 </head>
 <body>
@@ -42,16 +28,7 @@
             <h1>拼音设置</h1>
         </header>
 
-        <div class="page-with-sidebar">
-            <nav class="sidebar">
-                <a href="#input-conversion">输入与转换</a>
-                <a href="#display-mode">候选显示模式</a>
-                <a href="#traditional">繁体输入功能</a>
-                <a href="#key-switches">按键功能开关</a>
-                <a href="hotkeys.html">快捷键</a>
-            </nav>
-
-            <div class="main-content">
+        <div>
                 <h2 id="input-conversion">输入与转换</h2>
                 <div class="card">
                     <div class="setting-item">
@@ -144,13 +121,12 @@
                     <p style="font-size:14px; color:var(--apple-secondary); margin:0 0 10px;">翻页键、以词定字、导航模式、切换快捷键等已移至独立页面</p>
                     <a href="hotkeys.html" style="font-size:16px; font-weight:600; color:var(--apple-accent); text-decoration:none;">→ 前往快捷键设置</a>
                 </div>
-            </div>
         </div>
-    </div>
 
-    <div class="sticky-footer">
-        <button class="btn" onclick="save()">保存更改</button>
-        <button class="btn btn-danger" onclick="resetPinyin()">重置拼音默认</button>
+        <div class="sticky-footer">
+            <button class="btn" onclick="save()">保存更改</button>
+            <button class="btn btn-danger" onclick="resetPinyin()">重置拼音默认</button>
+        </div>
     </div>
 
     <div id="toast" class="status-toast"></div>
