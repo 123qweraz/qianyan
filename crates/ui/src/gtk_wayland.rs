@@ -171,7 +171,6 @@ window {{
     font-size: {cf}px;
     font-weight: {cw};
     font-family: {ff};
-    margin-right: 8px;
 }}
 .candidate-text {{
     color: {text};
@@ -185,14 +184,7 @@ window {{
 .candidate-label.selected {{
     color: {highlight_text};
 }}
-.candidate-hint {{
-    color: {text};
-    font-size: {cf}px;
-    font-weight: {cw};
-    font-family: {ff};
-    opacity: 0.6;
-    margin-left: 8px;
-}}
+
 "#,
     );
 
@@ -328,19 +320,13 @@ fn update_candidates_inner(
     });
 
     for (i, c) in candidates.iter().enumerate() {
-        let row = gtk4::Box::new(
-            if is_horizontal {
-                gtk4::Orientation::Vertical
-            } else {
-                gtk4::Orientation::Horizontal
-            },
-            4,
-        );
+        let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 4);
         row.add_css_class("candidate-row");
 
         let is_selected = i == selected;
 
-        let label = gtk4::Label::new(Some(&format!("{}.", c.label.trim_end_matches('.'))));
+        let label_text = c.label.trim_end_matches('.');
+        let label = gtk4::Label::new(Some(label_text));
         label.set_xalign(1.0);
         label.add_css_class("candidate-label");
 
@@ -348,32 +334,25 @@ fn update_candidates_inner(
         text.set_xalign(0.0);
         text.add_css_class("candidate-text");
 
-        if is_horizontal {
-            row.append(&text);
-            let aux = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
-            aux.append(&label);
-            if !c.hint.is_empty() {
-                let hint = gtk4::Label::new(Some(&c.hint));
-                hint.set_xalign(0.0);
-                hint.add_css_class("candidate-hint");
-                aux.append(&hint);
-            }
-            row.append(&aux);
+        row.append(&label);
+        row.append(&text);
+        let hint = if !c.hint.is_empty() {
+            let h = gtk4::Label::new(Some(&c.hint));
+            h.set_xalign(0.0);
+            h.add_css_class("candidate-text");
+            row.append(&h);
+            Some(h)
         } else {
-            row.append(&label);
-            row.append(&text);
-            if !c.hint.is_empty() {
-                let hint = gtk4::Label::new(Some(&c.hint));
-                hint.set_xalign(0.0);
-                hint.add_css_class("candidate-hint");
-                row.append(&hint);
-            }
-        }
+            None
+        };
 
         if is_selected {
             row.add_css_class("selected");
             label.add_css_class("selected");
             text.add_css_class("selected");
+            if let Some(ref h) = hint {
+                h.add_css_class("selected");
+            }
         }
 
         state.candidate_list.append(&row);
