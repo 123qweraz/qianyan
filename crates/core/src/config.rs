@@ -1064,7 +1064,7 @@ impl Config {
                 show_tray: true,
             },
             input: Input {
-                autostart: true,
+                autostart: false,
                 commit_mode: "single".to_string(),
                 default_profile: "chinese".to_string(),
                 phantom_type: PhantomType::Pinyin,
