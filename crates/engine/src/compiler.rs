@@ -40,6 +40,10 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
 
                 } else {
                     println!("[Compiler] 方案 [{}] 已是最新，跳过。", dir_name);
+                    let lock_path = Path::new(&trie_dat).with_extension("data.lock");
+                    if !lock_path.exists() {
+                        File::create(&lock_path)?;
+                    }
                 }
             }
         }
@@ -59,6 +63,10 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
             println!("[Compiler] 方案 [stroke] 编译完成，耗时 {:?}", start.elapsed());
         } else {
             println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
+            let lock_path = Path::new(&trie_dat).with_extension("data.lock");
+            if !lock_path.exists() {
+                File::create(&lock_path)?;
+            }
         }
     }
 
