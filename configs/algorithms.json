@@ -1,5 +1,6 @@
 {
   "input": {
+    "auto_sentence_min_syllables": 4,
     "enable_auto_reorder": true,
     "enable_context_sorting": true,
     "enable_pin_first_word": true,

@@ -1318,15 +1318,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 
 [[package]]
-name = "daemonize"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab8bfdaacb3c887a54d41bdf48d3af8873b3f5566469f8ba21b92057509f116e"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "dasp_sample"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1563,15 +1554,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75030f3c4f45dafd7586dd6780965a8c7e8e285a5ecb86713e63a79c5b2766f3"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "encoding_rs_io"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc3c5651fb62ab8aa3103998dade57efdd028544bd300516baa31840c252a83"
-dependencies = [
- "encoding_rs",
 ]
 
 [[package]]
@@ -4910,14 +4892,11 @@ dependencies = [
  "arboard",
  "arc-swap",
  "axum",
- "daemonize",
  "embed-resource",
  "encoding_rs",
  "env_logger",
- "evdev",
  "fst",
  "image 0.24.9",
- "ksni",
  "libc",
  "log",
  "memmap2",
@@ -4935,7 +4914,6 @@ dependencies = [
  "serde_json",
  "slint",
  "slint-build",
- "thiserror 1.0.69",
  "tokio",
  "walkdir",
  "winres",
@@ -4948,7 +4926,6 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4965,7 +4942,6 @@ dependencies = [
  "rodio",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
  "walkdir",
 ]
 
@@ -4974,7 +4950,6 @@ name = "qianyan-ime-linux"
 version = "0.1.0"
 dependencies = [
  "arboard",
- "daemonize",
  "dirs",
  "evdev",
  "libc",
@@ -4982,9 +4957,6 @@ dependencies = [
  "qianyan-ime-core",
  "qianyan-ime-engine",
  "qianyan-ime-ui",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
  "tokio",
  "wayland-client",
  "wayland-protocols",
@@ -5002,7 +4974,6 @@ dependencies = [
  "axum",
  "bytemuck",
  "encoding_rs",
- "encoding_rs_io",
  "fst",
  "gtk4",
  "gtk4-layer-shell",
@@ -5023,7 +4994,6 @@ dependencies = [
  "slint",
  "slint-build",
  "smithay-client-toolkit 0.20.0",
- "thiserror 1.0.69",
  "tokio",
  "walkdir",
  "wayland-client",
@@ -5035,22 +5005,15 @@ dependencies = [
 name = "qianyan-ime-windows"
 version = "0.1.0"
 dependencies = [
- "arboard",
  "embed-resource",
  "env_logger",
- "image 0.24.9",
- "log",
  "notify-rust",
- "open",
  "qianyan-ime-core",
  "qianyan-ime-engine",
  "qianyan-ime-ui",
  "serde",
  "serde_json",
- "slint",
  "slint-build",
- "thiserror 1.0.69",
- "tokio",
  "windows 0.52.0",
  "windows-core 0.52.0",
  "winres",
