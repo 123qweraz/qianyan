@@ -45,11 +45,11 @@ fn is_shift_key(keyval: u32) -> bool {
 }
 
 /// Build IBusText variant for D-Bus signals.
-fn ibus_text_variant(text: &str) -> zvariant::Value<'static> {
+fn ibus_text_variant(text: &str) -> Option<zvariant::Value<'static>> {
     use zvariant::{Array, Dict, Signature, StructureBuilder, Value};
 
-    let sig_s = Signature::try_from("s").unwrap();
-    let sig_v = Signature::try_from("v").unwrap();
+    let sig_s = Signature::try_from("s").ok()?;
+    let sig_v = Signature::try_from("v").ok()?;
     let empty_dict = Dict::new(&sig_s, &sig_v);
     let empty_array = Array::new(&sig_v);
 
@@ -58,7 +58,7 @@ fn ibus_text_variant(text: &str) -> zvariant::Value<'static> {
         .append_field(Value::Dict(empty_dict))
         .append_field(Value::Array(empty_array))
         .build()
-        .unwrap();
+        .ok()?;
 
     let empty_dict2 = Dict::new(&sig_s, &sig_v);
     let ibus_text = StructureBuilder::new()
@@ -67,24 +67,24 @@ fn ibus_text_variant(text: &str) -> zvariant::Value<'static> {
         .add_field(text.to_owned())
         .append_field(Value::Value(Box::new(Value::Structure(attr_list))))
         .build()
-        .unwrap();
+        .ok()?;
 
-    Value::Structure(ibus_text)
+    Some(Value::Structure(ibus_text))
 }
 
-fn ibus_text_value(text: &str) -> zvariant::OwnedValue {
-    zvariant::OwnedValue::try_from(ibus_text_variant(text)).expect("ibus_text_value")
+fn ibus_text_value(text: &str) -> Option<zvariant::OwnedValue> {
+    Some(zvariant::OwnedValue::try_from(ibus_text_variant(text)?).ok()?)
 }
 
-fn ibus_as_variant(text: &str) -> zvariant::Value<'static> {
-    zvariant::Value::Value(Box::new(ibus_text_variant(text)))
+fn ibus_as_variant(text: &str) -> Option<zvariant::Value<'static>> {
+    Some(zvariant::Value::Value(Box::new(ibus_text_variant(text)?)))
 }
 
-fn ibus_engine_desc_value() -> zvariant::OwnedValue {
+fn ibus_engine_desc_value() -> Option<zvariant::OwnedValue> {
     use zvariant::{Dict, Signature, StructureBuilder, Value};
 
-    let sig_s = Signature::try_from("s").unwrap();
-    let sig_v = Signature::try_from("v").unwrap();
+    let sig_s = Signature::try_from("s").ok()?;
+    let sig_v = Signature::try_from("v").ok()?;
     let empty_dict = Dict::new(&sig_s, &sig_v);
 
     let engine = StructureBuilder::new()
@@ -104,9 +104,9 @@ fn ibus_engine_desc_value() -> zvariant::OwnedValue {
         .add_field("".to_owned())
         .add_field("".to_owned())
         .build()
-        .unwrap();
+        .ok()?;
 
-    zvariant::OwnedValue::try_from(Value::Structure(engine)).expect("ibus_engine_desc_value")
+    Some(zvariant::OwnedValue::try_from(Value::Structure(engine)).ok()?)
 }
 
 fn build_lookup_table(
@@ -118,24 +118,26 @@ fn build_lookup_table(
 
     use zvariant::{Array, Dict, Signature, StructureBuilder, Value};
 
-    let sig_s = Signature::try_from("s").unwrap();
-    let sig_v = Signature::try_from("v").unwrap();
+    let sig_s = Signature::try_from("s").ok()?;
+    let sig_v = Signature::try_from("v").ok()?;
     let empty_dict = Dict::new(&sig_s, &sig_v);
 
     let mut cands = Array::new(&sig_v);
     for c in &snapshot.candidates {
-        cands.append(ibus_as_variant(&c.text)).expect("append candidate");
+        if let Some(v) = ibus_as_variant(&c.text) {
+            let _ = cands.append(v);
+        }
     }
 
     let mut labels = Array::new(&sig_v);
     for c in &snapshot.candidates {
-        labels
-            .append(ibus_as_variant(&c.label.trim_end_matches('.')))
-            .expect("append label");
+        if let Some(v) = ibus_as_variant(&c.label.trim_end_matches('.')) {
+            let _ = labels.append(v);
+        }
     }
 
     let page_size = snapshot.candidates.len().clamp(1, 16) as u32;
-    let cursor_pos = snapshot.selected.min(snapshot.candidates.len() - 1) as u32;
+    let cursor_pos = snapshot.selected.min(snapshot.candidates.len().saturating_sub(1)) as u32;
 
     let table = StructureBuilder::new()
         .add_field("IBusLookupTable".to_owned())
@@ -148,9 +150,9 @@ fn build_lookup_table(
         .append_field(Value::Array(cands))
         .append_field(Value::Array(labels))
         .build()
-        .unwrap();
+        .ok()?;
 
-    Some(zvariant::OwnedValue::try_from(Value::Structure(table)).expect("lookup_table"))
+    Some(zvariant::OwnedValue::try_from(Value::Structure(table)).ok()?)
 }
 
 fn keyval_to_vk(keyval: u32) -> Option<VirtualKey> {
@@ -314,17 +316,19 @@ impl InputContext {
             Action::Emit(text) => {
                 info!("[IBus] Emit: {:?}", text);
                 let _ = InputContext::hide_preedit_text(&ctxt).await;
-                let ov = ibus_text_value(text);
-                if let Ok(v) = zvariant::Value::try_from(&ov) {
-                    let _ = InputContext::commit_text(&ctxt, v).await;
+                if let Some(ov) = ibus_text_value(text) {
+                    if let Ok(v) = zvariant::Value::try_from(&ov) {
+                        let _ = InputContext::commit_text(&ctxt, v).await;
+                    }
                 }
                 true
             }
             Action::DeleteAndEmit { delete: _, insert } => {
                 info!("[IBus] DeleteAndEmit: {:?}", insert);
-                let ov = ibus_text_value(insert);
-                if let Ok(v) = zvariant::Value::try_from(&ov) {
-                    let _ = InputContext::commit_text(&ctxt, v).await;
+                if let Some(ov) = ibus_text_value(insert) {
+                    if let Ok(v) = zvariant::Value::try_from(&ov) {
+                        let _ = InputContext::commit_text(&ctxt, v).await;
+                    }
                 }
                 true
             }
@@ -399,9 +403,10 @@ impl InputContext {
         // Preedit
         if gui.chinese_enabled && !gui.pinyin.is_empty() {
             let _ = InputContext::hide_preedit_text(ctxt); // clear first
-            let ov = ibus_text_value(&gui.pinyin);
-            if let Ok(v) = zvariant::Value::try_from(&ov) {
-                let _ = InputContext::update_preedit_text(ctxt, v, gui.pinyin.len() as u32, true);
+            if let Some(ov) = ibus_text_value(&gui.pinyin) {
+                if let Ok(v) = zvariant::Value::try_from(&ov) {
+                    let _ = InputContext::update_preedit_text(ctxt, v, gui.pinyin.len() as u32, true);
+                }
             }
         } else {
             let _ = InputContext::hide_preedit_text(ctxt);
@@ -468,15 +473,15 @@ impl IBusBus {
     }
 
     async fn get_engines(&self) -> Vec<zvariant::OwnedValue> {
-        vec![ibus_engine_desc_value()]
+        ibus_engine_desc_value().map(|v| vec![v]).unwrap_or_default()
     }
 
     async fn list_active_engines(&self) -> Vec<zvariant::OwnedValue> {
-        vec![ibus_engine_desc_value()]
+        ibus_engine_desc_value().map(|v| vec![v]).unwrap_or_default()
     }
 
     async fn get_global_engine(&self) -> zbus::fdo::Result<zvariant::OwnedValue> {
-        Ok(ibus_engine_desc_value())
+        ibus_engine_desc_value().ok_or_else(|| zbus::fdo::Error::Failed("failed to build engine description".into()))
     }
 
     async fn set_global_engine(&self, name: &str) -> zbus::fdo::Result<()> {
