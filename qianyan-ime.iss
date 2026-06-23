@@ -34,7 +34,6 @@ Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs cre
 Source: "dicts\*"; DestDir: "{app}\dicts"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "static\*"; DestDir: "{app}\static"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "configs\*"; DestDir: "{app}\configs"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "fonts\*"; DestDir: "{app}\fonts"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "sounds\*"; DestDir: "{app}\sounds"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "picture\*"; DestDir: "{app}\picture"; Flags: ignoreversion recursesubdirs createallsubdirs
 
