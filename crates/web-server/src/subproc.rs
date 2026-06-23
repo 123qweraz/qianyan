@@ -97,6 +97,21 @@ fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<T
     });
 
     *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
+
+    // 等待子进程 Web 服务器就绪后再返回，避免浏览器连接时端口还没监听
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        match std::net::TcpStream::connect(format!("127.0.0.1:{}", feature_port)) {
+            Ok(_) => break,
+            Err(_) => {
+                if std::time::Instant::now() > deadline {
+                    return Err("功能中心启动超时".to_string());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+    }
+
     Ok(feature_port)
 }
 
