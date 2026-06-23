@@ -489,11 +489,13 @@ impl WlState {
             let _ = std::process::Command::new("canberra-gtk-play")
                 .arg("-f")
                 .arg(sound_path)
-                .spawn();
+                .spawn()
+                .map(|mut c| c.wait());
         } else {
             let _ = std::process::Command::new("canberra-gtk-play")
                 .arg("--id=dialog-error")
-                .spawn();
+                .spawn()
+                .map(|mut c| c.wait());
         }
     }
 }
