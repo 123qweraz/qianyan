@@ -1824,14 +1824,18 @@ async fn send_key_handler(
     headers: axum::http::HeaderMap,
     Json(req): Json<SendKeyRequest>
 ) -> StatusCode {
-    // CSRF protection: reject requests with external Origin/Referer
+    // CSRF protection: reject requests from external Origin/Referer
     if let Some(origin) = headers.get("origin")
         .or_else(|| headers.get("referer"))
     {
         if let Ok(host) = origin.to_str() {
-            if !host.starts_with("http://127.0.0.1")
-                && !host.starts_with("http://localhost")
-            {
+            let allowed = host == "http://127.0.0.1:18765"
+                || host == "http://localhost:18765"
+                || host == "http://127.0.0.1:18766"
+                || host == "http://localhost:18766"
+                || host.starts_with("http://127.0.0.1:")
+                || host.starts_with("http://localhost:");
+            if !allowed {
                 return StatusCode::FORBIDDEN;
             }
         }
