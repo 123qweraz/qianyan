@@ -12,7 +12,7 @@ use qianyan_ime_ui::web::WebServer;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let mut port = 18765u16;
+    let mut port = 18766u16; // 功能中心端口
     let mut control_port = 0u16;
     let mut root: Option<PathBuf> = None;
 

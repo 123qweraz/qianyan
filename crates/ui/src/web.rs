@@ -15,9 +15,11 @@ use qianyan_ime_engine::scheme::InputScheme;
 use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
+use serde_json::{self, json};
 use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
 use std::sync::atomic::{AtomicU16, AtomicU64, AtomicBool, Ordering};
 use std::collections::{HashMap, HashSet};
+use std::io::BufRead;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -207,6 +209,176 @@ impl WebServer {
                 }
             }
         }
+    }
+
+    /// Config-only web server, embedded in main process (no separate binary).
+    /// Serves config routes + static assets + feature-center lifecycle endpoints.
+    pub async fn start_config(self) {
+        let state: WebState = (self.config, self.tries, self.tray_tx);
+        let root = self.root.clone();
+        let app = Router::new()
+            .route("/", get(index_handler))
+            .route("/api/config", get(get_config).post(update_config))
+            .route("/api/config/reset", post(reset_config))
+            .route("/api/config/reset/{sections}", post(reset_config_section))
+            .route("/api/shutdown", post(shutdown_handler))
+            .route("/api/fonts", get(list_fonts))
+            .route("/api/feature/start", post(feature_start_handler))
+            .route("/api/feature/stop", post(feature_stop_handler))
+            .route("/static/*file", get(static_handler))
+            .fallback(index_handler)
+            .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
+            .layer(Extension(root))
+            .with_state(state);
+
+        let mut current_port = self.port;
+        loop {
+            let addr = format!("127.0.0.1:{}", current_port);
+            match tokio::net::TcpListener::bind(&addr).await {
+                Ok(listener) => {
+                    self.actual_port.store(current_port, Ordering::SeqCst);
+                    println!("[Config] 配置中心启动在 http://{}", addr);
+                    if let Err(e) = axum::serve(listener, app).await {
+                        eprintln!("[Config] Server error: {}", e);
+                    }
+                    break;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
+                    current_port += 1;
+                    if current_port > self.port + 100 {
+                        log::error!("[Config] 已尝试 100 个端口均无法启动，退出。");
+                        break;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("[Config] Failed to bind to {}: {}", addr, e);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+static FEATURE_CENTER: std::sync::Mutex<Option<(std::process::Child, u16)>> = std::sync::Mutex::new(None);
+
+async fn feature_start_handler(
+    State(state): State<WebState>,
+    Extension(root): Extension<PathBuf>,
+) -> impl IntoResponse {
+    // Check if feature center is already running
+    {
+        let mut guard = FEATURE_CENTER.lock().unwrap();
+        if let Some((ref mut child, port)) = *guard {
+            match child.try_wait() {
+                Ok(None) => return Json(json!({"ok": true, "port": port})),
+                _ => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                }
+            }
+        }
+        *guard = None;
+    }
+
+    let subprocess_path = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
+        .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
+
+    let control_listener = match std::net::TcpListener::bind("127.0.0.1:0") {
+        Ok(l) => l,
+        Err(e) => return Json(json!({"ok": false, "error": format!("{}", e)})),
+    };
+    let control_port = control_listener.local_addr().unwrap().port();
+
+    // Find a free port starting from 18766
+    let feature_port = (18766..18866)
+        .find(|p| std::net::TcpListener::bind(format!("127.0.0.1:{}", p)).is_ok())
+        .unwrap_or(18766);
+
+    let tray_tx = state.2.clone();
+    std::thread::spawn(move || {
+        let _ = control_listener.set_nonblocking(true);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let stream = loop {
+            match control_listener.accept() {
+                Ok((s, _)) => break s,
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    if std::time::Instant::now() > deadline {
+                        log::warn!("[Config] 等待功能中心连接超时");
+                        return;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    continue;
+                }
+                Err(e) => {
+                    log::error!("[Config] Control listener error: {}", e);
+                    return;
+                }
+            }
+        };
+        let reader = std::io::BufReader::new(&stream);
+        for line in reader.lines().flatten() {
+            if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+                let cmd = msg.get("cmd").and_then(|c| c.as_str());
+                match cmd {
+                    Some("reload_config") => { let _ = tray_tx.send(TrayEvent::ReloadConfig); }
+                    Some("notify") => {
+                        if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
+                            let _ = tray_tx.send(TrayEvent::ShowNotification(body.to_string()));
+                        }
+                    }
+                    Some("clear_user_dict") => {
+                        let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
+                        let _ = tray_tx.send(TrayEvent::ClearUserDict(profile));
+                    }
+                    Some("send_key") => {
+                        if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
+                            let _ = tray_tx.send(TrayEvent::SendKey(key.to_string()));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let mut guard = FEATURE_CENTER.lock().unwrap();
+        if let Some((mut child, _)) = guard.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    });
+
+    let root_str = root.to_string_lossy().to_string();
+    match std::process::Command::new(&subprocess_path)
+        .arg("--port").arg(feature_port.to_string())
+        .arg("--control-port").arg(control_port.to_string())
+        .arg("--root").arg(&root_str)
+        .spawn()
+    {
+        Ok(child) => {
+            *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
+            Json(json!({"ok": true, "port": feature_port}))
+        }
+        Err(e) => Json(json!({"ok": false, "error": format!("{}", e)})),
+    }
+}
+
+async fn feature_stop_handler() -> impl IntoResponse {
+    let mut guard = FEATURE_CENTER.lock().unwrap();
+    if let Some((mut child, _)) = guard.take() {
+        let _ = child.kill();
+        let _ = child.wait();
+        Json(json!({"ok": true}))
+    } else {
+        Json(json!({"ok": true, "message": "not running"}))
+    }
+}
+
+pub fn stop_feature_center() {
+    let mut guard = FEATURE_CENTER.lock().unwrap();
+    if let Some((mut child, _)) = guard.take() {
+        let _ = child.kill();
+        let _ = child.wait();
     }
 }
 

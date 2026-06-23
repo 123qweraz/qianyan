@@ -10,13 +10,7 @@ use qianyan_ime_engine::compiler;
 use qianyan_ime_ui::GuiEvent;
 use std::collections::HashMap;
 use std::env;
-use std::io::BufRead;
 use std::sync::{Arc, Mutex, RwLock};
-
-static WEB_SERVER_RUNNING: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-static WEB_SERVER_CHILD: std::sync::Mutex<Option<std::process::Child>> =
-    std::sync::Mutex::new(None);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -230,10 +224,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let processor_clone = processor_handle.clone();
     let gui_tx_tray = gui_tx.clone();
-    let tray_tx_for_main_loop = tray_tx.clone();
     let config_msg = config.clone();
     let app_state_tray = app_state.clone();
-    let root_for_tray = root.clone();
+
+    // 启动嵌入式配置中心 Web 服务器
+    {
+        let config_web = config.clone();
+        let tray_tx_web = tray_tx.clone();
+        let root_web = root.clone();
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("配置中心 tokio runtime 启动失败");
+            rt.block_on(async {
+                let server = qianyan_ime_ui::web::WebServer::new(
+                    18765,
+                    Arc::new(std::sync::atomic::AtomicU16::new(18765)),
+                    config_web,
+                    Arc::new(RwLock::new(HashMap::new())),
+                    tray_tx_web,
+                    root_web,
+                );
+                server.start_config().await;
+            });
+        });
+    }
 
     // Tray 事件处理线程（无锁：通过 ProcessorHandle 与 Actor 通信）
     std::thread::spawn(move || {
@@ -353,107 +366,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
-                    if WEB_SERVER_RUNNING.compare_exchange(false, true, std::sync::atomic::Ordering::SeqCst, std::sync::atomic::Ordering::SeqCst).is_ok() {
-                        let root_web = root_for_tray.clone();
-
-                        // Start TCP control server for IPC from subprocess
-                        let control_listener = match std::net::TcpListener::bind("127.0.0.1:0") {
-                            Ok(l) => l,
-                            Err(e) => {
-                                log::error!("[Web] Failed to bind control server: {}", e);
-                                WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                                return;
-                            }
-                        };
-                        let control_port = control_listener.local_addr().unwrap().port();
-                        let tray_tx_control = tray_tx_for_main_loop.clone();
-
-                        std::thread::spawn(move || {
-                            // 10 秒超时等待子进程连接
-                            let _ = control_listener.set_nonblocking(true);
-                            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-                            let stream = loop {
-                                match control_listener.accept() {
-                                    Ok((s, _)) => break s,
-                                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                                        if std::time::Instant::now() > deadline {
-                                            log::warn!("[Web] 等待子进程连接超时");
-                                            WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                                            return;
-                                        }
-                                        std::thread::sleep(std::time::Duration::from_millis(100));
-                                        continue;
-                                    }
-                                    Err(e) => {
-                                        log::error!("[Web] Control listener accept error: {}", e);
-                                        WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                                        return;
-                                    }
-                                }
-                            };
-                            let reader = std::io::BufReader::new(&stream);
-                            for line in reader.lines().flatten() {
-                                if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                                    let cmd = msg.get("cmd").and_then(|c| c.as_str());
-                                    match cmd {
-                                        Some("reload_config") => {
-                                            let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
-                                        }
-                                        Some("notify") => {
-                                            if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
-                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
-                                            }
-                                        }
-                                        Some("clear_user_dict") => {
-                                            let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
-                                            let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
-                                        }
-                                        Some("send_key") => {
-                                            if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
-                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
-                                            }
-                                        }
-                                        _ => {}
-                                    }
-                                }
-                            }
-                            // Subprocess disconnected; kill child if still alive, allow restart
-                            if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
-                                if let Some(ref mut child) = *c {
-                                    let _ = child.kill();
-                                    let _ = child.wait();
-                                }
-                                *c = None;
-                            }
-                            WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                        });
-
-                        // Spawn subprocess in background to avoid blocking tray
-                        std::thread::spawn(move || {
-                            let subprocess_path = std::env::current_exe()
-                                .ok()
-                                .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
-                                .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
-
-                            let root_str = root_web.to_string_lossy().to_string();
-                            match std::process::Command::new(&subprocess_path)
-                                .arg("--port").arg("18765")
-                                .arg("--control-port").arg(control_port.to_string())
-                                .arg("--root").arg(&root_str)
-                                .spawn()
-                            {
-                                Ok(child) => {
-                                    if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
-                                        *c = Some(child);
-                                    }
-                                }
-                                Err(e) => {
-                                    log::error!("[Web] Failed to launch subprocess: {}", e);
-                                    WEB_SERVER_RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
-                                }
-                            }
-                        });
-                    }
                     #[cfg(target_os = "linux")]
                     {
                         let _ = open::that("http://127.0.0.1:18765");
@@ -497,12 +409,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::Exit => {
-                    if let Ok(mut c) = WEB_SERVER_CHILD.lock() {
-                        if let Some(ref mut child) = *c {
-                            let _ = child.kill();
-                            let _ = child.wait();
-                        }
-                    }
+                    qianyan_ime_ui::web::stop_feature_center();
                     processor_clone.exit();
                     let _ = gui_tx_tray.send(GuiEvent::Exit);
                     std::thread::sleep(std::time::Duration::from_millis(50));
