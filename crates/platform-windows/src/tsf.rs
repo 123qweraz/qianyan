@@ -33,15 +33,15 @@ fn update_gui_impl(gui_tx: &Option<Sender<GuiEvent>>, processor: &Arc<Mutex<Proc
             if let Ok(p) = processor.lock() {
                 (
                     p.get_short_display(),
-                    p.chinese_enabled,
-                    p.session.buffer.is_empty(),
-                    p.session.buffer.clone(),
-                    p.session.best_segmentation.clone(),
-                    p.session.nav_mode,
-                    p.session.aux_filter.clone(),
-                    p.session.candidates.clone(),
-                    p.session.candidates.iter().map(|c| c.hint.to_string()).collect::<Vec<_>>(),
-                    p.session.selected,
+                    p.ctx.session_state.chinese_enabled,
+                    p.ctx.session.buffer.is_empty(),
+                    p.ctx.session.buffer.clone(),
+                    p.ctx.session.best_segmentation.clone(),
+                    p.ctx.session.nav_mode,
+                    p.ctx.session.aux_filter.clone(),
+                    p.ctx.session.candidates.clone(),
+                    p.ctx.session.candidates.iter().map(|c| c.hint.to_string()).collect::<Vec<_>>(),
+                    p.ctx.session.selected,
                 )
             } else {
                 return;
@@ -214,7 +214,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
             if msg_type == 1 {
                 if let Ok(mut p) = processor.lock() {
                     let _ = p.toggle();
-                    let enabled = p.chinese_enabled; let profile = p.get_current_profile_display();
+                    let enabled = p.ctx.session_state.chinese_enabled; let profile = p.get_current_profile_display();
                     drop(p);
                     let _ = tray_tx.send(qianyan_ime_ui::tray::TrayEvent::SyncStatus { chinese_enabled: enabled, active_profile: profile });
                     update_gui_impl(&gui_tx, &processor, &app_state);
@@ -225,7 +225,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
 
         // Ctrl/Alt 快捷键放行逻辑 (当没输入拼音时)
         if (ctrl || alt) && !is_ctrl_space_match {
-            let buffer_empty = processor.lock().map(|p| p.session.buffer.is_empty()).unwrap_or(true);
+            let buffer_empty = processor.lock().map(|p| p.ctx.session.buffer.is_empty()).unwrap_or(true);
             if buffer_empty {
                 let _ = WriteFile(handle, Some(&[0u8]), Some(&mut 0), None);
                 continue;
@@ -259,7 +259,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
                         Action::Notify(summary, _body) => {
                             let (active, profile) = { 
                                 if let Ok(p) = processor.lock() { 
-                                    (p.chinese_enabled, p.get_current_profile_display()) 
+                                    (p.ctx.session_state.chinese_enabled, p.get_current_profile_display()) 
                                 } else { 
                                     (true, "chinese".into()) 
                                 } 
@@ -284,7 +284,7 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
                     let is_letter = key_code >= 0x41 && key_code <= 0x5A;
                     let is_special = key_code == 0x14;
                     let is_punct = match key_code { 0x20 | 0xC0 | 0xBD | 0xBB | 0xDB | 0xDD | 0xDC | 0xBA | 0xDE | 0xBC | 0xBE | 0xBF => true, 0x30..=0x39 if shift => true, _ => false };
-                    if p.chinese_enabled && (!p.session.buffer.is_empty() || is_letter || is_punct || is_special) { response.push(2); } else { response.push(0); }
+                    if p.ctx.session_state.chinese_enabled && (!p.ctx.session.buffer.is_empty() || is_letter || is_punct || is_special) { response.push(2); } else { response.push(0); }
                 } else {
                     response.push(0);
                 }
