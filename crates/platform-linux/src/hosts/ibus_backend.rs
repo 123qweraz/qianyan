@@ -240,7 +240,10 @@ impl InputContext {
         server
             .remove::<InputContext, _>(ctxt.path().to_owned())
             .await
-            .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
+            .map_err(|e| {
+                log::warn!("[IBus] failed to remove InputContext: {e:#}");
+                zbus::fdo::Error::Failed(format!("{e:#}"))
+            })?;
         Ok(())
     }
 
@@ -442,7 +445,10 @@ impl IBusBus {
         let n = self.ctx_counter.fetch_add(1, Ordering::SeqCst);
         let path_str = format!("/org/freedesktop/IBus/InputContext_{n}");
         let path = zbus::zvariant::OwnedObjectPath::try_from(path_str.clone())
-            .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
+            .map_err(|e| {
+                log::warn!("[IBus] invalid path: {e:#}");
+                zbus::fdo::Error::Failed(format!("{e:#}"))
+            })?;
 
         info!("[IBus] CreateInputContext client={:?} -> {}", client_name, path_str);
 
@@ -456,7 +462,10 @@ impl IBusBus {
         server
             .at(path.clone(), context)
             .await
-            .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
+            .map_err(|e| {
+                log::warn!("[IBus] failed to register InputContext: {e:#}");
+                zbus::fdo::Error::Failed(format!("{e:#}"))
+            })?;
 
         Ok(path)
     }
