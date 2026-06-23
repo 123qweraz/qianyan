@@ -2,13 +2,9 @@
 
 use qianyan_ime_core::Config;
 use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict};
-use qianyan_ime_engine::Processor;
+use qianyan_ime_ui::tray;
 use std::collections::HashMap;
-use std::env;
 use std::sync::{Arc, RwLock};
-
-pub mod tray;
-pub mod runtime;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -21,8 +17,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             windows::Win32::UI::HiDpi::PROCESS_PER_MONITOR_DPI_AWARE,
         );
     }
-
-    let args: Vec<String> = env::args().collect();
 
     unsafe {
         use windows::core::PCWSTR;
@@ -83,7 +77,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Arc::new(RwLock::new(current_config));
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
-    let (tray_tx, tray_rx) = std::sync::mpsc::channel();
+    let (tray_tx, _tray_rx) = std::sync::mpsc::channel();
 
     let gui_config = config
         .read()
@@ -93,53 +87,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui::gui::start_gui(gui_rx, gui_config, tray_tx_for_gui);
     });
 
-    let mut trie_paths = HashMap::new();
-    if let Ok(entries) = std::fs::read_dir(root.join("data")) {
-        for entry in entries.flatten() {
-            if entry.path().is_dir() {
-                let dir_name = entry
-                    .file_name()
-                    .to_string_lossy()
-                    .to_lowercase();
-                let trie_idx = entry.path().join("trie.index");
-                let trie_dat = entry.path().join("trie.data");
-                if trie_idx.exists() && trie_dat.exists() {
-                    trie_paths.insert(dir_name, (trie_idx, trie_dat));
-                }
-            }
-        }
-    }
-
-    let syllable_freq = qianyan_ime_core::utils::load_syllable_frequencies(&root);
-    let mut processor_obj = Processor::new(trie_paths, syllable_freq);
-    if let Ok(conf) = config.read() {
-        processor_obj.apply_config(&conf);
-    }
-    let processor = Arc::new(Mutex::new(processor_obj));
-
     let _tray_handle = tray::start_tray(tray::TrayParams {
         active_profile: config.read().map(|c| c.input.default_profile.clone()).unwrap_or_else(|_| "chinese".into()),
+        enabled_profiles: vec![],
         tx: tray_tx.clone(),
     });
 
-    let app_state = Arc::new(Mutex::new(ui::AppState {
-        chinese_enabled: true,
-        active_profile: "".into(),
-        show_candidates_pref: true,
-        is_ime_active: true,
-        pinyin: "".into(),
-        candidates: vec![],
-        selected_index: 0,
-        status_text: "中".into(),
-    }));
-
-    runtime::run_input_host(
-        processor,
-        Some(gui_tx),
-        config.clone(),
-        tray_tx,
-        app_state,
-    )?;
+    // On Windows, input is handled via TSF COM callbacks (registered in lib.rs).
+    // No polling loop is needed; block the main thread to keep the process alive.
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(3600));
+    }
 
     Ok(())
 }
