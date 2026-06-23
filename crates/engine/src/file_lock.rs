@@ -53,11 +53,13 @@ fn lock_file_exclusive(file: &File) -> io::Result<()> {
 
 #[cfg(not(target_os = "linux"))]
 fn lock_file_shared(_file: &File) -> io::Result<()> {
+    log::warn!("file locking is not implemented on this platform; shared lock is a no-op");
     Ok(())
 }
 
 #[cfg(not(target_os = "linux"))]
 fn lock_file_exclusive(_file: &File) -> io::Result<()> {
+    log::warn!("file locking is not implemented on this platform; exclusive lock is a no-op");
     Ok(())
 }
 
@@ -115,10 +117,12 @@ fn try_lock_exclusive(file: &File) -> io::Result<bool> {
 
 #[cfg(not(target_os = "linux"))]
 fn try_lock_shared(_file: &File) -> io::Result<bool> {
+    log::warn!("file locking is not implemented on this platform; try_shared lock is a no-op");
     Ok(true)
 }
 
 #[cfg(not(target_os = "linux"))]
 fn try_lock_exclusive(_file: &File) -> io::Result<bool> {
+    log::warn!("file locking is not implemented on this platform; try_exclusive lock is a no-op");
     Ok(true)
 }
