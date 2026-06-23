@@ -10,28 +10,30 @@ use std::time::SystemTime;
 use walkdir::WalkDir;
 
 pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
-    fs::create_dir_all("data")?;
+    let root = qianyan_ime_core::utils::find_project_root();
+    fs::create_dir_all(root.join("data"))?;
     println!("[Compiler] 正在扫描 dicts 目录...");
 
-    if let Ok(entries) = fs::read_dir("dicts") {
+    if let Ok(entries) = fs::read_dir(root.join("dicts")) {
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 let dir_name = entry.file_name().to_string_lossy().to_string();
 
                 // stroke 方案在 dicts 中可能存在也可能不存在（源文件在 chinese/chars），额外处理
-                let src_path = format!("dicts/{}", dir_name);
-                let out_dir = format!("data/{}", dir_name);
+                let src_path = root.join("dicts").join(&dir_name);
+                let out_dir = root.join("data").join(&dir_name);
 
                 println!("[Compiler] 检查方案: {}", dir_name);
                 fs::create_dir_all(&out_dir)?;
 
-                let trie_dat = format!("{}/trie.data", out_dir);
-                if should_compile(Path::new(&src_path), Path::new(&trie_dat)) {
+                let trie_dat = out_dir.join("trie.data");
+                if should_compile(&src_path, &trie_dat) {
                     println!("[Compiler] 方案 [{}] 需要编译，正在执行...", dir_name);
                     let is_english = dir_name.contains("english");
                     let skip_reverse = is_english || dir_name.contains("japanese");
                     let start = std::time::Instant::now();
-                    compile_dict_for_path(&src_path, &format!("{}/trie", out_dir), is_english, skip_reverse, None)?;
+                    let trie_out = out_dir.join("trie");
+                    compile_dict_for_path(&src_path.to_string_lossy(), &trie_out.to_string_lossy(), is_english, skip_reverse, None)?;
                     println!(
                         "[Compiler] 方案 [{}] 编译完成，耗时 {:?}",
                         dir_name,
@@ -40,7 +42,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
 
                 } else {
                     println!("[Compiler] 方案 [{}] 已是最新，跳过。", dir_name);
-                    let lock_path = Path::new(&trie_dat).with_extension("data.lock");
+                    let lock_path = trie_dat.with_extension("data.lock");
                     if !lock_path.exists() {
                         File::create(&lock_path)?;
                     }
@@ -51,19 +53,19 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
 
     // stroke 方案：从 chinese/chars 编译，用 stroke_aux 作为 key（不依赖 dicts/stroke/ 目录）
     {
-        let src_path = "dicts/chinese/chars";
-        let out_dir = "data/stroke";
+        let src_path = root.join("dicts/chinese/chars");
+        let out_dir = root.join("data/stroke");
         println!("[Compiler] 检查方案: stroke（从 chinese/chars 编译）");
-        fs::create_dir_all(out_dir)?;
-        let trie_dat = format!("{}/trie.data", out_dir);
-        if should_compile(Path::new(src_path), Path::new(&trie_dat)) {
+        fs::create_dir_all(&out_dir)?;
+        let trie_dat = out_dir.join("trie.data");
+        if should_compile(&src_path, &trie_dat) {
             println!("[Compiler] 方案 [stroke] 需要编译，正在执行...");
             let start = std::time::Instant::now();
-            compile_dict_for_path(src_path, &format!("{}/trie", out_dir), false, false, Some("stroke_aux"))?;
+            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("stroke_aux"))?;
             println!("[Compiler] 方案 [stroke] 编译完成，耗时 {:?}", start.elapsed());
         } else {
             println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
-            let lock_path = Path::new(&trie_dat).with_extension("data.lock");
+            let lock_path = trie_dat.with_extension("data.lock");
             if !lock_path.exists() {
                 File::create(&lock_path)?;
             }
