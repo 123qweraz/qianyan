@@ -13,7 +13,6 @@ log = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 slint = { workspace = true }
-slint-build = { workspace = true }
 axum = { workspace = true }
 mime_guess = { workspace = true }
 rust-embed = { workspace = true }
