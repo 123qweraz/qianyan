@@ -399,28 +399,28 @@ impl ProcessorActor {
         match msg {
             ProcessorMsg::HandleKey { key, val, shift, ctrl, alt, perform_lookup, reply } => {
                 let action = self.processor.handle_key_ext(key, val, shift, ctrl, alt, perform_lookup);
-                let _ = reply.send(action);
+                if reply.send(action).is_err() { log::warn!("[ProcessorActor] HandleKey reply.send 失败"); }
             }
             ProcessorMsg::HandleKeySync { key, val, shift, ctrl, alt, reply } => {
                 let action = self.processor.handle_key_ext(key, val, shift, ctrl, alt, true);
                 let snapshot = self.build_gui_snapshot();
                 let status = self.build_basic_status();
-                let _ = reply.send((action, snapshot, status));
+                if reply.send((action, snapshot, status)).is_err() { log::warn!("[ProcessorActor] HandleKeySync reply.send 失败"); }
             }
             ProcessorMsg::Toggle { reply } => {
                 self.processor.toggle();
                 let snap = self.build_tray_snapshot();
-                let _ = reply.send(snap);
+                if reply.send(snap).is_err() { log::warn!("[ProcessorActor] Toggle reply.send 失败"); }
             }
             ProcessorMsg::ToggleEnabled { reply } => {
                 self.processor.toggle_enabled();
                 let snap = self.build_tray_snapshot();
-                let _ = reply.send(snap);
+                if reply.send(snap).is_err() { log::warn!("[ProcessorActor] ToggleEnabled reply.send 失败"); }
             }
             ProcessorMsg::NextProfile { reply } => {
                 self.processor.next_profile();
                 let snap = self.build_tray_snapshot();
-                let _ = reply.send(snap);
+                if reply.send(snap).is_err() { log::warn!("[ProcessorActor] NextProfile reply.send 失败"); }
             }
             ProcessorMsg::SetProfile { profile, reply } => {
                 let profiles: Vec<String> = profile.split(',')
@@ -428,54 +428,54 @@ impl ProcessorActor {
                     .filter(|s| self.processor.ctx.engine.trie_paths.contains_key(s))
                     .collect();
                 if profiles.is_empty() {
-                    let _ = reply.send(None);
+                    if reply.send(None).is_err() { log::warn!("[ProcessorActor] SetProfile empty reply.send 失败"); }
                     return;
                 }
                 self.processor.ctx.session_state.active_profiles = profiles;
                 let conf = self.processor.ctx.config.master_config_write();
                 conf.input.default_profile = profile.clone();
-                let _ = conf.save();
+                if conf.save().is_err() { log::warn!("[ProcessorActor] conf.save 失败"); }
                 self.processor.reset();
                 let snap = self.build_tray_snapshot();
-                let _ = reply.send(Some(snap));
+                if reply.send(Some(snap)).is_err() { log::warn!("[ProcessorActor] SetProfile reply.send 失败"); }
             }
             ProcessorMsg::ApplyConfig { config, reply } => {
                 self.processor.apply_config(&config);
-                let _ = reply.send(());
+                if reply.send(()).is_err() { log::warn!("[ProcessorActor] ApplyConfig reply.send 失败"); }
             }
             ProcessorMsg::ReloadTries { reply } => {
                 let engine = self.processor.ctx.engine.clone();
                 std::thread::spawn(move || {
                     engine.reload_tries();
                 });
-                let _ = reply.send(());
+                if reply.send(()).is_err() { log::warn!("[ProcessorActor] ReloadTries reply.send 失败"); }
             }
             ProcessorMsg::Reset { reply } => {
                 self.processor.reset();
-                let _ = reply.send(());
+                if reply.send(()).is_err() { log::warn!("[ProcessorActor] Reset reply.send 失败"); }
             }
             ProcessorMsg::ClearUserData { profile } => {
-                let _ = self.processor.ctx.config.clear_user_data(&profile);
+                if self.processor.ctx.config.clear_user_data(&profile).is_err() { log::warn!("[ProcessorActor] ClearUserData 失败"); }
             }
             ProcessorMsg::ListProfiles { reply } => {
                 let profiles = self.processor.ctx.config.list_profiles();
-                let _ = reply.send(profiles);
+                if reply.send(profiles).is_err() { log::warn!("[ProcessorActor] ListProfiles reply.send 失败"); }
             }
             ProcessorMsg::PerformSearch { reply } => {
                 let action = self.run_search();
-                let _ = reply.send(action);
+                if reply.send(action).is_err() { log::warn!("[ProcessorActor] PerformSearch reply.send 失败"); }
             }
             ProcessorMsg::GetGuiSnapshot { reply } => {
                 let snap = self.build_gui_snapshot();
-                let _ = reply.send(snap);
+                if reply.send(snap).is_err() { log::warn!("[ProcessorActor] GetGuiSnapshot reply.send 失败"); }
             }
             ProcessorMsg::GetBasicStatus { reply } => {
                 let status = self.build_basic_status();
-                let _ = reply.send(status);
+                if reply.send(status).is_err() { log::warn!("[ProcessorActor] GetBasicStatus reply.send 失败"); }
             }
             ProcessorMsg::GetConfig { reply } => {
                 let config = self.processor.ctx.config.master_config.clone();
-                let _ = reply.send(config);
+                if reply.send(config).is_err() { log::warn!("[ProcessorActor] GetConfig reply.send 失败"); }
             }
             ProcessorMsg::Exit => {}
         }
