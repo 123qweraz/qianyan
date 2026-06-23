@@ -111,6 +111,7 @@ encoding_rs = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 qianyan-ime-linux = { path = "crates/platform-linux" }
+libc = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 qianyan-ime-windows = { path = "crates/platform-windows" }
