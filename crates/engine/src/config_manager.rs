@@ -183,10 +183,10 @@ impl ConfigManager {
 
         // 写盘
         if let Some(ref user_data) = self.user_data {
-            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Learned,
-                &self.learned_words.load());
-            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
-                &self.long_term_words.load());
+            if user_data.save_user_dict(profile, crate::user_data::DataType::Learned,
+                &self.learned_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict Learned 失败"); }
+            if user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
+                &self.long_term_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict LongTerm 失败"); }
         }
     }
 
@@ -201,8 +201,8 @@ impl ConfigManager {
         });
         self.rebuild_combined_dict();
         if let Some(ref user_data) = self.user_data {
-            let _ = user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
-                &self.long_term_words.load());
+            if user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
+                &self.long_term_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict LongTerm(insert) 失败"); }
         }
     }
 
@@ -256,9 +256,9 @@ impl ConfigManager {
         if last.elapsed() >= USAGE_SAVE_INTERVAL {
             *last = Instant::now();
             if let Some(ref user_data) = self.user_data {
-                let _ = user_data.save_order(profile, &self.user_order.load());
-                let _ = user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
-                    &self.ngram_history.load());
+                if user_data.save_order(profile, &self.user_order.load()).is_err() { log::warn!("[ConfigManager] save_order 失败"); }
+                if user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
+                    &self.ngram_history.load()).is_err() { log::warn!("[ConfigManager] save_user_dict Ngram 失败"); }
             }
         }
     }
