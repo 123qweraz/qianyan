@@ -319,6 +319,7 @@ fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<T
     drop(reserved);
 
     // Spawn reader thread for control events
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(60))).ok();
     std::thread::spawn(move || {
         let reader = std::io::BufReader::new(&stream);
         for line in reader.lines().flatten() {
