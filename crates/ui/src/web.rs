@@ -2484,7 +2484,7 @@ async fn ime_search_handler(
 ) -> Json<ImeSearchResponse> {
     let engine = {
         let guard = ime_handle.engine.read()
-            .expect("ime engine RwLock poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         if let Some(ref engine) = *guard {
             engine.clone()
         } else {
@@ -2492,7 +2492,7 @@ async fn ime_search_handler(
             match prepare_ime_engine(&ime_handle.root) {
                 Ok(engine) => {
                     let mut w = ime_handle.engine.write()
-                        .expect("ime engine RwLock poisoned");
+                        .unwrap_or_else(|e| e.into_inner());
                     if w.is_none() {
                         *w = Some(Arc::new(engine.clone()));
                     }
@@ -2507,7 +2507,7 @@ async fn ime_search_handler(
     };
 
     let cfg = config.read()
-        .expect("config RwLock poisoned")
+        .unwrap_or_else(|e| e.into_inner())
         .clone();
     let fm = match req.filter_mode.as_str() {
         "global" => FilterMode::Global,
@@ -2548,7 +2548,7 @@ async fn ime_search_handler(
 
 fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
     let guard = handle.engine.read()
-        .expect("ime engine RwLock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     if let Some(ref engine) = *guard {
         return Some(engine.clone());
     }
@@ -2556,7 +2556,7 @@ fn ensure_engine(handle: &ImeEngineHandle) -> Option<Arc<SearchEngine>> {
     match prepare_ime_engine(&handle.root) {
         Ok(engine) => {
             let mut w = handle.engine.write()
-                .expect("ime engine RwLock poisoned");
+                .unwrap_or_else(|e| e.into_inner());
             if w.is_none() {
                 *w = Some(Arc::new(engine.clone()));
             }
