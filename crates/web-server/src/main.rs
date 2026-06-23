@@ -83,6 +83,9 @@ fn main() {
                     TrayEvent::SendKey(key) => {
                         serde_json::json!({"cmd": "send_key", "key": key})
                     }
+                    TrayEvent::FeatureReady(port) => {
+                        serde_json::json!({"cmd": "ready", "port": port})
+                    }
                     _ => continue,
                 };
                 let json = serde_json::to_string(&value).unwrap_or_default();

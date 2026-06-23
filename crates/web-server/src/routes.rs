@@ -9,9 +9,11 @@ use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
 use std::collections::HashMap;
 
 use crate::{WebServer, WebState, ImeEngineHandle, SESSION_TTL_SECS};
+use qianyan_ime_core::event::TrayEvent;
 
 impl WebServer {
     pub async fn start(self) {
+        let tray_tx = self.tray_tx.clone();
         let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
         let state: WebState = (self.config, self.tries, self.tray_tx);
         let now = std::time::SystemTime::now()
@@ -117,6 +119,7 @@ impl WebServer {
                 Ok(listener) => {
                     self.actual_port.store(current_port, Ordering::SeqCst);
                     println!("[Web] 服务器启动在 http://{}", addr);
+                    let _ = tray_tx.send(TrayEvent::FeatureReady(current_port));
                     if let Err(e) = axum::serve(listener, app)
                         .with_graceful_shutdown(async move {
                             shutdown_rx.changed().await.ok();

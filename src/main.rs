@@ -448,6 +448,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 qianyan_ime_ui::tray::TrayEvent::SendKey(key) => {
                     log::warn!("[Tray] SendKey event not implemented: key={}", key);
                 }
+                _ => {} // FeatureReady handled by control TCP reader
             }
         }
     });

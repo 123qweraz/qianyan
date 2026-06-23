@@ -64,12 +64,19 @@ fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<T
     drop(reserved);
 
     stream.set_read_timeout(Some(std::time::Duration::from_secs(60))).ok();
+
+    // oneshot channel: 子进程 bind 后发 "ready" 信号，父进程等到后再返回端口
+    let (ready_tx, ready_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let reader = std::io::BufReader::new(&stream);
         for line in reader.lines().flatten() {
             if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
                 let cmd = msg.get("cmd").and_then(|c| c.as_str());
                 match cmd {
+                    Some("ready") => {
+                        let port = msg.get("port").and_then(|p| p.as_u64()).unwrap_or(0) as u16;
+                        let _ = ready_tx.send(port);
+                    }
                     Some("reload_config") => { let _ = tray_tx.send(TrayEvent::ReloadConfig); }
                     Some("notify") => {
                         if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
@@ -96,23 +103,12 @@ fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<T
         }
     });
 
-    *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
+    // 等子进程 Web 服务器 bind 成功，发来 ready 信号（带实际端口）
+    let actual_port = ready_rx.recv_timeout(std::time::Duration::from_secs(10))
+        .map_err(|_| "功能中心启动超时".to_string())?;
 
-    // 等待子进程 Web 服务器就绪后再返回，避免浏览器连接时端口还没监听
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    loop {
-        match std::net::TcpStream::connect(format!("127.0.0.1:{}", feature_port)) {
-            Ok(_) => break,
-            Err(_) => {
-                if std::time::Instant::now() > deadline {
-                    return Err("功能中心启动超时".to_string());
-                }
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
-        }
-    }
-
-    Ok(feature_port)
+    *FEATURE_CENTER.lock().unwrap() = Some((child, actual_port));
+    Ok(actual_port)
 }
 
 fn check_feature_running() -> Option<u16> {

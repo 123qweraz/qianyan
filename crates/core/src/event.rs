@@ -15,4 +15,5 @@ pub enum TrayEvent {
     ClearUserDict(Option<String>),
     SendKey(String),
     SetProfile(String),
+    FeatureReady(u16),
 }
