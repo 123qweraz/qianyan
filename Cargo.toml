@@ -105,17 +105,12 @@ memmap2 = { workspace = true }
 image = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
-thiserror = { workspace = true }
 slint = { workspace = true }
 rodio = { workspace = true }
 encoding_rs = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 qianyan-ime-linux = { path = "crates/platform-linux" }
-evdev = { workspace = true }
-daemonize = { workspace = true }
-ksni = { workspace = true }
-libc = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 qianyan-ime-windows = { path = "crates/platform-windows" }
