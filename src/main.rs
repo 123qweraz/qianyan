@@ -392,30 +392,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             };
                             let reader = std::io::BufReader::new(&stream);
-                            for line in reader.lines() {
-                                if let Ok(line) = line {
-                                    if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                                        let cmd = msg.get("cmd").and_then(|c| c.as_str());
-                                        match cmd {
-                                            Some("reload_config") => {
-                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
-                                            }
-                                            Some("notify") => {
-                                                if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
-                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
-                                                }
-                                            }
-                                            Some("clear_user_dict") => {
-                                                let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
-                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
-                                            }
-                                            Some("send_key") => {
-                                                if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
-                                                    let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
-                                                }
-                                            }
-                                            _ => {}
+                            for line in reader.lines().flatten() {
+                                if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
+                                    let cmd = msg.get("cmd").and_then(|c| c.as_str());
+                                    match cmd {
+                                        Some("reload_config") => {
+                                            let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ReloadConfig);
                                         }
+                                        Some("notify") => {
+                                            if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
+                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ShowNotification(body.to_string()));
+                                            }
+                                        }
+                                        Some("clear_user_dict") => {
+                                            let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
+                                            let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::ClearUserDict(profile));
+                                        }
+                                        Some("send_key") => {
+                                            if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
+                                                let _ = tray_tx_control.send(qianyan_ime_ui::tray::TrayEvent::SendKey(key.to_string()));
+                                            }
+                                        }
+                                        _ => {}
                                     }
                                 }
                             }
