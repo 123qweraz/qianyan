@@ -478,15 +478,20 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 }
 
 fn find_static_root() -> Option<std::path::PathBuf> {
-    let candidates = [
-        std::path::PathBuf::from("static"),
-        std::env::current_exe().ok()?.parent()?.join("static"),
-    ];
-    for p in &candidates {
-        if p.is_dir() {
-            return Some(p.clone());
+    // 先检查 CWD 下的 static/
+    let cwd_static = std::path::PathBuf::from("static");
+    if cwd_static.is_dir() {
+        return Some(cwd_static);
+    }
+
+    // 再检查 exe 同目录下的 static/
+    if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        let exe_static = exe_dir.join("static");
+        if exe_static.is_dir() {
+            return Some(exe_static);
         }
     }
+
     // 从工作目录向上查找最多3层
     if let Ok(mut cwd) = std::env::current_dir() {
         for _ in 0..3 {
