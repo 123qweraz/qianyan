@@ -94,7 +94,7 @@ impl WebServer {
             last_activity: Arc::new(AtomicU64::new(now)),
         });
         let app = Router::new()
-            .route("/", get(index_handler))
+            .route("/", get(feature_index_handler))
             .route("/api/config", get(get_config).post(update_config))
             .route("/api/config/reset", post(reset_config))
             .route("/api/config/reset/{sections}", post(reset_config_section))
@@ -135,7 +135,7 @@ impl WebServer {
             .route("/api/backup/restore", post(restore_full_backup))
             .route("/static/*file", get(static_handler))
             .route("/dicts/*file", get(dicts_handler))
-            .fallback(index_handler)
+            .fallback(feature_index_handler)
             .layer(middleware::from_fn(activity_layer))
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .layer(Extension(ime_handle.clone()))
@@ -217,7 +217,7 @@ impl WebServer {
         let state: WebState = (self.config, self.tries, self.tray_tx);
         let root = self.root.clone();
         let app = Router::new()
-            .route("/", get(index_handler))
+            .route("/", get(config_index_handler))
             .route("/api/config", get(get_config).post(update_config))
             .route("/api/config/reset", post(reset_config))
             .route("/api/config/reset/{sections}", post(reset_config_section))
@@ -226,7 +226,7 @@ impl WebServer {
             .route("/api/feature/start", post(feature_start_handler))
             .route("/api/feature/stop", post(feature_stop_handler))
             .route("/static/*file", get(static_handler))
-            .fallback(index_handler)
+            .fallback(config_index_handler)
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .layer(Extension(root))
             .with_state(state);
@@ -237,7 +237,7 @@ impl WebServer {
             match tokio::net::TcpListener::bind(&addr).await {
                 Ok(listener) => {
                     self.actual_port.store(current_port, Ordering::SeqCst);
-                    println!("[Config] 配置中心启动在 http://{}", addr);
+                    println!("[Config] 控制中心启动在 http://{}", addr);
                     if let Err(e) = axum::serve(listener, app).await {
                         eprintln!("[Config] Server error: {}", e);
                     }
@@ -261,16 +261,14 @@ impl WebServer {
 
 static FEATURE_CENTER: std::sync::Mutex<Option<(std::process::Child, u16)>> = std::sync::Mutex::new(None);
 
-async fn feature_start_handler(
-    State(state): State<WebState>,
-    Extension(root): Extension<PathBuf>,
-) -> impl IntoResponse {
-    // Check if feature center is already running
+/// Launch the feature center subprocess.
+/// Can be called from both the web handler and the tray handler.
+pub fn launch_feature_center(root: PathBuf, tray_tx: std::sync::mpsc::Sender<TrayEvent>) -> Result<u16, String> {
     {
         let mut guard = FEATURE_CENTER.lock().unwrap();
         if let Some((ref mut child, port)) = *guard {
             match child.try_wait() {
-                Ok(None) => return Json(json!({"ok": true, "port": port})),
+                Ok(None) => return Ok(port),
                 _ => {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -285,18 +283,15 @@ async fn feature_start_handler(
         .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
         .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
 
-    let control_listener = match std::net::TcpListener::bind("127.0.0.1:0") {
-        Ok(l) => l,
-        Err(e) => return Json(json!({"ok": false, "error": format!("{}", e)})),
-    };
-    let control_port = control_listener.local_addr().unwrap().port();
+    let control_listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .map_err(|e| format!("{}", e))?;
+    let control_port = control_listener.local_addr()
+        .map_err(|e| format!("{}", e))?.port();
 
-    // Find a free port starting from 18766
     let feature_port = (18766..18866)
         .find(|p| std::net::TcpListener::bind(format!("127.0.0.1:{}", p)).is_ok())
         .unwrap_or(18766);
 
-    let tray_tx = state.2.clone();
     std::thread::spawn(move || {
         let _ = control_listener.set_nonblocking(true);
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
@@ -349,17 +344,24 @@ async fn feature_start_handler(
     });
 
     let root_str = root.to_string_lossy().to_string();
-    match std::process::Command::new(&subprocess_path)
+    let child = std::process::Command::new(&subprocess_path)
         .arg("--port").arg(feature_port.to_string())
         .arg("--control-port").arg(control_port.to_string())
         .arg("--root").arg(&root_str)
         .spawn()
-    {
-        Ok(child) => {
-            *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
-            Json(json!({"ok": true, "port": feature_port}))
-        }
-        Err(e) => Json(json!({"ok": false, "error": format!("{}", e)})),
+        .map_err(|e| format!("{}", e))?;
+
+    *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
+    Ok(feature_port)
+}
+
+async fn feature_start_handler(
+    State(state): State<WebState>,
+    Extension(root): Extension<PathBuf>,
+) -> impl IntoResponse {
+    match launch_feature_center(root, state.2.clone()) {
+        Ok(port) => Json(json!({"ok": true, "port": port})),
+        Err(e) => Json(json!({"ok": false, "error": e})),
     }
 }
 
@@ -382,9 +384,29 @@ pub fn stop_feature_center() {
     }
 }
 
-async fn index_handler() -> impl IntoResponse {
+/// Config server index handler: 控制中心 — settings only, no sidebar.
+async fn config_index_handler() -> impl IntoResponse {
     match Assets::get("index.html") {
-        Some(content) => Html(String::from_utf8_lossy(&content.data).to_string()).into_response(),
+        Some(content) => {
+            let html = String::from_utf8_lossy(&content.data);
+            let modified = html
+                .replace("<script src=\"/static/js/sidebar.js\"></script>", "")
+                .replace("</body>", "<script>document.querySelectorAll('.feature-only').forEach(function(e){e.remove()});var h=document.querySelector('h1');if(h)h.textContent='千言输入法 · 控制中心';document.title='千言输入法 · 控制中心'</script></body>");
+            Html(modified).into_response()
+        }
+        None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
+    }
+}
+
+/// Feature server index handler: 功能中心 — features only, with sidebar.
+async fn feature_index_handler() -> impl IntoResponse {
+    match Assets::get("index.html") {
+        Some(content) => {
+            let html = String::from_utf8_lossy(&content.data);
+            let modified = html.replace("</body>",
+                "<script>document.querySelectorAll('.config-only').forEach(function(e){e.remove()});var s=document.querySelector('.qy-sidebar-nav a[href=\"#section-settings\"]');if(s)s.remove();var h=document.querySelector('h1');if(h)h.textContent='千言输入法 · 功能中心';document.title='千言输入法 · 功能中心'</script></body>");
+            Html(modified).into_response()
+        }
         None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
     }
 }

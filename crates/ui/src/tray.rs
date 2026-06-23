@@ -10,6 +10,7 @@ pub enum TrayEvent {
     ToggleEnabled,
     NextProfile,
     OpenConfig,
+    OpenFeatureCenter,
     Exit,
     ReloadConfig,
     SyncStatus {
@@ -191,9 +192,19 @@ impl Tray for ImeTray {
         items.push(MenuItem::Separator);
         items.push(
             StandardItem {
-                label: "打开管理页面".to_string(),
+                label: "控制中心".to_string(),
                 activate: Box::new(|this: &mut Self| {
                     let _ = this.tx.send(TrayEvent::OpenConfig);
+                }),
+                ..Default::default()
+            }
+            .into(),
+        );
+        items.push(
+            StandardItem {
+                label: "功能中心".to_string(),
+                activate: Box::new(|this: &mut Self| {
+                    let _ = this.tx.send(TrayEvent::OpenFeatureCenter);
                 }),
                 ..Default::default()
             }
@@ -510,7 +521,8 @@ unsafe extern "system" fn tray_wnd_proc(
                         }
 
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
-                        let _ = AppendMenuW(h_menu, MF_STRING, 1011, windows::core::w!("打开管理页面"));
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1011, windows::core::w!("控制中心"));
+                        let _ = AppendMenuW(h_menu, MF_STRING, 1015, windows::core::w!("功能中心"));
                         let _ = AppendMenuW(h_menu, MF_STRING, 1012, windows::core::w!("重载配置"));
                         let _ = AppendMenuW(h_menu, MF_SEPARATOR, 0, None);
                         let _ = AppendMenuW(h_menu, MF_STRING, 1014, windows::core::w!("退出程序"));
@@ -537,6 +549,7 @@ unsafe extern "system" fn tray_wnd_proc(
                         }
                     }
                     1011 => { let _ = tx.send(TrayEvent::OpenConfig); }
+                    1015 => { let _ = tx.send(TrayEvent::OpenFeatureCenter); }
                     1012 => { let _ = tx.send(TrayEvent::ReloadConfig); }
                     1014 => { let _ = tx.send(TrayEvent::Exit); }
                     _ => {}

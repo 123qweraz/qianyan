@@ -248,6 +248,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
+    let tray_tx_for_feature = tray_tx.clone();
+    let root_for_feature = root.clone();
+
     // Tray 事件处理线程（无锁：通过 ProcessorHandle 与 Actor 通信）
     std::thread::spawn(move || {
         while let Ok(event) = tray_rx.recv() {
@@ -375,6 +378,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .arg("/c")
                         .arg("start")
                         .arg("http://localhost:18765")
+                        .spawn();
+                }
+                qianyan_ime_ui::tray::TrayEvent::OpenFeatureCenter => {
+                    let port = match qianyan_ime_ui::web::launch_feature_center(
+                        root_for_feature.clone(),
+                        tray_tx_for_feature.clone(),
+                    ) {
+                        Ok(p) => p,
+                        Err(e) => {
+                            log::error!("[Tray] 启动功能中心失败: {}", e);
+                            continue;
+                        }
+                    };
+                    #[cfg(target_os = "linux")]
+                    {
+                        let _ = open::that(format!("http://127.0.0.1:{}", port));
+                    }
+                    #[cfg(target_os = "windows")]
+                    let _ = std::process::Command::new("cmd")
+                        .arg("/c")
+                        .arg("start")
+                        .arg(format!("http://localhost:{}", port))
                         .spawn();
                 }
                 qianyan_ime_ui::tray::TrayEvent::ReloadConfig => {
