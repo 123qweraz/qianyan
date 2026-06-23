@@ -96,6 +96,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut root = find_project_root();
     let mut current_config = Config::load();
+
+    // FIXME: Submodules (sound.rs, tray.rs, web handlers) use their own
+    // find_project_root() and ignore this data_dir override. A refactor is
+    // needed to pass the custom root through the system properly.
     
     // 如果配置中指定了数据目录，则优先使用
     if let Some(ref custom_root) = current_config.files.data_dir {
