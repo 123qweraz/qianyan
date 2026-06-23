@@ -907,7 +907,7 @@ impl Config {
             // 顶级键
             for k in top_keys {
                 if let Some(v) = full.get(*k) {
-                    page.as_object_mut().expect("page is always a JSON object").insert(k.to_string(), v.clone());
+                    page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert(k.to_string(), v.clone());
                 }
             }
 
@@ -916,7 +916,7 @@ impl Config {
                 if let Some(input_val) = full.get("input") {
                     let picked = Self::pick_keys(input_val, input_keys);
                     if picked != Value::Object(serde_json::Map::new()) {
-                        page.as_object_mut().expect("page is always a JSON object").insert("input".into(), picked);
+                        page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert("input".into(), picked);
                     }
                 }
             }
@@ -926,7 +926,7 @@ impl Config {
                 if let Some(appear_val) = full.get("appearance") {
                     let picked = Self::pick_keys(appear_val, appear_keys);
                     if picked != Value::Object(serde_json::Map::new()) {
-                        page.as_object_mut().expect("page is always a JSON object").insert("appearance".into(), picked);
+                        page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert("appearance".into(), picked);
                     }
                 }
             }
@@ -943,7 +943,7 @@ impl Config {
                 for &(_, _, input_keys, _) in Self::PAGE_FILES {
                     Self::remove_keys(&mut input_owned, input_keys);
                 }
-                page.as_object_mut().expect("page is always a JSON object").insert("input".into(), input_owned);
+                page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert("input".into(), input_owned);
             }
             Self::save_json(&config_dir.join("pinyin.json"), &page)?;
         }
@@ -956,7 +956,7 @@ impl Config {
                 for &(_, _, _, appear_keys) in Self::PAGE_FILES {
                     Self::remove_keys(&mut appear_owned, appear_keys);
                 }
-                page.as_object_mut().expect("page is always a JSON object").insert("appearance".into(), appear_owned);
+                page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert("appearance".into(), appear_owned);
             }
             Self::save_json(&config_dir.join("appearance.json"), &page)?;
         }
@@ -974,7 +974,7 @@ impl Config {
         {
             let mut page = Value::Object(serde_json::Map::new());
             if let Some(layouts) = full.get("layouts") {
-                page.as_object_mut().expect("page is always a JSON object").insert("layouts".into(), layouts.clone());
+                page.as_object_mut().ok_or_else(|| format!("page is not a JSON object"))?.insert("layouts".into(), layouts.clone());
             }
             Self::save_json(&config_dir.join("layout.json"), &page)?;
         }
