@@ -227,17 +227,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_msg = config.clone();
     let app_state_tray = app_state.clone();
 
-    // 启动嵌入式配置中心 Web 服务器
+    // 启动嵌入式配置中心 Web 服务器（端口自动递增，实际值写入 config_actual_port）
+    let config_actual_port = Arc::new(std::sync::atomic::AtomicU16::new(18765));
+    let config_actual_port_for_tray = config_actual_port.clone();
     {
         let config_web = config.clone();
         let tray_tx_web = tray_tx.clone();
         let root_web = root.clone();
+        let actual = config_actual_port;
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("配置中心 tokio runtime 启动失败");
             rt.block_on(async {
                 let server = qianyan_ime_ui::web::WebServer::new(
                     18765,
-                    Arc::new(std::sync::atomic::AtomicU16::new(18765)),
+                    actual,
                     config_web,
                     Arc::new(RwLock::new(HashMap::new())),
                     tray_tx_web,
@@ -250,6 +253,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tray_tx_for_feature = tray_tx.clone();
     let root_for_feature = root.clone();
+    let config_port_tray = config_actual_port_for_tray.clone();
 
     // Tray 事件处理线程（无锁：通过 ProcessorHandle 与 Actor 通信）
     std::thread::spawn(move || {
@@ -369,15 +373,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
+                    let port = config_port_tray.load(std::sync::atomic::Ordering::Relaxed);
                     #[cfg(target_os = "linux")]
                     {
-                        let _ = open::that("http://127.0.0.1:18765");
+                        let _ = open::that(format!("http://127.0.0.1:{}", port));
                     }
                     #[cfg(target_os = "windows")]
                     let _ = std::process::Command::new("cmd")
                         .arg("/c")
                         .arg("start")
-                        .arg("http://localhost:18765")
+                        .arg(format!("http://localhost:{}", port))
                         .spawn();
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenFeatureCenter => {
