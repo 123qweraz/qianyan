@@ -160,7 +160,7 @@ impl WebServer {
             }
         });
 
-        // Periodic IME session cleanup: 每 5 分钟清理过期 session
+        // Periodic IME session cleanup: 每 30 分钟清理过期 session
         let cleanup_handle = ime_handle.clone();
         let mut cleanup_shutdown_rx = ime_handle.shutdown_tx.subscribe();
         tokio::spawn(async move {
@@ -826,22 +826,24 @@ async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
     }
 }
 
-async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
+async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> impl IntoResponse {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
     if let Ok(mut cache) = get_known_words_cache().lock() {
         *cache = None;
     }
+    if let Ok(mut cache) = get_dict_cache().lock() {
+        cache.clear();
+    }
     match qianyan_ime_engine::compiler::check_and_compile_all() {
         Ok(_) => {
             let _ = tray_tx.send(TrayEvent::ShowNotification("词库编译完成".into()));
-            // 编译完成后自动重载
             let _ = tray_tx.send(TrayEvent::ReloadConfig);
-            StatusCode::OK
+            (StatusCode::OK, Json(json!({"ok": true}))).into_response()
         },
         Err(e) => {
             eprintln!("[Web] 词库编译失败: {}", e);
             let _ = tray_tx.send(TrayEvent::ShowNotification(format!("编译失败: {}", e)));
-            StatusCode::INTERNAL_SERVER_ERROR
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{}", e)}))).into_response()
         }
     }
 }
@@ -849,6 +851,9 @@ async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> Statu
 async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     if let Ok(mut cache) = get_known_words_cache().lock() {
         *cache = None;
+    }
+    if let Ok(mut cache) = get_dict_cache().lock() {
+        cache.clear();
     }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
@@ -977,6 +982,8 @@ fn get_dict_cache() -> &'static StdMutex<HashMap<String, (std::time::SystemTime,
     DICT_CACHE.get_or_init(|| StdMutex::new(HashMap::new()))
 }
 
+const DICT_CACHE_MAX: usize = 20;
+
 fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEntryView>> {
     let mtime = path.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
     let key = path.to_string_lossy().to_string();
@@ -989,6 +996,12 @@ fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEnt
     let entries = load_dict_entries(path);
     let arc = std::sync::Arc::new(entries);
     cache.insert(key, (mtime, std::sync::Arc::clone(&arc)));
+    if cache.len() > DICT_CACHE_MAX {
+        // 淘汰最早缓存的条目（按 mtime 排序）
+        if let Some(oldest) = cache.iter().min_by_key(|(_, (t, _))| t).map(|(k, _)| k.clone()) {
+            cache.remove(&oldest);
+        }
+    }
     arc
 }
 

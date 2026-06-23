@@ -20,7 +20,7 @@ fn main() {
     while i < args.len() {
         match args[i].as_str() {
             "--port" if i + 1 < args.len() => {
-                port = args[i + 1].parse().unwrap_or(18765);
+                port = args[i + 1].parse().unwrap_or(18766);
                 i += 2;
             }
             "--control-port" if i + 1 < args.len() => {
