@@ -14,17 +14,10 @@ qianyan-ime-engine = { path = "../engine" }
 qianyan-ime-ui = { path = "../ui" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-log = { workspace = true }
 env_logger = { workspace = true }
-thiserror = { workspace = true }
-tokio = { workspace = true }
-slint = { workspace = true }
 windows = { workspace = true }
 windows-core = { workspace = true }
 notify-rust = { workspace = true }
-open = { workspace = true }
-image = { workspace = true }
-arboard = { workspace = true }
 
 [build-dependencies]
 slint-build = { workspace = true }
