@@ -47,10 +47,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let args: Vec<String> = env::args().collect();
+    #[cfg(target_os = "linux")]
     let should_daemonize = match qianyan_ime_linux::cli::handle_startup(&args)? {
         qianyan_ime_linux::cli::StartupAction::Exit => return Ok(()),
         qianyan_ime_linux::cli::StartupAction::Continue { should_daemonize } => should_daemonize,
     };
+    #[cfg(not(target_os = "linux"))]
+    let should_daemonize = false;
 
     #[cfg(target_os = "windows")]
     let _mutex_guard = unsafe {
@@ -528,6 +531,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    #[cfg(target_os = "linux")]
     let (vkbd_option, host_run) = qianyan_ime_linux::runtime::create_input_host(
         &args,
         processor_handle.clone(),
@@ -538,9 +542,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // 如果有 vkbd（Evdev 模式），可以在这里使用
+    #[cfg(target_os = "linux")]
     let _ = vkbd_option;
 
     // 在新线程中运行输入主机
+    #[cfg(target_os = "linux")]
     std::thread::spawn(move || {
         host_run();
     });

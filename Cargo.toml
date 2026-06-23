@@ -90,7 +90,6 @@ license.workspace = true
 qianyan-ime-core = { path = "crates/core" }
 qianyan-ime-engine = { path = "crates/engine" }
 qianyan-ime-ui = { path = "crates/ui" }
-qianyan-ime-linux = { path = "crates/platform-linux" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 walkdir = { workspace = true }
