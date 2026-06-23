@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::path::PathBuf;
 
 use qianyan_ime_core::Config;
 use qianyan_ime_engine::{self as engine, Processor};
@@ -335,7 +336,33 @@ fn run_test_mode() {
     }
 }
 
-fn handle_register_or_unregister(_register: bool) -> Result<(), Box<dyn Error>> {
+fn handle_register_or_unregister(register: bool) -> Result<(), Box<dyn Error>> {
+    let root = qianyan_ime_core::utils::find_project_root();
+    let desktop_src = root.join("qianyan-ime.desktop");
+    let desktop_dst = dirs::data_dir()
+        .map(|d| d.join("applications").join("qianyan-ime.desktop"))
+        .unwrap_or_else(|| {
+            let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+            PathBuf::from(home).join(".local/share/applications/qianyan-ime.desktop")
+        });
+
+    if register {
+        if !desktop_src.exists() {
+            return Err(format!("未找到桌面文件: {}", desktop_src.display()).into());
+        }
+        if let Some(parent) = desktop_dst.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::copy(&desktop_src, &desktop_dst)?;
+        println!("已注册 Qianyan IME (桌面文件已安装到 {})", desktop_dst.display());
+    } else {
+        if desktop_dst.exists() {
+            std::fs::remove_file(&desktop_dst)?;
+            println!("已注销 Qianyan IME (桌面文件已移除)");
+        } else {
+            println!("Qianyan IME 尚未注册，无需注销");
+        }
+    }
     Ok(())
 }
 
