@@ -1,0 +1,24 @@
+[package]
+name = "qianyan-ime-web-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "qianyan-web-settings"
+path = "src/main.rs"
+
+[dependencies]
+qianyan-ime-core = { path = "../core" }
+qianyan-ime-engine = { path = "../engine" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+mime_guess = { workspace = true }
+rust-embed = { workspace = true }
+arc-swap = { workspace = true }
+fst = { workspace = true }
+walkdir = { workspace = true }
+encoding_rs = { workspace = true }

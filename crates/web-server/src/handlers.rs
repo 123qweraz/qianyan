@@ -1,11 +1,9 @@
 use axum::{
-    routing::{get, post},
-    extract::{State, Json, DefaultBodyLimit, Extension},
-    response::{IntoResponse, Html, Response},
-    http::{StatusCode, Uri, HeaderName, header},
+    extract::{State, Json, Extension},
+    response::{IntoResponse, Response},
+    http::{StatusCode, header},
     body::Body,
     middleware,
-    Router,
 };
 use fst::Streamer;
 use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery};
@@ -16,576 +14,25 @@ use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
-use std::sync::{Arc, RwLock, OnceLock, Mutex as StdMutex};
-use std::sync::atomic::{AtomicU16, AtomicU64, AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock, Mutex as StdMutex};
+use std::sync::atomic::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::io::BufRead;
 use std::path::PathBuf;
 use std::time::Instant;
 
 use qianyan_ime_core::Config;
 use qianyan_ime_engine::trie::Trie;
-use rust_embed::RustEmbed;
-use crate::tray::TrayEvent;
-
-#[derive(RustEmbed)]
-#[folder = "../../static/"]
-struct Assets;
-
-// Web server implementation for IME configuration
-pub struct WebServer {
-    pub port: u16,
-    pub actual_port: Arc<AtomicU16>,
-    pub config: Arc<RwLock<Config>>,
-    pub tries: Arc<RwLock<HashMap<String, Trie>>>,
-    pub tray_tx: std::sync::mpsc::Sender<TrayEvent>,
-    pub root: PathBuf,
-}
-
-type WebState = (
-    Arc<RwLock<Config>>, 
-    Arc<RwLock<HashMap<String, Trie>>>, 
-    std::sync::mpsc::Sender<TrayEvent>
-);
-
-pub struct ImeEngineHandle {
-    pub engine: Arc<RwLock<Option<Arc<SearchEngine>>>>,
-    pub root: PathBuf,
-    pub(super) sessions: StdMutex<HashMap<String, ImeSession>>,
-    pub shutdown_tx: tokio::sync::watch::Sender<bool>,
-    pub shutdown_pending: Arc<AtomicBool>,
-    pub last_activity: Arc<AtomicU64>,
-}
-
-pub(super) struct ImeSession {
-    processor: qianyan_ime_engine::Processor,
-    #[allow(dead_code)]
-    created: std::time::Instant,
-}
-
-const MAX_IME_SESSIONS: usize = 1000;
-const SESSION_TTL_SECS: u64 = 3600;
-
-impl WebServer {
-    pub fn new(
-        port: u16, 
-        actual_port: Arc<AtomicU16>,
-        config: Arc<RwLock<Config>>, 
-        tries: Arc<RwLock<HashMap<String, Trie>>>,
-        tray_tx: std::sync::mpsc::Sender<TrayEvent>,
-        root: PathBuf,
-    ) -> Self {
-        Self { port, actual_port, config, tries, tray_tx, root }
-    }
-
-    pub async fn start(self) {
-        let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
-        let state: WebState = (self.config, self.tries, self.tray_tx);
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let ime_handle = Arc::new(ImeEngineHandle {
-            engine: Arc::new(RwLock::new(None)),
-            root: self.root,
-            sessions: StdMutex::new(HashMap::new()),
-            shutdown_tx,
-            shutdown_pending: Arc::new(AtomicBool::new(false)),
-            last_activity: Arc::new(AtomicU64::new(now)),
-        });
-        let app = Router::new()
-            .route("/", get(feature_index_handler))
-            .route("/api/config", get(get_config).post(update_config))
-            .route("/api/config/reset", post(reset_config))
-            .route("/api/config/reset/{sections}", post(reset_config_section))
-            .route("/api/shutdown", post(shutdown_handler))
-            .route("/api/fonts", get(list_fonts))
-            .route("/api/dicts", get(list_dicts))
-            .route("/api/dicts/compile", post(compile_dicts_handler))
-            .route("/api/dicts/reload", post(reload_dicts))
-            .route("/api/dicts/toggle", post(toggle_dict))
-            .route("/api/dicts/create", post(create_dict_handler))
-            .route("/api/dicts/open", post(open_dicts_dir))
-            .route("/api/dict/user/browse", get(browse_user_dict))
-            .route("/api/dict/user/delete", post(delete_user_dict_entry))
-            .route("/api/dictionary/chars", get(get_chars_dict))
-            .route("/api/dict/search", get(search_dict))
-            .route("/api/dict/browse", get(browse_dict))
-            .route("/api/dict/update", post(update_dict_entry))
-            .route("/api/dict/entry/update", post(update_dict_entry_full))
-            .route("/api/dict/entry/delete", post(delete_dict_entry))
-            .route("/api/dict/add", post(add_dict_entry))
-            .route("/api/dict/entry/add", post(add_dict_entry_full))
-            .route("/api/dict/clear_user", post(clear_user_dict))
-            .route("/api/dict/user/cleanup", post(cleanup_user_dict))
-            .route("/api/dict/user/promote", post(promote_to_system_dict))
-            .route("/api/keyboard/send", post(send_key_handler))
-            .route("/api/pinyin/convert", post(pinyin_convert_handler))
-            .route("/api/convert", post(convert_handler))
-            .route("/api/tools/discover", post(discover_words_file_handler))
-            .route("/api/tools/discover/export", post(export_discovery_handler))
-            .route("/api/tools/discover/save", post(save_discovery_handler))
-            .route("/api/tools/discover/download", post(discover_download_handler))
-            .route("/api/ime/search", post(ime_search_handler))
-            .route("/api/ime/session", post(ime_session_handler))
-            .route("/api/ime/key", post(ime_key_handler))
-            .route("/api/user/export", get(export_user_data))
-            .route("/api/user/import", post(import_user_data))
-            .route("/api/backup/full", get(export_full_backup))
-            .route("/api/backup/restore", post(restore_full_backup))
-            .route("/static/*file", get(static_handler))
-            .route("/dicts/*file", get(dicts_handler))
-            .fallback(feature_index_handler)
-            .layer(middleware::from_fn(activity_layer))
-            .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
-            .layer(Extension(ime_handle.clone()))
-            .with_state(state);
-
-        // Idle timeout: 如果 5 分钟内无 HTTP 请求则自动关闭
-        let last_activity = ime_handle.last_activity.clone();
-        let shutdown_tx_idle = ime_handle.shutdown_tx.clone();
-        let idle_timeout = std::time::Duration::from_secs(300);
-        tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs();
-                let last = last_activity.load(std::sync::atomic::Ordering::Relaxed);
-                if last > 0 && now - last > idle_timeout.as_secs() {
-                    let _ = shutdown_tx_idle.send(true);
-                    break;
-                }
-            }
-        });
-
-        // Periodic IME session cleanup: 每 30 分钟清理过期 session
-        let cleanup_handle = ime_handle.clone();
-        let mut cleanup_shutdown_rx = ime_handle.shutdown_tx.subscribe();
-        tokio::spawn(async move {
-            let interval = std::time::Duration::from_secs(SESSION_TTL_SECS / 2);
-            loop {
-                tokio::select! {
-                    _ = tokio::time::sleep(interval) => {
-                        let now = std::time::Instant::now();
-                        let ttl = std::time::Duration::from_secs(SESSION_TTL_SECS);
-                        if let Ok(mut sessions) = cleanup_handle.sessions.lock() {
-                            sessions.retain(|_, s| now.duration_since(s.created) < ttl);
-                        }
-                    }
-                    _ = cleanup_shutdown_rx.changed() => break,
-                }
-            }
-        });
-
-        let mut current_port = self.port;
-        loop {
-            let addr = format!("127.0.0.1:{}", current_port);
-            match tokio::net::TcpListener::bind(&addr).await {
-                Ok(listener) => {
-                    self.actual_port.store(current_port, Ordering::SeqCst);
-                    println!("[Web] 服务器启动在 http://{}", addr);
-                    if let Err(e) = axum::serve(listener, app)
-                        .with_graceful_shutdown(async move {
-                            shutdown_rx.changed().await.ok();
-                        })
-                        .await {
-                        eprintln!("[Web] Server error: {}", e);
-                    }
-                    break;
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
-                    log::warn!("[Web] 端口 {} 已被占用，正在尝试 {}...", current_port, current_port + 1);
-                    current_port += 1;
-                    if current_port > self.port + 100 {
-                        log::error!("[Web] 已尝试 100 个端口均无法启动，退出。");
-                        break;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[Web] Failed to bind to {}: {}", addr, e);
-                    break;
-                }
-            }
-        }
-    }
-
-    /// Config-only web server, embedded in main process (no separate binary).
-    /// Serves config routes + static assets + feature-center lifecycle endpoints.
-    pub async fn start_config(self) {
-        let state: WebState = (self.config, self.tries, self.tray_tx);
-        let root = self.root.clone();
-        let app = Router::new()
-            .route("/", get(config_index_handler))
-            .route("/api/config", get(get_config).post(update_config))
-            .route("/api/config/reset", post(reset_config))
-            .route("/api/config/reset/{sections}", post(reset_config_section))
-            .route("/api/fonts", get(list_fonts))
-            .route("/api/feature/start", post(feature_start_handler))
-            .route("/api/feature/stop", post(feature_stop_handler))
-            .route("/static/*file", get(static_handler))
-            .fallback(config_index_handler)
-            .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
-            .layer(Extension(root))
-            .with_state(state);
-
-        let mut current_port = self.port;
-        loop {
-            let addr = format!("127.0.0.1:{}", current_port);
-            match tokio::net::TcpListener::bind(&addr).await {
-                Ok(listener) => {
-                    self.actual_port.store(current_port, Ordering::SeqCst);
-                    println!("[Config] 控制中心启动在 http://{}", addr);
-                    if let Err(e) = axum::serve(listener, app).await {
-                        eprintln!("[Config] Server error: {}", e);
-                    }
-                    break;
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => {
-                    current_port += 1;
-                    if current_port > self.port + 100 {
-                        log::error!("[Config] 已尝试 100 个端口均无法启动，退出。");
-                        break;
-                    }
-                }
-                Err(e) => {
-                    eprintln!("[Config] Failed to bind to {}: {}", addr, e);
-                    break;
-                }
-            }
-        }
-    }
-}
-
-static FEATURE_CENTER: std::sync::Mutex<Option<(std::process::Child, u16)>> = std::sync::Mutex::new(None);
-static FEATURE_STARTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Launch the feature center subprocess.
-/// Can be called from both the web handler and the tray handler.
-pub fn launch_feature_center(root: PathBuf, tray_tx: std::sync::mpsc::Sender<TrayEvent>) -> Result<u16, String> {
-    // Guard against concurrent calls
-    if FEATURE_STARTING.swap(true, std::sync::atomic::Ordering::AcqRel) {
-        return Err("功能中心正在启动中".to_string());
-    }
-    let result = launch_feature_center_inner(root, tray_tx);
-    FEATURE_STARTING.store(false, std::sync::atomic::Ordering::Release);
-    result
-}
-
-fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<TrayEvent>) -> Result<u16, String> {
-    // Check if already running
-    if let Some(port) = check_feature_running() {
-        return Ok(port);
-    }
-
-    let subprocess_path = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.join("qianyan-web-settings")))
-        .unwrap_or_else(|| std::path::PathBuf::from("qianyan-web-settings"));
-
-    // Reserve the feature port to prevent TOCTOU race
-    let reserved = (18766..18866)
-        .find_map(|p| {
-            std::net::TcpListener::bind(format!("127.0.0.1:{}", p)).ok()
-        })
-        .ok_or_else(|| "无可用端口 (18766-18865)".to_string())?;
-    let feature_port = reserved.local_addr().map_err(|e| format!("{}", e))?.port();
-
-    let control_listener = std::net::TcpListener::bind("127.0.0.1:0")
-        .map_err(|e| format!("{}", e))?;
-    let control_port = control_listener.local_addr()
-        .map_err(|e| format!("{}", e))?.port();
-
-    let root_str = root.to_string_lossy().to_string();
-
-    // Spawn subprocess BEFORE accepting control TCP
-    let mut child = std::process::Command::new(&subprocess_path)
-        .arg("--port").arg(feature_port.to_string())
-        .arg("--control-port").arg(control_port.to_string())
-        .arg("--root").arg(&root_str)
-        .spawn()
-        .map_err(|e| format!("{}", e))?;
-
-    // Accept control TCP connection synchronously
-    let stream = accept_with_timeout(&control_listener, std::time::Duration::from_secs(10))
-        .map_err(|e| {
-            let _ = child.kill();
-            let _ = child.wait();
-            format!("功能中心连接超时: {}", e)
-        })?;
-
-    // Release reserved port so subprocess can bind the server port
-    drop(reserved);
-
-    // Spawn reader thread for control events
-    stream.set_read_timeout(Some(std::time::Duration::from_secs(60))).ok();
-    std::thread::spawn(move || {
-        let reader = std::io::BufReader::new(&stream);
-        for line in reader.lines().flatten() {
-            if let Ok(msg) = serde_json::from_str::<serde_json::Value>(&line) {
-                let cmd = msg.get("cmd").and_then(|c| c.as_str());
-                match cmd {
-                    Some("reload_config") => { let _ = tray_tx.send(TrayEvent::ReloadConfig); }
-                    Some("notify") => {
-                        if let Some(body) = msg.get("body").and_then(|b| b.as_str()) {
-                            let _ = tray_tx.send(TrayEvent::ShowNotification(body.to_string()));
-                        }
-                    }
-                    Some("clear_user_dict") => {
-                        let profile = msg.get("profile").and_then(|p| p.as_str()).map(|s| s.to_string());
-                        let _ = tray_tx.send(TrayEvent::ClearUserDict(profile));
-                    }
-                    Some("send_key") => {
-                        if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
-                            let _ = tray_tx.send(TrayEvent::SendKey(key.to_string()));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        // Stream closed — kill child process
-        let mut guard = FEATURE_CENTER.lock().unwrap();
-        if let Some((mut c, _)) = guard.take() {
-            let _ = c.kill();
-            let _ = c.wait();
-        }
-    });
-
-    // Store child info ONLY after successful connection
-    *FEATURE_CENTER.lock().unwrap() = Some((child, feature_port));
-    Ok(feature_port)
-}
-fn check_feature_running() -> Option<u16> {
-    let mut guard = FEATURE_CENTER.lock().unwrap();
-    if let Some((ref mut child, port)) = *guard {
-        match child.try_wait() {
-            Ok(None) => return Some(port),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
-        }
-    }
-    *guard = None;
-    None
-}
-
-/// Synchronously accept a TCP connection with timeout (non-blocking poll).
-fn accept_with_timeout(listener: &std::net::TcpListener, timeout: std::time::Duration) -> Result<std::net::TcpStream, String> {
-    listener.set_nonblocking(true).map_err(|e| format!("非阻塞模式失败: {}", e))?;
-    let deadline = std::time::Instant::now() + timeout;
-    loop {
-        match listener.accept() {
-            Ok((s, _)) => return Ok(s),
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                if std::time::Instant::now() > deadline {
-                    return Err("超时".to_string());
-                }
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-            Err(e) => return Err(format!("监听错误: {}", e)),
-        }
-    }
-}
-
-async fn feature_start_handler(
-    State(state): State<WebState>,
-    Extension(root): Extension<PathBuf>,
-) -> impl IntoResponse {
-    match launch_feature_center(root, state.2.clone()) {
-        Ok(port) => Json(json!({"ok": true, "port": port})),
-        Err(e) => Json(json!({"ok": false, "error": e})),
-    }
-}
-
-async fn feature_stop_handler() -> impl IntoResponse {
-    let mut guard = FEATURE_CENTER.lock().unwrap();
-    if let Some((mut child, _)) = guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-        Json(json!({"ok": true}))
-    } else {
-        Json(json!({"ok": true, "message": "not running"}))
-    }
-}
-
-pub fn stop_feature_center() {
-    let mut guard = FEATURE_CENTER.lock().unwrap();
-    if let Some((mut child, _)) = guard.take() {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-}
-
-/// Config server index handler: 控制中心 — settings only, no sidebar.
-async fn config_index_handler() -> impl IntoResponse {
-    match Assets::get("index.html") {
-        Some(content) => {
-            let html = String::from_utf8_lossy(&content.data);
-            let modified = html
-                .replace("<script src=\"/static/js/sidebar.js\"></script>", "")
-                .replace("</body>", "<script>document.querySelectorAll('.feature-only').forEach(function(e){e.remove()});var h=document.querySelector('h1');if(h)h.textContent='千言输入法 · 控制中心';document.title='千言输入法 · 控制中心'</script></body>");
-            Html(modified).into_response()
-        }
-        None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
-    }
-}
-
-/// Feature server index handler: 功能中心 — features only, with sidebar.
-async fn feature_index_handler() -> impl IntoResponse {
-    match Assets::get("index.html") {
-        Some(content) => {
-            let html = String::from_utf8_lossy(&content.data);
-            let modified = html.replace("</body>",
-                "<script>document.querySelectorAll('.config-only').forEach(function(e){e.remove()});var s=document.querySelector('.qy-sidebar-nav a[href=\"#section-settings\"]');if(s)s.remove();var h=document.querySelector('h1');if(h)h.textContent='千言输入法 · 功能中心';document.title='千言输入法 · 功能中心'</script></body>");
-            Html(modified).into_response()
-        }
-        None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
-    }
-}
-
-async fn static_handler(uri: Uri) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches("/static/").trim_start_matches("/");
-
-    // 开发模式：优先从磁盘读取，修改后无需重新编译
-    let dev_root = find_static_root();
-    if let Some(ref dev_root) = dev_root {
-        if let Some(safe_path) = safe_join(dev_root, path) {
-            if let Ok(content) = std::fs::read(&safe_path) {
-                let mime = mime_guess::from_path(&safe_path).first_or_octet_stream();
-                let headers = [
-                    (header::CONTENT_TYPE, mime.as_ref()),
-                    (HeaderName::from_static("cache-control"), "no-cache"),
-                ];
-                return (headers, content).into_response();
-            }
-        }
-    }
-
-    // 生产模式：使用编译时嵌入的资源
-    match Assets::get(path) {
-        Some(content) => {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
-            let headers = [
-                (header::CONTENT_TYPE, mime.as_ref()),
-                (HeaderName::from_static("cache-control"), "no-cache"),
-            ];
-            (headers, content.data).into_response()
-        }
-        None => (StatusCode::NOT_FOUND, "Not Found").into_response(),
-    }
-}
-
-fn find_static_root() -> Option<std::path::PathBuf> {
-    // 先检查 CWD 下的 static/
-    let cwd_static = std::path::PathBuf::from("static");
-    if cwd_static.is_dir() {
-        return Some(cwd_static);
-    }
-
-    // 再检查 exe 同目录下的 static/
-    if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
-        let exe_static = exe_dir.join("static");
-        if exe_static.is_dir() {
-            return Some(exe_static);
-        }
-    }
-
-    // 从工作目录向上查找最多3层
-    if let Ok(mut cwd) = std::env::current_dir() {
-        for _ in 0..3 {
-            let check = cwd.join("static");
-            if check.is_dir() {
-                return Some(check);
-            }
-            cwd.pop();
-        }
-    }
-    None
-}
-
-fn find_dicts_root() -> std::path::PathBuf {
-    let base_path = std::path::PathBuf::from("dicts");
-    if base_path.exists() {
-        return base_path;
-    }
-    if let Ok(mut exe_path) = std::env::current_exe() {
-        exe_path.pop();
-        for _ in 0..3 {
-            let p = exe_path.join("dicts");
-            if p.exists() {
-                return p;
-            }
-            exe_path.pop();
-        }
-    }
-    std::path::PathBuf::from("dicts")
-}
-
-/// 安全地将用户提供的路径解析到基准目录下。
-/// 拒绝绝对路径、`..` 穿越，并通过 canonicalize 验证最终路径在 base 内。
-fn valid_profile_name(name: &str) -> bool {
-    !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-}
-
-fn safe_join(base: &std::path::Path, user_path: &str) -> Option<std::path::PathBuf> {
-    use std::path::Component;
-    let p = std::path::Path::new(user_path);
-    let base = base.canonicalize().ok()?;
-
-    // 绝对路径：规范化后检查是否在 base 目录下
-    if p.is_absolute() {
-        let canonical = p.canonicalize().ok()?;
-        return if canonical.starts_with(&base) { Some(canonical) } else { None };
-    }
-    // 相对路径：拒绝 .. 穿越
-    for c in p.components() {
-        if matches!(c, Component::ParentDir) {
-            return None;
-        }
-    }
-    let joined = base.join(p);
-    if joined.exists() {
-        let canonical = joined.canonicalize().ok()?;
-        if canonical.starts_with(&base) {
-            return Some(canonical);
-        }
-        return None;
-    }
-    // 文件不存在时，验证父目录在 base 内（允许新建/写入）
-    let parent = joined.parent()?;
-    let parent_canonical = parent.canonicalize().ok()?;
-    if parent_canonical.starts_with(&base) {
-        Some(joined)
-    } else {
-        None
-    }
-}
-
-async fn dicts_handler(uri: Uri) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches("/dicts/").trim_start_matches("/");
-    
-    let base_path = find_dicts_root();
-    if let Some(safe_path) = safe_join(&base_path, path) {
-        if let Ok(content) = std::fs::read(&safe_path) {
-            let mime = mime_guess::from_path(&safe_path).first_or_octet_stream();
-            return ([(axum::http::header::CONTENT_TYPE, mime.as_ref())], content).into_response();
-        }
-    }
-    eprintln!("[Web] Dictionary file not found: {} in {:?}", path, base_path);
-    (StatusCode::NOT_FOUND, "Dictionary Not Found").into_response()
-}
-
-async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
+use qianyan_ime_core::event::TrayEvent;
+use crate::{WebState, ImeEngineHandle, ImeSession, MAX_IME_SESSIONS, SESSION_TTL_SECS};
+use crate::static_handler::{find_dicts_root, safe_join, valid_profile_name};
+pub(crate) async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
     match config.read() {
         Ok(cfg) => Json(cfg.clone()).into_response(),
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "config lock poisoned").into_response(),
     }
 }
 
-async fn update_config(
+pub(crate) async fn update_config(
     State((config, _, tray_tx)): State<WebState>,
     Json(new_config): Json<Config>
 ) -> StatusCode {
@@ -617,7 +64,7 @@ async fn update_config(
     StatusCode::OK
 }
 
-async fn reset_config(
+pub(crate) async fn reset_config(
     State((config, _, tray_tx)): State<WebState>,
 ) -> StatusCode {
     let default_conf = Config::default_config();
@@ -633,7 +80,7 @@ async fn reset_config(
     StatusCode::OK
 }
 
-async fn reset_config_section(
+pub(crate) async fn reset_config_section(
     State((config, _, tray_tx)): State<WebState>,
     axum::extract::Path(sections): axum::extract::Path<String>,
 ) -> StatusCode {
@@ -667,7 +114,7 @@ async fn reset_config_section(
     StatusCode::OK
 }
 
-async fn activity_layer(
+pub(crate) async fn activity_layer(
     request: axum::http::Request<Body>,
     next: middleware::Next,
 ) -> Response {
@@ -686,7 +133,7 @@ async fn activity_layer(
     next.run(request).await
 }
 
-async fn shutdown_handler(
+pub(crate) async fn shutdown_handler(
     Extension(handle): Extension<Arc<ImeEngineHandle>>,
 ) -> impl IntoResponse {
     handle.shutdown_pending.store(true, Ordering::Relaxed);
@@ -702,7 +149,7 @@ async fn shutdown_handler(
 }
 
 #[derive(Serialize)]
-struct DictFile {
+pub(crate) struct DictFile {
     name: String,
     path: String,
     group: String,
@@ -711,7 +158,7 @@ struct DictFile {
     enabled: bool,
 }
 
-async fn list_dicts() -> Json<Vec<DictFile>> {
+pub(crate) async fn list_dicts() -> Json<Vec<DictFile>> {
     let mut list = Vec::new();
     let root = find_dicts_root();
     let walker = walkdir::WalkDir::new(&root).into_iter();
@@ -765,11 +212,11 @@ fn process_dict_entry(path: std::path::PathBuf) -> DictFile {
 }
 
 #[derive(serde::Deserialize)]
-struct ToggleRequest {
+pub(crate) struct ToggleRequest {
     path: String,
 }
 
-async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
+pub(crate) async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.path) {
         Some(p) => p,
@@ -795,12 +242,12 @@ async fn toggle_dict(Json(req): Json<ToggleRequest>) -> StatusCode {
 }
 
 #[derive(serde::Deserialize)]
-struct CreateDictRequest {
+pub(crate) struct CreateDictRequest {
     name: String,
     group: Option<String>,
 }
 
-async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
+pub(crate) async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
     let group = req.group.unwrap_or_else(|| "user".to_string());
     let base = find_dicts_root();
     let dir = match safe_join(&base, &group) {
@@ -827,7 +274,7 @@ async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> StatusCode {
     }
 }
 
-async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> impl IntoResponse {
+pub(crate) async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> impl IntoResponse {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
     if let Ok(mut cache) = get_known_words_cache().lock() {
         *cache = None;
@@ -849,7 +296,7 @@ async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> impl 
     }
 }
 
-async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
+pub(crate) async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
     if let Ok(mut cache) = get_known_words_cache().lock() {
         *cache = None;
     }
@@ -861,7 +308,7 @@ async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
 }
 
 #[derive(Serialize)]
-struct SearchResult {
+pub(crate) struct SearchResult {
     pinyin: String,
     word: String,
     hint: String,
@@ -871,12 +318,12 @@ struct SearchResult {
 }
 
 #[derive(serde::Deserialize)]
-struct SearchQuery {
+pub(crate) struct SearchQuery {
     q: String,
     ime: Option<String>,
 }
 
-async fn search_dict(
+pub(crate) async fn search_dict(
     State((_, tries, _)): State<WebState>,
     axum::extract::Query(query): axum::extract::Query<SearchQuery>,
 ) -> Json<Vec<SearchResult>> {
@@ -925,7 +372,7 @@ async fn search_dict(
 }
 
 #[derive(Serialize)]
-struct BrowseResult {
+pub(crate) struct BrowseResult {
     entries: Vec<DictEntryView>,
     total: usize,
     page: usize,
@@ -935,7 +382,7 @@ struct BrowseResult {
 
 #[derive(Serialize)]
 #[derive(Clone)]
-struct DictEntryView {
+pub(crate) struct DictEntryView {
     id: String,
     pinyin: String,
     word: String,
@@ -949,7 +396,7 @@ struct DictEntryView {
 }
 
 #[derive(serde::Deserialize)]
-struct BrowseQuery {
+pub(crate) struct BrowseQuery {
     file: String,
     page: Option<usize>,
     page_size: Option<usize>,
@@ -1037,7 +484,7 @@ fn load_dict_entries(path: &std::path::Path) -> Vec<DictEntryView> {
     all
 }
 
-async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQuery>) -> impl IntoResponse {
+pub(crate) async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQuery>) -> impl IntoResponse {
     let page = query.page.unwrap_or(1).max(1);
     let page_size = query.page_size.unwrap_or(50).clamp(10, 500);
     let search = query.search.as_deref().unwrap_or("").to_lowercase();
@@ -1103,13 +550,13 @@ async fn browse_dict(axum::extract::Query(query): axum::extract::Query<BrowseQue
 }
 
 #[derive(serde::Deserialize)]
-struct DeleteEntryRequest {
+pub(crate) struct DeleteEntryRequest {
     pinyin: String,
     word: String,
     file: String,
 }
 
-async fn delete_dict_entry(Json(req): Json<DeleteEntryRequest>) -> StatusCode {
+pub(crate) async fn delete_dict_entry(Json(req): Json<DeleteEntryRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.file) {
         Some(p) => p,
@@ -1150,7 +597,7 @@ async fn delete_dict_entry(Json(req): Json<DeleteEntryRequest>) -> StatusCode {
 }
 
 #[derive(serde::Deserialize)]
-struct UpdateEntryFullRequest {
+pub(crate) struct UpdateEntryFullRequest {
     pinyin: String,
     word: String,
     file: String,
@@ -1162,7 +609,7 @@ struct UpdateEntryFullRequest {
     category: Option<String>,
 }
 
-async fn update_dict_entry_full(Json(req): Json<UpdateEntryFullRequest>) -> StatusCode {
+pub(crate) async fn update_dict_entry_full(Json(req): Json<UpdateEntryFullRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.file) {
         Some(p) => p,
@@ -1216,7 +663,7 @@ async fn update_dict_entry_full(Json(req): Json<UpdateEntryFullRequest>) -> Stat
 }
 
 #[derive(serde::Deserialize)]
-struct AddEntryFullRequest {
+pub(crate) struct AddEntryFullRequest {
     pinyin: String,
     word: String,
     file: String,
@@ -1228,7 +675,7 @@ struct AddEntryFullRequest {
     category: Option<String>,
 }
 
-async fn add_dict_entry_full(Json(req): Json<AddEntryFullRequest>) -> StatusCode {
+pub(crate) async fn add_dict_entry_full(Json(req): Json<AddEntryFullRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.file) {
         Some(p) => p,
@@ -1270,14 +717,14 @@ async fn add_dict_entry_full(Json(req): Json<AddEntryFullRequest>) -> StatusCode
 }
 
 #[derive(serde::Deserialize)]
-struct UpdateEntryRequest {
+pub(crate) struct UpdateEntryRequest {
     pinyin: String,
     word: String,
     new_hint: String,
     file: String,
 }
 
-async fn update_dict_entry(Json(req): Json<UpdateEntryRequest>) -> StatusCode {
+pub(crate) async fn update_dict_entry(Json(req): Json<UpdateEntryRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.file) {
         Some(p) => p,
@@ -1315,14 +762,14 @@ async fn update_dict_entry(Json(req): Json<UpdateEntryRequest>) -> StatusCode {
 }
 
 #[derive(serde::Deserialize)]
-struct AddEntryRequest {
+pub(crate) struct AddEntryRequest {
     pinyin: String,
     word: String,
     hint: String,
     file: String,
 }
 
-async fn add_dict_entry(Json(req): Json<AddEntryRequest>) -> StatusCode {
+pub(crate) async fn add_dict_entry(Json(req): Json<AddEntryRequest>) -> StatusCode {
     let base_path = find_dicts_root();
     let path = match safe_join(&base_path, &req.file) {
         Some(p) => p,
@@ -1361,12 +808,12 @@ async fn add_dict_entry(Json(req): Json<AddEntryRequest>) -> StatusCode {
 }
 
 #[derive(Deserialize)]
-struct ClearUserDictRequest {
+pub(crate) struct ClearUserDictRequest {
     profile: Option<String>,
     all: bool,
 }
 
-async fn clear_user_dict(
+pub(crate) async fn clear_user_dict(
     State((_, _, tray_tx)): State<WebState>,
     Json(req): Json<ClearUserDictRequest>,
 ) -> StatusCode {
@@ -1407,13 +854,13 @@ async fn clear_user_dict(
 }
 
 #[derive(Serialize)]
-struct CleanupResult {
+pub(crate) struct CleanupResult {
     profile: String,
     removed: usize,
 }
 
 /// 扫描用户词典，移除系统词典已有的词
-async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
+pub(crate) async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
     let root = user_dict_root();
     let mut results = Vec::new();
 
@@ -1474,22 +921,22 @@ async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
 }
 
 #[derive(Deserialize)]
-struct PromoteRequest {
+pub(crate) struct PromoteRequest {
     words: Vec<PromoteWord>,
 }
 #[derive(Deserialize)]
-struct PromoteWord {
+pub(crate) struct PromoteWord {
     profile: String,
     pinyin: String,
     word: String,
 }
 #[derive(Serialize)]
-struct PromoteResult {
+pub(crate) struct PromoteResult {
     added: usize,
     skipped: usize,
 }
 
-async fn promote_to_system_dict(
+pub(crate) async fn promote_to_system_dict(
     State((_, _, tray_tx)): State<WebState>,
     Json(req): Json<PromoteRequest>,
 ) -> Json<PromoteResult> {
@@ -1563,7 +1010,7 @@ async fn promote_to_system_dict(
 }
 
 #[derive(Serialize)]
-struct UserDictEntryView {
+pub(crate) struct UserDictEntryView {
     profile: String,
     pinyin: String,
     word: String,
@@ -1588,7 +1035,7 @@ fn user_dict_root() -> std::path::PathBuf {
 }
 
 /// 读取所有 profile 下的 learned.json，返回扁平化的用户词列表
-async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
+pub(crate) async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
     let mut results = Vec::new();
     let root = user_dict_root();
 
@@ -1666,14 +1113,14 @@ async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
 }
 
 #[derive(serde::Deserialize)]
-struct DeleteUserDictRequest {
+pub(crate) struct DeleteUserDictRequest {
     profile: String,
     pinyin: String,
     word: String,
 }
 
 /// 删除用户词典中的一条记录
-async fn delete_user_dict_entry(
+pub(crate) async fn delete_user_dict_entry(
     State((_, _, tray_tx)): State<WebState>,
     Json(req): Json<DeleteUserDictRequest>,
 ) -> StatusCode {
@@ -1721,7 +1168,7 @@ async fn delete_user_dict_entry(
 }
 
 /// 在文件管理器中打开词典目录
-async fn open_dicts_dir() -> StatusCode {
+pub(crate) async fn open_dicts_dir() -> StatusCode {
     let path = find_dicts_root();
     if cfg!(target_os = "linux") {
         match std::process::Command::new("xdg-open")
@@ -1744,12 +1191,12 @@ async fn open_dicts_dir() -> StatusCode {
     }
 }
 
-async fn list_fonts() -> Json<Vec<crate::platform::fonts::FontInfo>> {
+pub(crate) async fn list_fonts() -> Json<Vec<crate::platform::fonts::FontInfo>> {
     Json(crate::platform::fonts::list_system_fonts())
 }
 
 #[derive(Serialize)]
-struct CharEntryView {
+pub(crate) struct CharEntryView {
     pinyin: String,
     #[serde(rename = "char")]
     character: String,
@@ -1760,11 +1207,11 @@ struct CharEntryView {
 }
 
 #[derive(serde::Deserialize)]
-struct DictViewQuery {
+pub(crate) struct DictViewQuery {
     file: Option<String>,
 }
 
-async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictViewQuery>) -> impl IntoResponse {
+pub(crate) async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictViewQuery>) -> impl IntoResponse {
     let base_path = find_dicts_root();
     let path = match &query.file {
         Some(f) => match safe_join(&base_path, f) {
@@ -1828,12 +1275,12 @@ async fn get_chars_dict(axum::extract::Query(query): axum::extract::Query<DictVi
 }
 
 #[derive(serde::Deserialize)]
-struct SendKeyRequest {
+pub(crate) struct SendKeyRequest {
     key: String,
     action: Option<String>,
 }
 
-async fn send_key_handler(
+pub(crate) async fn send_key_handler(
     State(state): State<WebState>,
     headers: axum::http::HeaderMap,
     Json(req): Json<SendKeyRequest>
@@ -1865,17 +1312,17 @@ async fn send_key_handler(
 }
 
 #[derive(serde::Deserialize)]
-struct PinyinConvertRequest {
+pub(crate) struct PinyinConvertRequest {
     text: String,
 }
 
 #[derive(Serialize)]
-struct PinyinConvertResponse {
+pub(crate) struct PinyinConvertResponse {
     segmented: String,
     pinyin: String,
 }
 
-type WordMap = HashMap<String, (String, u32)>;
+pub(crate) type WordMap = HashMap<String, (String, u32)>;
 
 static CHINESE_WORD_MAP: OnceLock<WordMap> = OnceLock::new();
 
@@ -2024,7 +1471,7 @@ fn segment_and_convert(
     (segmented.join(" "), pinyin.join(" "))
 }
 
-async fn pinyin_convert_handler(
+pub(crate) async fn pinyin_convert_handler(
     State(_): State<WebState>,
     Json(req): Json<PinyinConvertRequest>,
 ) -> Json<PinyinConvertResponse> {
@@ -2045,9 +1492,9 @@ fn is_chinese(c: char) -> bool {
 
 // ===== Simplified ⇄ Traditional conversion =====
 
-type S2TMap = HashMap<String, String>;
+pub(crate) type S2TMap = HashMap<String, String>;
 
-struct S2TData {
+pub(crate) struct S2TData {
     s2t: S2TMap,
     t2s: S2TMap,
     s2t_max_len: usize,
@@ -2150,7 +1597,7 @@ fn convert_longest_match(text: &str, map: &S2TMap, max_len: usize) -> String {
 }
 
 #[derive(Deserialize)]
-struct ConvertRequest {
+pub(crate) struct ConvertRequest {
     text: String,
     #[serde(default = "default_convert_mode")]
     mode: String,
@@ -2159,7 +1606,7 @@ struct ConvertRequest {
 fn default_convert_mode() -> String { "pinyin".into() }
 
 #[derive(Serialize)]
-struct ConvertResponse {
+pub(crate) struct ConvertResponse {
     result: String,
     segmented: Option<String>,
     pinyin: Option<String>,
@@ -2246,7 +1693,7 @@ fn segment_and_convert_pinyin(text: &str, map: &WordMap) -> (String, String) {
     (segmented.join(" "), pinyin_compact)
 }
 
-async fn convert_handler(
+pub(crate) async fn convert_handler(
     State(_): State<WebState>,
     Json(req): Json<ConvertRequest>,
 ) -> Json<ConvertResponse> {
@@ -2278,7 +1725,7 @@ use axum::extract::Multipart;
 use encoding_rs::GBK;
 
 #[derive(Deserialize)]
-struct DiscoverConfigMsg {
+pub(crate) struct DiscoverConfigMsg {
     min_count: Option<usize>,
     min_pmi: Option<f64>,
     min_entropy: Option<f64>,
@@ -2286,7 +1733,7 @@ struct DiscoverConfigMsg {
 }
 
 #[derive(Serialize)]
-struct DiscoverResult {
+pub(crate) struct DiscoverResult {
     word: String,
     pinyin: String,
     in_dict: bool,
@@ -2295,14 +1742,14 @@ struct DiscoverResult {
 
 /// 新词发现器：处理上传的文件
 /// 从 multipart 中提取文本、配置和导出参数
-struct DiscoverDownloadParams {
+pub(crate) struct DiscoverDownloadParams {
     text: String,
     config: qianyan_ime_engine::pipeline::DiscoveryConfig,
     format: String,
     only_new: bool,
 }
 
-async fn extract_download_params(
+pub(crate) async fn extract_download_params(
     mut multipart: Multipart,
 ) -> Result<DiscoverDownloadParams, (StatusCode, String)> {
     let mut text = String::new();
@@ -2353,7 +1800,7 @@ async fn extract_download_params(
 }
 
 /// 从 multipart 中提取文本和配置（用于 JSON 端点）
-async fn extract_text_and_config(
+pub(crate) async fn extract_text_and_config(
     mut multipart: Multipart,
 ) -> Result<(String, qianyan_ime_engine::pipeline::DiscoveryConfig), (StatusCode, String)> {
     let mut text = String::new();
@@ -2453,7 +1900,7 @@ fn do_discovery(
     }).collect()
 }
 
-async fn discover_words_file_handler(
+pub(crate) async fn discover_words_file_handler(
     State((_, tries, _)): State<WebState>,
     multipart: Multipart,
 ) -> impl IntoResponse {
@@ -2492,7 +1939,7 @@ async fn discover_words_file_handler(
     Json(response).into_response()
 }
 
-async fn discover_download_handler(
+pub(crate) async fn discover_download_handler(
     State((_, tries, _)): State<WebState>,
     multipart: Multipart,
 ) -> impl IntoResponse {
@@ -2545,7 +1992,7 @@ async fn discover_download_handler(
 }
 
 #[derive(Serialize)]
-struct DiscoveredWordWithPinyin {
+pub(crate) struct DiscoveredWordWithPinyin {
     word: String,
     pinyin: String,
     in_dict: bool,
@@ -2555,7 +2002,7 @@ struct DiscoveredWordWithPinyin {
 }
 
 #[derive(Deserialize)]
-struct ExportDiscoveryRequest {
+pub(crate) struct ExportDiscoveryRequest {
     words: Vec<String>,
     pinyins: Vec<String>,
     weights: Vec<u32>,
@@ -2563,7 +2010,7 @@ struct ExportDiscoveryRequest {
 }
 
 /// 保存发现的新词到服务器
-async fn save_discovery_handler(
+pub(crate) async fn save_discovery_handler(
     State(_): State<WebState>,
     Json(req): Json<ExportDiscoveryRequest>,
 ) -> impl IntoResponse {
@@ -2614,7 +2061,7 @@ async fn save_discovery_handler(
 }
 
 /// 导出发现的新词
-async fn export_discovery_handler(
+pub(crate) async fn export_discovery_handler(
     State(_): State<WebState>,
     Json(req): Json<ExportDiscoveryRequest>,
 ) -> impl IntoResponse {
@@ -2695,7 +2142,7 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
 }
 
 #[derive(Deserialize)]
-struct ImeSearchRequest {
+pub(crate) struct ImeSearchRequest {
     buffer: String,
     #[serde(default = "default_profile")]
     profile: String,
@@ -2712,7 +2159,7 @@ fn default_limit() -> usize { 500 }
 fn default_filter_mode() -> String { "none".into() }
 
 #[derive(Serialize)]
-struct ImeCandidateResponse {
+pub(crate) struct ImeCandidateResponse {
     text: String,
     simplified: String,
     traditional: String,
@@ -2723,12 +2170,12 @@ struct ImeCandidateResponse {
 }
 
 #[derive(Serialize)]
-struct ImeSearchResponse {
+pub(crate) struct ImeSearchResponse {
     candidates: Vec<ImeCandidateResponse>,
     segments: Vec<String>,
 }
 
-async fn ime_search_handler(
+pub(crate) async fn ime_search_handler(
     State((config, _, _)): State<WebState>,
     Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
     Json(req): Json<ImeSearchRequest>,
@@ -2830,7 +2277,7 @@ fn create_processor(
 }
 
 #[derive(Serialize)]
-struct ImeSessionResponse {
+pub(crate) struct ImeSessionResponse {
     session_id: String,
     pinyin_display: String,
     candidates: Vec<ImeCandidateResponse>,
@@ -2841,7 +2288,7 @@ struct ImeSessionResponse {
 }
 
 #[derive(Serialize)]
-struct ImeActionResponse {
+pub(crate) struct ImeActionResponse {
     #[serde(rename = "type")]
     action_type: String,
     text: Option<String>,
@@ -2897,7 +2344,7 @@ fn build_state_response(
 }
 
 #[derive(Deserialize)]
-struct ImeKeyRequest {
+pub(crate) struct ImeKeyRequest {
     session_id: String,
     key: String,
     #[serde(default)]
@@ -2914,7 +2361,7 @@ struct ImeKeyRequest {
     profile: Option<String>,
 }
 
-async fn ime_session_handler(
+pub(crate) async fn ime_session_handler(
     State((config, _, _)): State<WebState>,
     Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
 ) -> Result<Json<ImeSessionResponse>, StatusCode> {
@@ -2950,7 +2397,7 @@ async fn ime_session_handler(
 }
 
 
-async fn ime_key_handler(
+pub(crate) async fn ime_key_handler(
     State(_): State<WebState>,
     Extension(ime_handle): Extension<Arc<ImeEngineHandle>>,
     Json(req): Json<ImeKeyRequest>,
@@ -2985,7 +2432,7 @@ async fn ime_key_handler(
 
 // ===== User Data Export / Import =====
 
-async fn export_user_data() -> impl IntoResponse {
+pub(crate) async fn export_user_data() -> impl IntoResponse {
     let mut result = serde_json::Map::new();
     let root = user_dict_root();
 
@@ -3026,7 +2473,7 @@ async fn export_user_data() -> impl IntoResponse {
     )
 }
 
-async fn import_user_data(
+pub(crate) async fn import_user_data(
     State((_, _, tray_tx)): State<WebState>,
     Json(body): Json<serde_json::Value>,
 ) -> StatusCode {
@@ -3129,7 +2576,7 @@ fn configs_root() -> PathBuf {
     PathBuf::from("configs")
 }
 
-async fn export_full_backup() -> impl IntoResponse {
+pub(crate) async fn export_full_backup() -> impl IntoResponse {
     let mut result = serde_json::Map::new();
 
     // 1. 导出所有配置文件
@@ -3193,7 +2640,7 @@ async fn export_full_backup() -> impl IntoResponse {
     )
 }
 
-async fn restore_full_backup(
+pub(crate) async fn restore_full_backup(
     State((_, _, tray_tx)): State<WebState>,
     Json(body): Json<serde_json::Value>,
 ) -> StatusCode {

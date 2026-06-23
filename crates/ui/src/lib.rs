@@ -1,5 +1,4 @@
 pub mod tray;
-pub mod web;
 pub mod gui_slint;
 #[cfg(target_os = "linux")]
 pub mod keystroke_overlay;
@@ -10,7 +9,6 @@ pub mod slint_window;
 pub mod wayland_layer;
 #[cfg(target_os = "linux")]
 pub mod gtk_wayland;
-pub mod platform;
 #[cfg(target_os = "linux")]
 pub mod ipc;
 pub use gui_slint as gui;

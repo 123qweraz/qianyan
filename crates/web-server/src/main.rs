@@ -6,8 +6,8 @@ use std::sync::{Arc, RwLock, mpsc};
 
 use qianyan_ime_core::utils::find_project_root;
 use qianyan_ime_core::Config;
-use qianyan_ime_ui::tray::TrayEvent;
-use qianyan_ime_ui::web::WebServer;
+use qianyan_ime_core::event::TrayEvent;
+use qianyan_ime_web_server::WebServer;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

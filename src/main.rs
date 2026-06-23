@@ -238,7 +238,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("配置中心 tokio runtime 启动失败");
             rt.block_on(async {
-                let server = qianyan_ime_ui::web::WebServer::new(
+                let server = qianyan_ime_web_server::WebServer::new(
                     18765,
                     actual,
                     config_web,
@@ -386,7 +386,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .spawn();
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenFeatureCenter => {
-                    let port = match qianyan_ime_ui::web::launch_feature_center(
+                    let port = match qianyan_ime_web_server::launch_feature_center(
                         root_for_feature.clone(),
                         tray_tx_for_feature.clone(),
                     ) {
@@ -439,7 +439,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::Exit => {
-                    qianyan_ime_ui::web::stop_feature_center();
+                    qianyan_ime_web_server::stop_feature_center();
                     processor_clone.exit();
                     let _ = gui_tx_tray.send(GuiEvent::Exit);
                     std::thread::sleep(std::time::Duration::from_millis(50));

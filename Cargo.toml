@@ -5,11 +5,11 @@ members = [
     "crates/ui",
     "crates/platform-linux",
     "crates/platform-windows",
-    "crates/web-settings",
+    "crates/web-server",
 ]
 default-members = [
     ".",
-    "crates/web-settings",
+    "crates/web-server",
 ]
 resolver = "2"
 
@@ -89,6 +89,7 @@ license.workspace = true
 qianyan-ime-core = { path = "crates/core" }
 qianyan-ime-engine = { path = "crates/engine" }
 qianyan-ime-ui = { path = "crates/ui" }
+qianyan-ime-web-server = { path = "crates/web-server" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 walkdir = { workspace = true }

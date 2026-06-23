@@ -12,14 +12,7 @@ serde_json = { workspace = true }
 log = { workspace = true }
 tokio = { workspace = true }
 slint = { workspace = true }
-axum = { workspace = true }
-mime_guess = { workspace = true }
-rust-embed = { workspace = true }
-arc-swap = { workspace = true }
-fst = { workspace = true }
 image = { workspace = true }
-walkdir = { workspace = true }
-encoding_rs = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 i-slint-core = { version = "1" }

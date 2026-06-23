@@ -2,26 +2,8 @@
 use ksni::menu::{MenuItem, StandardItem};
 #[cfg(target_os = "linux")]
 use ksni::{Handle, Tray, TrayService};
+pub use qianyan_ime_core::event::TrayEvent;
 use std::sync::mpsc::Sender;
-
-#[derive(Debug, Clone)]
-pub enum TrayEvent {
-    ToggleIme,
-    ToggleEnabled,
-    NextProfile,
-    OpenConfig,
-    OpenFeatureCenter,
-    Exit,
-    ReloadConfig,
-    SyncStatus {
-        chinese_enabled: bool,
-        active_profile: String,
-    },
-    ShowNotification(String),
-    ClearUserDict(Option<String>),
-    SendKey(String), // key code like "a", "Enter", "Backspace"
-    SetProfile(String),
-}
 
 pub struct TrayParams {
     pub active_profile: String,

@@ -4907,6 +4907,7 @@ dependencies = [
  "qianyan-ime-engine",
  "qianyan-ime-linux",
  "qianyan-ime-ui",
+ "qianyan-ime-web-server",
  "qianyan-ime-windows",
  "rodio",
  "rust-embed",
@@ -4970,11 +4971,7 @@ dependencies = [
 name = "qianyan-ime-ui"
 version = "0.1.0"
 dependencies = [
- "arc-swap",
- "axum",
  "bytemuck",
- "encoding_rs",
- "fst",
  "gtk4",
  "gtk4-layer-shell",
  "i-slint-core",
@@ -4984,21 +4981,37 @@ dependencies = [
  "libc",
  "log",
  "memmap2",
- "mime_guess",
  "notify-rust",
  "qianyan-ime-core",
  "qianyan-ime-engine",
- "rust-embed",
  "serde",
  "serde_json",
  "slint",
  "slint-build",
  "smithay-client-toolkit 0.20.0",
  "tokio",
- "walkdir",
  "wayland-client",
  "windows 0.52.0",
  "x11rb",
+]
+
+[[package]]
+name = "qianyan-ime-web-server"
+version = "0.1.0"
+dependencies = [
+ "arc-swap",
+ "axum",
+ "encoding_rs",
+ "fst",
+ "log",
+ "mime_guess",
+ "qianyan-ime-core",
+ "qianyan-ime-engine",
+ "rust-embed",
+ "serde",
+ "serde_json",
+ "tokio",
+ "walkdir",
 ]
 
 [[package]]
@@ -5017,16 +5030,6 @@ dependencies = [
  "windows 0.52.0",
  "windows-core 0.52.0",
  "winres",
-]
-
-[[package]]
-name = "qianyan-web-settings"
-version = "0.1.0"
-dependencies = [
- "qianyan-ime-core",
- "qianyan-ime-ui",
- "serde_json",
- "tokio",
 ]
 
 [[package]]

@@ -16,6 +16,7 @@ pub trait InputMethodHost: Send {
 }
 
 pub mod config;
+pub mod event;
 pub mod utils;
 
 pub use config::Config;
