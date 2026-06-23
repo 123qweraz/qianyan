@@ -221,7 +221,6 @@ impl WebServer {
             .route("/api/config", get(get_config).post(update_config))
             .route("/api/config/reset", post(reset_config))
             .route("/api/config/reset/{sections}", post(reset_config_section))
-            .route("/api/shutdown", post(shutdown_handler))
             .route("/api/fonts", get(list_fonts))
             .route("/api/feature/start", post(feature_start_handler))
             .route("/api/feature/stop", post(feature_stop_handler))
