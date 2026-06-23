@@ -707,16 +707,16 @@ struct DictFile {
 
 async fn list_dicts() -> Json<Vec<DictFile>> {
     let mut list = Vec::new();
-    let root = "dicts";
-    let walker = walkdir::WalkDir::new(root).into_iter();
+    let root = find_dicts_root();
+    let walker = walkdir::WalkDir::new(&root).into_iter();
     
     for entry in walker.filter_map(|e: Result<walkdir::DirEntry, walkdir::Error>| e.ok()) {
         let path = entry.path();
         if path.is_file() {
             let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
             if filename.ends_with(".json") || filename.ends_with(".json.disabled") {
-                // 计算分组名：取 dicts/ 下的一级目录名
-                let relative = path.strip_prefix(root).unwrap_or(path);
+                // 计算分组名：取 root 下的一级目录名
+                let relative = path.strip_prefix(&root).unwrap_or(path);
                 let group = relative.components().next()
                     .map(|c: std::path::Component| c.as_os_str().to_string_lossy().to_string())
                     .unwrap_or_else(|| "other".to_string());
@@ -1703,7 +1703,7 @@ async fn delete_user_dict_entry(
 
 /// 在文件管理器中打开词典目录
 async fn open_dicts_dir() -> StatusCode {
-    let path = std::fs::canonicalize("dicts").unwrap_or_else(|_| std::path::PathBuf::from("dicts"));
+    let path = find_dicts_root();
     if cfg!(target_os = "linux") {
         match std::process::Command::new("xdg-open")
             .arg(path.to_string_lossy().as_ref())
