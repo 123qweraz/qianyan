@@ -7,19 +7,22 @@ pub fn setup_autostart() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&autostart_dir)?;
 
     let exec_path = std::env::current_exe()?;
+    let project_root = qianyan_ime_core::utils::find_project_root();
     let desktop_path = autostart_dir.join("qianyan-ime.desktop");
     let content = format!(
         "[Desktop Entry]\n\
          Name=Qianyan-IME\n\
          Comment=千言输入法开机自启\n\
          Exec={}\n\
+         Path={}\n\
          Icon=qianyan-ime\n\
          Terminal=false\n\
          Type=Application\n\
          Categories=Settings;Utility;\n\
          StartupNotify=false\n\
          X-GNOME-Autostart-enabled=true\n",
-        exec_path.display()
+        exec_path.display(),
+        project_root.display()
     );
     std::fs::write(&desktop_path, content)?;
     Ok(())

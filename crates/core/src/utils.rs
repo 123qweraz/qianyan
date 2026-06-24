@@ -18,6 +18,15 @@ pub fn find_project_root() -> PathBuf {
         if is_project_root(&exe_path) {
             return exe_path;
         }
+        // 1.5 从可执行文件目录向上查找 (适用于 cargo build 的 target/release 布局)
+        for _ in 0..4 {
+            if !exe_path.pop() {
+                break;
+            }
+            if is_project_root(&exe_path) {
+                return exe_path;
+            }
+        }
     }
 
     // 2. 检查 Linux 系统标准路径 (适用于 .deb 安装版)
