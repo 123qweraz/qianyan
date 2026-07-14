@@ -235,7 +235,7 @@ impl LinuxTrayHandle {
 pub fn start_tray(params: TrayParams) -> LinuxTrayHandle {
     println!("[Tray] 正在启动 Linux 系统托盘...");
     let tray = ImeTray {
-        chinese_enabled: true,
+        chinese_enabled: false,
         ime_enabled: true,
         active_profile: params.active_profile,
         enabled_profiles: params.enabled_profiles,
@@ -357,7 +357,7 @@ impl WindowsTrayHandle {
 #[cfg(target_os = "windows")]
 pub fn start_tray(params: TrayParams) -> WindowsTrayHandle {
     let state = Arc::new(Mutex::new(ImeTrayStub {
-        chinese_enabled: true,
+        chinese_enabled: false,
         ime_enabled: true,
         active_profile: params.active_profile,
         enabled_profiles: params.enabled_profiles,

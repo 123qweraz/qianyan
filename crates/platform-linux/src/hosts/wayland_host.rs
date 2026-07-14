@@ -551,7 +551,7 @@ impl InputMethodHost for WaylandInputHost {
         info!("[WaylandIM] connected, input_method obtained");
 
         let prev_chinese_enabled = self.processor.get_basic_status()
-            .map(|s| s.chinese_enabled).unwrap_or(true);
+            .map(|s| s.chinese_enabled).unwrap_or(false);
 
         let mut state = WlState {
             running: self.running.clone(),

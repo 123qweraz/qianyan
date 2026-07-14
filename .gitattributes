@@ -1,0 +1,2 @@
+dicts/chinese_extras/words/wanxiang_extras.json filter=lfs diff=lfs merge=lfs -text
+dicts/chinese/words/wanxiang_extras.json filter=lfs diff=lfs merge=lfs -text

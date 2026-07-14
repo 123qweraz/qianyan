@@ -369,7 +369,14 @@ pub struct Input {
     pub enable_context_sorting: bool,
     #[serde(default = "default_segmentation_delimiters")]
     pub segmentation_delimiters: String,
+    #[serde(default = "default_enable_auto_english")]
+    pub enable_auto_english: bool,
+    #[serde(default = "default_auto_english_timeout")]
+    pub auto_english_timeout: u64,
 }
+
+fn default_enable_auto_english() -> bool { true }
+fn default_auto_english_timeout() -> u64 { 10 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RankingConfig {
@@ -1196,6 +1203,8 @@ impl Config {
                     compose_ngram_cap: default_compose_ngram_cap(),
                 },
                 segmentation_delimiters: "'".to_string(),
+                enable_auto_english: true,
+                auto_english_timeout: 10,
             },
             hotkeys: Hotkeys {
                 switch_language: Hotkey {

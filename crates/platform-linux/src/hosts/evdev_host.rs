@@ -204,7 +204,7 @@ impl EvdevHost {
                     vk.apply_config(&config);
                 }
             }
-            processor.get_basic_status().map(|s| s.chinese_enabled).unwrap_or(true)
+            processor.get_basic_status().map(|s| s.chinese_enabled).unwrap_or(false)
         };
         let (lookup_tx, lookup_rx) = std::sync::mpsc::channel::<()>();
 
@@ -459,6 +459,26 @@ impl InputMethodHost for EvdevHost {
                                 let _ = self.lookup_tx.send(());
                                 if let Some(gui) = self.processor.get_gui_snapshot() {
                                     send_gui_update(&self.gui_tx, &gui);
+                                    if gui.chinese_enabled != self.prev_chinese_enabled {
+                                        self.prev_chinese_enabled = gui.chinese_enabled;
+                                        let text = if gui.chinese_enabled {
+                                            gui.short_display.clone()
+                                        } else {
+                                            "英".into()
+                                        };
+                                        if let Some(ref gui_tx) = self.gui_tx {
+                                            let _ = gui_tx.send(GuiEvent::ShowStatus(
+                                                text.clone(),
+                                                gui.chinese_enabled,
+                                            ));
+                                        }
+                                        let _ = self.tray_tx.send(
+                                            qianyan_ime_ui::tray::TrayEvent::SyncStatus {
+                                                chinese_enabled: gui.chinese_enabled,
+                                                active_profile: gui.active_profile.clone(),
+                                            },
+                                        );
+                                    }
                                 }
                             }
                         }

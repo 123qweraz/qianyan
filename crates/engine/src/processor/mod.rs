@@ -10,7 +10,7 @@ pub mod utils;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::compositor::Compositor;
 use crate::keys::VirtualKey;
@@ -126,6 +126,7 @@ impl Processor {
         self.reset();
 
         if enabled {
+            self.ctx.session_state.last_ime_activity = Instant::now();
             Action::Notify(short, "模式已开启".into())
         } else {
             Action::Notify("英".into(), "英文直通模式".into())
@@ -209,6 +210,20 @@ impl Processor {
             if let Some(c) = key_to_char(key, shift_pressed, false) {
                 self.ctx.sound_manager.play_letter(c);
             }
+        }
+
+        // 自动切回英文：中文模式下无按键超过设定时间后自动切换
+        if is_press && self.ctx.session_state.chinese_enabled {
+            let enable = self.ctx.config.master_config.input.enable_auto_english;
+            let timeout = self.ctx.config.master_config.input.auto_english_timeout;
+            if enable && timeout > 0
+                && self.ctx.session_state.last_ime_activity.elapsed()
+                    >= Duration::from_secs(timeout * 60)
+            {
+                self.ctx.session_state.chinese_enabled = false;
+                self.clear_composing();
+            }
+            self.ctx.session_state.last_ime_activity = Instant::now();
         }
 
         // CapsLock+F 组合键：繁简体切换
@@ -630,6 +645,9 @@ impl Processor {
                 .enable_ctrl_space_toggle
         {
             self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            if self.ctx.session_state.chinese_enabled {
+                self.ctx.session_state.last_ime_activity = Instant::now();
+            }
             self.ctx.session.clear_composing();
             return Some(Action::Consume);
         }
@@ -656,6 +674,9 @@ impl Processor {
             && self.ctx.config.master_config.hotkeys.enable_tab_toggle
         {
             self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            if self.ctx.session_state.chinese_enabled {
+                self.ctx.session_state.last_ime_activity = Instant::now();
+            }
             return Some(Action::Consume);
         }
 
@@ -672,6 +693,9 @@ impl Processor {
             // 单击 CapsLock -> 切换中英文模式；有内容时只设置 capslock_down
             if self.ctx.session.buffer.is_empty() {
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+                if self.ctx.session_state.chinese_enabled {
+                    self.ctx.session_state.last_ime_activity = Instant::now();
+                }
                 return Some(Action::Consume);
             } else {
                 self.ctx.session_state.capslock_down = true;

@@ -209,7 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 全局状态维护
     let app_state = Arc::new(Mutex::new(qianyan_ime_ui::AppState {
-        chinese_enabled: true,
+        chinese_enabled: false,
         ime_enabled: true,
         active_profile: "".into(),
         show_candidates_pref: config.read().map_or(true, |c| c.appearance.show_candidates),
@@ -219,7 +219,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         selected_index: 0,
         page: 0,
         total_pages: 0,
-        status_text: "中".into(),
+        status_text: "英".into(),
     }));
 
     let processor_clone = processor_handle.clone();

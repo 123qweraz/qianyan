@@ -58,6 +58,24 @@
             </div>
         </div>
 
+        <h2>输入法行为</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">自动切回英文</div>
+                    <div class="desc">中文模式下长时间无按键操作后，自动切换为英文输入，避免快捷键触发输入法候选框</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="enable_auto_english"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
+                <div class="info">
+                    <div class="title">超时时间（分钟）</div>
+                    <div class="desc">无操作超过此分钟数后自动切回英文，最小1分钟</div>
+                </div>
+                <input type="number" id="auto_english_timeout" min="1" max="120" step="1" style="width:100px;">
+            </div>
+        </div>
+
         <h2>Linux 专属设置</h2>
         <div class="card">
             <div class="setting-item">
@@ -153,6 +171,8 @@
             bindInput('linux_clipboard_delay_ms', 'linux', 'clipboard_delay_ms');
             bindInput('linux_backspace_delay_ms', 'linux', 'backspace_delay_ms');
             bindInput('linux_backend_type', 'linux', 'backend_type');
+            bindInput('enable_auto_english', 'input');
+            bindInput('auto_english_timeout', 'input');
         }
 
         function loadCandidateDisplayMode() {

@@ -17,13 +17,15 @@ pub struct SessionState {
     /// 最后一次上屏的 (拼音, 词)，用于打错检测（同拼音换词则衰减旧词）
     last_committed: Option<(String, String)>,
     last_committed_time: Instant,
+    /// 中文模式下最后一次按键的时间，用于自动切回英文
+    pub last_ime_activity: Instant,
 }
 
 impl SessionState {
     pub fn new() -> Self {
         Self {
             active_profiles: Vec::new(),
-            chinese_enabled: true,
+            chinese_enabled: false,
             ime_enabled: true,
             traditional_enabled: false,
             commit_history: Vec::new(),
@@ -35,6 +37,7 @@ impl SessionState {
             tab_down: false,
             last_committed: None,
             last_committed_time: Instant::now(),
+            last_ime_activity: Instant::now(),
         }
     }
 
