@@ -720,7 +720,7 @@
       "char": "㜝",
       "en": "",
       "tone": "àn/ǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㜝"
     },
@@ -729,7 +729,7 @@
       "char": "𧫧",
       "en": "",
       "tone": "àn/ān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧫧"
     },
@@ -738,7 +738,7 @@
       "char": "𪒠",
       "en": "",
       "tone": "àn/ǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪒠"
     },
@@ -1271,7 +1271,7 @@
       "char": "䭹",
       "en": "",
       "tone": "àng/áng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䭹"
     },
@@ -1498,7 +1498,7 @@
       "char": "鿫",
       "en": "",
       "tone": "ào",
-      "weight": 225,
+      "weight": 23,
       "stroke_aux": "",
       "trad": "鿫"
     },
@@ -1507,7 +1507,7 @@
       "char": "䐿",
       "en": "",
       "tone": "áo/ǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䐿"
     },
@@ -1516,7 +1516,7 @@
       "char": "䯠",
       "en": "",
       "tone": "ào/ǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䯠"
     },
@@ -1525,7 +1525,7 @@
       "char": "𢳆",
       "en": "",
       "tone": "ào/áo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢳆"
     },
@@ -3025,7 +3025,7 @@
       "char": "𢲔",
       "en": "",
       "tone": "bàn/bān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢲔"
     },
@@ -3432,7 +3432,7 @@
       "char": "𪹚",
       "en": "",
       "tone": "bàng",
-      "weight": 18,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪹚"
     },
@@ -3830,7 +3830,7 @@
       "char": "𧭤",
       "en": "",
       "tone": "bào/báo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧭤"
     },
@@ -5303,7 +5303,7 @@
       "char": "䭰",
       "en": "",
       "tone": "bèng/běng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䭰"
     },
@@ -5312,7 +5312,7 @@
       "char": "𨹹",
       "en": "",
       "tone": "bèng/bēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨹹"
     },
@@ -5809,7 +5809,7 @@
       "char": "䠋",
       "en": "",
       "tone": "bì/bǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠋"
     },
@@ -5818,7 +5818,7 @@
       "char": "㻶",
       "en": "",
       "tone": "bì/bǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㻶"
     },
@@ -5827,7 +5827,7 @@
       "char": "䨆",
       "en": "",
       "tone": "bì/bí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䨆"
     },
@@ -5836,7 +5836,7 @@
       "char": "䫾",
       "en": "",
       "tone": "bì/bī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫾"
     },
@@ -5845,7 +5845,7 @@
       "char": "𦤫",
       "en": "",
       "tone": "bì/bí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦤫"
     },
@@ -5854,7 +5854,7 @@
       "char": "𧳠",
       "en": "",
       "tone": "bì/bǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧳠"
     },
@@ -5863,7 +5863,7 @@
       "char": "𫠈",
       "en": "",
       "tone": "bì/bī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫾"
     },
@@ -7638,7 +7638,7 @@
       "char": "𨖠",
       "en": "",
       "tone": "biàn/biǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨖠"
     },
@@ -8333,7 +8333,7 @@
       "char": "𰻞",
       "en": "",
       "tone": "biáng",
-      "weight": 100,
+      "weight": 450,
       "stroke_aux": "",
       "trad": "𰻞"
     }
@@ -8344,7 +8344,7 @@
       "char": "𢅚",
       "en": "",
       "tone": "biāo/biǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢅚"
     },
@@ -8706,7 +8706,7 @@
       "char": "䏟",
       "en": "",
       "tone": "biè/bié",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䏟"
     },
@@ -8715,7 +8715,7 @@
       "char": "䋢",
       "en": "",
       "tone": "biè/biē",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䋢"
     },
@@ -11135,7 +11135,7 @@
       "char": "𩏵",
       "en": "",
       "tone": "bù/bǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩏵"
     },
@@ -11859,7 +11859,7 @@
       "char": "䐆",
       "en": "",
       "tone": "cài/cǎi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䐆"
     },
@@ -12113,7 +12113,7 @@
       "char": "㥇",
       "en": "",
       "tone": "càn/cán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㥇"
     },
@@ -12122,7 +12122,7 @@
       "char": "㿊",
       "en": "",
       "tone": "cán/cǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㿊"
     },
@@ -12131,7 +12131,7 @@
       "char": "䫮",
       "en": "",
       "tone": "cán/cǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫮"
     },
@@ -13363,7 +13363,7 @@
       "char": "㟥",
       "en": "",
       "tone": "cēn",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "嵾"
     },
@@ -13646,7 +13646,7 @@
       "char": "𠞊",
       "en": "",
       "tone": "chá/chā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠞊"
     },
@@ -13655,7 +13655,7 @@
       "char": "𦉆",
       "en": "",
       "tone": "chà/chá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦉆"
     },
@@ -14676,7 +14676,7 @@
       "char": "䜛",
       "en": "",
       "tone": "chàn/chán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䜛"
     },
@@ -14685,7 +14685,7 @@
       "char": "䴼",
       "en": "",
       "tone": "chàn/chǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䴼"
     },
@@ -14694,7 +14694,7 @@
       "char": "䵐",
       "en": "",
       "tone": "chàn/chǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䵐"
     },
@@ -15875,7 +15875,7 @@
       "char": "𪁺",
       "en": "",
       "tone": "cháng/chǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪁺"
     },
@@ -16725,7 +16725,7 @@
       "char": "㵔",
       "en": "",
       "tone": "chè/chě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㵔"
     },
@@ -16734,7 +16734,7 @@
       "char": "䞣",
       "en": "",
       "tone": "chè/chě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䞣"
     },
@@ -17168,7 +17168,7 @@
       "char": "䜟",
       "en": "",
       "tone": "chèn/chén",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䜟"
     },
@@ -17177,7 +17177,7 @@
       "char": "𦁟",
       "en": "",
       "tone": "chén/chēn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦁟"
     },
@@ -17710,7 +17710,7 @@
       "char": "𨌤",
       "en": "",
       "tone": "chèng/chéng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨌤"
     },
@@ -18531,7 +18531,7 @@
       "char": "䔟",
       "en": "",
       "tone": "chí/chǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䔟"
     },
@@ -18540,7 +18540,7 @@
       "char": "䛂",
       "en": "",
       "tone": "chí/chǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䛂"
     },
@@ -18549,7 +18549,7 @@
       "char": "𦑡",
       "en": "",
       "tone": "chí/chī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦑡"
     },
@@ -18558,7 +18558,7 @@
       "char": "𧩴",
       "en": "",
       "tone": "chì/chī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧩴"
     },
@@ -20234,7 +20234,7 @@
       "char": "䳯",
       "en": "",
       "tone": "chóng/chǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䳯"
     },
@@ -20243,7 +20243,7 @@
       "char": "𧘂",
       "en": "",
       "tone": "chòng/chōng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧘂"
     },
@@ -20252,7 +20252,7 @@
       "char": "𧝎",
       "en": "",
       "tone": "chóng/chōng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧝎"
     },
@@ -20821,7 +20821,7 @@
       "char": "䌷",
       "en": "",
       "tone": "chóu/chōu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "紬"
     },
@@ -20830,7 +20830,7 @@
       "char": "𨡑",
       "en": "",
       "tone": "chóu/chōu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨡑"
     },
@@ -21480,7 +21480,7 @@
       "char": "䠂",
       "en": "",
       "tone": "chú/chǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠂"
     },
@@ -22328,7 +22328,7 @@
       "char": "䫄",
       "en": "",
       "tone": "chuà",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "䫄"
     },
@@ -22337,7 +22337,7 @@
       "char": "㔍",
       "en": "",
       "tone": "chuā",
-      "weight": 1,
+      "weight": 3,
       "stroke_aux": "",
       "trad": "㔍"
     },
@@ -22346,7 +22346,7 @@
       "char": "䵵",
       "en": "",
       "tone": "chuā",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "䵵"
     },
@@ -22548,7 +22548,7 @@
       "char": "𨔡",
       "en": "",
       "tone": "chuàn/chuán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨔡"
     },
@@ -24025,7 +24025,7 @@
       "char": "㓨",
       "en": "",
       "tone": "cì/cí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㓨"
     },
@@ -24034,7 +24034,7 @@
       "char": "䧳",
       "en": "",
       "tone": "cí/cǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䧳"
     },
@@ -25397,7 +25397,7 @@
       "char": "𤆑",
       "en": "",
       "tone": "còu",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "𤆑"
     },
@@ -26802,7 +26802,7 @@
       "char": "㟇",
       "en": "",
       "tone": "cuó/cuǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㟇"
     },
@@ -26811,7 +26811,7 @@
       "char": "䰈",
       "en": "",
       "tone": "cuó/cuǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䰈"
     },
@@ -26820,7 +26820,7 @@
       "char": "䴾",
       "en": "",
       "tone": "cuò/cuó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䴾"
     },
@@ -27155,7 +27155,7 @@
       "char": "㙮",
       "en": "",
       "tone": "da/dā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㙮"
     },
@@ -27164,7 +27164,7 @@
       "char": "𡐿",
       "en": "",
       "tone": "da/dā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡐿"
     },
@@ -27173,7 +27173,7 @@
       "char": "𦞂",
       "en": "",
       "tone": "da/dā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦞂"
     },
@@ -27706,7 +27706,7 @@
       "char": "𠯪",
       "en": "",
       "tone": "dāi/dǎi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠯪"
     },
@@ -28077,7 +28077,7 @@
       "char": "鿕",
       "en": "",
       "tone": "dān",
-      "weight": 195,
+      "weight": 6,
       "stroke_aux": "",
       "trad": "鿕"
     },
@@ -28086,7 +28086,7 @@
       "char": "𤺺",
       "en": "",
       "tone": "dàn/dǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤺺"
     },
@@ -28095,7 +28095,7 @@
       "char": "𧡪",
       "en": "",
       "tone": "dàn/dān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧡪"
     },
@@ -28104,7 +28104,7 @@
       "char": "𩈊",
       "en": "",
       "tone": "dàn/dān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩈊"
     },
@@ -29350,7 +29350,7 @@
       "char": "䆃",
       "en": "",
       "tone": "dào/dǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䆃"
     },
@@ -29359,7 +29359,7 @@
       "char": "䮻",
       "en": "",
       "tone": "dào/dǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䮻"
     },
@@ -29775,7 +29775,7 @@
       "char": "䙸",
       "en": "",
       "tone": "de/dé",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䙸"
     },
@@ -29948,7 +29948,7 @@
       "char": "䮻",
       "en": "",
       "tone": "děi",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "䮻"
     }
@@ -29959,7 +29959,7 @@
       "char": "㩐",
       "en": "",
       "tone": "dèn",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "㩐"
     }
@@ -30251,7 +30251,7 @@
       "char": "䨀",
       "en": "",
       "tone": "dì/dí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䨀"
     },
@@ -31297,7 +31297,7 @@
       "char": "𪦕",
       "en": "",
       "tone": "diǎ",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "𪦕"
     }
@@ -31308,7 +31308,7 @@
       "char": "䟍",
       "en": "",
       "tone": "dián/diān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䟍"
     },
@@ -31317,7 +31317,7 @@
       "char": "𧽍",
       "en": "",
       "tone": "diàn/diān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧽍"
     },
@@ -33512,7 +33512,7 @@
       "char": "𠲍",
       "en": "",
       "tone": "diū",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "𠲍"
     },
@@ -34038,7 +34038,7 @@
       "char": "䕱",
       "en": "",
       "tone": "dòu/dǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䕱"
     },
@@ -34047,7 +34047,7 @@
       "char": "𧯞",
       "en": "",
       "tone": "dòu/dōu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧯞"
     },
@@ -34056,7 +34056,7 @@
       "char": "𨶜",
       "en": "",
       "tone": "dòu/dǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨶜"
     },
@@ -36314,7 +36314,7 @@
       "char": "𦎧",
       "en": "",
       "tone": "dùn/dūn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦎧"
     },
@@ -36631,7 +36631,7 @@
       "char": "㛆",
       "en": "",
       "tone": "duò/duǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㛆"
     },
@@ -36640,7 +36640,7 @@
       "char": "㣞",
       "en": "",
       "tone": "duò/duó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㣞"
     },
@@ -36649,7 +36649,7 @@
       "char": "䙤",
       "en": "",
       "tone": "duò/duǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䙤"
     },
@@ -36658,7 +36658,7 @@
       "char": "䠤",
       "en": "",
       "tone": "duò/duǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠤"
     },
@@ -36667,7 +36667,7 @@
       "char": "𨦃",
       "en": "",
       "tone": "duò/duǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨦃"
     },
@@ -36676,7 +36676,7 @@
       "char": "𨹃",
       "en": "",
       "tone": "duò/duǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨹃"
     },
@@ -37434,7 +37434,7 @@
       "char": "𣘨",
       "en": "",
       "tone": "ē/ě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣘨"
     },
@@ -37443,7 +37443,7 @@
       "char": "𩣣",
       "en": "",
       "tone": "é/ě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩣣"
     },
@@ -39352,7 +39352,7 @@
       "char": "䊩",
       "en": "",
       "tone": "fàn/fán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䊩"
     },
@@ -39361,7 +39361,7 @@
       "char": "䕰",
       "en": "",
       "tone": "fàn/fán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䕰"
     },
@@ -39370,7 +39370,7 @@
       "char": "䡊",
       "en": "",
       "tone": "fán/fǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䡊"
     },
@@ -39379,7 +39379,7 @@
       "char": "𣔶",
       "en": "",
       "tone": "fàn/fán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣔶"
     },
@@ -40146,7 +40146,7 @@
       "char": "𪦀",
       "en": "",
       "tone": "fáng/fāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪦀"
     },
@@ -40346,7 +40346,7 @@
       "char": "𩦎",
       "en": "",
       "tone": "fēi/fěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩦎"
     },
@@ -41113,7 +41113,7 @@
       "char": "𤖘",
       "en": "",
       "tone": "fèn/fén",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤖘"
     },
@@ -41122,7 +41122,7 @@
       "char": "𤗸",
       "en": "",
       "tone": "fèn/fén",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤗸"
     },
@@ -41131,7 +41131,7 @@
       "char": "𩿈",
       "en": "",
       "tone": "fén/fēn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩿈"
     },
@@ -41763,7 +41763,7 @@
       "char": "𢓱",
       "en": "",
       "tone": "fèng/fēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢓱"
     },
@@ -41772,7 +41772,7 @@
       "char": "𥍮",
       "en": "",
       "tone": "féng/fēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥍮"
     },
@@ -41781,7 +41781,7 @@
       "char": "𩊩",
       "en": "",
       "tone": "féng/fēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩊩"
     },
@@ -42260,7 +42260,7 @@
       "char": "𧟰",
       "en": "",
       "tone": "fiào",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "𧟰"
     }
@@ -42271,7 +42271,7 @@
       "char": "㤇",
       "en": "",
       "tone": "fó",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "㤇"
     },
@@ -42410,7 +42410,7 @@
       "char": "䔰",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䔰"
     },
@@ -42419,7 +42419,7 @@
       "char": "㠅",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㠅"
     },
@@ -42428,7 +42428,7 @@
       "char": "㤔",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㤔"
     },
@@ -42437,7 +42437,7 @@
       "char": "䋹",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䋹"
     },
@@ -42446,7 +42446,7 @@
       "char": "䍖",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍖"
     },
@@ -42455,7 +42455,7 @@
       "char": "䡍",
       "en": "",
       "tone": "fú/fǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䡍"
     },
@@ -42464,7 +42464,7 @@
       "char": "䪙",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䪙"
     },
@@ -42473,7 +42473,7 @@
       "char": "䫝",
       "en": "",
       "tone": "fù/fǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫝"
     },
@@ -42482,7 +42482,7 @@
       "char": "𩋟",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩋟"
     },
@@ -42491,7 +42491,7 @@
       "char": "𩌏",
       "en": "",
       "tone": "fù/fú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩌏"
     },
@@ -42500,7 +42500,7 @@
       "char": "𩬙",
       "en": "",
       "tone": "fù/fū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩬙"
     },
@@ -45107,7 +45107,7 @@
       "char": "𦼮",
       "en": "",
       "tone": "gàn/gǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦼮"
     },
@@ -45116,7 +45116,7 @@
       "char": "𦾮",
       "en": "",
       "tone": "gàn/gǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦾮"
     },
@@ -45125,7 +45125,7 @@
       "char": "𪊄",
       "en": "",
       "tone": "gàn/gǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪊄"
     },
@@ -45748,7 +45748,7 @@
       "char": "𣗵",
       "en": "",
       "tone": "gàng/gāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣗵"
     },
@@ -46364,7 +46364,7 @@
       "char": "鿔",
       "en": "",
       "tone": "gē",
-      "weight": 227,
+      "weight": 3,
       "stroke_aux": "",
       "trad": "鎶"
     },
@@ -46373,7 +46373,7 @@
       "char": "䩐",
       "en": "",
       "tone": "gé/gē",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䩐"
     },
@@ -46382,7 +46382,7 @@
       "char": "𠇂",
       "en": "",
       "tone": "gè/gě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠇂"
     },
@@ -47376,7 +47376,7 @@
       "char": "㪅",
       "en": "",
       "tone": "gèng/gēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㪅"
     },
@@ -48460,7 +48460,7 @@
       "char": "𪀊",
       "en": "",
       "tone": "gòu/gōu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪀊"
     },
@@ -48894,7 +48894,7 @@
       "char": "㼋",
       "en": "",
       "tone": "gū/gǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㼋"
     },
@@ -48903,7 +48903,7 @@
       "char": "䍍",
       "en": "",
       "tone": "gù/gǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍍"
     },
@@ -48912,7 +48912,7 @@
       "char": "䮩",
       "en": "",
       "tone": "gú/gǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䮩"
     },
@@ -48921,7 +48921,7 @@
       "char": "𢫈",
       "en": "",
       "tone": "gū/gǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢫈"
     },
@@ -50223,7 +50223,7 @@
       "char": "𫟜",
       "en": "",
       "tone": "guàn/guān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𫟜"
     },
@@ -50938,7 +50938,7 @@
       "char": "䁛",
       "en": "",
       "tone": "guì/guǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䁛"
     },
@@ -50947,7 +50947,7 @@
       "char": "䞈",
       "en": "",
       "tone": "guì/guǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䞈"
     },
@@ -50956,7 +50956,7 @@
       "char": "𠐽",
       "en": "",
       "tone": "guì/guī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠐽"
     },
@@ -50965,7 +50965,7 @@
       "char": "𡧭",
       "en": "",
       "tone": "guì/guǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡧭"
     },
@@ -50974,7 +50974,7 @@
       "char": "𥍁",
       "en": "",
       "tone": "guì/guī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥍁"
     },
@@ -51948,7 +51948,7 @@
       "char": "䃂",
       "en": "",
       "tone": "gùn/gǔn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䃂"
     },
@@ -51957,7 +51957,7 @@
       "char": "䜇",
       "en": "",
       "tone": "gùn/gǔn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䜇"
     },
@@ -53459,7 +53459,7 @@
       "char": "䍐",
       "en": "",
       "tone": "hàn/hǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍐"
     },
@@ -53468,7 +53468,7 @@
       "char": "㸁",
       "en": "",
       "tone": "hàn/hǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㸁"
     },
@@ -53477,7 +53477,7 @@
       "char": "䓿",
       "en": "",
       "tone": "hàn/hǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䓿"
     },
@@ -53486,7 +53486,7 @@
       "char": "䛞",
       "en": "",
       "tone": "hàn/hǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䛞"
     },
@@ -53495,7 +53495,7 @@
       "char": "䮧",
       "en": "",
       "tone": "hàn/hán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䮧"
     },
@@ -53504,7 +53504,7 @@
       "char": "𠿑",
       "en": "",
       "tone": "hán/hǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠿑"
     },
@@ -53513,7 +53513,7 @@
       "char": "𧵊",
       "en": "",
       "tone": "hàn/hān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧵊"
     },
@@ -55092,7 +55092,7 @@
       "char": "𡐒",
       "en": "",
       "tone": "hào/háo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡐒"
     },
@@ -55101,7 +55101,7 @@
       "char": "𡥆",
       "en": "",
       "tone": "hào/hǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡥆"
     },
@@ -55715,7 +55715,7 @@
       "char": "㕡",
       "en": "",
       "tone": "hè/hé",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㕡"
     },
@@ -55724,7 +55724,7 @@
       "char": "㥺",
       "en": "",
       "tone": "hè/hé",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㥺"
     },
@@ -55733,7 +55733,7 @@
       "char": "䮤",
       "en": "",
       "tone": "hè/hé",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䮤"
     },
@@ -58182,7 +58182,7 @@
       "char": "㤧",
       "en": "",
       "tone": "hòu/hóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㤧"
     },
@@ -58191,7 +58191,7 @@
       "char": "㖃",
       "en": "",
       "tone": "hòu/hǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㖃"
     },
@@ -58200,7 +58200,7 @@
       "char": "𨜫",
       "en": "",
       "tone": "hòu/hóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨜫"
     },
@@ -58778,7 +58778,7 @@
       "char": "𣲑",
       "en": "",
       "tone": "hù/hú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣲑"
     },
@@ -60670,7 +60670,7 @@
       "char": "𦰗",
       "en": "",
       "tone": "huà/huá/huā",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦰗"
     },
@@ -60679,7 +60679,7 @@
       "char": "䔢",
       "en": "",
       "tone": "huà/huá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䔢"
     },
@@ -61484,7 +61484,7 @@
       "char": "䮝",
       "en": "",
       "tone": "huán/huǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䮝"
     },
@@ -61493,7 +61493,7 @@
       "char": "䴟",
       "en": "",
       "tone": "huàn/huán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䴟"
     },
@@ -61502,7 +61502,7 @@
       "char": "𡷗",
       "en": "",
       "tone": "huàn/huán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡷗"
     },
@@ -61511,7 +61511,7 @@
       "char": "𪍺",
       "en": "",
       "tone": "huàn/huán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪍺"
     },
@@ -62323,7 +62323,7 @@
       "char": "𡧽",
       "en": "",
       "tone": "huāng/huǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡧽"
     },
@@ -62332,7 +62332,7 @@
       "char": "䁜",
       "en": "",
       "tone": "huàng/huǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䁜"
     },
@@ -62341,7 +62341,7 @@
       "char": "䊗",
       "en": "",
       "tone": "huáng/huǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䊗"
     },
@@ -63009,7 +63009,7 @@
       "char": "𠧩",
       "en": "",
       "tone": "huì/huǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠧩"
     },
@@ -64379,7 +64379,7 @@
       "char": "䐊",
       "en": "",
       "tone": "hùn/hún",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䐊"
     },
@@ -64388,7 +64388,7 @@
       "char": "䛰",
       "en": "",
       "tone": "hùn/hún",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䛰"
     },
@@ -64397,7 +64397,7 @@
       "char": "𠉣",
       "en": "",
       "tone": "hùn/hūn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠉣"
     },
@@ -64867,7 +64867,7 @@
       "char": "㓉",
       "en": "",
       "tone": "huò/huó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㓉"
     },
@@ -64876,7 +64876,7 @@
       "char": "𧯆",
       "en": "",
       "tone": "huò/huō",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧯆"
     },
@@ -65688,7 +65688,7 @@
       "char": "㮨",
       "en": "",
       "tone": "jì/jí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㮨"
     },
@@ -65697,7 +65697,7 @@
       "char": "䐚",
       "en": "",
       "tone": "jì/jí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䐚"
     },
@@ -65706,7 +65706,7 @@
       "char": "䢳",
       "en": "",
       "tone": "jì/jǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䢳"
     },
@@ -65715,7 +65715,7 @@
       "char": "䤒",
       "en": "",
       "tone": "jì/jǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䤒"
     },
@@ -65724,7 +65724,7 @@
       "char": "𢁂",
       "en": "",
       "tone": "jì/jī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢁂"
     },
@@ -65733,7 +65733,7 @@
       "char": "𣪠",
       "en": "",
       "tone": "jì/jī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣪠"
     },
@@ -69083,7 +69083,7 @@
       "char": "𦙺",
       "en": "",
       "tone": "jià/jiā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦙺"
     },
@@ -69092,7 +69092,7 @@
       "char": "𨔣",
       "en": "",
       "tone": "jià/jiā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨔣"
     },
@@ -69850,7 +69850,7 @@
       "char": "䯡",
       "en": "",
       "tone": "jiàn/jiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䯡"
     },
@@ -69859,7 +69859,7 @@
       "char": "𣚙",
       "en": "",
       "tone": "jiàn/jiān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣚙"
     },
@@ -69868,7 +69868,7 @@
       "char": "𩅼",
       "en": "",
       "tone": "jiàn/jiān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩅼"
     },
@@ -69877,7 +69877,7 @@
       "char": "𪉦",
       "en": "",
       "tone": "jiàn/jiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪉦"
     },
@@ -69886,7 +69886,7 @@
       "char": "𪙨",
       "en": "",
       "tone": "jiàn/jiān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪙨"
     },
@@ -71607,7 +71607,7 @@
       "char": "𤕭",
       "en": "",
       "tone": "jiàng/jiāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤕭"
     },
@@ -72077,7 +72077,7 @@
       "char": "䚩",
       "en": "",
       "tone": "jiào/jiǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䚩"
     },
@@ -74988,7 +74988,7 @@
       "char": "㬐",
       "en": "",
       "tone": "jìn/jǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㬐"
     },
@@ -74997,7 +74997,7 @@
       "char": "𥧲",
       "en": "",
       "tone": "jìn/jǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥧲"
     },
@@ -77534,7 +77534,7 @@
       "char": "𦥑",
       "en": "",
       "tone": "jú/jǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦥑"
     },
@@ -77543,7 +77543,7 @@
       "char": "䈮",
       "en": "",
       "tone": "jù/jǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䈮"
     },
@@ -77552,7 +77552,7 @@
       "char": "𥇛",
       "en": "",
       "tone": "jù/jū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥇛"
     },
@@ -79228,7 +79228,7 @@
       "char": "𩜇",
       "en": "",
       "tone": "juàn/juǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩜇"
     },
@@ -79833,7 +79833,7 @@
       "char": "𪮖",
       "en": "",
       "tone": "juē",
-      "weight": 6,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "撧"
     },
@@ -82601,7 +82601,7 @@
       "char": "㪙",
       "en": "",
       "tone": "kè/kě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㪙"
     },
@@ -83559,7 +83559,7 @@
       "char": "䡰",
       "en": "",
       "tone": "kēng/kěng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䡰"
     },
@@ -84917,7 +84917,7 @@
       "char": "䦚",
       "en": "",
       "tone": "kuà/kuǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䦚"
     },
@@ -85508,7 +85508,7 @@
       "char": "㫛",
       "en": "",
       "tone": "kuàng/kuáng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㫛"
     },
@@ -85517,7 +85517,7 @@
       "char": "𦚞",
       "en": "",
       "tone": "kuàng/kuāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦚞"
     },
@@ -85879,7 +85879,7 @@
       "char": "㚍",
       "en": "",
       "tone": "kuì/kuǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㚍"
     },
@@ -85888,7 +85888,7 @@
       "char": "𧢦",
       "en": "",
       "tone": "kuí/kuī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧢦"
     },
@@ -86700,7 +86700,7 @@
       "char": "𣏔",
       "en": "",
       "tone": "kùn/kǔn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣏔"
     },
@@ -87271,7 +87271,7 @@
       "char": "㕇",
       "en": "",
       "tone": "lá/lā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㕇"
     },
@@ -87795,7 +87795,7 @@
       "char": "㚓",
       "en": "",
       "tone": "lái/lǎi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㚓"
     },
@@ -87804,7 +87804,7 @@
       "char": "䚅",
       "en": "",
       "tone": "lài/lái",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䚅"
     },
@@ -87813,7 +87813,7 @@
       "char": "䠭",
       "en": "",
       "tone": "lài/lái",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠭"
     },
@@ -88238,7 +88238,7 @@
       "char": "㔋",
       "en": "",
       "tone": "làn/lán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㔋"
     },
@@ -88247,7 +88247,7 @@
       "char": "㦨",
       "en": "",
       "tone": "làn/lán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㦨"
     },
@@ -88256,7 +88256,7 @@
       "char": "䪍",
       "en": "",
       "tone": "làn/lán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䪍"
     },
@@ -88933,7 +88933,7 @@
       "char": "㾿",
       "en": "",
       "tone": "láng/lǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㾿"
     },
@@ -88942,7 +88942,7 @@
       "char": "䆡",
       "en": "",
       "tone": "làng/láng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䆡"
     },
@@ -89313,7 +89313,7 @@
       "char": "䜎",
       "en": "",
       "tone": "lào/láo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䜎"
     },
@@ -89322,7 +89322,7 @@
       "char": "𥢒",
       "en": "",
       "tone": "lào/láo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥢒"
     },
@@ -89331,7 +89331,7 @@
       "char": "𦺜",
       "en": "",
       "tone": "lào/láo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦺜"
     },
@@ -89875,7 +89875,7 @@
       "char": "㵢",
       "en": "",
       "tone": "léi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㵢"
     },
@@ -89884,7 +89884,7 @@
       "char": "㑍",
       "en": "",
       "tone": "lèi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㑍"
     },
@@ -89893,7 +89893,7 @@
       "char": "㒍",
       "en": "",
       "tone": "léi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㒍"
     },
@@ -89902,7 +89902,7 @@
       "char": "㔣",
       "en": "",
       "tone": "lèi/léi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㔣"
     },
@@ -89911,7 +89911,7 @@
       "char": "䣂",
       "en": "",
       "tone": "lèi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䣂"
     },
@@ -89920,7 +89920,7 @@
       "char": "䨓",
       "en": "",
       "tone": "lèi/léi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䨓"
     },
@@ -89929,7 +89929,7 @@
       "char": "𡾋",
       "en": "",
       "tone": "léi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡾋"
     },
@@ -89938,7 +89938,7 @@
       "char": "𤡂",
       "en": "",
       "tone": "léi/lěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤡂"
     },
@@ -89947,7 +89947,7 @@
       "char": "𥤐",
       "en": "",
       "tone": "lèi/léi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥤐"
     },
@@ -90806,7 +90806,7 @@
       "char": "㸚",
       "en": "",
       "tone": "lì/lǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㸚"
     },
@@ -90815,7 +90815,7 @@
       "char": "㿛",
       "en": "",
       "tone": "lì/lí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㿛"
     },
@@ -90824,7 +90824,7 @@
       "char": "䔧",
       "en": "",
       "tone": "lì/lí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䔧"
     },
@@ -90833,7 +90833,7 @@
       "char": "䕻",
       "en": "",
       "tone": "lì/lí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䕻"
     },
@@ -90842,7 +90842,7 @@
       "char": "𠌯",
       "en": "",
       "tone": "lì/lí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠌯"
     },
@@ -90851,7 +90851,7 @@
       "char": "𣀷",
       "en": "",
       "tone": "lí/lǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣀷"
     },
@@ -90860,7 +90860,7 @@
       "char": "𧋠",
       "en": "",
       "tone": "lí/lǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧋠"
     },
@@ -94012,7 +94012,7 @@
       "char": "㰸",
       "en": "",
       "tone": "liàn/liǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㰸"
     },
@@ -94021,7 +94021,7 @@
       "char": "㼓",
       "en": "",
       "tone": "lián/liǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㼓"
     },
@@ -94030,7 +94030,7 @@
       "char": "䙺",
       "en": "",
       "tone": "lián/liǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䙺"
     },
@@ -94039,7 +94039,7 @@
       "char": "𤬓",
       "en": "",
       "tone": "lián/liǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤬓"
     },
@@ -94048,7 +94048,7 @@
       "char": "𧐖",
       "en": "",
       "tone": "liàn/lián",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧐖"
     },
@@ -94833,7 +94833,7 @@
       "char": "鿌",
       "en": "",
       "tone": "liàng/liáng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "鿌"
     },
@@ -94842,7 +94842,7 @@
       "char": "𠒨",
       "en": "",
       "tone": "liàng/liáng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠒨"
     },
@@ -95150,7 +95150,7 @@
       "char": "㝋",
       "en": "",
       "tone": "liáo/liǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㝋"
     },
@@ -95159,7 +95159,7 @@
       "char": "㶫",
       "en": "",
       "tone": "liào/liǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㶫"
     },
@@ -95168,7 +95168,7 @@
       "char": "𤊽",
       "en": "",
       "tone": "liào/liǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤊽"
     },
@@ -96558,7 +96558,7 @@
       "char": "䫰",
       "en": "",
       "tone": "lìn/lǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫰"
     },
@@ -96567,7 +96567,7 @@
       "char": "𤌎",
       "en": "",
       "tone": "lìn/lǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤌎"
     },
@@ -96576,7 +96576,7 @@
       "char": "𦺸",
       "en": "",
       "tone": "lìn/lín",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦺸"
     },
@@ -97127,7 +97127,7 @@
       "char": "㻏",
       "en": "",
       "tone": "líng/lǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤫩"
     },
@@ -97136,7 +97136,7 @@
       "char": "𠟨",
       "en": "",
       "tone": "lìng/líng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠟨"
     },
@@ -97145,7 +97145,7 @@
       "char": "𠡭",
       "en": "",
       "tone": "lìng/líng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠡭"
     },
@@ -97154,7 +97154,7 @@
       "char": "𢺰",
       "en": "",
       "tone": "lìng/líng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢺰"
     },
@@ -98308,7 +98308,7 @@
       "char": "䉧",
       "en": "",
       "tone": "liú/liǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䉧"
     },
@@ -98317,7 +98317,7 @@
       "char": "䱖",
       "en": "",
       "tone": "liú/liǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䱖"
     },
@@ -98326,7 +98326,7 @@
       "char": "𦌁",
       "en": "",
       "tone": "liú/liǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦌁"
     },
@@ -99165,7 +99165,7 @@
       "char": "𤼃",
       "en": "",
       "tone": "lòng/lóng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤼃"
     },
@@ -99174,7 +99174,7 @@
       "char": "𦪽",
       "en": "",
       "tone": "lóng/lǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦪽"
     },
@@ -99788,7 +99788,7 @@
       "char": "䅹",
       "en": "",
       "tone": "lóu/lǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䅹"
     },
@@ -99797,7 +99797,7 @@
       "char": "䝏",
       "en": "",
       "tone": "lóu/lǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䝏"
     },
@@ -99806,7 +99806,7 @@
       "char": "䫫",
       "en": "",
       "tone": "lòu/lóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫫"
     },
@@ -99815,7 +99815,7 @@
       "char": "𠞭",
       "en": "",
       "tone": "lòu/lóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠞭"
     },
@@ -99824,7 +99824,7 @@
       "char": "𡰌",
       "en": "",
       "tone": "lóu/lǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡰌"
     },
@@ -99833,7 +99833,7 @@
       "char": "𧷡",
       "en": "",
       "tone": "lòu/lóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧷡"
     },
@@ -101511,7 +101511,7 @@
       "char": "𡡗",
       "en": "",
       "tone": "luàn/luán/luǎn",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡡗"
     },
@@ -101956,7 +101956,7 @@
       "char": "㱻",
       "en": "",
       "tone": "luò/luǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㱻"
     },
@@ -101965,7 +101965,7 @@
       "char": "㽋",
       "en": "",
       "tone": "luò/luó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㽋"
     },
@@ -103573,7 +103573,7 @@
       "char": "㐷",
       "en": "",
       "tone": "mà/mǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "傌"
     },
@@ -103582,7 +103582,7 @@
       "char": "䣕",
       "en": "",
       "tone": "mà/mǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䣕"
     },
@@ -104279,7 +104279,7 @@
       "char": "㒼",
       "en": "",
       "tone": "mán/mǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㒼"
     },
@@ -104288,7 +104288,7 @@
       "char": "㗄",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㗄"
     },
@@ -104297,7 +104297,7 @@
       "char": "䛲",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䛲"
     },
@@ -104306,7 +104306,7 @@
       "char": "𥊑",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥊑"
     },
@@ -104315,7 +104315,7 @@
       "char": "𦔔",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦔔"
     },
@@ -104324,7 +104324,7 @@
       "char": "𧜞",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧜞"
     },
@@ -104333,7 +104333,7 @@
       "char": "𩆓",
       "en": "",
       "tone": "màn/mán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩆓"
     },
@@ -104812,7 +104812,7 @@
       "char": "㟿",
       "en": "",
       "tone": "máng/mǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㟿"
     },
@@ -104821,7 +104821,7 @@
       "char": "㤶",
       "en": "",
       "tone": "màng/máng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㤶"
     },
@@ -105291,7 +105291,7 @@
       "char": "㝟",
       "en": "",
       "tone": "mào/máo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㝟"
     },
@@ -105300,7 +105300,7 @@
       "char": "𣬵",
       "en": "",
       "tone": "mào/máo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣬵"
     },
@@ -105986,7 +105986,7 @@
       "char": "㙁",
       "en": "",
       "tone": "mèi/méi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㙁"
     },
@@ -105995,7 +105995,7 @@
       "char": "㜫",
       "en": "",
       "tone": "méi/měi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㜫"
     },
@@ -106674,7 +106674,7 @@
       "char": "䁅",
       "en": "",
       "tone": "mèng/měng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䁅"
     },
@@ -106683,7 +106683,7 @@
       "char": "䓝",
       "en": "",
       "tone": "mèng/méng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䓝"
     },
@@ -106692,7 +106692,7 @@
       "char": "𡬆",
       "en": "",
       "tone": "mèng/měng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡬆"
     },
@@ -106701,7 +106701,7 @@
       "char": "𥉕",
       "en": "",
       "tone": "mèng/méng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥉕"
     },
@@ -106710,7 +106710,7 @@
       "char": "𦿏",
       "en": "",
       "tone": "mèng/méng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦿏"
     },
@@ -107594,7 +107594,7 @@
       "char": "㠧",
       "en": "",
       "tone": "mí/mǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㠧"
     },
@@ -107603,7 +107603,7 @@
       "char": "䋛",
       "en": "",
       "tone": "mí/mǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䋛"
     },
@@ -107612,7 +107612,7 @@
       "char": "𡬍",
       "en": "",
       "tone": "mí/mǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡬍"
     },
@@ -107621,7 +107621,7 @@
       "char": "𢘺",
       "en": "",
       "tone": "mí/mǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢘺"
     },
@@ -107630,7 +107630,7 @@
       "char": "𢞞",
       "en": "",
       "tone": "mì/mí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢞞"
     },
@@ -108856,7 +108856,7 @@
       "char": "㬆",
       "en": "",
       "tone": "miàn/mián",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㬆"
     },
@@ -109942,7 +109942,7 @@
       "char": "㟩",
       "en": "",
       "tone": "mín/mǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㟩"
     },
@@ -109951,7 +109951,7 @@
       "char": "㨉",
       "en": "",
       "tone": "mín/mǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㨉"
     },
@@ -109960,7 +109960,7 @@
       "char": "䲄",
       "en": "",
       "tone": "mín/mǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䲄"
     },
@@ -110684,7 +110684,7 @@
       "char": "𨱯",
       "en": "",
       "tone": "miǔ",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "𨱯"
     }
@@ -110695,7 +110695,7 @@
       "char": "䃺",
       "en": "",
       "tone": "mò/mó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䃺"
     },
@@ -110704,7 +110704,7 @@
       "char": "䯢",
       "en": "",
       "tone": "mó/mǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䯢"
     },
@@ -110713,7 +110713,7 @@
       "char": "𡠜",
       "en": "",
       "tone": "mò/mó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡠜"
     },
@@ -110722,7 +110722,7 @@
       "char": "𩪮",
       "en": "",
       "tone": "mó/mǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩪮"
     },
@@ -111968,7 +111968,7 @@
       "char": "𢜯",
       "en": "",
       "tone": "mú/mǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢜯"
     },
@@ -112467,7 +112467,7 @@
       "char": "㕶",
       "en": "",
       "tone": "ň",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "㕶"
     }
@@ -113128,7 +113128,7 @@
       "char": "䘅",
       "en": "",
       "tone": "nài/nái",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䘅"
     },
@@ -114886,7 +114886,7 @@
       "char": "㶧",
       "en": "",
       "tone": "nèn",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "㶧"
     },
@@ -114951,7 +114951,7 @@
       "char": "㲌",
       "en": "",
       "tone": "nèng",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "㲌"
     },
@@ -114960,7 +114960,7 @@
       "char": "𠹌",
       "en": "",
       "tone": "něng",
-      "weight": 1,
+      "weight": 3,
       "stroke_aux": "",
       "trad": "𠹌"
     },
@@ -115025,7 +115025,7 @@
       "char": "㕶",
       "en": "",
       "tone": "ňg",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "㕶"
     }
@@ -115036,7 +115036,7 @@
       "char": "鿭",
       "en": "",
       "tone": "nǐ",
-      "weight": 50,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "鿭"
     },
@@ -115045,7 +115045,7 @@
       "char": "䘽",
       "en": "",
       "tone": "nì/ní/nǐ",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䘽"
     },
@@ -115054,7 +115054,7 @@
       "char": "䍲",
       "en": "",
       "tone": "nì/ní",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍲"
     },
@@ -115063,7 +115063,7 @@
       "char": "䘦",
       "en": "",
       "tone": "ní/nǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䘦"
     },
@@ -117458,7 +117458,7 @@
       "char": "㤛",
       "en": "",
       "tone": "nín",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "㤛"
     },
@@ -117505,7 +117505,7 @@
       "char": "𧭈",
       "en": "",
       "tone": "nìng/níng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧭈"
     },
@@ -118413,7 +118413,7 @@
       "char": "𧗈",
       "en": "",
       "tone": "nú",
-      "weight": 11,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧗈"
     },
@@ -119143,7 +119143,7 @@
       "char": "𠥝",
       "en": "",
       "tone": "ōu/ǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠥝"
     },
@@ -119152,7 +119152,7 @@
       "char": "𡂿",
       "en": "",
       "tone": "ou/ōu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡂿"
     },
@@ -119696,7 +119696,7 @@
       "char": "㵺",
       "en": "",
       "tone": "pài/pái",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㵺"
     },
@@ -119914,7 +119914,7 @@
       "char": "䃲",
       "en": "",
       "tone": "pàn/pán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䃲"
     },
@@ -119923,7 +119923,7 @@
       "char": "䰉",
       "en": "",
       "tone": "pàn/pán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䰉"
     },
@@ -119932,7 +119932,7 @@
       "char": "𥈼",
       "en": "",
       "tone": "pán/pān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥈼"
     },
@@ -121391,7 +121391,7 @@
       "char": "𥕱",
       "en": "",
       "tone": "péng/pēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥕱"
     },
@@ -121960,7 +121960,7 @@
       "char": "㨽",
       "en": "",
       "tone": "pì/pǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㨽"
     },
@@ -121969,7 +121969,7 @@
       "char": "㱟",
       "en": "",
       "tone": "pí/pǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㱟"
     },
@@ -121978,7 +121978,7 @@
       "char": "䏘",
       "en": "",
       "tone": "pì/pǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䏘"
     },
@@ -121987,7 +121987,7 @@
       "char": "䰦",
       "en": "",
       "tone": "pì/pǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䰦"
     },
@@ -121996,7 +121996,7 @@
       "char": "𪄆",
       "en": "",
       "tone": "pí/pī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪄆"
     },
@@ -123431,7 +123431,7 @@
       "char": "𩙒",
       "en": "",
       "tone": "piào/piāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩙒"
     },
@@ -123440,7 +123440,7 @@
       "char": "𩮳",
       "en": "",
       "tone": "piào/piǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩮳"
     },
@@ -123449,7 +123449,7 @@
       "char": "𪅃",
       "en": "",
       "tone": "piāo/piǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪅃"
     },
@@ -123822,7 +123822,7 @@
       "char": "𩰗",
       "en": "",
       "tone": "pìn/pīn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩰗"
     },
@@ -123831,7 +123831,7 @@
       "char": "𩰝",
       "en": "",
       "tone": "pìn/pīn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩰝"
     },
@@ -124103,7 +124103,7 @@
       "char": "𡊞",
       "en": "",
       "tone": "pìng/píng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡊞"
     },
@@ -125196,7 +125196,7 @@
       "char": "㧵",
       "en": "",
       "tone": "póu/pǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㧵"
     },
@@ -125333,7 +125333,7 @@
       "char": "䲕",
       "en": "",
       "tone": "pù/pǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䲕"
     },
@@ -125803,7 +125803,7 @@
       "char": "㩻",
       "en": "",
       "tone": "qí/qī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㩻"
     },
@@ -125812,7 +125812,7 @@
       "char": "㫓",
       "en": "",
       "tone": "qì/qǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㫓"
     },
@@ -125821,7 +125821,7 @@
       "char": "𢺵",
       "en": "",
       "tone": "qì/qǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢺵"
     },
@@ -128460,7 +128460,7 @@
       "char": "䶗",
       "en": "",
       "tone": "qiā/qiǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䶗"
     },
@@ -128885,7 +128885,7 @@
       "char": "䪈",
       "en": "",
       "tone": "qiàn/qiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䪈"
     },
@@ -130689,7 +130689,7 @@
       "char": "㚁",
       "en": "",
       "tone": "qiào/qiáo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㚁"
     },
@@ -130698,7 +130698,7 @@
       "char": "㪣",
       "en": "",
       "tone": "qiào/qiāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㪣"
     },
@@ -130707,7 +130707,7 @@
       "char": "𢻤",
       "en": "",
       "tone": "qiáo/qiāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢻤"
     },
@@ -131926,7 +131926,7 @@
       "char": "㓎",
       "en": "",
       "tone": "qìn/qīn/qǐn",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㓎"
     },
@@ -131935,7 +131935,7 @@
       "char": "𣨠",
       "en": "",
       "tone": "qìn/qīn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣨠"
     },
@@ -132657,7 +132657,7 @@
       "char": "䯧",
       "en": "",
       "tone": "qìng/qǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䯧"
     },
@@ -132666,7 +132666,7 @@
       "char": "䲔",
       "en": "",
       "tone": "qìng/qíng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䲔"
     },
@@ -133534,7 +133534,7 @@
       "char": "䞭",
       "en": "",
       "tone": "qiù/qiǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䞭"
     },
@@ -133543,7 +133543,7 @@
       "char": "𧔭",
       "en": "",
       "tone": "qiú/qiū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧔭"
     },
@@ -134364,7 +134364,7 @@
       "char": "㖆",
       "en": "",
       "tone": "qú/qǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㖆"
     },
@@ -134373,7 +134373,7 @@
       "char": "䏣",
       "en": "",
       "tone": "qù/qū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䏣"
     },
@@ -134382,7 +134382,7 @@
       "char": "𡳆",
       "en": "",
       "tone": "qù/qū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡳆"
     },
@@ -135680,7 +135680,7 @@
       "char": "𥁠",
       "en": "",
       "tone": "quán/quān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥁠"
     },
@@ -136231,7 +136231,7 @@
       "char": "𨶔",
       "en": "",
       "tone": "què/quē",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨶔"
     },
@@ -136919,7 +136919,7 @@
       "char": "𡜉",
       "en": "",
       "tone": "ràn/rǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡜉"
     },
@@ -137380,7 +137380,7 @@
       "char": "䉴",
       "en": "",
       "tone": "ráng/rǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䉴"
     },
@@ -137508,7 +137508,7 @@
       "char": "㹛",
       "en": "",
       "tone": "ráo/rǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹛"
     },
@@ -137600,7 +137600,7 @@
       "char": "𧧏",
       "en": "",
       "tone": "rè/rě",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧧏"
     },
@@ -138202,7 +138202,7 @@
       "char": "䇀",
       "en": "",
       "tone": "róng/rǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䇀"
     },
@@ -138211,7 +138211,7 @@
       "char": "䡆",
       "en": "",
       "tone": "róng/rǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䡆"
     },
@@ -138220,7 +138220,7 @@
       "char": "䩸",
       "en": "",
       "tone": "róng/rǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䩸"
     },
@@ -138229,7 +138229,7 @@
       "char": "𣯏",
       "en": "",
       "tone": "róng/rǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣯏"
     },
@@ -139070,7 +139070,7 @@
       "char": "㦺",
       "en": "",
       "tone": "rù/rǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㦺"
     },
@@ -139079,7 +139079,7 @@
       "char": "㨌",
       "en": "",
       "tone": "rú/rǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㨌"
     },
@@ -139088,7 +139088,7 @@
       "char": "㹘",
       "en": "",
       "tone": "rù/rú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹘"
     },
@@ -139097,7 +139097,7 @@
       "char": "㾒",
       "en": "",
       "tone": "rù/rú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㾒"
     },
@@ -140385,7 +140385,7 @@
       "char": "㒎",
       "en": "",
       "tone": "sà/sǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㒎"
     },
@@ -140394,7 +140394,7 @@
       "char": "䊛",
       "en": "",
       "tone": "sà/sǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䊛"
     },
@@ -140911,7 +140911,7 @@
       "char": "𢕕",
       "en": "",
       "tone": "sàn/sǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢕕"
     },
@@ -141455,7 +141455,7 @@
       "char": "𦞣",
       "en": "",
       "tone": "sào/sāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦞣"
     },
@@ -142296,7 +142296,7 @@
       "char": "㚞",
       "en": "",
       "tone": "sēn",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "㚞"
     },
@@ -142305,7 +142305,7 @@
       "char": "𣟹",
       "en": "",
       "tone": "sēn",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "𣟹"
     },
@@ -142334,7 +142334,7 @@
       "char": "䒏",
       "en": "",
       "tone": "sēng",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "䒏"
     },
@@ -142343,7 +142343,7 @@
       "char": "𡬙",
       "en": "",
       "tone": "sèng",
-      "weight": 1,
+      "weight": 3,
       "stroke_aux": "",
       "trad": "𡬙"
     }
@@ -142950,7 +142950,7 @@
       "char": "𧜁",
       "en": "",
       "tone": "shài/shǎi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧜁"
     },
@@ -143051,7 +143051,7 @@
       "char": "鿃",
       "en": "",
       "tone": "shǎn",
-      "weight": 38,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "鿃"
     },
@@ -143060,7 +143060,7 @@
       "char": "㺑",
       "en": "",
       "tone": "shàn/shān/shǎn",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㺑"
     },
@@ -143069,7 +143069,7 @@
       "char": "㣣",
       "en": "",
       "tone": "shàn/shǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㣣"
     },
@@ -143078,7 +143078,7 @@
       "char": "䠾",
       "en": "",
       "tone": "shàn/shǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠾"
     },
@@ -143899,7 +143899,7 @@
       "char": "𤵼",
       "en": "",
       "tone": "shàng/shāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤵼"
     },
@@ -143908,7 +143908,7 @@
       "char": "𧶜",
       "en": "",
       "tone": "shāng/shǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧶜"
     },
@@ -144090,7 +144090,7 @@
       "char": "𦓴",
       "en": "",
       "tone": "shào/shāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦓴"
     },
@@ -144099,7 +144099,7 @@
       "char": "𧣪",
       "en": "",
       "tone": "shào/shǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧣪"
     },
@@ -145066,7 +145066,7 @@
       "char": "䰠",
       "en": "",
       "tone": "shén/shēn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䰠"
     },
@@ -145075,7 +145075,7 @@
       "char": "㛙",
       "en": "",
       "tone": "shèn/shěn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㛙"
     },
@@ -145084,7 +145084,7 @@
       "char": "𥥍",
       "en": "",
       "tone": "shèn/shēn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥥍"
     },
@@ -145824,7 +145824,7 @@
       "char": "㹌",
       "en": "",
       "tone": "shèng/shēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹌"
     },
@@ -146375,7 +146375,7 @@
       "char": "䈕",
       "en": "",
       "tone": "shi/shí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䈕"
     },
@@ -146384,7 +146384,7 @@
       "char": "𧳅",
       "en": "",
       "tone": "shì/shǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧳅"
     },
@@ -148458,7 +148458,7 @@
       "char": "䝪",
       "en": "",
       "tone": "shú/shǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䝪"
     },
@@ -148467,7 +148467,7 @@
       "char": "䭭",
       "en": "",
       "tone": "shù/shú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䭭"
     },
@@ -149666,7 +149666,7 @@
       "char": "㕞",
       "en": "",
       "tone": "shuā",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "㕞"
     },
@@ -150005,7 +150005,7 @@
       "char": "𠙠",
       "en": "",
       "tone": "shuāng/shuǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠙠"
     },
@@ -150014,7 +150014,7 @@
       "char": "𤕤",
       "en": "",
       "tone": "shuāng/shuǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤕤"
     },
@@ -150823,7 +150823,7 @@
       "char": "𧬊",
       "en": "",
       "tone": "sí/sī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧬊"
     },
@@ -152141,7 +152141,7 @@
       "char": "𧩮",
       "en": "",
       "tone": "sòu/sǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧩮"
     },
@@ -152150,7 +152150,7 @@
       "char": "𧼭",
       "en": "",
       "tone": "sōu/sǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧼭"
     },
@@ -154680,7 +154680,7 @@
       "char": "㪽",
       "en": "",
       "tone": "suò/suǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㪽"
     },
@@ -154689,7 +154689,7 @@
       "char": "䐝",
       "en": "",
       "tone": "suò/suǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䐝"
     },
@@ -154698,7 +154698,7 @@
       "char": "䣔",
       "en": "",
       "tone": "suò/suǒ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䣔"
     },
@@ -156295,7 +156295,7 @@
       "char": "䑓",
       "en": "",
       "tone": "tái/tǎi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䑓"
     },
@@ -156630,7 +156630,7 @@
       "char": "㷋",
       "en": "",
       "tone": "tán/tǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㷋"
     },
@@ -156639,7 +156639,7 @@
       "char": "㛶",
       "en": "",
       "tone": "tàn/tán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㛶"
     },
@@ -156648,7 +156648,7 @@
       "char": "㲜",
       "en": "",
       "tone": "tán/tǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㲜"
     },
@@ -157975,7 +157975,7 @@
       "char": "㹗",
       "en": "",
       "tone": "táo/tāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹗"
     },
@@ -158890,7 +158890,7 @@
       "char": "𣨼",
       "en": "",
       "tone": "tì",
-      "weight": 164,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "殢"
     },
@@ -158899,7 +158899,7 @@
       "char": "䚣",
       "en": "",
       "tone": "tì/tí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䚣"
     },
@@ -158908,7 +158908,7 @@
       "char": "䶏",
       "en": "",
       "tone": "tì/tǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䶏"
     },
@@ -159927,7 +159927,7 @@
       "char": "鿬",
       "en": "",
       "tone": "tián",
-      "weight": 209,
+      "weight": 32,
       "stroke_aux": "",
       "trad": "鿬"
     },
@@ -161148,7 +161148,7 @@
       "char": "𡈼",
       "en": "",
       "tone": "tíng/tǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡈼"
     },
@@ -161157,7 +161157,7 @@
       "char": "䋼",
       "en": "",
       "tone": "tīng/tǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䋼"
     },
@@ -161166,7 +161166,7 @@
       "char": "䱓",
       "en": "",
       "tone": "tíng/tǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䱓"
     },
@@ -161663,7 +161663,7 @@
       "char": "㣚",
       "en": "",
       "tone": "tóng/tǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㣚"
     },
@@ -161672,7 +161672,7 @@
       "char": "𧳆",
       "en": "",
       "tone": "tóng/tōng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧳆"
     },
@@ -162196,7 +162196,7 @@
       "char": "㰯",
       "en": "",
       "tone": "tòu/tǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㰯"
     },
@@ -162522,7 +162522,7 @@
       "char": "𡸂",
       "en": "",
       "tone": "tú/tū",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡸂"
     },
@@ -165495,7 +165495,7 @@
       "char": "𠰻",
       "en": "",
       "tone": "wai/wài",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠰻"
     },
@@ -165695,7 +165695,7 @@
       "char": "𨌔",
       "en": "",
       "tone": "wàn/wǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨌔"
     },
@@ -166507,7 +166507,7 @@
       "char": "𣢫",
       "en": "",
       "tone": "wāng/wǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣢫"
     },
@@ -166959,7 +166959,7 @@
       "char": "㕒",
       "en": "",
       "tone": "wéi/wēi/wěi",
-      "weight": 3,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㕒"
     },
@@ -166968,7 +166968,7 @@
       "char": "䍴",
       "en": "",
       "tone": "wèi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍴"
     },
@@ -166977,7 +166977,7 @@
       "char": "䑊",
       "en": "",
       "tone": "wèi/wéi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䑊"
     },
@@ -166986,7 +166986,7 @@
       "char": "䬿",
       "en": "",
       "tone": "wèi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䬿"
     },
@@ -166995,7 +166995,7 @@
       "char": "𢼸",
       "en": "",
       "tone": "wéi/wēi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢼸"
     },
@@ -167004,7 +167004,7 @@
       "char": "𣨙",
       "en": "",
       "tone": "wèi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣨙"
     },
@@ -167013,7 +167013,7 @@
       "char": "𤛲",
       "en": "",
       "tone": "wéi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤛲"
     },
@@ -167022,7 +167022,7 @@
       "char": "𧢒",
       "en": "",
       "tone": "wéi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧢒"
     },
@@ -167031,7 +167031,7 @@
       "char": "𩋾",
       "en": "",
       "tone": "wéi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩋾"
     },
@@ -167040,7 +167040,7 @@
       "char": "𩏏",
       "en": "",
       "tone": "wéi/wěi",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩏏"
     },
@@ -168941,7 +168941,7 @@
       "char": "䎽",
       "en": "",
       "tone": "wèn/wén",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䎽"
     },
@@ -168950,7 +168950,7 @@
       "char": "䘇",
       "en": "",
       "tone": "wèn/wén",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䘇"
     },
@@ -169456,7 +169456,7 @@
       "char": "𩔚",
       "en": "",
       "tone": "wēng/wěng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩔚"
     },
@@ -170279,7 +170279,7 @@
       "char": "䍢",
       "en": "",
       "tone": "wú/wǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䍢"
     },
@@ -170288,7 +170288,7 @@
       "char": "䦜",
       "en": "",
       "tone": "wù/wú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䦜"
     },
@@ -170297,7 +170297,7 @@
       "char": "𢫸",
       "en": "",
       "tone": "wū/wǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢫸"
     },
@@ -170306,7 +170306,7 @@
       "char": "𥕻",
       "en": "",
       "tone": "wú/wǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥕻"
     },
@@ -170315,7 +170315,7 @@
       "char": "𦌬",
       "en": "",
       "tone": "wú/wǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦌬"
     },
@@ -171640,7 +171640,7 @@
       "char": "㜎",
       "en": "",
       "tone": "xì/xī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㜎"
     },
@@ -171649,7 +171649,7 @@
       "char": "㿇",
       "en": "",
       "tone": "xì/xí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㿇"
     },
@@ -171658,7 +171658,7 @@
       "char": "𠜗",
       "en": "",
       "tone": "xì/xī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠜗"
     },
@@ -171667,7 +171667,7 @@
       "char": "𢨟",
       "en": "",
       "tone": "xì/xī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢨟"
     },
@@ -171676,7 +171676,7 @@
       "char": "𣒃",
       "en": "",
       "tone": "xí/xī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣒃"
     },
@@ -174504,7 +174504,7 @@
       "char": "㗿",
       "en": "",
       "tone": "xià/xiā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㗿"
     },
@@ -174513,7 +174513,7 @@
       "char": "㰺",
       "en": "",
       "tone": "xià/xiá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㰺"
     },
@@ -174522,7 +174522,7 @@
       "char": "䫗",
       "en": "",
       "tone": "xià/xiá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䫗"
     },
@@ -174531,7 +174531,7 @@
       "char": "𠽫",
       "en": "",
       "tone": "xiā/xiǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠽫"
     },
@@ -174540,7 +174540,7 @@
       "char": "𪡛",
       "en": "",
       "tone": "xià/xiā",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㗿"
     },
@@ -175334,7 +175334,7 @@
       "char": "㯗",
       "en": "",
       "tone": "xiàn/xián",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㯗"
     },
@@ -175343,7 +175343,7 @@
       "char": "䦘",
       "en": "",
       "tone": "xiàn/xiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䦘"
     },
@@ -175352,7 +175352,7 @@
       "char": "䧮",
       "en": "",
       "tone": "xiàn/xiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䧮"
     },
@@ -175361,7 +175361,7 @@
       "char": "𠿢",
       "en": "",
       "tone": "xiàn/xián",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠿢"
     },
@@ -175370,7 +175370,7 @@
       "char": "𧾨",
       "en": "",
       "tone": "xiàn/xiǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧾨"
     },
@@ -177406,7 +177406,7 @@
       "char": "𧬰",
       "en": "",
       "tone": "xiàng/xiǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧬰"
     },
@@ -178146,7 +178146,7 @@
       "char": "𧱐",
       "en": "",
       "tone": "xiào/xiāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧱐"
     },
@@ -179210,7 +179210,7 @@
       "char": "䕵",
       "en": "",
       "tone": "xiè/xié",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䕵"
     },
@@ -184658,7 +184658,7 @@
       "char": "㹡",
       "en": "",
       "tone": "xuàn/xuán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹡"
     },
@@ -184667,7 +184667,7 @@
       "char": "䠣",
       "en": "",
       "tone": "xuàn/xuǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䠣"
     },
@@ -184676,7 +184676,7 @@
       "char": "𢳄",
       "en": "",
       "tone": "xuàn/xuán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢳄"
     },
@@ -186309,7 +186309,7 @@
       "char": "𢁉",
       "en": "",
       "tone": "xùn",
-      "weight": 91,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢁉"
     },
@@ -186318,7 +186318,7 @@
       "char": "𤑕",
       "en": "",
       "tone": "xùn/xūn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤑕"
     },
@@ -187013,7 +187013,7 @@
       "char": "㧎",
       "en": "",
       "tone": "yà/yá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㧎"
     },
@@ -187022,7 +187022,7 @@
       "char": "𨁶",
       "en": "",
       "tone": "yā/yǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨁶"
     },
@@ -187031,7 +187031,7 @@
       "char": "𪘬",
       "en": "",
       "tone": "yà/yá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪘬"
     },
@@ -187040,7 +187040,7 @@
       "char": "𪘲",
       "en": "",
       "tone": "yà/yá",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪘲"
     },
@@ -187843,7 +187843,7 @@
       "char": "㕣",
       "en": "",
       "tone": "yàn/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㕣"
     },
@@ -187852,7 +187852,7 @@
       "char": "㘙",
       "en": "",
       "tone": "yán/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㘙"
     },
@@ -187861,7 +187861,7 @@
       "char": "䁙",
       "en": "",
       "tone": "yàn/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䁙"
     },
@@ -187870,7 +187870,7 @@
       "char": "䖗",
       "en": "",
       "tone": "yàn/yán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䖗"
     },
@@ -187879,7 +187879,7 @@
       "char": "䢥",
       "en": "",
       "tone": "yàn/yán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䢥"
     },
@@ -187888,7 +187888,7 @@
       "char": "䤷",
       "en": "",
       "tone": "yán/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䤷"
     },
@@ -187897,7 +187897,7 @@
       "char": "䶫",
       "en": "",
       "tone": "yàn/yán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䶫"
     },
@@ -187906,7 +187906,7 @@
       "char": "𢜰",
       "en": "",
       "tone": "yàn/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢜰"
     },
@@ -187915,7 +187915,7 @@
       "char": "𢸴",
       "en": "",
       "tone": "yán/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢸴"
     },
@@ -187924,7 +187924,7 @@
       "char": "𤅸",
       "en": "",
       "tone": "yàn/yán",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤅸"
     },
@@ -187933,7 +187933,7 @@
       "char": "𨣻",
       "en": "",
       "tone": "yān/yǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨣻"
     },
@@ -187942,7 +187942,7 @@
       "char": "𨻳",
       "en": "",
       "tone": "yàn/yān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𨻳"
     },
@@ -190095,7 +190095,7 @@
       "char": "䞁",
       "en": "",
       "tone": "yàng/yǎng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䞁"
     },
@@ -190907,7 +190907,7 @@
       "char": "𡛙",
       "en": "",
       "tone": "yāo/yǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡛙"
     },
@@ -190916,7 +190916,7 @@
       "char": "𣣳",
       "en": "",
       "tone": "yáo/yǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣣳"
     },
@@ -190925,7 +190925,7 @@
       "char": "𥤹",
       "en": "",
       "tone": "yào/yǎo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥤹"
     },
@@ -192259,7 +192259,7 @@
       "char": "䓉",
       "en": "",
       "tone": "yé/yē",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䓉"
     },
@@ -193305,7 +193305,7 @@
       "char": "㙠",
       "en": "",
       "tone": "yì/yī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㙠"
     },
@@ -193314,7 +193314,7 @@
       "char": "㘈",
       "en": "",
       "tone": "yì/yī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㘈"
     },
@@ -193323,7 +193323,7 @@
       "char": "㥴",
       "en": "",
       "tone": "yí/yǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㥴"
     },
@@ -193332,7 +193332,7 @@
       "char": "䚷",
       "en": "",
       "tone": "yì/yǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䚷"
     },
@@ -193341,7 +193341,7 @@
       "char": "䧇",
       "en": "",
       "tone": "yī/yǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䧇"
     },
@@ -193350,7 +193350,7 @@
       "char": "𠍳",
       "en": "",
       "tone": "yì/yī",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠍳"
     },
@@ -193359,7 +193359,7 @@
       "char": "𠤘",
       "en": "",
       "tone": "yí/yǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠤘"
     },
@@ -197555,7 +197555,7 @@
       "char": "㧈",
       "en": "",
       "tone": "yìn/yǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㧈"
     },
@@ -197564,7 +197564,7 @@
       "char": "㹞",
       "en": "",
       "tone": "yín/yǐn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㹞"
     },
@@ -197573,7 +197573,7 @@
       "char": "䖜",
       "en": "",
       "tone": "yìn/yín",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䖜"
     },
@@ -197582,7 +197582,7 @@
       "char": "𡓓",
       "en": "",
       "tone": "yín/yīn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𡓓"
     },
@@ -198943,7 +198943,7 @@
       "char": "㢍",
       "en": "",
       "tone": "yíng/yǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㢍"
     },
@@ -198952,7 +198952,7 @@
       "char": "㶈",
       "en": "",
       "tone": "yìng/yíng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㶈"
     },
@@ -198961,7 +198961,7 @@
       "char": "䁝",
       "en": "",
       "tone": "yíng/yǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䁝"
     },
@@ -198970,7 +198970,7 @@
       "char": "𩘑",
       "en": "",
       "tone": "yīng/yǐng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩘑"
     },
@@ -200009,7 +200009,7 @@
       "char": "𩟀",
       "en": "",
       "tone": "yōng/yǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩟀"
     },
@@ -200623,7 +200623,7 @@
       "char": "㕛",
       "en": "",
       "tone": "yòu/yǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㕛"
     },
@@ -200632,7 +200632,7 @@
       "char": "𠧴",
       "en": "",
       "tone": "yòu/yóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠧴"
     },
@@ -200641,7 +200641,7 @@
       "char": "𣢄",
       "en": "",
       "tone": "yōu/yǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣢄"
     },
@@ -200650,7 +200650,7 @@
       "char": "𣢜",
       "en": "",
       "tone": "yōu/yǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣢜"
     },
@@ -200659,7 +200659,7 @@
       "char": "𤴨",
       "en": "",
       "tone": "yòu/yǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤴨"
     },
@@ -200668,7 +200668,7 @@
       "char": "𧳫",
       "en": "",
       "tone": "yòu/yóu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧳫"
     },
@@ -200677,7 +200677,7 @@
       "char": "𪠥",
       "en": "",
       "tone": "yòu/yǒu",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𪠥"
     },
@@ -202074,7 +202074,7 @@
       "char": "㒜",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㒜"
     },
@@ -202083,7 +202083,7 @@
       "char": "㣃",
       "en": "",
       "tone": "yù/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㣃"
     },
@@ -202092,7 +202092,7 @@
       "char": "㤤",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㤤"
     },
@@ -202101,7 +202101,7 @@
       "char": "㥔",
       "en": "",
       "tone": "yù/yú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㥔"
     },
@@ -202110,7 +202110,7 @@
       "char": "㦛",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㦛"
     },
@@ -202119,7 +202119,7 @@
       "char": "㪌",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㪌"
     },
@@ -202128,7 +202128,7 @@
       "char": "㲾",
       "en": "",
       "tone": "yù/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㲾"
     },
@@ -202137,7 +202137,7 @@
       "char": "䄨",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䄨"
     },
@@ -202146,7 +202146,7 @@
       "char": "䨞",
       "en": "",
       "tone": "yù/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䨞"
     },
@@ -202155,7 +202155,7 @@
       "char": "𣝑",
       "en": "",
       "tone": "yù/yú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣝑"
     },
@@ -202164,7 +202164,7 @@
       "char": "𦏻",
       "en": "",
       "tone": "yù/yú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦏻"
     },
@@ -202173,7 +202173,7 @@
       "char": "𦐛",
       "en": "",
       "tone": "yù/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦐛"
     },
@@ -202182,7 +202182,7 @@
       "char": "𦦲",
       "en": "",
       "tone": "yù/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦦲"
     },
@@ -202191,7 +202191,7 @@
       "char": "𧐄",
       "en": "",
       "tone": "yù/yú",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧐄"
     },
@@ -202200,7 +202200,7 @@
       "char": "𩵎",
       "en": "",
       "tone": "yú/yǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩵎"
     },
@@ -208197,7 +208197,7 @@
       "char": "䥄",
       "en": "",
       "tone": "zàn/zǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䥄"
     },
@@ -208206,7 +208206,7 @@
       "char": "𥳋",
       "en": "",
       "tone": "zàn/zān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𥳋"
     },
@@ -208624,7 +208624,7 @@
       "char": "䜊",
       "en": "",
       "tone": "zào/zāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䜊"
     },
@@ -209584,7 +209584,7 @@
       "char": "㻸",
       "en": "",
       "tone": "zēn",
-      "weight": 1,
+      "weight": 4,
       "stroke_aux": "",
       "trad": "㻸"
     },
@@ -209593,7 +209593,7 @@
       "char": "䫈",
       "en": "",
       "tone": "zèn",
-      "weight": 1,
+      "weight": 2,
       "stroke_aux": "",
       "trad": "䫈"
     },
@@ -209741,7 +209741,7 @@
       "char": "㡸",
       "en": "",
       "tone": "zhà/zhǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㡸"
     },
@@ -209750,7 +209750,7 @@
       "char": "㳐",
       "en": "",
       "tone": "zhá/zhǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㳐"
     },
@@ -209759,7 +209759,7 @@
       "char": "𩃹",
       "en": "",
       "tone": "zhá/zhǎ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩃹"
     },
@@ -211176,7 +211176,7 @@
       "char": "㠭",
       "en": "",
       "tone": "zhàn/zhǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㠭"
     },
@@ -211185,7 +211185,7 @@
       "char": "䟋",
       "en": "",
       "tone": "zhàn/zhǎn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䟋"
     },
@@ -211194,7 +211194,7 @@
       "char": "𧾍",
       "en": "",
       "tone": "zhàn/zhān",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𧾍"
     },
@@ -212186,7 +212186,7 @@
       "char": "𢕔",
       "en": "",
       "tone": "zhàng/zhāng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢕔"
     },
@@ -212512,7 +212512,7 @@
       "char": "𫞃",
       "en": "",
       "tone": "zhào/zhāo",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𫞃"
     },
@@ -213063,7 +213063,7 @@
       "char": "䊮",
       "en": "",
       "tone": "zhè/zhé",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䊮"
     },
@@ -213929,7 +213929,7 @@
       "char": "𣓀",
       "en": "",
       "tone": "zhēn/zhěn",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𣓀"
     },
@@ -214813,7 +214813,7 @@
       "char": "𢹑",
       "en": "",
       "tone": "zhèng/zhēng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𢹑"
     },
@@ -215526,7 +215526,7 @@
       "char": "㞢",
       "en": "",
       "tone": "zhī",
-      "weight": 19,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㞢"
     },
@@ -215535,7 +215535,7 @@
       "char": "㜼",
       "en": "",
       "tone": "zhì/zhí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㜼"
     },
@@ -215544,7 +215544,7 @@
       "char": "㨁",
       "en": "",
       "tone": "zhì/zhí",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㨁"
     },
@@ -215553,7 +215553,7 @@
       "char": "䎺",
       "en": "",
       "tone": "zhì/zhǐ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䎺"
     },
@@ -219058,7 +219058,7 @@
       "char": "㨄",
       "en": "",
       "tone": "zhōu",
-      "weight": 32,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㨄"
     },
@@ -219969,7 +219969,7 @@
       "char": "䌵",
       "en": "",
       "tone": "zhú/zhǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "䌵"
     },
@@ -219978,7 +219978,7 @@
       "char": "𠰍",
       "en": "",
       "tone": "zhù/zhǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𠰍"
     },
@@ -219987,7 +219987,7 @@
       "char": "𦅷",
       "en": "",
       "tone": "zhù/zhǔ",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𦅷"
     },
@@ -223821,7 +223821,7 @@
       "char": "𤡆",
       "en": "",
       "tone": "zòng/zōng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𤡆"
     },
@@ -223830,7 +223830,7 @@
       "char": "𩭤",
       "en": "",
       "tone": "zōng/zǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩭤"
     },
@@ -223839,7 +223839,7 @@
       "char": "𩮀",
       "en": "",
       "tone": "zōng/zǒng",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "𩮀"
     },
@@ -225705,7 +225705,7 @@
       "char": "㸲",
       "en": "",
       "tone": "zuò/zuó",
-      "weight": 2,
+      "weight": 1,
       "stroke_aux": "",
       "trad": "㸲"
     },
