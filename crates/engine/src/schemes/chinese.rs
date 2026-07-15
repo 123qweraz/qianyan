@@ -1,5 +1,4 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
-use fst::{Automaton, IntoStreamer, Streamer};
 
 pub struct ChineseScheme;
 
@@ -106,7 +105,7 @@ fn match_user_dict_abbreviation(
                 continue;
             }
             let syl = &pinyin[..len];
-            if !trie.index.contains_key(syl) {
+            if !trie.contains_key(syl) {
                 continue;
             }
             let matched = if is_initial {
@@ -254,19 +253,8 @@ impl InputScheme for ChineseScheme {
                         }
                     }
                     if i == raw_parsed.len() - 1 && context.config.input.enable_prefix_matching && !py.is_empty() {
-                        let matcher = fst::automaton::Str::new(py).starts_with();
-                        let mut comp_keys: Vec<String> = Vec::new();
                         let max_key_len = if py.len() <= 3 { 6usize } else { py.len() + 2 };
-                        let mut stream = d.index.search(matcher).into_stream();
-                        while let Some((key_bytes, _)) = stream.next() {
-                            if let Ok(key) = std::str::from_utf8(key_bytes) {
-                                let klen = key.len();
-                                if klen > py.len() && klen <= max_key_len {
-                                    comp_keys.push(key.to_string());
-                                    if comp_keys.len() >= 30 { break; }
-                                }
-                            }
-                        }
+                        let mut comp_keys = d.search_completion_keys(py, max_key_len, 30);
                         comp_keys.sort_by_key(|a| a.len());
                         comp_keys.truncate(10);
                         for key in comp_keys {

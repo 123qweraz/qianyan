@@ -131,26 +131,30 @@ impl Trie {
     }
 
     /// 带等级过滤的精确匹配
+    /// 主 Trie 未命中时回退到 fallback
     pub fn get_all_exact_with_level_filter(
         &self,
         pinyin: &str,
         level_filter: Option<&str>,
     ) -> Option<Vec<TrieResult<'_>>> {
         log::debug!("trie_exact: pinyin={}, level_filter={:?}", pinyin, level_filter);
-        let offset = self.index.get(pinyin)? as usize;
+
+        // 先查主 Trie
+        let main_offset = self.index.get(pinyin).map(|o| o as usize);
         let mut results = Vec::new();
-        self.read_block(offset, |tr| {
-            // 应用等级过滤
-            if let Some(filter_level) = level_filter {
-                if tr.stroke_aux == filter_level {
+        if let Some(offset) = main_offset {
+            self.read_block(offset, |tr| {
+                if let Some(filter_level) = level_filter {
+                    if tr.stroke_aux == filter_level {
+                        results.push(tr);
+                    }
+                } else {
                     results.push(tr);
                 }
-            } else {
-                results.push(tr);
-            }
-        });
+            });
+        }
 
-        // 查询副 Trie 并合并去重
+        // 查询副 Trie 并合并去重（主 Trie 有结果时也合并）
         if let Some(ref fb) = self.fallback {
             if let Some(fb_results) = fb.get_all_exact_with_level_filter(pinyin, level_filter) {
                 let mut seen: HashSet<&str> = results.iter().map(|r| r.word).collect();
@@ -162,7 +166,6 @@ impl Trie {
             }
         }
 
-        // 如果过滤后没有结果，返回 None
         if results.is_empty() {
             None
         } else {
@@ -171,21 +174,82 @@ impl Trie {
     }
 
     /// 快速前缀检查：FST 中是否有任何 key 以 prefix 开头（不读数据块）
+    /// 主 Trie 未命中时回退到 fallback
     pub fn has_prefix(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
         let mut stream = self.index.search(matcher).into_stream();
-        stream.next().is_some()
+        if stream.next().is_some() {
+            return true;
+        }
+        if let Some(ref fb) = self.fallback {
+            let matcher = fst::automaton::Str::new(prefix).starts_with();
+            let mut stream = fb.index.search(matcher).into_stream();
+            return stream.next().is_some();
+        }
+        false
     }
 
+    /// 是否有比 prefix 更长的匹配 key
+    /// 主 Trie 未命中时回退到 fallback
     pub fn has_longer_match(&self, prefix: &str) -> bool {
         let matcher = fst::automaton::Str::new(prefix).starts_with();
-        let mut stream = self.index.search(matcher).into_stream();
+        let mut stream = self.index.search(matcher.clone()).into_stream();
         while let Some((key, _)) = stream.next() {
             if key.len() > prefix.len() {
                 return true;
             }
         }
+        if let Some(ref fb) = self.fallback {
+            let mut stream = fb.index.search(matcher).into_stream();
+            while let Some((key, _)) = stream.next() {
+                if key.len() > prefix.len() {
+                    return true;
+                }
+            }
+        }
         false
+    }
+
+    /// 检查拼音 key 是否存在（含 fallback）
+    pub fn contains_key(&self, key: &str) -> bool {
+        if self.index.contains_key(key) {
+            return true;
+        }
+        if let Some(ref fb) = self.fallback {
+            return fb.index.contains_key(key);
+        }
+        false
+    }
+
+    /// 从主 Trie + fallback 合并搜索以 prefix 开头的 completion key
+    pub fn search_completion_keys(&self, prefix: &str, max_key_len: usize, max_keys: usize) -> Vec<String> {
+        let mut keys: Vec<String> = Vec::new();
+        let matcher = fst::automaton::Str::new(prefix).starts_with();
+        let mut stream = self.index.search(matcher.clone()).into_stream();
+        while let Some((key_bytes, _)) = stream.next() {
+            if let Ok(key) = std::str::from_utf8(key_bytes) {
+                let klen = key.len();
+                if klen > prefix.len() && klen <= max_key_len {
+                    keys.push(key.to_string());
+                    if keys.len() >= max_keys { return keys; }
+                }
+            }
+        }
+        if let Some(ref fb) = self.fallback {
+            let mut stream = fb.index.search(matcher).into_stream();
+            while let Some((key_bytes, _)) = stream.next() {
+                if let Ok(key) = std::str::from_utf8(key_bytes) {
+                    let klen = key.len();
+                    if klen > prefix.len() && klen <= max_key_len {
+                        if !keys.contains(&key.to_string()) {
+                            keys.push(key.to_string());
+                            if keys.len() >= max_keys { return keys; }
+                        }
+                    }
+                }
+            }
+        }
+        keys
     }
 
     /// 检查词典中是否存在该词（不限拼音），用于防止系统词典词被重复加入用户词典
