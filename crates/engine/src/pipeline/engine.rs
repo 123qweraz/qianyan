@@ -196,7 +196,17 @@ impl SearchEngine {
 
         let paths = self.trie_paths.get(profile)?;
         log::info!("Lazy loading trie: profile={}", profile);
-        let trie = Trie::load(&paths.0, &paths.1, false).ok()?;
+        let mut trie = Trie::load(&paths.0, &paths.1, false).ok()?;
+
+        // 自动关联副 Trie（如 chinese_extras 作为 chinese 的 fallback）
+        let extras_profile = format!("{}_extras", profile);
+        if let Some(extras_paths) = self.trie_paths.get(&extras_profile) {
+            if let Ok(extras_trie) = Trie::load(&extras_paths.0, &extras_paths.1, false) {
+                log::info!("Trie fallback: {} ← {}", profile, extras_profile);
+                trie.set_fallback(Arc::new(extras_trie));
+            }
+        }
+
         let trie_arc = Arc::new(trie);
 
         if let Ok(mut cache) = self.trie_cache.write() {
