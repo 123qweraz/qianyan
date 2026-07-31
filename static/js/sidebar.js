@@ -8,7 +8,7 @@
         '<a href="#section-settings" data-keywords="系统 拼音 候选栏 模糊音 双拼 快速 CapsLock 外观 键盘布局 快捷键 翻页 以词定字 导航 学习算法 频率 ngram 记忆 自动造词">⚙️ 设置部分</a>' +
         '<a href="#section-dicts" data-keywords="词典 词库 用户词典 自造词 新词 编译 编辑">📖 词典工具</a>' +
         '<a href="#section-learning" data-keywords="学习 练习 笔画码 文章 打字 辅助码">✍️ 学习部分</a>' +
-        '<a href="#section-tools" data-keywords="工具 emoji 表情 符号 转换 虚拟键盘 网页输入 大写 日期 按键浮层 录屏">🧰 额外功能</a>' +
+        '<a href="#section-tools" data-keywords="工具 emoji 表情 符号 转换 虚拟键盘 网页输入 大写 日期 按键浮层 录屏 阅读器 读书 电子书 txt epub">🧰 额外功能</a>' +
         '<a href="#section-help" data-keywords="帮助 备份 恢复 导入 导出 迁移 还原">📦 帮助与备份</a>' +
         '</nav>' +
         '</aside>';

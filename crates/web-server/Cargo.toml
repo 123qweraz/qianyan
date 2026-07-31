@@ -22,3 +22,7 @@ arc-swap = { workspace = true }
 fst = { workspace = true }
 walkdir = { workspace = true }
 encoding_rs = { workspace = true }
+epub = "2"
+regex = "1"
+tempfile = "3"
+base64 = "0.22"
