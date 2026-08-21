@@ -75,6 +75,10 @@
         "profile": "stroke"
       },
       {
+        "key": "v",
+        "profile": "bihua"
+      },
+      {
         "key": "m",
         "profile": "chinese,english,japanese"
       },

@@ -72,6 +72,27 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // bihua 方案：从 chinese/chars 编译，用完整笔顺 strokes 字段作为 key（逐笔笔画输入）
+    {
+        let src_path = root.join("dicts/chinese/chars");
+        let out_dir = root.join("data/bihua");
+        println!("[Compiler] 检查方案: bihua（逐笔笔画，从 chinese/chars 编译）");
+        fs::create_dir_all(&out_dir)?;
+        let trie_dat = out_dir.join("trie.data");
+        if should_compile(&src_path, &trie_dat) {
+            println!("[Compiler] 方案 [bihua] 需要编译，正在执行...");
+            let start = std::time::Instant::now();
+            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("strokes"))?;
+            println!("[Compiler] 方案 [bihua] 编译完成，耗时 {:?}", start.elapsed());
+        } else {
+            println!("[Compiler] 方案 [bihua] 已是最新，跳过。");
+            let lock_path = trie_dat.with_extension("data.lock");
+            if !lock_path.exists() {
+                File::create(&lock_path)?;
+            }
+        }
+    }
+
     Ok(())
 }
 

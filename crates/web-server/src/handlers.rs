@@ -8,7 +8,7 @@ use axum::{
 use fst::Streamer;
 use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery};
 use qianyan_ime_engine::processor::FilterMode;
-use qianyan_ime_engine::schemes::{ChineseScheme, EnglishScheme, JapaneseScheme, StrokeScheme};
+use qianyan_ime_engine::schemes::{BihuaScheme, ChineseScheme, EnglishScheme, JapaneseScheme, StrokeScheme};
 use qianyan_ime_engine::scheme::InputScheme;
 use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
@@ -2126,6 +2126,7 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
     schemes_map.insert("english".into(), Box::new(EnglishScheme::new()));
     schemes_map.insert("japanese".into(), Box::new(JapaneseScheme::new()));
     schemes_map.insert("stroke".into(), Box::new(StrokeScheme::new()));
+    schemes_map.insert("bihua".into(), Box::new(BihuaScheme::new()));
 
     let single_syllables = Arc::new(load_single_syllables(root));
     let mut engine = SearchEngine::new(

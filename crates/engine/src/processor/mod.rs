@@ -609,7 +609,8 @@ impl Processor {
             "chinese" => "中".to_string(),
             "english" => "英".to_string(),
             "japanese" => "日".to_string(),
-            "stroke" => "笔".to_string(),
+            "stroke" => "双".to_string(),
+            "bihua" => "笔".to_string(),
             "mixed" => "混".to_string(),
             _ => display
                 .chars()

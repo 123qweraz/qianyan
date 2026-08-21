@@ -59,6 +59,7 @@ impl EngineContext {
     fn default_schemes() -> Arc<HashMap<String, Box<dyn InputScheme>>> {
         let mut m: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
         m.insert("stroke".to_string(), Box::new(crate::schemes::StrokeScheme::new()));
+        m.insert("bihua".to_string(), Box::new(crate::schemes::BihuaScheme::new()));
         m.insert("english".to_string(), Box::new(crate::schemes::EnglishScheme::new()));
         m.insert("japanese".to_string(), Box::new(crate::schemes::JapaneseScheme::new()));
         m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));

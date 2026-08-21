@@ -90,7 +90,7 @@ impl SessionState {
     }
 
     pub fn is_stroke_mode(&self) -> bool {
-        self.active_profiles.contains(&"stroke".to_string())
+        self.active_profiles.iter().any(|p| p == "stroke" || p == "bihua")
     }
 
     pub fn is_english_mode(&self) -> bool {

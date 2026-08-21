@@ -645,6 +645,12 @@ pub fn default_profile_layouts() -> std::collections::HashMap<String, ProfileLay
             mappings: std::collections::HashMap::new(),
         });
     layouts
+        .entry("bihua".to_string())
+        .or_insert(ProfileLayout {
+            name: "笔画默认布局".into(),
+            mappings: std::collections::HashMap::new(),
+        });
+    layouts
 }
 
 impl Config {
@@ -1019,6 +1025,10 @@ impl Config {
                         name: "stroke".to_string(),
                         path: "data/stroke/trie".to_string(),
                     },
+                    Profile {
+                        name: "bihua".to_string(),
+                        path: "data/bihua/trie".to_string(),
+                    },
                 ],
             },
             appearance: Appearance {
@@ -1114,6 +1124,10 @@ impl Config {
                     ProfileKey {
                         key: "b".into(),
                         profile: "stroke".into(),
+                    },
+                    ProfileKey {
+                        key: "v".into(),
+                        profile: "bihua".into(),
                     },
                     ProfileKey {
                         key: "m".into(),
