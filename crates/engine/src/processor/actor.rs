@@ -266,13 +266,20 @@ impl ProcessorActor {
 
     fn build_candidate_infos(&self, start: usize, end: usize) -> Vec<CandidateInfo> {
         let ctx = &self.processor.ctx;
+        let is_pybi = ctx.session_state.is_pybi_mode();
         ctx.session.candidates[start..end].iter().enumerate().map(|(i, c)| {
             let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
-            let label = format!("{}.", i + 1);
+            // pybi 用笔顺筛选而非序号选字：不显示序号，辅助码仅显示前 4 位笔顺
+            let label = if is_pybi { String::new() } else { format!("{}.", i + 1) };
+            let hint = if is_pybi {
+                c.hint.chars().take(4).collect()
+            } else {
+                c.hint.to_string()
+            };
             CandidateInfo {
                 text: c.text.to_string(),
                 label,
-                hint: c.hint.to_string(),
+                hint,
                 is_fuzzy,
             }
         }).collect()

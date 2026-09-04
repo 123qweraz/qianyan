@@ -305,6 +305,7 @@ fn get_short_display(ctx: &EngineContext) -> String {
         "japanese" => "日".to_string(),
         "stroke" => "双".to_string(),
         "bihua" => "笔".to_string(),
+        "pybi" => "比".to_string(),
         "mixed" => "混".to_string(),
         _ => display
             .chars()

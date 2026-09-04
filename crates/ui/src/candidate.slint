@@ -32,10 +32,10 @@ component CandidateItem inherits Rectangle {
     layout := HorizontalLayout {
         padding-left: 8px; padding-right: 8px; 
         padding-top: 6px; padding-bottom: 6px;
-        spacing: 6px;
+        spacing: 2px;
         alignment: start;
         
-        Text { 
+        if label != "" : Text { 
             text: label; 
             color: selected ? highlight_text_color : aux_text_color; 
             vertical-alignment: center; 
@@ -55,8 +55,8 @@ component CandidateItem inherits Rectangle {
         // 辅助码/音调内容由引擎根据 display_mode 生成，不为空即显示
         if english_aux != "" : Text {
             text: english_aux;
-            color: selected ? highlight_text_color : text_color;
-            font-size: font_size;
+            color: selected ? highlight_text_color : aux_text_color;
+            font-size: font_size * 0.8;
             font-family: font_family;
             vertical-alignment: center;
         }

@@ -92,9 +92,16 @@ impl SearchEngine {
         );
 
         if let Some(scheme) = self.schemes.get(query.profile) {
-            let mut tries_map = HashMap::with_capacity(1);
+            let mut tries_map = HashMap::with_capacity(2);
             if let Some(trie) = self.get_or_load_trie(query.profile) {
                 tries_map.insert(query.profile.to_string(), trie);
+            }
+            // pybi 方案：拼音词组依赖 chinese 词库，需一并加载
+            let is_pybi = query.profile.eq_ignore_ascii_case("pybi");
+            if is_pybi && !tries_map.contains_key("chinese") {
+                if let Some(trie) = self.get_or_load_trie("chinese") {
+                    tries_map.insert("chinese".to_string(), trie);
+                }
             }
             let context = crate::scheme::SchemeContext {
                 config: config_ref,
@@ -116,16 +123,22 @@ impl SearchEngine {
             scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
 
             let mut results = Vec::new();
+            // pybi 方案：默认始终显示完整笔顺（供逐笔笔画选字参考）
+            let is_pybi = query.profile.to_lowercase() == "pybi";
             for sc in scheme_candidates {
-                let hint = Arc::from(match config_ref.input.display_mode {
-                    crate::DisplayMode::CharacterOnly => "",
-                    crate::DisplayMode::CharacterWithEnglish => {
-                        sc.english.as_str()
+                let hint = Arc::from(if is_pybi && !sc.stroke_aux.is_empty() {
+                    sc.stroke_aux.as_str()
+                } else {
+                    match config_ref.input.display_mode {
+                        crate::DisplayMode::CharacterOnly => "",
+                        crate::DisplayMode::CharacterWithEnglish => {
+                            sc.english.as_str()
+                        }
+                        crate::DisplayMode::CharacterWithStroke => {
+                            sc.stroke_aux.as_str()
+                        }
+                        crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
                     }
-                    crate::DisplayMode::CharacterWithStroke => {
-                        sc.stroke_aux.as_str()
-                    }
-                    crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
                 });
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {

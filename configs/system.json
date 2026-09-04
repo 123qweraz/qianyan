@@ -25,6 +25,10 @@
       {
         "name": "bihua",
         "path": "data/bihua/trie"
+      },
+      {
+        "name": "pybi",
+        "path": "data/pybi/trie"
       }
     ],
     "punctuation_file": "dicts/chinese/punctuation.json"
@@ -36,7 +40,8 @@
       "english",
       "japanese",
       "stroke",
-      "bihua"
+      "bihua",
+      "pybi"
     ],
     "phantom_separator": ">",
     "phantom_type": "Pinyin"

@@ -162,8 +162,7 @@ impl Compositor {
 
         let raw_input = &ctx.session.buffer;
 
-        if ctx.config.auto_commit_stroke()
-            && ctx.session_state.is_stroke_mode()
+        if raw_input.contains(';')
             && !ctx.session.candidates.is_empty()
             && ctx.session.candidates[0].match_level == 3
         {
@@ -175,16 +174,14 @@ impl Compositor {
             }
         }
 
-        if raw_input.contains(';')
+        // pybi 方案：拼音底子 + 逐笔笔画筛选，筛选到唯一单字时自动上屏
+        if ctx.session_state.is_pybi_mode()
+            && ctx.session.buffer.chars().any(|c| c.is_ascii_digit())
             && !ctx.session.candidates.is_empty()
-            && ctx.session.candidates[0].match_level == 3
+            && ctx.session.candidates.len() == 1
         {
-            let is_unique_exact = ctx.session.candidates.len() == 1
-                || ctx.session.candidates.get(1).is_none_or(|c| c.match_level != 3);
-            if is_unique_exact {
-                let word = ctx.session.candidates[0].text.clone();
-                return Some(commit_candidate(ctx, word, 0));
-            }
+            let word = ctx.session.candidates[0].text.clone();
+            return Some(commit_candidate(ctx, word, 0));
         }
 
         if !ctx.config.auto_commit_unique_full_match() || ctx.session.candidates.len() != 1 {

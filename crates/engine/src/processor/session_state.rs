@@ -93,6 +93,10 @@ impl SessionState {
         self.active_profiles.iter().any(|p| p == "stroke" || p == "bihua")
     }
 
+    pub fn is_pybi_mode(&self) -> bool {
+        self.active_profiles.iter().any(|p| p == "pybi")
+    }
+
     pub fn is_english_mode(&self) -> bool {
         self.active_profiles.len() == 1 && self.active_profiles[0] == "english"
     }

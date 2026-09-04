@@ -27,6 +27,7 @@ const ALL_PROFILES: &[(&str, &str)] = &[
     ("japanese", "日文"),
     ("stroke", "双笔画"),
     ("bihua", "笔画"),
+    ("pybi", "拼音笔画"),
     ("chinese,english,japanese", "中日英混"),
 ];
 
@@ -478,6 +479,7 @@ unsafe extern "system" fn tray_wnd_proc(
                                 ("japanese", "日文"),
                                 ("stroke", "双笔画"),
                                 ("bihua", "笔画"),
+                                ("pybi", "拼音笔画"),
                                 ("chinese,english,japanese", "中日英混"),
                             ];
                             let profiles: Vec<&(&str, &str)> = all_profiles.iter()
@@ -495,7 +497,7 @@ unsafe extern "system" fn tray_wnd_proc(
                             let profile_zh = match state.active_profile.as_str() {
                                 "chinese" => "中文", "english" => "英文",
                                 "japanese" => "日文", "stroke" => "双笔画",
-                                "bihua" => "笔画",
+                                "bihua" => "笔画", "pybi" => "拼音笔画",
                                 "chinese,english,japanese" => "中日英混",
                                 other => other,
                             };
@@ -528,7 +530,7 @@ unsafe extern "system" fn tray_wnd_proc(
                     1001 => { let _ = tx.send(TrayEvent::ToggleIme); }
                     1009 => { let _ = tx.send(TrayEvent::ToggleEnabled); }
                     2000..=2005 => {
-                        let profiles = vec!["chinese", "english", "japanese", "stroke", "bihua", "chinese,english,japanese"];
+                        let profiles = vec!["chinese", "english", "japanese", "stroke", "bihua", "pybi", "chinese,english,japanese"];
                         if let Some(profile) = profiles.get(id as usize - 2000) {
                             let _ = tx.send(TrayEvent::SetProfile(profile.to_string()));
                         }

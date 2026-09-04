@@ -83,6 +83,10 @@
         "profile": "chinese,english,japanese"
       },
       {
+        "key": "x",
+        "profile": "pybi"
+      },
+      {
         "key": "s",
         "profile": "shengpizi"
       }

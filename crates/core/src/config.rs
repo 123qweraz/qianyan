@@ -1029,6 +1029,10 @@ impl Config {
                         name: "bihua".to_string(),
                         path: "data/bihua/trie".to_string(),
                     },
+                    Profile {
+                        name: "pybi".to_string(),
+                        path: "data/pybi/trie".to_string(),
+                    },
                 ],
             },
             appearance: Appearance {
@@ -1107,7 +1111,7 @@ impl Config {
                 enable_error_correction: true,
                 rare_char_mode: RareCharMode::CommonOnly,
                 filter_proper_nouns_by_case: true,
-                enabled_profiles: vec!["chinese".to_string()],
+                enabled_profiles: vec!["chinese".to_string(), "pybi".to_string()],
                 profile_keys: vec![
                     ProfileKey {
                         key: "c".into(),
@@ -1128,6 +1132,10 @@ impl Config {
                     ProfileKey {
                         key: "v".into(),
                         profile: "bihua".into(),
+                    },
+                    ProfileKey {
+                        key: "x".into(),
+                        profile: "pybi".into(),
                     },
                     ProfileKey {
                         key: "m".into(),
