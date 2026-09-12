@@ -181,13 +181,9 @@ impl ConfigManager {
 
         self.rebuild_combined_dict();
 
-        // 写盘
-        if let Some(ref user_data) = self.user_data {
-            if user_data.save_user_dict(profile, crate::user_data::DataType::Learned,
-                &self.learned_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict Learned 失败"); }
-            if user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
-                &self.long_term_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict LongTerm 失败"); }
-        }
+        // 内存已更新完成。写盘延迟到批量 flush（save_usage_if_due，约每 30s 一次），
+        // 避免每提交一个字都在按键拦截线程上做两次全量 JSON 串行化+写文件。
+        self.save_usage_if_due(profile);
     }
 
     pub fn insert_long_term_direct(&self, profile: &str, pinyin: &str, entries: &[(String, u32)]) {
@@ -200,10 +196,7 @@ impl ConfigManager {
             Arc::new(long)
         });
         self.rebuild_combined_dict();
-        if let Some(ref user_data) = self.user_data {
-            if user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm,
-                &self.long_term_words.load()).is_err() { log::warn!("[ConfigManager] save_user_dict LongTerm(insert) 失败"); }
-        }
+        self.save_usage_if_due(profile);
     }
 
     fn rebuild_combined_dict(&self) {
@@ -256,9 +249,13 @@ impl ConfigManager {
         if last.elapsed() >= USAGE_SAVE_INTERVAL {
             *last = Instant::now();
             if let Some(ref user_data) = self.user_data {
+                let learned = self.learned_words.load();
+                let long_term = self.long_term_words.load();
+                let ngram = self.ngram_history.load();
+                if user_data.save_user_dict(profile, crate::user_data::DataType::Learned, &learned).is_err() { log::warn!("[ConfigManager] save_user_dict Learned 失败"); }
+                if user_data.save_user_dict(profile, crate::user_data::DataType::LongTerm, &long_term).is_err() { log::warn!("[ConfigManager] save_user_dict LongTerm 失败"); }
                 if user_data.save_order(profile, &self.user_order.load()).is_err() { log::warn!("[ConfigManager] save_order 失败"); }
-                if user_data.save_user_dict(profile, crate::user_data::DataType::Ngram,
-                    &self.ngram_history.load()).is_err() { log::warn!("[ConfigManager] save_user_dict Ngram 失败"); }
+                if user_data.save_user_dict(profile, crate::user_data::DataType::Ngram, &ngram).is_err() { log::warn!("[ConfigManager] save_user_dict Ngram 失败"); }
             }
         }
     }
