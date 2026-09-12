@@ -2569,6 +2569,12 @@ fn merge_json_objects(mut base: serde_json::Value, overlay: serde_json::Value) -
 // ===== Full Backup / Restore =====
 
 fn configs_root() -> PathBuf {
+    // 与引擎 Config::get_config_dir 保持一致的显式覆盖机制（测试/独立部署可用）
+    if let Ok(dir) = std::env::var("QIANYAN_CONFIG_DIR") {
+        if !dir.is_empty() {
+            return PathBuf::from(dir);
+        }
+    }
     // 尝试找到 configs/ 目录
     if let Ok(cwd) = std::env::current_dir() {
         let configs = cwd.join("configs");
@@ -2645,22 +2651,30 @@ pub(crate) async fn restore_full_backup(
     State((_, _, tray_tx)): State<WebState>,
     Json(body): Json<serde_json::Value>,
 ) -> StatusCode {
-    // 1. 恢复配置文件
+    // 1. 恢复配置文件（name 走白名单校验，防止 "../../xxx" 逃逸 configs/ 目录）
     if let Some(config_data) = body.get("config").and_then(|v| v.as_object()) {
         let configs = configs_root();
         let _ = std::fs::create_dir_all(&configs);
         for (name, value) in config_data {
+            if !valid_profile_name(name) {
+                log::warn!("[Restore] 跳过非法配置文件名: {:?}", name);
+                continue;
+            }
             let path = configs.join(format!("{}.json", name));
             let content = serde_json::to_string_pretty(value).unwrap_or_default();
             let _ = std::fs::write(&path, content);
         }
     }
 
-    // 2. 恢复用户数据
+    // 2. 恢复用户数据（profile 名白名单校验，与 import_user_data 一致）
     if let Some(user_data) = body.get("user_data").and_then(|v| v.as_object()) {
         let root = user_dict_root();
         let _ = std::fs::create_dir_all(&root);
         for (profile, data) in user_data {
+            if !valid_profile_name(profile) {
+                log::warn!("[Restore] 跳过非法 profile 名: {:?}", profile);
+                continue;
+            }
             let profile_dir = root.join(profile);
             let _ = std::fs::create_dir_all(&profile_dir);
             if let Some(data_obj) = data.as_object() {
@@ -2885,4 +2899,89 @@ async fn extract_file_bytes(
         }
     }
     Err((StatusCode::BAD_REQUEST, "未提供文件".into()))
+}
+
+#[cfg(test)]
+mod restore_backup_tests {
+    use super::*;
+    use std::sync::{mpsc, RwLock};
+
+    fn temp_roots(prefix: &str) -> std::path::PathBuf {
+        let base = std::env::temp_dir().join(format!(
+            "qianyan_restore_{}_{}",
+            prefix,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("configs")).unwrap();
+        std::fs::create_dir_all(base.join("qianyan-ime")).unwrap();
+        base
+    }
+
+    fn state() -> WebState {
+        let (tx, _rx) = mpsc::channel();
+        (
+            Arc::new(RwLock::new(Config::default_config())),
+            Arc::new(RwLock::new(HashMap::new())),
+            tx,
+        )
+    }
+
+    fn block_on<F: std::future::Future>(f: F) -> F::Output {
+        tokio::runtime::Runtime::new().unwrap().block_on(f)
+    }
+
+    /// 恶意 name/profile 不能逃逸 configs/ 与 user_data/；env 覆盖机制一并验证。
+    /// 全部放在同一测试内避免并行测试对进程级 env 的竞态。
+    #[test]
+    fn restore_rejects_path_traversal_names() {
+        let base = temp_roots("traversal");
+        let configs = base.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", &configs);
+        std::env::set_var("XDG_CONFIG_HOME", &base);
+
+        assert_eq!(configs_root(), configs);
+
+        let unique = format!("evil_{}", std::process::id());
+        let config_key = format!("../../{}", unique);
+        let user_key = format!("../../{}", unique);
+
+        let body = serde_json::json!({
+            "config": {
+                config_key: {"placeholder": true},
+                "appearance": {"key": "value"},
+            },
+            "user_data": {
+                user_key: {
+                    "learned": {"ni": [["你", 1]]}
+                },
+                "normal": {
+                    "learned": {"ni": [["你好", 1]]}
+                },
+            },
+        });
+
+        let code = block_on(restore_full_backup(State(state()), Json(body)));
+        assert_eq!(code, StatusCode::OK);
+
+        // 恶意 key 不应逃逸：configs/../../{unique}.json 与 user_data_root/../../{unique}
+        assert!(!configs.join("..").join("..").join(format!("{unique}.json")).exists());
+        let real_user_root = base.join("qianyan-ime").join("user_data");
+        assert!(!real_user_root.join("..").join("..").join(&unique).exists());
+
+        // 合法条目应正常恢复
+        assert!(configs.join("appearance.json").exists());
+        assert!(real_user_root.join("normal").join("learned.json").exists());
+    }
+
+    #[test]
+    fn valid_profile_name_rejects_traversal() {
+        assert!(valid_profile_name("default"));
+        assert!(valid_profile_name("my-profile_2"));
+        assert!(!valid_profile_name("../evil"));
+        assert!(!valid_profile_name("../../evil"));
+        assert!(!valid_profile_name("a/b"));
+        assert!(!valid_profile_name(""));
+        assert!(!valid_profile_name(".."));
+    }
 }
