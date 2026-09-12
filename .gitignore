@@ -12,6 +12,7 @@ data/
 ngram.json
 user_adapter.json
 ref/
+configs/.config.lock
 
 # Reference/External project
 webime/

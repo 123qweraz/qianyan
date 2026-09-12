@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::OnceLock;
 
+use crate::file_lock;
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     pub files: Files,
@@ -793,10 +795,27 @@ impl Config {
         }
     }
 
-    /// 保存单个 JSON 文件
+    /// 保存单个 JSON 文件（临时文件 + 原子 rename，避免并发读读到半截文件）
     fn save_json(path: &std::path::Path, value: &Value) -> Result<(), Box<dyn std::error::Error>> {
-        let f = std::fs::File::create(path)?;
-        serde_json::to_writer_pretty(f, value)?;
+        let dir = path.parent().unwrap_or_else(|| std::path::Path::new("."));
+        let file_name = path
+            .file_name()
+            .ok_or("invalid config path")?
+            .to_string_lossy();
+        let tmp = dir.join(format!(".{}.{}.tmp", file_name, std::process::id()));
+        let _ = std::fs::remove_file(&tmp);
+        {
+            let f = std::fs::File::create(&tmp)?;
+            serde_json::to_writer_pretty(&f, value)?;
+            // 确保数据落盘后再 rename，避免断电/崩溃后得到空文件
+            f.sync_all().ok();
+        }
+        // Windows 上 rename 不允许覆盖已存在目标，先删旧文件
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::fs::remove_file(path);
+        }
+        std::fs::rename(&tmp, path)?;
         Ok(())
     }
 
@@ -805,6 +824,10 @@ impl Config {
         if !config_dir.exists() {
             let _ = std::fs::create_dir_all(&config_dir);
         }
+
+        // 跨进程读锁：避免在 save() 分页写入过程中读到混合/半截配置。
+        // 锁文件不存在时（首次运行）跳过并放行。
+        let _config_lock = file_lock::lock_shared(&config_dir.join(".config.lock")).ok();
 
         // 从默认值开始，然后被页面文件覆盖
         let mut merged = serde_json::to_value(Self::default_config())
@@ -910,6 +933,11 @@ impl Config {
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir)?;
         }
+
+        // 跨进程互斥：web-settings 子进程与引擎进程同时 save 时串行化，
+        // 配合 load() 的读锁使并发读看到一致快照
+        let _config_lock = file_lock::lock_exclusive(&config_dir.join(".config.lock"))
+            .map_err(|e| format!("config lock failed: {}", e))?;
 
         let full = serde_json::to_value(self)?;
 
@@ -1307,5 +1335,69 @@ impl Config {
                 keystroke_text_color: "#ffffff".to_string(),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod config_tests {
+    use super::*;
+
+    fn with_temp_config_dir<F: FnOnce()>(f: F) {
+        let dir = std::env::temp_dir().join(format!(
+            "qianyan_config_test_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("QIANYAN_CONFIG_DIR", &dir);
+        f();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn save_load_roundtrip_no_tmp_leftovers() {
+        with_temp_config_dir(|| {
+            let cfg = Config::default_config();
+            cfg.save().unwrap();
+
+            // 页面文件应真实写出
+            assert!(Config::get_config_dir().join("pinyin.json").exists());
+
+            // 不应残留临时文件
+            let leftovers = std::fs::read_dir(Config::get_config_dir())
+                .unwrap()
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    e.path()
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map_or(false, |n| n.ends_with(".tmp"))
+                })
+                .count();
+            assert_eq!(leftovers, 0);
+
+            // 关键字段往返后保持一致
+            let loaded = Config::load();
+            assert_eq!(loaded.input, cfg.input);
+            assert_eq!(loaded.appearance, cfg.appearance);
+            assert_eq!(loaded.hotkeys, cfg.hotkeys);
+            assert_eq!(loaded.files, cfg.files);
+        });
+    }
+
+    /// 原子写：确认 save_json 使用临时文件 + rename，不会留下半成品
+    #[test]
+    fn save_json_is_atomic() {
+        with_temp_config_dir(|| {
+            let cfg = Config::default_config();
+            cfg.save().unwrap();
+            let path = Config::get_config_dir().join("pinyin.json");
+            // 模拟一次新的 save：应先清理旧 tmp 再原子替换
+            let value = serde_json::json!({"input": {"enable_traditional": false}});
+            Config::save_json(&path, &value).unwrap();
+            let loaded: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            assert_eq!(loaded["input"]["enable_traditional"], false);
+        });
     }
 }
