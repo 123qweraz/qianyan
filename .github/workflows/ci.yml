@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: cargo
+
+      - name: 缓存词典编译产物
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: dict-data-${{ hashFiles('dicts/**') }}
+
+      - name: 编译词典数据
+        run: cargo test -p qianyan-ime-engine --test compile_dicts
+
+      - name: 构建
+        run: cargo build
+
+      - name: 测试
+        run: cargo test --workspace
+
+      - name: Clippy（不阻断，仅报告）
+        run: cargo clippy --workspace --all-targets --no-deps
