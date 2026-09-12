@@ -1,10 +1,10 @@
 use crate::file_lock::LockGuard;
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::fs::File;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
@@ -21,6 +21,36 @@ pub struct TrieResult<'a> {
     pub flags: u8, // bit0: 1 = level-4 (生僻字)
 }
 
+/// 拥有型搜索结果：由 TrieResult 转换而来，用于支持前缀搜索结果的缓存
+/// （借用型 TrieResult 生命周期绑定 mmap，无法在 Trie 内自持有）。
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct BfsHit {
+    pub word: String,
+    pub trad: String,
+    pub tone: String,
+    pub en: String,
+    pub stroke_aux: String,
+    pub weight: u32,
+    pub flags: u8,
+}
+
+impl BfsHit {
+    fn from_borrowed(hit: &TrieResult<'_>) -> Self {
+        Self {
+            word: hit.word.to_string(),
+            trad: hit.trad.to_string(),
+            tone: hit.tone.to_string(),
+            en: hit.en.to_string(),
+            stroke_aux: hit.stroke_aux.to_string(),
+            weight: hit.weight,
+            flags: hit.flags,
+        }
+    }
+}
+
+/// 单字符前缀快照缓存上限：覆盖 MAX_LOOKUP_LIMIT(500) 及功能中心 100。
+const LETTER_CACHE_LIMIT: usize = 640;
+
 #[derive(Clone)]
 pub enum TrieData {
     Mmap(Arc<Mmap>),
@@ -36,7 +66,6 @@ impl AsRef<[u8]> for TrieData {
     }
 }
 
-#[derive(Clone)]
 pub struct Trie {
     pub index: Map<TrieData>,
     data: TrieData,
@@ -47,6 +76,24 @@ pub struct Trie {
     _lock: Option<Arc<LockGuard>>,
     /// 副 Trie（如万象 extras），在主 Trie 查询结果不足时补充
     fallback: Option<Arc<Trie>>,
+    /// 单字符前缀的 Top-K 快照缓存（拥有型）。Trie 实例随词典重新编译重建，
+    /// 缓存随之失效，因此无需额外版本号。
+    letter_cache: Mutex<HashMap<char, Vec<BfsHit>>>,
+}
+
+impl Clone for Trie {
+    fn clone(&self) -> Self {
+        Self {
+            index: self.index.clone(),
+            data: self.data.clone(),
+            word_map: self.word_map.clone(),
+            pinyin_data: self.pinyin_data.clone(),
+            _lock: self._lock.clone(),
+            fallback: self.fallback.clone(),
+            // 缓存不随克隆共享：克隆旨在复用快照数据关系，各自维护独立缓存
+            letter_cache: Mutex::new(HashMap::new()),
+        }
+    }
 }
 
 impl Trie {
@@ -123,6 +170,7 @@ impl Trie {
             pinyin_data,
             _lock: lock_guard,
             fallback: None,
+            letter_cache: Mutex::new(HashMap::new()),
         })
     }
 
@@ -273,8 +321,17 @@ impl Trie {
             .and_then(|slice| std::str::from_utf8(slice).ok())
     }
 
-    pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<TrieResult<'_>> {
+    pub fn search_bfs(&self, prefix: &str, limit: usize) -> Vec<BfsHit> {
         self.search_bfs_with_level_filter(prefix, limit, None)
+    }
+
+    /// 提取单字符前缀（返回首个字符；仅当前缀恰为一个 char 时）
+    fn single_char_prefix(prefix: &str) -> Option<char> {
+        let mut it = prefix.chars();
+        match (it.next(), it.next()) {
+            (Some(c), None) => Some(c),
+            _ => None,
+        }
     }
 
     /// 带等级过滤的前缀搜索
@@ -284,8 +341,20 @@ impl Trie {
         prefix: &str,
         limit: usize,
         level_filter: Option<&str>,
-    ) -> Vec<TrieResult<'_>> {
+    ) -> Vec<BfsHit> {
         log::debug!("trie_bfs: prefix={}, limit={}, level_filter={:?}", prefix, limit, level_filter);
+
+        // 单字符 + 无过滤 + 限额在缓存容量内 → 命中快照直接返回
+        if level_filter.is_none() && limit <= LETTER_CACHE_LIMIT {
+            if let Some(c) = Self::single_char_prefix(prefix) {
+                if let Ok(guard) = self.letter_cache.lock() {
+                    if let Some(hits) = guard.get(&c) {
+                        return hits.iter().take(limit).cloned().collect();
+                    }
+                }
+            }
+        }
+
         // 最小堆维护运行中的 Top-K：堆满后，块内权重降序 ⇒ 当前条目 ≤ 堆顶即可
         // 提前终止整个块，不必解码后续低权重词条
         let mut heap: BinaryHeap<std::cmp::Reverse<TrieResult<'_>>> = BinaryHeap::new();
@@ -320,27 +389,46 @@ impl Trie {
             });
         }
 
+        // 取出主 Trie 的 Top-K 并转为拥有型
+        let mut results: Vec<BfsHit> = {
+            let mut top: Vec<TrieResult<'_>> = heap.into_iter().map(|r| r.0).collect();
+            top.sort_unstable_by_key(|r| std::cmp::Reverse(r.weight));
+            top.iter().map(BfsHit::from_borrowed).collect()
+        };
+
         // 从副 Trie 补充结果（如果主 Trie 结果不足 limit）
-        if heap.len() < limit {
+        if results.len() < limit {
             if let Some(ref fb) = self.fallback {
-                let fb_need = limit - heap.len();
+                let fb_need = limit - results.len();
                 let fb_results = fb.search_bfs_with_level_filter(prefix, fb_need, level_filter);
+                // 主结果词集合（拥有型，本地生存期）
+                let mut seen_main: HashSet<String> =
+                    results.iter().map(|h| h.word.clone()).collect();
                 for tr in fb_results {
-                    if seen.insert(tr.word) {
-                        if heap.len() < limit {
-                            heap.push(std::cmp::Reverse(tr));
-                        } else if tr.weight > heap.peek().unwrap().0.weight {
-                            heap.pop();
-                            heap.push(std::cmp::Reverse(tr));
-                        }
+                    if !seen_main.insert(tr.word.clone()) {
+                        continue;
                     }
+                    results.push(tr);
                 }
             }
         }
 
-        // 取出 Top-K 并按权重降序排列
-        let mut results: Vec<TrieResult<'_>> = heap.into_iter().map(|r| r.0).collect();
-        results.sort_by_key(|r| std::cmp::Reverse(r.weight));
+        // 最终按权重降序（同权按词序保证确定性），截断到 limit
+        results.sort_unstable_by(|a, b| {
+            b.weight.cmp(&a.weight).then_with(|| a.word.cmp(&b.word))
+        });
+        results.truncate(limit);
+
+        // 单字符 + 无过滤 → 缓存快照（拥有型，实例级，随重编译失效）
+        if level_filter.is_none() && limit <= LETTER_CACHE_LIMIT {
+            if let Some(c) = Self::single_char_prefix(prefix) {
+                let mut snapshot = results.clone();
+                snapshot.truncate(LETTER_CACHE_LIMIT);
+                if let Ok(mut guard) = self.letter_cache.lock() {
+                    guard.insert(c, snapshot);
+                }
+            }
+        }
         results
     }
 
