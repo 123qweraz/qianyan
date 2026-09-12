@@ -66,7 +66,8 @@ pub fn record_usage(
         if !_pinyin.is_empty() {
             ctx.config.insert_usage_order(&profile, word);
         }
-        ctx.engine.clear_cache();
+        // 注意：不调用 engine.clear_cache()。用户词典经 combined_dict(ArcSwap)
+        // 实时注入搜索上下文，静态 FST trie 缓存不受 commit 影响，无需失效。
 
         // 上下文 bigram
         if let Some(ctx_str) = context {
