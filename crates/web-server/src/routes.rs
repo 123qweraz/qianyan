@@ -73,6 +73,7 @@ impl WebServer {
             .route("/dicts/*file", get(crate::static_handler::dicts_handler))
             .fallback(crate::static_handler::feature_index_handler)
             .layer(middleware::from_fn(crate::handlers::activity_layer))
+            .layer(middleware::from_fn(crate::csrf::csrf_layer))
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .layer(Extension(ime_handle.clone()))
             .with_state(state);
@@ -162,6 +163,7 @@ impl WebServer {
             .route("/api/reader/parse", post(crate::handlers::parse_epub_handler))
             .route("/static/*file", get(crate::static_handler::static_handler))
             .fallback(crate::static_handler::config_index_handler)
+            .layer(middleware::from_fn(crate::csrf::csrf_layer))
             .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
             .layer(Extension(root))
             .with_state(state);

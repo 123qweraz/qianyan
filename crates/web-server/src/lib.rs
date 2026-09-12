@@ -1,3 +1,4 @@
+pub mod csrf;
 pub mod handlers;
 pub mod platform;
 pub mod routes;

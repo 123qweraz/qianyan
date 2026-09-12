@@ -1282,25 +1282,9 @@ pub(crate) struct SendKeyRequest {
 
 pub(crate) async fn send_key_handler(
     State(state): State<WebState>,
-    headers: axum::http::HeaderMap,
     Json(req): Json<SendKeyRequest>
 ) -> StatusCode {
-    // CSRF protection: reject requests from external Origin/Referer
-    if let Some(origin) = headers.get("origin")
-        .or_else(|| headers.get("referer"))
-    {
-        if let Ok(host) = origin.to_str() {
-            let allowed = host == "http://127.0.0.1:18765"
-                || host == "http://localhost:18765"
-                || host == "http://127.0.0.1:18766"
-                || host == "http://localhost:18766"
-                || host.starts_with("http://127.0.0.1:")
-                || host.starts_with("http://localhost:");
-            if !allowed {
-                return StatusCode::FORBIDDEN;
-            }
-        }
-    }
+    // CSRF 校验已由全局 csrf 中间件统一处理（校验 Origin/Referer 为回环地址）
 
     let key = req.key.to_lowercase();
     let action = req.action.unwrap_or_else(|| "tap".to_string());
