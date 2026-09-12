@@ -123,6 +123,101 @@ fn match_user_dict_abbreviation(
     recursive(pinyin, segments, trie, single_syllables)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use std::path::PathBuf;
+
+    fn load_real_trie() -> crate::trie::Trie {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        crate::trie::Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        )
+        .expect("Failed to load trie")
+    }
+
+    fn seg(s: &str) -> Vec<(String, bool)> {
+        s.chars()
+            .map(|c| (c.to_string(), true))
+            .collect()
+    }
+
+    #[test]
+    fn parse_buffer_plain_pinyin() {
+        let s = ChineseScheme::new();
+        let parts = s.parse_buffer("nihao");
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0].pinyin, "nihao");
+        assert!(parts[0].stroke_aux.is_none());
+        assert!(parts[0].english_aux.is_none());
+    }
+
+    #[test]
+    fn parse_buffer_extracts_aux_fields() {
+        let s = ChineseScheme::new();
+        // 分号开始 → 笔画辅助码
+        let parts = s.parse_buffer("nihao;hsz");
+        assert_eq!(parts[0].pinyin, "nihao");
+        assert_eq!(parts[0].stroke_aux.as_deref(), Some("hsz"));
+
+        // 注意：buffer 在解析前整体 to_lowercase()，大写英文辅助码标记（'A'..）会先被
+        // 小写化再进入解析，因此 pinyin_end 处的 is_ascii_uppercase 分支在当前实现下实际
+        // 不可达（潜在死代码）。这里记录现状：大写输入会被并入 pinyin。
+        let parts = s.parse_buffer("pingguoAPP");
+        assert_eq!(parts[0].pinyin, "pingguoapp");
+    }
+
+    #[test]
+    fn parse_buffer_splits_on_spaces_and_digits() {
+        let s = ChineseScheme::new();
+        let parts = s.parse_buffer("nihao hao");
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[1].pinyin, "hao");
+
+        // 数字边界：pinyin 提前结束
+        let parts = s.parse_buffer("nihao3");
+        assert_eq!(parts[0].pinyin, "nihao");
+    }
+
+    #[test]
+    fn match_abbreviation_hits_real_word() {
+        let trie = load_real_trie();
+        // "fzm" → fuzhuma（fu/zhu/ma 均可作单音节前缀）
+        let ok = match_user_dict_abbreviation("fuzhuma", &seg("fzm"), &trie, &HashSet::new());
+        assert!(ok, "fuzhuma 应匹配简拼 fzm");
+        // 否定场景：首字母段不匹配
+        let bad = match_user_dict_abbreviation("fuzhuma", &seg("xzm"), &trie, &HashSet::new());
+        assert!(!bad, "xzm 不应匹配 fuzhuma");
+    }
+
+    #[test]
+    fn match_abbreviation_respects_single_syllables() {
+        let trie = load_real_trie();
+        // 当提供非空 single_syllables 时，声母段必须先命中集合再允许前缀匹配
+        let mut sylls = HashSet::new();
+        sylls.insert("fu".to_string());
+        sylls.insert("zhu".to_string());
+        sylls.insert("ma".to_string());
+        let ok = match_user_dict_abbreviation("fuzhuma", &seg("fzm"), &trie, &sylls);
+        assert!(ok);
+
+        // “fu”不在集合中时，f 段无法匹配
+        let mut missing = HashSet::new();
+        missing.insert("zhu".to_string());
+        missing.insert("ma".to_string());
+        let bad = match_user_dict_abbreviation("fuzhuma", &seg("fzm"), &trie, &missing);
+        assert!(!bad);
+    }
+}
+
 impl InputScheme for ChineseScheme {
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate> {
         let raw_parsed = self.parse_buffer(query);

@@ -120,8 +120,12 @@ impl ConfigManager {
         let cap = self.master_config.input.short_term_capacity as usize;
         let threshold = self.master_config.input.long_term_threshold;
 
+        // 记录本次更新后达到长期阈值的条目。
+        // 注意：rcu 返回的是替换前的旧快照，不能据此晋升（否则晋升滞后一次调用）。
+        let mut to_promote: Vec<(String, Vec<(String, u32)>)> = Vec::new();
+
         // Atomically update short-term memory
-        let short = self.learned_words.rcu(|current| {
+        let _ = self.learned_words.rcu(|current| {
             let mut clone = (**current).clone();
             clone
                 .entry(profile.to_string())
@@ -153,6 +157,19 @@ impl ConfigManager {
                     }
                 }
             }
+            // 收集达到阈值、应晋升长期记忆的条目
+            if let Some(profile_data) = clone.get(profile) {
+                for (py, words) in profile_data.iter() {
+                    let qualified: Vec<(String, u32)> = words
+                        .iter()
+                        .filter(|(_, cnt)| *cnt >= threshold)
+                        .cloned()
+                        .collect();
+                    if !qualified.is_empty() {
+                        to_promote.push((py.clone(), qualified));
+                    }
+                }
+            }
             Arc::new(clone)
         });
 
@@ -160,19 +177,15 @@ impl ConfigManager {
         self.long_term_words.rcu(|current| {
             let mut long = (**current).clone();
             let mut changed = false;
-            if let Some(profile_data) = short.get(profile) {
-                for (py, words) in profile_data.iter() {
-                    for (word, cnt) in words.iter() {
-                        if *cnt >= threshold {
-                            changed = true;
-                            let long_entries = long.entry(profile.to_string()).or_default()
-                                .entry(py.clone()).or_default();
-                            if let Some(pos) = long_entries.iter().position(|(w, _)| w == word) {
-                                long_entries[pos].1 = *cnt;
-                            } else {
-                                long_entries.push((word.clone(), *cnt));
-                            }
-                        }
+            for (py, words) in &to_promote {
+                let long_entries = long.entry(profile.to_string()).or_default()
+                    .entry(py.clone()).or_default();
+                for (word, cnt) in words {
+                    changed = true;
+                    if let Some(pos) = long_entries.iter().position(|(w, _)| w == word) {
+                        long_entries[pos].1 = *cnt;
+                    } else {
+                        long_entries.push((word.clone(), *cnt));
                     }
                 }
             }
@@ -513,5 +526,100 @@ impl ConfigManager {
 
     pub fn phantom_separator(&self) -> &str {
         &self.master_config.input.phantom_separator
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 把 XDG_CONFIG_HOME 指到临时目录，避免测试污染真实用户数据。
+    /// 用全局锁串行化，避免并行测试互相覆盖进程级 env 变量。
+    fn with_temp_home<F: FnOnce()>(f: F) {
+        static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join(format!(
+            "qianyan_cfgmgr_test_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("XDG_CONFIG_HOME", &dir);
+        f();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn insert_usage_order_dedupes_and_moves_to_front() {
+        with_temp_home(|| {
+            let m = ConfigManager::new();
+            m.insert_usage_order("chinese", "你好");
+            m.insert_usage_order("chinese", "世界");
+            m.insert_usage_order("chinese", "你好");
+            let guard = m.user_order.load();
+            let order = guard.get("chinese").unwrap();
+            assert_eq!(order.first().map(String::as_str), Some("你好"));
+            assert_eq!(order.len(), 2);
+        });
+    }
+
+    #[test]
+    fn insert_learned_lands_in_combined_dict() {
+        with_temp_home(|| {
+            let m = ConfigManager::new();
+            let entries: Vec<(String, u32)> = vec![("千言".into(), 1), ("千里".into(), 2)];
+            m.insert_learned("chinese", "qianyan", &entries);
+
+            let learned = m.learned_words.load();
+            assert_eq!(
+                learned.get("chinese").unwrap().get("qianyan"),
+                Some(&entries)
+            );
+
+            // 短期词应立刻出现在 combined_dict 中（供候选查找实时使用）
+            let combined = m.combined_dict.load();
+            assert_eq!(
+                combined.get("chinese").unwrap().get("qianyan"),
+                Some(&entries)
+            );
+        });
+    }
+
+    #[test]
+    fn insert_ngram_records_context_bigram() {
+        with_temp_home(|| {
+            let m = ConfigManager::new();
+            let entries: Vec<(String, u32)> = vec![("好".into(), 3)];
+            m.insert_ngram("chinese", "你", &entries);
+            let ngram = m.ngram_history.load();
+            assert_eq!(
+                ngram.get("chinese").unwrap().get("你"),
+                Some(&entries)
+            );
+        });
+    }
+
+    #[test]
+    fn long_term_promotion_reaches_combined_dict() {
+        with_temp_home(|| {
+            let m = ConfigManager::new();
+            // 低于阈值则只进短期
+            let low: Vec<(String, u32)> = vec![("词".into(), 1)];
+            m.insert_learned("chinese", "ci", &low);
+            // 达到阈值则同时晋升长期
+            let high: Vec<(String, u32)> = vec![("高频词".into(), 99)];
+            m.insert_learned("chinese", "gaopin", &high);
+
+            let long = m.long_term_words.load();
+            assert!(long.get("chinese").unwrap().contains_key("gaopin"));
+            assert!(long.get("chinese").unwrap().get("ci").is_none());
+            // 晋升词在 combined 中可见
+            let combined = m.combined_dict.load();
+            assert!(combined
+                .get("chinese")
+                .unwrap()
+                .get("gaopin")
+                .is_some());
+        });
     }
 }
