@@ -89,7 +89,11 @@ fn launch_feature_center_inner(root: PathBuf, tray_tx: std::sync::mpsc::Sender<T
                     }
                     Some("send_key") => {
                         if let Some(key) = msg.get("key").and_then(|k| k.as_str()) {
-                            let _ = tray_tx.send(TrayEvent::SendKey(key.to_string()));
+                            let action = msg.get("action")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("tap")
+                                .to_string();
+                            let _ = tray_tx.send(TrayEvent::SendKey { key: key.to_string(), action });
                         }
                     }
                     _ => {}

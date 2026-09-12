@@ -1303,11 +1303,11 @@ pub(crate) async fn send_key_handler(
     }
 
     let key = req.key.to_lowercase();
-    let _action = req.action.unwrap_or_else(|| "tap".to_string());
-    
+    let action = req.action.unwrap_or_else(|| "tap".to_string());
+
     let tray_tx = state.2.clone();
-    let _ = tray_tx.send(TrayEvent::SendKey(key));
-    
+    let _ = tray_tx.send(TrayEvent::SendKey { key, action });
+
     StatusCode::OK
 }
 

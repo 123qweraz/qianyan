@@ -10,6 +10,7 @@ use qianyan_ime_engine::compiler;
 use qianyan_ime_ui::GuiEvent;
 use std::collections::HashMap;
 use std::env;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex, RwLock};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -445,8 +446,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     std::process::exit(0);
                 }
-                qianyan_ime_ui::tray::TrayEvent::SendKey(key) => {
-                    log::warn!("[Tray] SendKey event not implemented: key={}", key);
+                qianyan_ime_ui::tray::TrayEvent::SendKey { key, action } => {
+                    let Ok(vk) = qianyan_ime_engine::keys::VirtualKey::from_str(&key) else {
+                        log::warn!("[Tray] SendKey: 未知按键名: {}", key);
+                        continue;
+                    };
+                    // action: tap(默认)=按下+抬起, press=仅按下, release=仅抬起
+                    let _ = match action.as_str() {
+                        "press" => processor_clone.handle_key(vk, 1, false, false, false, false),
+                        "release" => processor_clone.handle_key(vk, 0, false, false, false, false),
+                        _ => {
+                            processor_clone.handle_key(vk, 1, false, false, false, false);
+                            processor_clone.handle_key(vk, 0, false, false, false, false)
+                        }
+                    };
                 }
                 _ => {} // FeatureReady handled by control TCP reader
             }

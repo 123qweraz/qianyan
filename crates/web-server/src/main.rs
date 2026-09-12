@@ -80,8 +80,8 @@ fn main() {
                         }
                         v
                     }
-                    TrayEvent::SendKey(key) => {
-                        serde_json::json!({"cmd": "send_key", "key": key})
+                    TrayEvent::SendKey { key, action } => {
+                        serde_json::json!({"cmd": "send_key", "key": key, "action": action})
                     }
                     TrayEvent::FeatureReady(port) => {
                         serde_json::json!({"cmd": "ready", "port": port})

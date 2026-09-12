@@ -13,7 +13,7 @@ pub enum TrayEvent {
     },
     ShowNotification(String),
     ClearUserDict(Option<String>),
-    SendKey(String),
+    SendKey { key: String, action: String },
     SetProfile(String),
     FeatureReady(u16),
 }
