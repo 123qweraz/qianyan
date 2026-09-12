@@ -427,6 +427,8 @@ fn write_binary_dict(
         for (pinyin, mut pairs) in entries {
             let mut seen = std::collections::HashSet::new();
             pairs.retain(|e| seen.insert(e.word.clone()));
+            // v3: 块内按权重降序，供搜索端对低权重尾部提前终止
+            pairs.sort_unstable_by_key(|e| std::cmp::Reverse(e.weight));
 
             index_builder.insert(&pinyin, current_offset)?;
             let mut block = Vec::new();

@@ -1,16 +1,16 @@
 use crate::file_lock::LockGuard;
 use fst::{Automaton, IntoStreamer, Map, Streamer};
 use memmap2::Mmap;
-use std::collections::HashSet;
+use std::collections::{BinaryHeap, HashSet};
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
-pub const TRIE_VERSION: u32 = 2; // v2: 增加了 flags 字节用于生僻字过滤
+pub const TRIE_VERSION: u32 = 3; // v3: 块内词条按权重降序存储，支持搜索提前终止
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieResult<'a> {
     pub word: &'a str,
     pub trad: &'a str,
@@ -286,7 +286,9 @@ impl Trie {
         level_filter: Option<&str>,
     ) -> Vec<TrieResult<'_>> {
         log::debug!("trie_bfs: prefix={}, limit={}, level_filter={:?}", prefix, limit, level_filter);
-        let mut results = Vec::new();
+        // 最小堆维护运行中的 Top-K：堆满后，块内权重降序 ⇒ 当前条目 ≤ 堆顶即可
+        // 提前终止整个块，不必解码后续低权重词条
+        let mut heap: BinaryHeap<std::cmp::Reverse<TrieResult<'_>>> = BinaryHeap::new();
         let mut seen = std::collections::HashSet::new();
 
         let matcher = fst::automaton::Str::new(prefix).starts_with();
@@ -294,39 +296,51 @@ impl Trie {
 
         // 收集所有匹配 key 的完整数据块
         while let Some((_, offset)) = stream.next() {
-            self.read_block(offset as usize, |pair| {
-                if seen.insert(pair.word) {
-                    if let Some(filter_level) = level_filter {
-                        if pair.stroke_aux == filter_level {
-                            results.push(pair);
-                        }
-                    } else {
-                        results.push(pair);
+            self.read_block_until(offset as usize, |pair| {
+                if !seen.insert(pair.word) {
+                    return true;
+                }
+                if let Some(filter_level) = level_filter {
+                    if pair.stroke_aux != filter_level {
+                        return true;
                     }
+                }
+                if heap.len() < limit {
+                    heap.push(std::cmp::Reverse(pair));
+                    true
+                } else if pair.weight > heap.peek().unwrap().0.weight {
+                    heap.pop();
+                    heap.push(std::cmp::Reverse(pair));
+                    true
+                } else {
+                    // 块内权重降序：当前词条已 ≤ 堆顶（最小），后续更小，
+                    // 不可能进入 Top-K，提前终止本块
+                    false
                 }
             });
         }
 
         // 从副 Trie 补充结果（如果主 Trie 结果不足 limit）
-        if results.len() < limit {
+        if heap.len() < limit {
             if let Some(ref fb) = self.fallback {
-                let fb_need = limit - results.len();
+                let fb_need = limit - heap.len();
                 let fb_results = fb.search_bfs_with_level_filter(prefix, fb_need, level_filter);
                 for tr in fb_results {
                     if seen.insert(tr.word) {
-                        results.push(tr);
+                        if heap.len() < limit {
+                            heap.push(std::cmp::Reverse(tr));
+                        } else if tr.weight > heap.peek().unwrap().0.weight {
+                            heap.pop();
+                            heap.push(std::cmp::Reverse(tr));
+                        }
                     }
                 }
             }
         }
 
-        // 部分排序仅取 Top-K，避免对全部结果全排序
-        let n = results.len().min(limit);
-        if n > 0 {
-            results.select_nth_unstable_by_key(n.saturating_sub(1), |r| std::cmp::Reverse(r.weight));
-            results.truncate(n);
-            results.sort_by_key(|r| std::cmp::Reverse(r.weight));
-        }
+        // 取出 Top-K 并按权重降序排列
+        let mut results: Vec<TrieResult<'_>> = heap.into_iter().map(|r| r.0).collect();
+        results.sort_by_key(|r| std::cmp::Reverse(r.weight));
         results
     }
 
@@ -604,6 +618,15 @@ impl Trie {
 
 
     pub fn read_block<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>)) {
+        self.read_block_until(offset, |pair| {
+            f(pair);
+            true
+        });
+    }
+
+    /// 读取块数据，逐个回调；闭包返回 false 时立即终止。块内词条按权重降序
+    /// 存储（见 compiler::write_binary_dict），供提前终止类优化使用。
+    pub fn read_block_until<'a>(&'a self, offset: usize, mut f: impl FnMut(TrieResult<'a>) -> bool) {
         let data = self.data.as_ref();
         if offset + 4 > data.len() {
             log::warn!("[Trie] read_block: offset {} beyond data length {}", offset, data.len());
@@ -660,7 +683,7 @@ impl Trie {
             let flags = if cursor < data.len() { data[cursor] } else { 0 };
             cursor += 1;
 
-            f(TrieResult {
+            let keep_going = f(TrieResult {
                 word,
                 trad,
                 tone,
@@ -669,6 +692,9 @@ impl Trie {
                 weight,
                 flags,
             });
+            if !keep_going {
+                break;
+            }
         }
     }
 
