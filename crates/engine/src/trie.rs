@@ -1635,8 +1635,9 @@ mod tests {
         let common_count = results.iter().filter(|r| r.flags & 1 == 0).count();
         println!("li: total={}, rare={}, common={}", total, rare_count, common_count);
 
-        // 检查几个已知的生僻字
-        let rare_examples = vec!["孋", "悧", "蒚", "唎"];
+        // 检查几个已知的生僻字（不含孋：其为"丽"的繁体，已凭 trads.json
+        // 以非生僻低词频注入普通候选，见 compiler 同词去重规则）
+        let rare_examples = vec!["悧", "蒚", "唎"];
         for ex in &rare_examples {
             if let Some(r) = results.iter().find(|r| r.word == *ex) {
                 println!("  {}: weight={}, flags={:#04x}", ex, r.weight, r.flags);
@@ -1646,6 +1647,35 @@ mod tests {
 
         // 确保生僻字数量合理（至少有 level4/level5 的条目）
         assert!(rare_count > 0, "Should have at least some rare characters with flags=1 for 'li'");
+    }
+
+    #[test]
+    fn test_trads_injected_as_nonrare() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+        let trie = Trie::load(
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+            true,
+        ).expect("Failed to load trie");
+
+        // trads.json 把繁体字以普通候选（flags=0）、低词频(1)注入，
+        // 默认 RareCharMode::CommonOnly 下应能检索到，且排序在生僻字之前
+        for (key, trad) in [("ti", "體"), ("ai", "愛"), ("men", "們")] {
+            let results = trie.get_all_exact(key).expect("syllable should exist");
+            let r = results
+                .iter()
+                .find(|r| r.word == trad)
+                .unwrap_or_else(|| panic!("{} 未作为候选存在于 {}", trad, key));
+            assert_eq!(r.flags & 1, 0, "{} 应为非生僻候选", trad);
+            assert_eq!(r.weight, 1, "{} 应为低词频", trad);
+        }
+
+        // 同词生僻/普通并存时普通版覆盖生僻版：孋(丽之繁体) 非生僻；
+        // 真正无简繁关联的生僻字仍保留生僻位
+        let li = trie.get_all_exact("li").expect("li should exist");
+        let li_zhi = li.iter().find(|r| r.word == "孋").unwrap();
+        assert_eq!(li_zhi.flags & 1, 0, "孋 应被普通版覆盖为非生僻");
     }
 
     #[test]

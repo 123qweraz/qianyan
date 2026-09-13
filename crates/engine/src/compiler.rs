@@ -425,8 +425,24 @@ fn write_binary_dict(
 
         let mut current_offset = 8u64;
         for (pinyin, mut pairs) in entries {
-            let mut seen = std::collections::HashSet::new();
-            pairs.retain(|e| seen.insert(e.word.clone()));
+            // 同词去重：首次出现保留；若同一词同时存在生僻(level-4/5)与普通版本，
+            // 普通版本覆盖生僻版本（如 trads.json 将传统字以非生僻低词频注入）
+            let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            let mut deduped: Vec<DictEntry> = Vec::with_capacity(pairs.len());
+            for e in pairs {
+                match seen.get(&e.word) {
+                    None => {
+                        seen.insert(e.word.clone(), deduped.len());
+                        deduped.push(e);
+                    }
+                    Some(&i) => {
+                        if deduped[i].flags & FLAG_RARE != 0 && e.flags & FLAG_RARE == 0 {
+                            deduped[i] = e;
+                        }
+                    }
+                }
+            }
+            pairs = deduped;
             // v3: 块内按权重降序，供搜索端对低权重尾部提前终止
             pairs.sort_unstable_by_key(|e| std::cmp::Reverse(e.weight));
 
