@@ -280,17 +280,12 @@ impl ProcessorActor {
         let is_pybi = ctx.session_state.is_pybi_mode();
         ctx.session.candidates[start..end].iter().enumerate().map(|(i, c)| {
             let is_fuzzy = c.match_level < 3 && c.source.as_ref() == "Table (Fuzzy)";
-            // pybi 用笔顺筛选而非序号选字：不显示序号，辅助码仅显示前 4 位笔顺
+            // pybi 用笔顺筛选而非序号选字：不显示序号，辅助码与其他方案一致
             let label = if is_pybi { String::new() } else { format!("{}.", i + 1) };
-            let hint = if is_pybi {
-                c.hint.chars().take(4).collect()
-            } else {
-                c.hint.to_string()
-            };
             CandidateInfo {
                 text: c.text.to_string(),
                 label,
-                hint,
+                hint: c.hint.to_string(),
                 is_fuzzy,
             }
         }).collect()

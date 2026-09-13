@@ -123,22 +123,16 @@ impl SearchEngine {
             scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
 
             let mut results = Vec::new();
-            // pybi 方案：默认始终显示完整笔顺（供逐笔笔画选字参考）
-            let is_pybi = query.profile.to_lowercase() == "pybi";
             for sc in scheme_candidates {
-                let hint = Arc::from(if is_pybi && !sc.stroke_aux.is_empty() {
-                    sc.stroke_aux.as_str()
-                } else {
-                    match config_ref.input.display_mode {
-                        crate::DisplayMode::CharacterOnly => "",
-                        crate::DisplayMode::CharacterWithEnglish => {
-                            sc.english.as_str()
-                        }
-                        crate::DisplayMode::CharacterWithStroke => {
-                            sc.stroke_aux.as_str()
-                        }
-                        crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
+                let hint = Arc::from(match config_ref.input.display_mode {
+                    crate::DisplayMode::CharacterOnly => "",
+                    crate::DisplayMode::CharacterWithEnglish => {
+                        sc.english.as_str()
                     }
+                    crate::DisplayMode::CharacterWithStroke => {
+                        sc.stroke_aux.as_str()
+                    }
+                    crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
                 });
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {

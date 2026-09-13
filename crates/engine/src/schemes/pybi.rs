@@ -170,6 +170,35 @@ impl InputScheme for PybiScheme {
                     }
                 }
             }
+
+            // 简拼/混拼词组兜底：前面没有任何候选（单字/词组）时启用，如 zm → 怎么
+            if results.is_empty() && context.config.input.enable_abbreviation_matching {
+                if let Some(trie) = context.tries.get("chinese") {
+                    let abbr_segs =
+                        crate::schemes::chinese::ChineseScheme::segment_for_abbreviation(&pinyin, trie);
+                    if abbr_segs.len() > 1 {
+                        let mut abbr_results = trie.search_abbreviation_mixed(
+                            &abbr_segs,
+                            50,
+                            context.single_syllables,
+                        );
+                        abbr_results.sort_by_key(|r| std::cmp::Reverse(r.weight));
+                        for tr in abbr_results {
+                            if tr.word.chars().count() < 2 {
+                                continue;
+                            }
+                            let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
+                            cand.simplified = tr.word.to_string();
+                            cand.traditional = tr.trad.to_string();
+                            cand.tone = tr.tone.to_string();
+                            cand.english = tr.en.to_string();
+                            cand.flags = tr.flags;
+                            cand.match_level = 2;
+                            results.push(cand);
+                        }
+                    }
+                }
+            }
         }
 
         // 优先按词频排序；同级别时保持稳定。
