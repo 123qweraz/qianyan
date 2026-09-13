@@ -1,4 +1,5 @@
 pub mod traits;
+pub mod keymap;
 pub mod evdev_host;
 pub mod vkbd;
 #[cfg(target_os = "linux")]
