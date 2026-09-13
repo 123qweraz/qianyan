@@ -291,11 +291,18 @@ fn default_english_aux_mode() -> EnglishAuxMode {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum RareCharMode {
-    #[default]
+pub enum CharMode {
+    /// 只显示常用字（不含生僻字与简体字典标注的繁体字）
     CommonOnly,
-    IncludeRare,
-    OnlyRare,
+    /// 常用字 + 繁体字（简繁同显，不含生僻字）—— 默认
+    #[default]
+    CommonTraditional,
+    /// 全部：常用 + 生僻 + 繁体
+    IncludeAll,
+    /// 只显示生僻字
+    RareOnly,
+    /// 只显示繁体字
+    TraditionalOnly,
 }
 
 fn default_phantom_separator() -> String {
@@ -333,7 +340,7 @@ pub struct Input {
     pub prefix_matching_limit: usize,
     pub enable_abbreviation_matching: bool,
     pub enable_error_correction: bool,
-    pub rare_char_mode: RareCharMode,
+    pub char_mode: CharMode,
     pub filter_proper_nouns_by_case: bool,
     pub enabled_profiles: Vec<String>,
     pub profile_keys: Vec<ProfileKey>,
@@ -929,7 +936,7 @@ impl Config {
         let _guard = lock.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
 
         let config_dir = Self::get_config_dir();
-        log::info!("Config::save to {:?}, rare_char_mode={:?}", config_dir, self.input.rare_char_mode);
+        log::info!("Config::save to {:?}, char_mode={:?}", config_dir, self.input.char_mode);
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir)?;
         }
@@ -1137,7 +1144,7 @@ impl Config {
                 prefix_matching_limit: 20,
                 enable_abbreviation_matching: true,
                 enable_error_correction: true,
-                rare_char_mode: RareCharMode::CommonOnly,
+                char_mode: CharMode::CommonTraditional,
                 filter_proper_nouns_by_case: true,
                 enabled_profiles: vec!["chinese".to_string(), "pybi".to_string()],
                 profile_keys: vec![

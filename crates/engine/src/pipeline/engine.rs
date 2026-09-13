@@ -85,10 +85,10 @@ impl SearchEngine {
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
         let config_ref = query.config;
         log::info!(
-            "engine_search: profile={}, buffer={}, rare_char_mode={:?}",
+            "engine_search: profile={}, buffer={}, char_mode={:?}",
             query.profile,
             query.buffer,
-            config_ref.input.rare_char_mode
+            config_ref.input.char_mode
         );
 
         if let Some(scheme) = self.schemes.get(query.profile) {
@@ -160,27 +160,35 @@ impl SearchEngine {
                 });
             }
 
-            match config_ref.input.rare_char_mode {
-                qianyan_ime_core::config::RareCharMode::CommonOnly => {
-                    results.retain(|c| c.flags & 1 == 0);
+            match config_ref.input.char_mode {
+                qianyan_ime_core::config::CharMode::CommonOnly => {
+                    results.retain(|c| c.flags & 0x03 == 0);
                 }
-                qianyan_ime_core::config::RareCharMode::OnlyRare => {
-                    results.retain(|c| c.flags & 1 != 0);
+                qianyan_ime_core::config::CharMode::CommonTraditional => {
+                    results.retain(|c| c.flags & 0x01 == 0);
                 }
-                qianyan_ime_core::config::RareCharMode::IncludeRare => {}
+                qianyan_ime_core::config::CharMode::IncludeAll => {}
+                qianyan_ime_core::config::CharMode::RareOnly => {
+                    results.retain(|c| c.flags & 0x01 != 0);
+                }
+                qianyan_ime_core::config::CharMode::TraditionalOnly => {
+                    results.retain(|c| c.flags & 0x02 != 0);
+                }
             }
 
-            let effective_limit = match config_ref.input.rare_char_mode {
-                qianyan_ime_core::config::RareCharMode::CommonOnly => query.limit,
+            let effective_limit = match config_ref.input.char_mode {
+                qianyan_ime_core::config::CharMode::CommonOnly
+                | qianyan_ime_core::config::CharMode::CommonTraditional => query.limit,
                 _ => query.limit.max(2000),
             };
             results.truncate(effective_limit);
             log::info!(
-                "engine_search: scheme results total={}, rare={}, common={}, mode={:?}",
+                "engine_search: scheme results total={}, rare={}, trad={}, common={}, mode={:?}",
                 results.len(),
                 results.iter().filter(|c| c.flags & 1 != 0).count(),
+                results.iter().filter(|c| c.flags & 2 != 0).count(),
                 results.iter().filter(|c| c.flags & 1 == 0).count(),
-                config_ref.input.rare_char_mode,
+                config_ref.input.char_mode,
             );
             let delims = &query.config.input.segmentation_delimiters;
             let segs = DefaultSegmentor.segment(&pre_processed, delims, &self.syllable_freq, &self.base_syllables);

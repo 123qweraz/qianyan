@@ -7,7 +7,7 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
-    console.log('saveConfig: rare_char_mode=', config?.input?.rare_char_mode, 'full config keys:', Object.keys(config || {}));
+    console.log('saveConfig: char_mode=', config?.input?.char_mode, 'full config keys:', Object.keys(config || {}));
     const resp = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

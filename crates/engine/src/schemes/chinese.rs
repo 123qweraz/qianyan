@@ -224,8 +224,9 @@ impl InputScheme for ChineseScheme {
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        let max_results = match context.config.input.rare_char_mode {
-            qianyan_ime_core::config::RareCharMode::CommonOnly => 500,
+        let max_results = match context.config.input.char_mode {
+            qianyan_ime_core::config::CharMode::CommonOnly
+            | qianyan_ime_core::config::CharMode::CommonTraditional => 500,
             _ => 2000,
         };
         let min_results_needed = max_results;

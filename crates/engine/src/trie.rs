@@ -1659,16 +1659,22 @@ mod tests {
             true,
         ).expect("Failed to load trie");
 
-        // trads.json 把繁体字以普通候选（flags=0）、低词频(1)注入，
-        // 默认 RareCharMode::CommonOnly 下应能检索到，且排序在生僻字之前
-        for (key, trad) in [("ti", "體"), ("ai", "愛"), ("men", "們")] {
+        // chars/trads.json 把繁体字以 category=trad（flags=0x02）普通候选、权重=
+        // 原字权重−1 注入，默认 CharMode::CommonTraditional 下应能检索到
+        for (key, trad, simp) in [("ti", "體", "体"), ("ai", "愛", "爱"), ("men", "們", "们")] {
             let results = trie.get_all_exact(key).expect("syllable should exist");
             let r = results
                 .iter()
                 .find(|r| r.word == trad)
                 .unwrap_or_else(|| panic!("{} 未作为候选存在于 {}", trad, key));
+            let simp_w = results
+                .iter()
+                .find(|r| r.word == simp)
+                .unwrap_or_else(|| panic!("{} 应存在于 {}", simp, key))
+                .weight;
             assert_eq!(r.flags & 1, 0, "{} 应为非生僻候选", trad);
-            assert_eq!(r.weight, 1, "{} 应为低词频", trad);
+            assert_eq!(r.flags & 2, 2, "{} 应标记 category=trad", trad);
+            assert_eq!(r.weight, simp_w.saturating_sub(1), "{} 权重应为原字权重−1", trad);
         }
 
         // 同词生僻/普通并存时普通版覆盖生僻版：孋(丽之繁体) 非生僻；
@@ -1676,6 +1682,85 @@ mod tests {
         let li = trie.get_all_exact("li").expect("li should exist");
         let li_zhi = li.iter().find(|r| r.word == "孋").unwrap();
         assert_eq!(li_zhi.flags & 1, 0, "孋 应被普通版覆盖为非生僻");
+    }
+
+    #[test]
+    fn test_char_mode_filter() {
+        use crate::pipeline::{SearchEngine, SearchQuery};
+        use arc_swap::ArcSwap;
+        use std::collections::HashMap;
+        use std::sync::Arc;
+
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root = manifest_dir.parent().unwrap().parent().unwrap();
+
+        let config_path = root.join("configs");
+        std::env::set_var("QIANYAN_CONFIG_DIR", config_path.to_str().unwrap());
+
+        let mut trie_paths = HashMap::new();
+        trie_paths.insert("chinese".to_string(), (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ));
+
+        let engine = SearchEngine::new(
+            trie_paths,
+            Arc::new(HashMap::new()),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new()))),
+            Arc::new(ArcSwap::new(Arc::new(std::collections::HashMap::<
+                String, Vec<String>>
+            ::new()))),
+            {
+                let mut m: HashMap<String, Box<dyn crate::scheme::InputScheme>> = HashMap::new();
+                m.insert("chinese".to_string(), Box::new(crate::schemes::ChineseScheme::new()));
+                Arc::new(m)
+            },
+        );
+
+        let base_cfg = qianyan_ime_core::config::Config::load();
+
+        let hit = |s: &str, cs: &[crate::pipeline::Candidate]| {
+            cs.iter().any(|c| c.text == Arc::from(s))
+        };
+
+        // 构造不同 CharMode 的配置，搜索 ti
+        let mut cfg_base = base_cfg.clone();
+        cfg_base.input.enable_prefix_matching = false;
+        cfg_base.input.enable_abbreviation_matching = false;
+        cfg_base.input.enable_error_correction = false;
+        let search = |cfg: &qianyan_ime_core::config::Config| {
+            engine.search(SearchQuery {
+                buffer: "ti",
+                profile: "chinese",
+                config: cfg,
+                limit: 200,
+                filter_mode: crate::processor::FilterMode::None,
+                aux_filter: "",
+                context: None,
+                context_pair: None,
+            })
+            .0
+        };
+
+        // CommonTraditional（默认）：常用 + 繁体，ti 应同时含 体 与 體
+        let mut cfg = cfg_base.clone();
+        cfg.input.char_mode = qianyan_ime_core::config::CharMode::CommonTraditional;
+        let on = search(&cfg);
+        assert!(hit("体", &on), "CommonTraditional 应有 体");
+        assert!(hit("體", &on), "CommonTraditional 应有 體");
+
+        // CommonOnly：只显示常用字，體 消失但 体 保留
+        cfg.input.char_mode = qianyan_ime_core::config::CharMode::CommonOnly;
+        let off = search(&cfg);
+        assert!(hit("体", &off), "CommonOnly 仍应有 体");
+        assert!(!hit("體", &off), "CommonOnly 不应有 體");
+
+        // TraditionalOnly：只有繁体，體 在而 体 不在
+        cfg.input.char_mode = qianyan_ime_core::config::CharMode::TraditionalOnly;
+        let only_trad = search(&cfg);
+        assert!(!hit("体", &only_trad), "TraditionalOnly 不应有 体");
+        assert!(hit("體", &only_trad), "TraditionalOnly 应有 體");
     }
 
     #[test]
@@ -1715,18 +1800,20 @@ mod tests {
 
         let base_cfg = qianyan_ime_core::config::Config::load();
         println!(
-            "base_cfg.rare_char_mode={:?}",
-            base_cfg.input.rare_char_mode,
+            "base_cfg.char_mode={:?}",
+            base_cfg.input.char_mode,
         );
 
-        // Test 3 modes
+        // Test 5 modes
         for (label, mode) in [
-            ("CommonOnly", qianyan_ime_core::config::RareCharMode::CommonOnly),
-            ("IncludeRare", qianyan_ime_core::config::RareCharMode::IncludeRare),
-            ("OnlyRare", qianyan_ime_core::config::RareCharMode::OnlyRare),
+            ("CommonOnly", qianyan_ime_core::config::CharMode::CommonOnly),
+            ("CommonTraditional", qianyan_ime_core::config::CharMode::CommonTraditional),
+            ("IncludeAll", qianyan_ime_core::config::CharMode::IncludeAll),
+            ("RareOnly", qianyan_ime_core::config::CharMode::RareOnly),
+            ("TraditionalOnly", qianyan_ime_core::config::CharMode::TraditionalOnly),
         ] {
             let mut cfg = base_cfg.clone();
-            cfg.input.rare_char_mode = mode;
+            cfg.input.char_mode = mode;
             cfg.input.enable_prefix_matching = false;
             cfg.input.enable_abbreviation_matching = false;
             cfg.input.enable_error_correction = false;
@@ -1740,13 +1827,14 @@ mod tests {
                 aux_filter: "",
                 context: None,
                 context_pair: None,
-                
+
             };
             let (candidates, _) = engine.search(query);
             let total = candidates.len();
             let rare = candidates.iter().filter(|c| c.flags & 1 != 0).count();
-            let common = candidates.iter().filter(|c| c.flags & 1 == 0).count();
-            println!("{}: total={} rare={} common={}", label, total, rare, common);
+            let trad = candidates.iter().filter(|c| c.flags & 2 != 0).count();
+            let common = candidates.iter().filter(|c| c.flags & 3 == 0).count();
+            println!("{}: total={} rare={} trad={} common={}", label, total, rare, trad, common);
         }
     }
 

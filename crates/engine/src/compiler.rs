@@ -33,7 +33,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                     let skip_reverse = is_english || dir_name.contains("japanese");
                     let start = std::time::Instant::now();
                     let trie_out = out_dir.join("trie");
-                    compile_dict_for_path(&src_path.to_string_lossy(), &trie_out.to_string_lossy(), is_english, skip_reverse, None, None)?;
+                    compile_dict_for_path(&src_path.to_string_lossy(), &trie_out.to_string_lossy(), is_english, skip_reverse, None, None, None)?;
                     println!(
                         "[Compiler] 方案 [{}] 编译完成，耗时 {:?}",
                         dir_name,
@@ -61,7 +61,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         if should_compile(&src_path, &trie_dat) {
             println!("[Compiler] 方案 [stroke] 需要编译，正在执行...");
             let start = std::time::Instant::now();
-            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("stroke_aux"), None)?;
+            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("stroke_aux"), None, Some("trad"))?;
             println!("[Compiler] 方案 [stroke] 编译完成，耗时 {:?}", start.elapsed());
         } else {
             println!("[Compiler] 方案 [stroke] 已是最新，跳过。");
@@ -82,7 +82,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         if should_compile(&src_path, &trie_dat) {
             println!("[Compiler] 方案 [bihua] 需要编译，正在执行...");
             let start = std::time::Instant::now();
-            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("strokes"), None)?;
+            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, false, Some("strokes"), None, Some("trad"))?;
             println!("[Compiler] 方案 [bihua] 编译完成，耗时 {:?}", start.elapsed());
         } else {
             println!("[Compiler] 方案 [bihua] 已是最新，跳过。");
@@ -103,7 +103,7 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         if should_compile(&src_path, &trie_dat) {
             println!("[Compiler] 方案 [pybi] 需要编译，正在执行...");
             let start = std::time::Instant::now();
-            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, true, None, Some("strokes"))?;
+            compile_dict_for_path(&src_path.to_string_lossy(), &out_dir.join("trie").to_string_lossy(), false, true, None, Some("strokes"), Some("trad"))?;
             println!("[Compiler] 方案 [pybi] 编译完成，耗时 {:?}", start.elapsed());
         } else {
             println!("[Compiler] 方案 [pybi] 已是最新，跳过。");
@@ -190,6 +190,7 @@ fn compile_dict_for_path(
     skip_reverse: bool,
     key_field: Option<&str>,
     strokes_as_aux: Option<&str>,
+    skip_category: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
     for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
@@ -198,7 +199,7 @@ fn compile_dict_for_path(
             if path.file_name().and_then(|n| n.to_str()) == Some("punctuation.json") {
                 continue;
             }
-            process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux)?;
+            process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux, skip_category)?;
         } else if path.extension().is_some_and(|ext| ext == "yaml") {
             process_yaml_file(path, &mut entries)?;
         }
@@ -246,6 +247,8 @@ struct DictEntry {
 
 /// 0x01 = 生僻字 (level-4, level-5)
 const FLAG_RARE: u8 = 0x01;
+/// 0x02 = 繁体扩展候选 (category=trad, 简繁同显注入)
+const FLAG_TRAD: u8 = 0x02;
 
 fn process_json_file(
     path: &Path,
@@ -253,6 +256,7 @@ fn process_json_file(
     is_english: bool,
     key_field: Option<&str>,
     strokes_as_aux: Option<&str>,
+    skip_category: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let json: Value = serde_json::from_reader(file)?;
@@ -324,7 +328,17 @@ fn process_json_file(
                                     .get("category")
                                     .and_then(|s| s.as_str())
                                     .unwrap_or("");
-                                let flags = if category == "level-4" || category == "level-5" { FLAG_RARE } else { 0 };
+                                // 简体主词典以外的方案（stroke/bihua/pybi）跳过繁体扩展候选
+                                if skip_category == Some(category) {
+                                    continue;
+                                }
+                                let flags = if category == "level-4" || category == "level-5" {
+                                    FLAG_RARE
+                                } else if category == "trad" {
+                                    FLAG_TRAD
+                                } else {
+                                    0
+                                };
 
                                 // 当指定 key_field 时，用该字段的值作为搜索 key
                                 let trie_key = if let Some(field) = key_field {
@@ -426,7 +440,8 @@ fn write_binary_dict(
         let mut current_offset = 8u64;
         for (pinyin, mut pairs) in entries {
             // 同词去重：首次出现保留；若同一词同时存在生僻(level-4/5)与普通版本，
-            // 普通版本覆盖生僻版本（如 trads.json 将传统字以非生僻低词频注入）
+            // 普通版本覆盖生僻版本（如 chars/trads.json 将繁体字以 category=trad
+            // 非生僻候选注入，覆盖其在 level-4/5 中的生僻形式）
             let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
             let mut deduped: Vec<DictEntry> = Vec::with_capacity(pairs.len());
             for e in pairs {
