@@ -99,6 +99,12 @@ pub enum ProcessorMsg {
     ToggleEnabled {
         reply: Sender<TraySnapshot>,
     },
+    /// 同步“系统真实大写锁定”状态（例如 evdev 启动时从键盘 LED 读到的值），
+    /// 用于让恢复逻辑在启动前就已处于大写锁定状态时也能把大写锁关掉
+    SetCapsLock {
+        enabled: bool,
+        reply: Sender<()>,
+    },
     NextProfile {
         reply: Sender<TraySnapshot>,
     },
@@ -193,6 +199,11 @@ impl ProcessorHandle {
     pub fn toggle_enabled(&self) -> Option<TraySnapshot> {
         let (tx, rx) = mpsc::channel();
         self.call(ProcessorMsg::ToggleEnabled { reply: tx }, rx)
+    }
+
+    pub fn set_capslock(&self, enabled: bool) -> Option<()> {
+        let (tx, rx) = mpsc::channel();
+        self.call(ProcessorMsg::SetCapsLock { enabled, reply: tx }, rx)
     }
 
     pub fn next_profile(&self) -> Option<TraySnapshot> {
@@ -423,6 +434,10 @@ impl ProcessorActor {
                 self.processor.toggle_enabled();
                 let snap = self.build_tray_snapshot();
                 if reply.send(snap).is_err() { log::warn!("[ProcessorActor] ToggleEnabled reply.send 失败"); }
+            }
+            ProcessorMsg::SetCapsLock { enabled, reply } => {
+                self.processor.set_caps_lock(enabled);
+                let _ = reply.send(());
             }
             ProcessorMsg::NextProfile { reply } => {
                 self.processor.next_profile();

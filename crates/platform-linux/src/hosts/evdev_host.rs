@@ -206,6 +206,20 @@ impl InputMethodHost for EvdevHost {
         let mut held_keys = HashSet::new();
         let mut passed_through: HashSet<Key> = HashSet::new();
 
+        // 同步“系统真实大写锁定”状态：如果启动前键盘已处于大写锁定
+        // （CapsLock LED 亮），把该状态同步给 processor，使普通 CapsLock
+        // 也能触发恢复逻辑把大写锁关掉，避免“按不回来”。
+        {
+            let caps_on = if let Ok(dev) = self.dev.lock() {
+                dev.get_led_state()
+                    .map(|leds| leds.contains(evdev::LedType::LED_CAPSL))
+                    .unwrap_or(false)
+            } else {
+                false
+            };
+            let _ = self.processor.set_capslock(caps_on);
+        }
+
         println!("[EvdevHost] 正在运行硬件拦截循环...");
 
         while !self.should_exit.load(Ordering::Relaxed) {

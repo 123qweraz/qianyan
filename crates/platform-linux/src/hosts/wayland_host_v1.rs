@@ -47,6 +47,9 @@ struct WlState {
     xkb_context: xkb::Context,
     xkb_state: Option<xkb::State>,
     mods_depressed: u32,
+    /// keycodes（evdev scancode）其 press 已透传给系统；
+    /// 对应的 release 也必须转发，避免 keys 只按下不释放（如 Shift+CapsLock 卡大写）
+    forwarded_keys: std::collections::HashSet<u32>,
 }
 
 impl WlState {
@@ -62,7 +65,7 @@ impl WlState {
     }
 
     fn handle_action(
-        &self,
+        &mut self,
         action: &Action,
         conn: &Connection,
         utf8_text: String,
@@ -72,7 +75,7 @@ impl WlState {
         state: u32,
     ) {
         let ctx = match self.context.as_ref() {
-            Some(c) => c,
+            Some(c) => c.clone(),
             None => return,
         };
         match action {
@@ -88,6 +91,8 @@ impl WlState {
                     || utf8_text.chars().next().is_some_and(|c| c.is_control())
                 {
                     ctx.key(key_serial, time, key, state);
+                    // 记录透传的 press，供后续 release 配对转发
+                    self.forwarded_keys.insert(key);
                 } else {
                     ctx.commit_string(self.context_serial, utf8_text);
                 }
@@ -279,6 +284,17 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 if !state.active {
                     return;
                 }
+                if key_state == WEnum::Value(KeyState::Released) {
+                    // 只转发与我们透传过的 press 配对的 release，
+                    // 其余 release（如被 IME 吞掉的输入）一律丢弃
+                    if state.forwarded_keys.remove(&key) {
+                        if let Some(ctx) = &state.context {
+                            ctx.key(serial, time, key, 0);
+                            let _ = conn.flush();
+                        }
+                    }
+                    return;
+                }
                 if key_state != WEnum::Value(KeyState::Pressed) {
                     return;
                 }
@@ -415,6 +431,7 @@ impl InputMethodHost for WaylandInputHostV1 {
             xkb_context: xkb::Context::new(xkb::CONTEXT_NO_FLAGS),
             xkb_state: None,
             mods_depressed: 0,
+            forwarded_keys: std::collections::HashSet::new(),
         };
 
         let _ = event_queue.roundtrip(&mut state)?;

@@ -144,6 +144,12 @@ impl Processor {
         }
     }
 
+    /// 同步“系统真实大写锁定”状态（如 evdev 启动时从键盘 LED 读到的值）。
+    /// 使得恢复逻辑在系统已经处于大写锁定时也能被普通 CapsLock 触发关闭。
+    pub fn set_caps_lock(&mut self, enabled: bool) {
+        self.ctx.session_state.caps_lock_enabled = enabled;
+    }
+
     pub fn next_profile(&mut self) -> String {
         let enabled: Vec<String> = self
             .ctx
@@ -204,6 +210,12 @@ impl Processor {
 
         if !self.ctx.session_state.ime_enabled {
             return Action::PassThrough;
+        }
+
+        // CapsLock 只接受 press/release，忽略内核 auto-repeat (val=2) 事件，
+        // 避免按住 CapsLock 时重复透传导致系统反复切换大写锁定
+        if key == VirtualKey::CapsLock && val == 2 {
+            return Action::Consume;
         }
 
         if is_press && is_letter(key) {
@@ -298,7 +310,10 @@ impl Processor {
         if is_release && key == VirtualKey::CapsLock {
             self.ctx.session_state.capslock_down = false;
             self.ctx.session_state.capslock_combo_active = false;
-            if !self.ctx.session_state.chinese_enabled {
+            // 只有与透传的按下配对的 release 才转发给系统（保持系统端键态对称），
+            // 其余情况一律吞掉，防止注入系统从未见过的“孤儿 release”
+            if self.ctx.session_state.capslock_passed_press {
+                self.ctx.session_state.capslock_passed_press = false;
                 return Action::PassThrough;
             }
             return Action::Consume;
@@ -683,10 +698,26 @@ impl Processor {
         }
 
         if key == VirtualKey::CapsLock {
+            self.ctx.session_state.capslock_passed_press = false;
+
             // Shift + CapsLock -> 切换大写锁定状态
             if shift_pressed {
                 self.ctx.session_state.caps_lock_enabled =
                     !self.ctx.session_state.caps_lock_enabled;
+                self.ctx.session_state.capslock_passed_press = true;
+                return Some(Action::PassThrough);
+            }
+
+            // 恢复：此前通过 Shift+CapsLock（或启动时已处于大写锁定）把系统切进了大写锁定。
+            // 此时按普通 CapsLock 应把它透传给系统关掉，同时照常切换中/英文。
+            if self.ctx.session_state.caps_lock_enabled && self.ctx.session.buffer.is_empty() {
+                self.ctx.session_state.caps_lock_enabled = false;
+                self.ctx.session_state.capslock_passed_press = true;
+                self.ctx.session_state.capslock_combo_active = true;
+                self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+                if self.ctx.session_state.chinese_enabled {
+                    self.ctx.session_state.last_ime_activity = Instant::now();
+                }
                 return Some(Action::PassThrough);
             }
 
@@ -759,5 +790,107 @@ impl Processor {
 
     pub fn execute_command(&mut self, cmd: Command) -> Action {
         commands::execute_command(&mut self.ctx, cmd)
+    }
+}
+
+#[cfg(test)]
+mod caps_tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn new_proc() -> Processor {
+        Processor::new(HashMap::new(), HashMap::new())
+    }
+
+    #[test]
+    fn test_plain_capslock_switches_language_and_consumes() {
+        let mut p = new_proc();
+        let before = p.ctx.session_state.chinese_enabled;
+
+        let press = p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        assert_eq!(press, Action::Consume);
+        assert_eq!(p.ctx.session_state.chinese_enabled, !before);
+
+        let release = p.handle_key(VirtualKey::CapsLock, 0, false, false, false);
+        // 未被透传的按下对应的 release 必须被吞掉，避免注入“孤儿 release”
+        assert_eq!(release, Action::Consume);
+    }
+
+    #[test]
+    fn test_shift_capslock_toggles_real_caps_with_symmetric_release() {
+        let mut p = new_proc();
+
+        let press = p.handle_key(VirtualKey::CapsLock, 1, true, false, false);
+        assert_eq!(press, Action::PassThrough);
+        assert!(p.ctx.session_state.caps_lock_enabled);
+
+        // 与透传按下配对的 release 必须对称透传
+        let release = p.handle_key(VirtualKey::CapsLock, 0, true, false, false);
+        assert_eq!(release, Action::PassThrough);
+        assert!(p.ctx.session_state.caps_lock_enabled);
+        assert!(!p.ctx.session_state.capslock_passed_press);
+    }
+
+    #[test]
+    fn test_plain_capslock_recovers_from_latched_caps() {
+        let mut p = new_proc();
+
+        // 先用 Shift+CapsLock 把系统切进大写锁定
+        p.handle_key(VirtualKey::CapsLock, 1, true, false, false);
+        p.handle_key(VirtualKey::CapsLock, 0, true, false, false);
+        assert!(p.ctx.session_state.caps_lock_enabled);
+
+        let chinese_before = p.ctx.session_state.chinese_enabled;
+
+        // 普通 CapsLock：应透传关掉大写锁，同时照常切换中/英
+        let press = p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        assert_eq!(press, Action::PassThrough);
+        assert!(!p.ctx.session_state.caps_lock_enabled);
+        assert_eq!(p.ctx.session_state.chinese_enabled, !chinese_before);
+
+        let release = p.handle_key(VirtualKey::CapsLock, 0, false, false, false);
+        assert_eq!(release, Action::PassThrough);
+    }
+
+    #[test]
+    fn test_capslock_after_recovery_is_normal_language_switch() {
+        let mut p = new_proc();
+
+        // 进入大写锁定再恢复
+        p.handle_key(VirtualKey::CapsLock, 1, true, false, false);
+        p.handle_key(VirtualKey::CapsLock, 0, true, false, false);
+        p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        p.handle_key(VirtualKey::CapsLock, 0, false, false, false);
+        assert!(!p.ctx.session_state.caps_lock_enabled);
+
+        // 恢复之后普通 CapsLock 回到纯语言切换（Consume，不打扰系统）
+        let press = p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        assert_eq!(press, Action::Consume);
+    }
+
+    #[test]
+    fn test_capslock_autorepeat_is_ignored() {
+        let mut p = new_proc();
+        p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        let chinese_before = p.ctx.session_state.chinese_enabled;
+
+        let repeat = p.handle_key(VirtualKey::CapsLock, 2, false, false, false);
+        assert_eq!(repeat, Action::Consume);
+        assert_eq!(p.ctx.session_state.chinese_enabled, chinese_before);
+        assert!(!p.ctx.session_state.caps_lock_enabled);
+    }
+
+    #[test]
+    fn test_set_caps_lock_sync_enables_recovery() {
+        let mut p = new_proc();
+
+        // 模拟启动时键盘已处于大写锁定（LED 亮）
+        p.set_caps_lock(true);
+        assert!(p.ctx.session_state.caps_lock_enabled);
+
+        // 之后普通 CapsLock 应触发恢复（透传关掉大写锁）
+        let press = p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
+        assert_eq!(press, Action::PassThrough);
+        assert!(!p.ctx.session_state.caps_lock_enabled);
     }
 }

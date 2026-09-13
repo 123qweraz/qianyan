@@ -10,6 +10,8 @@ pub struct SessionState {
     pub last_commit_time: Instant,
     pub capslock_pending: bool,
     pub caps_lock_enabled: bool,
+    /// 上一次 CapsLock 按下是否已透传给系统（用于对称转发与之配对的 release）
+    pub capslock_passed_press: bool,
     pub capslock_down: bool,
     pub capslock_combo_active: bool,
     /// Tab 键是否被按下，用于以词定字（Tab + 键）
@@ -32,6 +34,7 @@ impl SessionState {
             last_commit_time: Instant::now(),
             capslock_pending: false,
             caps_lock_enabled: false,
+            capslock_passed_press: false,
             capslock_down: false,
             capslock_combo_active: false,
             tab_down: false,
