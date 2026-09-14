@@ -84,7 +84,7 @@ impl SearchEngine {
 
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
         let config_ref = query.config;
-        log::info!(
+        log::trace!(
             "engine_search: profile={}, buffer={}, shown_categories={:?}",
             query.profile,
             query.buffer,
@@ -145,7 +145,11 @@ impl SearchEngine {
                     hint,
                     english_aux: Arc::from(sc.english.as_str()),
                     stroke_aux: Arc::from(sc.stroke_aux.as_str()),
-                    source: Arc::from("Engine"),
+                    source: if sc.match_level < 3 {
+                        Arc::from("Table (Fuzzy)")
+                    } else {
+                        Arc::from("Engine")
+                    },
                     weight: sc.weight as f64,
                     match_level: sc.match_level,
                     flags: sc.flags,
@@ -175,7 +179,7 @@ impl SearchEngine {
                 query.limit
             };
             results.truncate(effective_limit);
-            log::info!(
+            log::trace!(
                 "engine_search: scheme results total={}, mask={:#04x}, mode={:?}",
                 results.len(),
                 mask,

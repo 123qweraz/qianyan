@@ -127,7 +127,7 @@
             const container = document.getElementById('punc-editor');
             container.innerHTML = '';
 
-            const langPuncs = config.input.punctuations[currentLang] || {};
+            const langPuncs = config.punctuations[currentLang] || {};
 
             defaultKeys.forEach(key => {
                 const entries = langPuncs[key] || [];
@@ -148,12 +148,12 @@
         }
 
         function updatePunc(key, value) {
-            if (!config.input.punctuations[currentLang]) {
-                config.input.punctuations[currentLang] = {};
+            if (!config.punctuations[currentLang]) {
+                config.punctuations[currentLang] = {};
             }
             
             const chars = value.split(/\s+/).filter(s => s.length > 0);
-            config.input.punctuations[currentLang][key] = chars.map(c => ({ char: c, desc: "" }));
+            config.punctuations[currentLang][key] = chars.map(c => ({ char: c, desc: "" }));
         }
 
         async function savePuncConfig() {

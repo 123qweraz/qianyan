@@ -21,8 +21,9 @@ impl ChineseScheme {
     }
 
     fn parse_buffer(&self, buffer: &str) -> Vec<ParsedPart> {
-        let buffer_normalized = buffer.to_lowercase();
-        let parts: Vec<&str> = buffer_normalized
+        // 注意：不能整串 to_lowercase()——大写辅助码正是靠 is_ascii_uppercase
+        // 标记拼音与后续编码的边界（如 "pingguoAPP"）。只对拼音段小写化。
+        let parts: Vec<&str> = buffer
             .split(' ')
             .filter(|s| !s.is_empty())
             .collect();
@@ -35,12 +36,16 @@ impl ChineseScheme {
             let pinyin_end = part
                 .char_indices()
                 .find(|(i, c)| {
-                    *c == ';' || c.is_ascii_digit() || (*i > 0 && c.is_ascii_uppercase())
+                    // 大写辅助码边界仅在段以小写字母开头时生效：
+                    // "pingguoAPP"→APP 是辅助码；"NIHAO" 全大写视为纯拼音
+                    *c == ';' || c.is_ascii_digit()
+                        || (*i > 0 && c.is_ascii_uppercase()
+                            && part.as_bytes().first().is_some_and(|b| b.is_ascii_lowercase()))
                 })
                 .map(|(i, _)| i)
                 .unwrap_or(part.len());
 
-            let pinyin = part[..pinyin_end].to_string();
+            let pinyin = part[..pinyin_end].to_lowercase();
             let mut rest = &part[pinyin_end..];
 
             if rest.starts_with(';') {
@@ -168,11 +173,16 @@ mod tests {
         assert_eq!(parts[0].pinyin, "nihao");
         assert_eq!(parts[0].stroke_aux.as_deref(), Some("hsz"));
 
-        // 注意：buffer 在解析前整体 to_lowercase()，大写英文辅助码标记（'A'..）会先被
-        // 小写化再进入解析，因此 pinyin_end 处的 is_ascii_uppercase 分支在当前实现下实际
-        // 不可达（潜在死代码）。这里记录现状：大写输入会被并入 pinyin。
+        // 大写字母标记拼音结束 → 英文辅助码（英译前缀 filter，如 pingguo+APP→苹果）
         let parts = s.parse_buffer("pingguoAPP");
-        assert_eq!(parts[0].pinyin, "pingguoapp");
+        assert_eq!(parts[0].pinyin, "pingguo");
+        assert_eq!(parts[0].english_aux.as_deref(), Some("APP"));
+        assert!(parts[0].stroke_aux.is_none());
+
+        // 拼音段本身可以是大写输入（首字符不做边界判定）
+        let parts = s.parse_buffer("NIHAO");
+        assert_eq!(parts[0].pinyin, "nihao");
+        assert!(parts[0].english_aux.is_none());
     }
 
     #[test]

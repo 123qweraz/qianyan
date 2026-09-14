@@ -241,8 +241,11 @@ impl Processor {
         // CapsLock+F 组合键：繁简体切换
         if is_press && key == VirtualKey::F && self.ctx.session_state.capslock_combo_active {
             self.ctx.session_state.capslock_combo_active = false;
-            // 撤销 CapsLock 按下的语言切换
-            self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            // 撤销 CapsLock 按下的语言切换（仅当它真的切换过；有内容时未切，不能误关 IME）
+            if self.ctx.session_state.capslock_switched_language {
+                self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            }
+            self.ctx.session_state.capslock_switched_language = false;
             self.ctx.session_state.traditional_enabled = !self.ctx.session_state.traditional_enabled;
             let mode = if self.ctx.session_state.traditional_enabled { "繁體" } else { "简体" };
             return Action::Notify(mode.into(), format!("切換至 {} 模式", mode));
@@ -310,6 +313,7 @@ impl Processor {
         if is_release && key == VirtualKey::CapsLock {
             self.ctx.session_state.capslock_down = false;
             self.ctx.session_state.capslock_combo_active = false;
+            self.ctx.session_state.capslock_switched_language = false;
             // 只有与透传的按下配对的 release 才转发给系统（保持系统端键态对称），
             // 其余情况一律吞掉，防止注入系统从未见过的“孤儿 release”
             if self.ctx.session_state.capslock_passed_press {
@@ -714,6 +718,7 @@ impl Processor {
                 self.ctx.session_state.caps_lock_enabled = false;
                 self.ctx.session_state.capslock_passed_press = true;
                 self.ctx.session_state.capslock_combo_active = true;
+                self.ctx.session_state.capslock_switched_language = true;
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
                 if self.ctx.session_state.chinese_enabled {
                     self.ctx.session_state.last_ime_activity = Instant::now();
@@ -725,12 +730,14 @@ impl Processor {
 
             // 单击 CapsLock -> 切换中英文模式；有内容时只设置 capslock_down
             if self.ctx.session.buffer.is_empty() {
+                self.ctx.session_state.capslock_switched_language = true;
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
                 if self.ctx.session_state.chinese_enabled {
                     self.ctx.session_state.last_ime_activity = Instant::now();
                 }
                 return Some(Action::Consume);
             } else {
+                self.ctx.session_state.capslock_switched_language = false;
                 self.ctx.session_state.capslock_down = true;
                 return Some(Action::Consume);
             }

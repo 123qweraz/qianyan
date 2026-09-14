@@ -9,7 +9,9 @@ use crate::config::PunctuationEntry;
 pub fn find_project_root() -> PathBuf {
     // Helper: 检查路径是否为合法的项目根目录（必须有编译后的 trie 词典）
     fn is_project_root(p: &Path) -> bool {
-        p.join("data/chinese/trie.index").exists()
+        // 优先以源词典目录为标记（全新检出 data/ 尚不存在时也能定位），
+        // 兼容老的 data 标记（打包产物）。
+        p.join("dicts").exists() || p.join("data/chinese/trie.index").exists()
     }
 
     // 1. 检查可执行文件同级目录 (适用于绿色版/便携版)

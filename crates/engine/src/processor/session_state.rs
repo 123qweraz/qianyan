@@ -14,6 +14,9 @@ pub struct SessionState {
     pub capslock_passed_press: bool,
     pub capslock_down: bool,
     pub capslock_combo_active: bool,
+    /// 本次 CapsLock 按下是否真的切换了中/英文（buffer 为空才切）。
+    /// CapsLock+F 撤销语言切换时只有它是 true 才需要回退。
+    pub capslock_switched_language: bool,
     /// Tab 键是否被按下，用于以词定字（Tab + 键）
     pub tab_down: bool,
     /// 最后一次上屏的 (拼音, 词)，用于打错检测（同拼音换词则衰减旧词）
@@ -37,6 +40,7 @@ impl SessionState {
             capslock_passed_press: false,
             capslock_down: false,
             capslock_combo_active: false,
+            capslock_switched_language: false,
             tab_down: false,
             last_committed: None,
             last_committed_time: Instant::now(),

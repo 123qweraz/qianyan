@@ -673,6 +673,10 @@ impl Config {
     }
 
     pub fn get_config_dir() -> std::path::PathBuf {
+        if let Some(dir) = std::env::var_os("QIANYAN_CONFIG_DIR") {
+            return std::path::PathBuf::from(dir);
+        }
+
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|parent| parent.to_path_buf()))
@@ -1338,10 +1342,11 @@ impl Config {
 mod config_tests {
     use super::*;
 
-    fn with_temp_config_dir<F: FnOnce()>(f: F) {
+    fn with_temp_config_dir<F: FnOnce()>(label: &str, f: F) {
         let dir = std::env::temp_dir().join(format!(
-            "qianyan_config_test_{}",
-            std::process::id()
+            "qianyan_config_test_{}_{}",
+            std::process::id(),
+            label
         ));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
@@ -1352,7 +1357,7 @@ mod config_tests {
 
     #[test]
     fn save_load_roundtrip_no_tmp_leftovers() {
-        with_temp_config_dir(|| {
+        with_temp_config_dir("roundtrip", || {
             let cfg = Config::default_config();
             cfg.save().unwrap();
 
@@ -1384,7 +1389,7 @@ mod config_tests {
     /// 原子写：确认 save_json 使用临时文件 + rename，不会留下半成品
     #[test]
     fn save_json_is_atomic() {
-        with_temp_config_dir(|| {
+        with_temp_config_dir("atomic", || {
             let cfg = Config::default_config();
             cfg.save().unwrap();
             let path = Config::get_config_dir().join("pinyin.json");

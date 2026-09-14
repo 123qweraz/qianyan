@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Tab 导航模式 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/static/settings/hotkeys.html" class="btn-back">← 返回快捷键设置</a>
+            <h1>Tab 导航模式</h1>
+        </header>
+
+        <div class="note">
+            <strong>💡 什么是导航模式？</strong><br>
+            拼音候选尚未上屏时，按一下 <code>Tab</code> 进入导航模式，此时候选框内的按键不再输入拼音，
+            而是用于删除、翻页、选词、切换模糊音等编辑操作，方便在不上屏的情况下微调候选。
+        </div>
+
+        <h2>进入与退出</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">进入 / 退出</div><div class="desc">拼音缓冲区非空时按 <code>Tab</code> 切换导航模式；再按 <code>Tab</code> 或任意普通键退出</div></div>
+            </div>
+        </div>
+
+        <h2>默认按键</h2>
+        <div class="card">
+            <div class="setting-item">
+                <div class="info"><div class="title">D — 删除末尾</div><div class="desc">删除拼音末尾一个字符并重新查词（可在快捷键设置中修改 <code>nav_delete</code>）</div></div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">S — 模糊音切换</div><div class="desc">切换缓冲区末尾音节的模糊音：zh↔z、ch↔c、sh↔s 并重新查词（默认 <code>nav_fuzzy</code>）</div></div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">R — 清空拼音</div><div class="desc">清空整个拼音缓冲区（默认 <code>nav_clear</code>）</div></div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">H / L — 上一词 / 下一词</div><div class="desc">v 字形移动选择候选词，对应「选择上一词 / 选择下一词」</div></div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">K / J — 上一页 / 下一页</div><div class="desc">翻动候选页，对应「翻到上一页 / 翻到下一页」</div></div>
+            </div>
+            <div class="setting-item">
+                <div class="info"><div class="title">O — 上屏英文辅助</div><div class="desc">将当前候选的英文辅助内容直接上屏（CommitEnglishAux）</div></div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/static/settings/hotkeys.html" class="btn btn-primary">前往快捷键设置</a>
+        </div>
+    </div>
+</body>
+</html>

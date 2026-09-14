@@ -115,7 +115,7 @@
         let currentWord = { char: '', pinyin: '', stroke: '', english: '' };
         let timerInterval = null;
         let audioPlayer = null;
-        let learningConfig = { appearance: { show_pinyin_hint: true, show_learning_stroke_hint: true, show_learning_english_hint: true, auto_pronounce_zh: false, auto_pronounce_en: false } };
+        let hintState = { pinyin: true, stroke: true, english: false };
 
         // ===== Stroke keyboard =====
         const keyMap = { row1: "QWERTYUIOP", row2: "ASDFGHJKL", row3: "ZXCVBNM" };
@@ -141,25 +141,58 @@
         // ===== Init =====
         async function init() {
             try {
-                const resp = await fetch('/api/config');
-                if (resp.ok) { const c = await resp.json(); if (c.appearance) Object.assign(learningConfig.appearance, c.appearance); }
-            } catch(_) {}
-            const map = { showPinyinToggle:'show_pinyin_hint', showStrokeToggle:'show_learning_stroke_hint', showEnglishToggle:'show_learning_english_hint', autoZhToggle:'auto_pronounce_zh', autoEnToggle:'auto_pronounce_en' };
-            for (let [id, key] of Object.entries(map)) {
-                const el = document.getElementById(id); if (el) { el.checked = !!learningConfig.appearance[key]; el.onchange = () => { learningConfig.appearance[key] = el.checked; updateHints(); saveConfig(); }; }
+                await loadConfig();
+            } catch (_) {}
+            if (config?.appearance) {
+                hintState.stroke = !!config.appearance.show_learning_stroke_hint;
+                hintState.english = !!config.appearance.show_learning_english_hint;
+                const ap = !!config.appearance.auto_pronounce;
+                const zh = document.getElementById('autoZhToggle');
+                const en = document.getElementById('autoEnToggle');
+                if (zh) zh.checked = ap;
+                if (en) en.checked = ap;
             }
+            // 拼音提示是练习页本地偏好（无全局配置键）
+            const savedPinyin = localStorage.getItem('qy_learning_pinyin_hint');
+            hintState.pinyin = savedPinyin !== null ? savedPinyin === '1' : true;
+
+            const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.onchange = fn; };
+            bind('showPinyinToggle', () => {
+                hintState.pinyin = document.getElementById('showPinyinToggle').checked;
+                localStorage.setItem('qy_learning_pinyin_hint', hintState.pinyin ? '1' : '0');
+                updateHints();
+            });
+            bind('showStrokeToggle', () => {
+                hintState.stroke = document.getElementById('showStrokeToggle').checked;
+                if (config?.appearance) config.appearance.show_learning_stroke_hint = hintState.stroke;
+                updateHints();
+                saveConfig();
+            });
+            bind('showEnglishToggle', () => {
+                hintState.english = document.getElementById('showEnglishToggle').checked;
+                if (config?.appearance) config.appearance.show_learning_english_hint = hintState.english;
+                updateHints();
+                saveConfig();
+            });
+            bind('autoZhToggle', saveAutoPronounce);
+            bind('autoEnToggle', saveAutoPronounce);
+
             updateHints();
             initKeyboard();
         }
 
-        function updateHints() {
-            document.getElementById('pinyinHintBadge').style.display = learningConfig.appearance.show_pinyin_hint ? '' : 'none';
-            document.getElementById('strokeHintBadge').style.display = learningConfig.appearance.show_learning_stroke_hint ? '' : 'none';
-            document.getElementById('englishHintBadge').style.display = learningConfig.appearance.show_learning_english_hint ? '' : 'none';
+        function saveAutoPronounce() {
+            if (!config?.appearance) return;
+            config.appearance.auto_pronounce =
+                document.getElementById('autoZhToggle').checked ||
+                document.getElementById('autoEnToggle').checked;
+            saveConfig();
         }
 
-        async function saveConfig() {
-            try { await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(learningConfig) }); } catch(_) {}
+        function updateHints() {
+            document.getElementById('pinyinHintBadge').style.display = hintState.pinyin ? '' : 'none';
+            document.getElementById('strokeHintBadge').style.display = hintState.stroke ? '' : 'none';
+            document.getElementById('englishHintBadge').style.display = hintState.english ? '' : 'none';
         }
 
         // ===== Speech =====

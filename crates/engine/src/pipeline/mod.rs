@@ -23,7 +23,6 @@ pub use compose::*;
 
 
 pub const MAX_LOOKUP_LIMIT: usize = 500;
-const CACHE_TTL_MS: u64 = 300;
 
 /// 候选项
 #[derive(Clone, Debug, PartialEq)]

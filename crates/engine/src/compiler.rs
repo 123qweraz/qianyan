@@ -147,18 +147,12 @@ fn should_compile(src_dir: &Path, target_file: &Path) -> bool {
         .and_then(|m| m.modified())
         .unwrap_or(SystemTime::UNIX_EPOCH);
 
-    // 检查目录本身的修改时间 (只有当目录比目标文件新时才考虑进一步检查)
-    if let Ok(m) = src_dir.metadata().and_then(|m| m.modified()) {
-        if m > target_mtime {
-            // 目录变了不一定代表内容变了，继续深挖
-        } else {
-            // 目录都没变，肯定没加减文件
-            return false;
-        }
-    }
-
     let mut max_src_mtime = SystemTime::UNIX_EPOCH;
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(src_dir)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         if entry.path().is_file() {
             let ext = entry
                 .path()
@@ -194,12 +188,13 @@ fn compile_dict_for_path(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
     let simp_trad = collect_simp_to_trad_map(src_dir);
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(src_dir)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
-            if path.file_name().and_then(|n| n.to_str()) == Some("punctuation.json") {
-                continue;
-            }
             process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux, skip_category, &simp_trad)?;
         } else if path.extension().is_some_and(|ext| ext == "yaml") {
             process_yaml_file(path, &mut entries)?;
@@ -266,7 +261,11 @@ pub(crate) fn category_flag(category: &str) -> u8 {
 /// 词条（多字词）删掉冗余 trad 字段后，编译时按字查此表补出繁体，保证繁体输出不回归。
 fn collect_simp_to_trad_map(src_dir: &str) -> std::collections::HashMap<String, String> {
     let mut m = std::collections::HashMap::new();
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(src_dir)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
             let Ok(json) = std::fs::read_to_string(path).map(|s| serde_json::from_str::<Value>(&s)).map(|r| r.ok()) else {
@@ -310,9 +309,14 @@ fn process_json_file(
             let normalized_key = key.to_lowercase();
             if let Some(arr) = val.as_array() {
                 if is_english {
+                    // 词注优先取 string 数组元素；object 元素取其 en 字段（统一为字符串格式的兜底）
                     let en_hint = arr
                         .iter()
-                        .filter_map(|v| v.as_str())
+                        .filter_map(|v| match v {
+                            Value::String(s) => Some(s.as_str()),
+                            Value::Object(o) => o.get("en").and_then(|e| e.as_str()),
+                            _ => None,
+                        })
                         .next()
                         .unwrap_or("")
                         .to_string();

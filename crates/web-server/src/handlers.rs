@@ -25,6 +25,23 @@ use qianyan_ime_engine::trie::Trie;
 use qianyan_ime_core::event::TrayEvent;
 use crate::{WebState, ImeEngineHandle, ImeSession, MAX_IME_SESSIONS, SESSION_TTL_SECS};
 use crate::static_handler::{find_dicts_root, safe_join, valid_profile_name};
+
+/// 所有 profile 下的用户词典文件（清空/导出/备份/导入等整组扫描共用）
+const USER_DICT_FILES: &[&str] = &[
+    "learned.json",
+    "long_term.json",
+    "ngrams.json",
+    "order.json",
+    "usage.json",
+];
+
+/// 浏览接口中识别的词典类型（键=文件名，值=接口呈现类型）
+const USER_DICT_TYPES: &[(&str, &str)] = &[
+    ("learned.json", "learned"),
+    ("long_term.json", "long_term"),
+    ("ngrams.json", "ngram"),
+    ("usage.json", "usage"),
+];
 pub(crate) async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
     match config.read() {
         Ok(cfg) => Json(cfg.clone()).into_response(),
@@ -824,7 +841,7 @@ pub(crate) async fn clear_user_dict(
         if let Ok(entries) = std::fs::read_dir(&root) {
             for entry in entries.flatten() {
                 if entry.path().is_dir() {
-                    for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+                    for file_name in USER_DICT_FILES {
                         let f = entry.path().join(file_name);
                         if f.exists() {
                             let _ = std::fs::remove_file(&f);
@@ -840,7 +857,7 @@ pub(crate) async fn clear_user_dict(
         }
         let profile_dir = root.join(profile);
         if profile_dir.exists() {
-            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+            for file_name in USER_DICT_FILES {
                 let f = profile_dir.join(file_name);
                 if f.exists() {
                     let _ = std::fs::remove_file(&f);
@@ -1095,11 +1112,7 @@ pub(crate) async fn browse_user_dict() -> Json<Vec<UserDictEntryView>> {
             }
             let profile = profile_entry.file_name().to_string_lossy().to_string();
 
-            for (file_name, data_type) in &[
-                ("learned.json", "learned"),
-                ("usage.json", "usage"),
-                ("ngrams.json", "ngram"),
-            ] {
+            for (file_name, data_type) in USER_DICT_TYPES {
                 let path = profile_entry.path().join(file_name);
                 if path.exists() {
                     if let Some(map) = read_json_file(&path) {
@@ -1132,7 +1145,7 @@ pub(crate) async fn delete_user_dict_entry(
 
     // 同时从 learned, usage, ngram 三个文件中删除该词条
     let mut deleted = false;
-    for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+    for file_name in USER_DICT_FILES {
         let path = profile_dir.join(file_name);
         if !path.exists() { continue; }
         let content = match std::fs::read_to_string(&path) {
@@ -2427,7 +2440,7 @@ pub(crate) async fn export_user_data() -> impl IntoResponse {
             let profile = profile_entry.file_name().to_string_lossy().to_string();
             let mut profile_data = serde_json::Map::new();
 
-            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+            for file_name in USER_DICT_FILES {
                 let path = profile_entry.path().join(file_name);
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -2476,8 +2489,10 @@ pub(crate) async fn import_user_data(
                 for (key, value) in data_obj {
                     let file_name = match key.as_str() {
                         "learned" => "learned.json",
-                        "usage" => "usage.json",
+                        "long_term" => "long_term.json",
                         "ngram" => "ngrams.json",
+                        "order" => "order.json",
+                        "usage" => "usage.json",
                         _ => continue,
                     };
                     let path = profile_dir.join(file_name);
@@ -2598,7 +2613,7 @@ pub(crate) async fn export_full_backup() -> impl IntoResponse {
             if !profile_entry.path().is_dir() { continue; }
             let profile = profile_entry.file_name().to_string_lossy().to_string();
             let mut profile_data = serde_json::Map::new();
-            for file_name in &["learned.json", "usage.json", "ngrams.json"] {
+            for file_name in USER_DICT_FILES {
                 let path = profile_entry.path().join(file_name);
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     if let Ok(value) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -2665,8 +2680,10 @@ pub(crate) async fn restore_full_backup(
                 for (key, value) in data_obj {
                     let file_name = match key.as_str() {
                         "learned" => "learned.json",
-                        "usage" => "usage.json",
+                        "long_term" => "long_term.json",
                         "ngram" => "ngrams.json",
+                        "order" => "order.json",
+                        "usage" => "usage.json",
                         _ => continue,
                     };
                     let path = profile_dir.join(file_name);
