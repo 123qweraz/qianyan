@@ -85,10 +85,10 @@ impl SearchEngine {
     fn do_search(&self, query: SearchQuery) -> (Vec<Candidate>, Vec<String>) {
         let config_ref = query.config;
         log::info!(
-            "engine_search: profile={}, buffer={}, char_mode={:?}",
+            "engine_search: profile={}, buffer={}, shown_categories={:?}",
             query.profile,
             query.buffer,
-            config_ref.input.char_mode
+            config_ref.input.shown_char_categories
         );
 
         if let Some(scheme) = self.schemes.get(query.profile) {
@@ -160,35 +160,26 @@ impl SearchEngine {
                 });
             }
 
-            match config_ref.input.char_mode {
-                qianyan_ime_core::config::CharMode::CommonOnly => {
-                    results.retain(|c| c.flags & 0x03 == 0);
-                }
-                qianyan_ime_core::config::CharMode::CommonTraditional => {
-                    results.retain(|c| c.flags & 0x01 == 0);
-                }
-                qianyan_ime_core::config::CharMode::IncludeAll => {}
-                qianyan_ime_core::config::CharMode::RareOnly => {
-                    results.retain(|c| c.flags & 0x01 != 0);
-                }
-                qianyan_ime_core::config::CharMode::TraditionalOnly => {
-                    results.retain(|c| c.flags & 0x02 != 0);
-                }
-            }
+            // 按 category 过滤：点亮集合之外的字符级单字隐藏；词条(flags=0)恒显示
+            let mask: u8 = config_ref
+                .input
+                .shown_char_categories
+                .iter()
+                .fold(0u8, |m, s| m | crate::compiler::category_flag(s));
+            results.retain(|c| c.flags == 0 || (c.flags & mask) != 0);
 
-            let effective_limit = match config_ref.input.char_mode {
-                qianyan_ime_core::config::CharMode::CommonOnly
-                | qianyan_ime_core::config::CharMode::CommonTraditional => query.limit,
-                _ => query.limit.max(2000),
+            let has_deep = mask & crate::compiler::RARE_BITS != 0 || mask & 0x20 != 0;
+            let effective_limit = if has_deep {
+                query.limit.max(2000)
+            } else {
+                query.limit
             };
             results.truncate(effective_limit);
             log::info!(
-                "engine_search: scheme results total={}, rare={}, trad={}, common={}, mode={:?}",
+                "engine_search: scheme results total={}, mask={:#04x}, mode={:?}",
                 results.len(),
-                results.iter().filter(|c| c.flags & 1 != 0).count(),
-                results.iter().filter(|c| c.flags & 2 != 0).count(),
-                results.iter().filter(|c| c.flags & 1 == 0).count(),
-                config_ref.input.char_mode,
+                mask,
+                config_ref.input.shown_char_categories,
             );
             let delims = &query.config.input.segmentation_delimiters;
             let segs = DefaultSegmentor.segment(&pre_processed, delims, &self.syllable_freq, &self.base_syllables);

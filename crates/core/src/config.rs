@@ -289,24 +289,12 @@ fn default_english_aux_mode() -> EnglishAuxMode {
     EnglishAuxMode::Prefix
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum CharMode {
-    /// 只显示常用字（不含生僻字与简体字典标注的繁体字）
-    CommonOnly,
-    /// 常用字 + 繁体字（简繁同显，不含生僻字）—— 默认
-    #[default]
-    CommonTraditional,
-    /// 全部：常用 + 生僻 + 繁体
-    IncludeAll,
-    /// 只显示生僻字
-    RareOnly,
-    /// 只显示繁体字
-    TraditionalOnly,
-}
-
 fn default_phantom_separator() -> String {
     ">".to_string()
+}
+
+fn default_shown_char_categories() -> Vec<String> {
+    vec!["level-1".into(), "level-2".into(), "level-3".into()]
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -340,7 +328,8 @@ pub struct Input {
     pub prefix_matching_limit: usize,
     pub enable_abbreviation_matching: bool,
     pub enable_error_correction: bool,
-    pub char_mode: CharMode,
+    #[serde(default = "default_shown_char_categories")]
+    pub shown_char_categories: Vec<String>,
     pub filter_proper_nouns_by_case: bool,
     pub enabled_profiles: Vec<String>,
     pub profile_keys: Vec<ProfileKey>,
@@ -936,7 +925,7 @@ impl Config {
         let _guard = lock.lock().map_err(|e| format!("Lock poisoned: {}", e))?;
 
         let config_dir = Self::get_config_dir();
-        log::info!("Config::save to {:?}, char_mode={:?}", config_dir, self.input.char_mode);
+        log::info!("Config::save to {:?}, shown_char_categories={:?}", config_dir, self.input.shown_char_categories);
         if !config_dir.exists() {
             std::fs::create_dir_all(&config_dir)?;
         }
@@ -1144,7 +1133,7 @@ impl Config {
                 prefix_matching_limit: 20,
                 enable_abbreviation_matching: true,
                 enable_error_correction: true,
-                char_mode: CharMode::CommonTraditional,
+                shown_char_categories: default_shown_char_categories(),
                 filter_proper_nouns_by_case: true,
                 enabled_profiles: vec!["chinese".to_string(), "pybi".to_string()],
                 profile_keys: vec![

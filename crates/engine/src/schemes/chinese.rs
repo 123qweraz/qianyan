@@ -224,11 +224,14 @@ impl InputScheme for ChineseScheme {
         let mut final_results = Vec::new();
         let mut seen = std::collections::HashSet::new();
 
-        let max_results = match context.config.input.char_mode {
-            qianyan_ime_core::config::CharMode::CommonOnly
-            | qianyan_ime_core::config::CharMode::CommonTraditional => 500,
-            _ => 2000,
-        };
+        let mask: u8 = context
+            .config
+            .input
+            .shown_char_categories
+            .iter()
+            .fold(0u8, |m, s| m | crate::compiler::category_flag(s));
+        let has_deep = mask & (crate::compiler::RARE_BITS | 0x20) != 0;
+        let max_results = if has_deep { 2000 } else { 500 };
         let min_results_needed = max_results;
 
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();

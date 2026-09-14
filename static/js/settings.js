@@ -7,7 +7,7 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
-    console.log('saveConfig: char_mode=', config?.input?.char_mode, 'full config keys:', Object.keys(config || {}));
+    console.log('saveConfig: shown_char_categories=', config?.input?.shown_char_categories, 'full config keys:', Object.keys(config || {}));
     const resp = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

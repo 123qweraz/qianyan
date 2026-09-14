@@ -48,15 +48,16 @@
                         <div class="info"><div class="title">开启简拼匹配</div><div class="desc">支持输入声母进行匹配（如 zm → 怎么）</div></div>
                         <label class="switch"><input type="checkbox" id="enable_abbreviation_matching"><span class="slider"></span></label>
                     </div>
-                    <div class="setting-item">
-                        <div class="info"><div class="title">字符显示范围</div><div class="desc">选择候选中显示哪些字：常用字、生僻字与简体拼音可以顺带打出的繁体字</div></div>
-                        <select id="char_mode" class="select-input">
-                            <option value="common_only">只显示常用字</option>
-                            <option value="common_traditional">常用字 + 繁体字（简繁同显）</option>
-                            <option value="include_all">全部（常用 + 生僻 + 繁体）</option>
-                            <option value="rare_only">只显示生僻字</option>
-                            <option value="traditional_only">只显示繁体字</option>
-                        </select>
+                    <div class="setting-item" style="display:block;">
+                        <div class="info"><div class="title">字符显示范围</div><div class="desc">勾选在候选中显示哪些类别；默认仅显示常用一~三级字。繁体字需点亮「繁体字」才会出现</div></div>
+                        <div id="char_categories" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
+                            <div class="profile-chip" data-cat="level-1"><span>一级常用字</span></div>
+                            <div class="profile-chip" data-cat="level-2"><span>二级常用字</span></div>
+                            <div class="profile-chip" data-cat="level-3"><span>三级字</span></div>
+                            <div class="profile-chip" data-cat="level-4"><span>四级生僻字</span></div>
+                            <div class="profile-chip" data-cat="level-5"><span>五级生僻字</span></div>
+                            <div class="profile-chip" data-cat="trad"><span>繁体字</span></div>
+                        </div>
                     </div>
                     <div class="setting-item">
                         <div class="info"><div class="title">模糊与纠错行为</div><div class="desc">模糊音（z↔zh等）、纠错匹配和防呆模式</div></div>
@@ -89,7 +90,7 @@
                 <h2 id="traditional">繁体输入功能</h2>
                 <div class="card">
                     <div class="setting-item">
-                        <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形；想打拼音时顺带显示繁体字候选，请在“字符显示范围”中选择“常用字 + 繁体字”</div></div>
+                        <div class="info"><div class="title">繁体输出</div><div class="desc">开启后输出的中文为繁体字形；想打拼音时顺带显示繁体字候选，请在“字符显示范围”中点亮「繁体字」</div></div>
                         <label class="switch"><input type="checkbox" id="enable_traditional"><span class="slider"></span></label>
                     </div>
                     <div class="setting-item">
@@ -140,12 +141,10 @@
 
         async function initForm() {
             bindInput('enable_traditional', 'input');
-            bindInput('char_mode', 'input');
             bindInput('segmentation_delimiters', 'input');
             bindInput('auto_commit_unique_full_match', 'input');
             bindInput('enable_prefix_matching', 'input');
             bindInput('enable_abbreviation_matching', 'input');
-            bindInput('char_mode', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_number_selection', 'input');
             bindInput('display_mode', 'input');
@@ -153,6 +152,24 @@
             if (!config.input.double_tap_uppercase_keys) {
                 config.input.double_tap_uppercase_keys = [];
             }
+
+            const DEFAULT_CATS = ['level-1', 'level-2', 'level-3'];
+            if (!config.input.shown_char_categories) {
+                config.input.shown_char_categories = [...DEFAULT_CATS];
+            }
+            const list = config.input.shown_char_categories;
+            document.querySelectorAll('#char_categories .profile-chip').forEach(chip => {
+                const cat = chip.dataset.cat;
+                const active = () => list.includes(cat);
+                const refresh = () => chip.classList.toggle('active', active());
+                refresh();
+                chip.onclick = () => {
+                    const idx = list.indexOf(cat);
+                    if (idx === -1) { list.push(cat); }
+                    else { list.splice(idx, 1); }
+                    refresh();
+                };
+            });
         }
 
         async function init() {

@@ -73,7 +73,7 @@ impl ConfigManager {
 
     pub fn apply_config(&mut self, conf: &Config) {
         self.master_config = conf.clone();
-        log::info!("ConfigManager::apply_config: char_mode={:?}", self.master_config.input.char_mode);
+        log::info!("ConfigManager::apply_config: shown_char_categories={:?}", self.master_config.input.shown_char_categories);
 
         if (self.master_config.input.enable_word_discovery
             || self.master_config.input.enable_auto_reorder)

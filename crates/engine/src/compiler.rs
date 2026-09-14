@@ -242,13 +242,24 @@ struct DictEntry {
     en: String,
     stroke_aux: String,
     weight: u32,
-    flags: u8, // bit0: 1 = 生僻字 (level-4, level-5)
+    flags: u8, // 单字按 category 置位；多字词/未分类词条 = 0（恒显示）
 }
 
-/// 0x01 = 生僻字 (level-4, level-5)
-const FLAG_RARE: u8 = 0x01;
-/// 0x02 = 繁体扩展候选 (category=trad, 简繁同显注入)
-const FLAG_TRAD: u8 = 0x02;
+/// 生僻位：level-4 | level-5
+pub(crate) const RARE_BITS: u8 = 0x18;
+
+/// 字符 category -> flags 位。仅单字分类；词条（词/用户词等）不赋值，保持 0。
+pub(crate) fn category_flag(category: &str) -> u8 {
+    match category {
+        "level-1" => 0x01,
+        "level-2" => 0x02,
+        "level-3" => 0x04,
+        "level-4" => 0x08,
+        "level-5" => 0x10,
+        "trad" => 0x20,
+        _ => 0,
+    }
+}
 
 fn process_json_file(
     path: &Path,
@@ -332,10 +343,9 @@ fn process_json_file(
                                 if skip_category == Some(category) {
                                     continue;
                                 }
-                                let flags = if category == "level-4" || category == "level-5" {
-                                    FLAG_RARE
-                                } else if category == "trad" {
-                                    FLAG_TRAD
+                                // 仅单字按 category 置位；多字词始终 flags=0（恒显示）
+                                let flags = if c.chars().count() == 1 {
+                                    category_flag(category)
                                 } else {
                                     0
                                 };
@@ -440,7 +450,7 @@ fn write_binary_dict(
         let mut current_offset = 8u64;
         for (pinyin, mut pairs) in entries {
             // 同词去重：首次出现保留；若同一词同时存在生僻(level-4/5)与普通版本，
-            // 普通版本覆盖生僻版本（如 chars/trads.json 将繁体字以 category=trad
+            // 普通版本覆盖生僻版本（如 chars/trads.json 以 category=trad
             // 非生僻候选注入，覆盖其在 level-4/5 中的生僻形式）
             let mut seen: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
             let mut deduped: Vec<DictEntry> = Vec::with_capacity(pairs.len());
@@ -451,7 +461,7 @@ fn write_binary_dict(
                         deduped.push(e);
                     }
                     Some(&i) => {
-                        if deduped[i].flags & FLAG_RARE != 0 && e.flags & FLAG_RARE == 0 {
+                        if deduped[i].flags & RARE_BITS != 0 && e.flags & RARE_BITS == 0 {
                             deduped[i] = e;
                         }
                     }

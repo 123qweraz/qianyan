@@ -1628,25 +1628,25 @@ mod tests {
             true,
         ).expect("Failed to load trie");
 
-        // 检查 li 拼音的条目，统计 flag=1 的生僻字
+        // 检查 li 拼音的条目，统计生僻位(level-4|level-5, 0x18) 的字
         let results = trie.get_all_exact("li").expect("li should exist");
         let total = results.len();
-        let rare_count = results.iter().filter(|r| r.flags & 1 != 0).count();
-        let common_count = results.iter().filter(|r| r.flags & 1 == 0).count();
+        let rare_count = results.iter().filter(|r| r.flags & 0x18 != 0).count();
+        let common_count = results.iter().filter(|r| r.flags & 0x18 == 0).count();
         println!("li: total={}, rare={}, common={}", total, rare_count, common_count);
 
-        // 检查几个已知的生僻字（不含孋：其为"丽"的繁体，已凭 trads.json
-        // 以非生僻低词频注入普通候选，见 compiler 同词去重规则）
+        // 检查几个已知的生僻字（不含孋：其为"㛤"的繁体，已凭 trads.json
+        // 以 category=trad 非生僻候选覆盖，见 compiler 同词去重规则）
         let rare_examples = vec!["悧", "蒚", "唎"];
         for ex in &rare_examples {
             if let Some(r) = results.iter().find(|r| r.word == *ex) {
                 println!("  {}: weight={}, flags={:#04x}", ex, r.weight, r.flags);
-                assert_eq!(r.flags & 1, 1, "{} should have rare flag set", ex);
+                assert_ne!(r.flags & 0x18, 0, "{} should have rare flags", ex);
             }
         }
 
         // 确保生僻字数量合理（至少有 level4/level5 的条目）
-        assert!(rare_count > 0, "Should have at least some rare characters with flags=1 for 'li'");
+        assert!(rare_count > 0, "Should have at least some rare characters with flags=0x18 for 'li'");
     }
 
     #[test]
@@ -1659,33 +1659,33 @@ mod tests {
             true,
         ).expect("Failed to load trie");
 
-        // chars/trads.json 把繁体字以 category=trad（flags=0x02）普通候选、权重=
-        // 原字权重−1 注入，默认 CharMode::CommonTraditional 下应能检索到
+        // chars/trads.json 以 category=trad（flags=0x20）、权重=原字权重−1 注入；
+        // 默认仅点亮 level-1..3 时代替默认级不可见，点亮 trad 后可检索到
         for (key, trad, simp) in [("ti", "體", "体"), ("ai", "愛", "爱"), ("men", "們", "们")] {
             let results = trie.get_all_exact(key).expect("syllable should exist");
             let r = results
                 .iter()
                 .find(|r| r.word == trad)
                 .unwrap_or_else(|| panic!("{} 未作为候选存在于 {}", trad, key));
-            let simp_w = results
+            let simp_r = results
                 .iter()
                 .find(|r| r.word == simp)
-                .unwrap_or_else(|| panic!("{} 应存在于 {}", simp, key))
-                .weight;
-            assert_eq!(r.flags & 1, 0, "{} 应为非生僻候选", trad);
-            assert_eq!(r.flags & 2, 2, "{} 应标记 category=trad", trad);
-            assert_eq!(r.weight, simp_w.saturating_sub(1), "{} 权重应为原字权重−1", trad);
+                .unwrap_or_else(|| panic!("{} 应存在于 {}", simp, key));
+            assert_eq!(simp_r.flags & 0x01, 0x01, "{} 应为 level-1", simp);
+            assert_eq!(r.flags & 0x18, 0, "{} 不应为生僻(level-4/5)", trad);
+            assert_eq!(r.flags & 0x20, 0x20, "{} 应标记 category=trad", trad);
+            assert_eq!(r.weight, simp_r.weight.saturating_sub(1), "{} 权重应为原字权重−1", trad);
         }
 
-        // 同词生僻/普通并存时普通版覆盖生僻版：孋(丽之繁体) 非生僻；
-        // 真正无简繁关联的生僻字仍保留生僻位
+        // 同词生僻/普通并存时非生僻版覆盖生僻版：孋(㛤之繁体, trad=0x20)
+        // 取代其原有的 level-4 生僻位；真正无简繁关联的生僻字仍保留生僻位
         let li = trie.get_all_exact("li").expect("li should exist");
         let li_zhi = li.iter().find(|r| r.word == "孋").unwrap();
-        assert_eq!(li_zhi.flags & 1, 0, "孋 应被普通版覆盖为非生僻");
+        assert_eq!(li_zhi.flags & 0x18, 0, "孋 应被繁体版覆盖掉生僻位");
     }
 
     #[test]
-    fn test_char_mode_filter() {
+    fn test_char_categories_filter() {
         use crate::pipeline::{SearchEngine, SearchQuery};
         use arc_swap::ArcSwap;
         use std::collections::HashMap;
@@ -1724,7 +1724,7 @@ mod tests {
             cs.iter().any(|c| c.text == Arc::from(s))
         };
 
-        // 构造不同 CharMode 的配置，搜索 ti
+        // 构造不同 category 点亮组合的配置，搜索 ti
         let mut cfg_base = base_cfg.clone();
         cfg_base.input.enable_prefix_matching = false;
         cfg_base.input.enable_abbreviation_matching = false;
@@ -1743,24 +1743,26 @@ mod tests {
             .0
         };
 
-        // CommonTraditional（默认）：常用 + 繁体，ti 应同时含 体 与 體
+        // 只点亮 level-1..3（默认）：常用显示、繁体隐藏
         let mut cfg = cfg_base.clone();
-        cfg.input.char_mode = qianyan_ime_core::config::CharMode::CommonTraditional;
+        cfg.input.shown_char_categories = vec![
+            "level-1".into(), "level-2".into(), "level-3".into()];
         let on = search(&cfg);
-        assert!(hit("体", &on), "CommonTraditional 应有 体");
-        assert!(hit("體", &on), "CommonTraditional 应有 體");
+        assert!(hit("体", &on), "默认应显示 体");
+        assert!(!hit("體", &on), "默认不应显示 體");
 
-        // CommonOnly：只显示常用字，體 消失但 体 保留
-        cfg.input.char_mode = qianyan_ime_core::config::CharMode::CommonOnly;
-        let off = search(&cfg);
-        assert!(hit("体", &off), "CommonOnly 仍应有 体");
-        assert!(!hit("體", &off), "CommonOnly 不应有 體");
+        // 点亮 level-1..3 + trad：体 与 體 同显
+        cfg.input.shown_char_categories = vec![
+            "level-1".into(), "level-2".into(), "level-3".into(), "trad".into()];
+        let both = search(&cfg);
+        assert!(hit("体", &both), "+trad 应显示 体");
+        assert!(hit("體", &both), "+trad 应显示 體");
 
-        // TraditionalOnly：只有繁体，體 在而 体 不在
-        cfg.input.char_mode = qianyan_ime_core::config::CharMode::TraditionalOnly;
+        // 只点亮 trad：只有繁体，体 不在
+        cfg.input.shown_char_categories = vec!["trad".into()];
         let only_trad = search(&cfg);
-        assert!(!hit("体", &only_trad), "TraditionalOnly 不应有 体");
-        assert!(hit("體", &only_trad), "TraditionalOnly 应有 體");
+        assert!(!hit("体", &only_trad), "仅 trad 不应有 体");
+        assert!(hit("體", &only_trad), "仅 trad 应有 體");
     }
 
     #[test]
@@ -1800,20 +1802,20 @@ mod tests {
 
         let base_cfg = qianyan_ime_core::config::Config::load();
         println!(
-            "base_cfg.char_mode={:?}",
-            base_cfg.input.char_mode,
+            "base_cfg.shown_char_categories={:?}",
+            base_cfg.input.shown_char_categories,
         );
 
-        // Test 5 modes
-        for (label, mode) in [
-            ("CommonOnly", qianyan_ime_core::config::CharMode::CommonOnly),
-            ("CommonTraditional", qianyan_ime_core::config::CharMode::CommonTraditional),
-            ("IncludeAll", qianyan_ime_core::config::CharMode::IncludeAll),
-            ("RareOnly", qianyan_ime_core::config::CharMode::RareOnly),
-            ("TraditionalOnly", qianyan_ime_core::config::CharMode::TraditionalOnly),
+        // Test 4 种 category 点亮组合 (li: 大量生僻+繁体候选)
+        for (label, cats) in [
+            ("Default(L1-3)", vec!["level-1", "level-2", "level-3"]),
+            ("L1-3+trad", vec!["level-1", "level-2", "level-3", "trad"]),
+            ("All", vec!["level-1", "level-2", "level-3", "level-4", "level-5", "trad"]),
+            ("RareOnly", vec!["level-4", "level-5"]),
+            ("TradOnly", vec!["trad"]),
         ] {
             let mut cfg = base_cfg.clone();
-            cfg.input.char_mode = mode;
+            cfg.input.shown_char_categories = cats.into_iter().map(|s| s.to_string()).collect();
             cfg.input.enable_prefix_matching = false;
             cfg.input.enable_abbreviation_matching = false;
             cfg.input.enable_error_correction = false;
@@ -1831,10 +1833,15 @@ mod tests {
             };
             let (candidates, _) = engine.search(query);
             let total = candidates.len();
-            let rare = candidates.iter().filter(|c| c.flags & 1 != 0).count();
-            let trad = candidates.iter().filter(|c| c.flags & 2 != 0).count();
-            let common = candidates.iter().filter(|c| c.flags & 3 == 0).count();
-            println!("{}: total={} rare={} trad={} common={}", label, total, rare, trad, common);
+            let l1 = candidates.iter().filter(|c| c.flags & 0x01 != 0).count();
+            let l2 = candidates.iter().filter(|c| c.flags & 0x02 != 0).count();
+            let l3 = candidates.iter().filter(|c| c.flags & 0x04 != 0).count();
+            let l4 = candidates.iter().filter(|c| c.flags & 0x08 != 0).count();
+            let l5 = candidates.iter().filter(|c| c.flags & 0x10 != 0).count();
+            let trad = candidates.iter().filter(|c| c.flags & 0x20 != 0).count();
+            let other = candidates.iter().filter(|c| c.flags == 0).count();
+            println!("{}: total={} l1={} l2={} l3={} l4={} l5={} trad={} other={}",
+                label, total, l1, l2, l3, l4, l5, trad, other);
         }
     }
 
