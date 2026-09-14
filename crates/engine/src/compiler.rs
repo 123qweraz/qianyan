@@ -193,13 +193,14 @@ fn compile_dict_for_path(
     skip_category: Option<&str>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
+    let simp_trad = collect_simp_to_trad_map(src_dir);
     for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
             if path.file_name().and_then(|n| n.to_str()) == Some("punctuation.json") {
                 continue;
             }
-            process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux, skip_category)?;
+            process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux, skip_category, &simp_trad)?;
         } else if path.extension().is_some_and(|ext| ext == "yaml") {
             process_yaml_file(path, &mut entries)?;
         }
@@ -261,6 +262,37 @@ pub(crate) fn category_flag(category: &str) -> u8 {
     }
 }
 
+/// 收集 简体→繁体 单字映射：单字条目的 trad 字段即其繁体（无区别时等于自身跳过）。
+/// 词条（多字词）删掉冗余 trad 字段后，编译时按字查此表补出繁体，保证繁体输出不回归。
+fn collect_simp_to_trad_map(src_dir: &str) -> std::collections::HashMap<String, String> {
+    let mut m = std::collections::HashMap::new();
+    for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "json") {
+            let Ok(json) = std::fs::read_to_string(path).map(|s| serde_json::from_str::<Value>(&s)).map(|r| r.ok()) else {
+                continue;
+            };
+            let Some(json) = json else { continue; };
+            let Some(obj) = json.as_object() else { continue; };
+            for val in obj.values() {
+                let Some(arr) = val.as_array() else { continue; };
+                for v in arr {
+                    let Some(o) = v.as_object() else { continue; };
+                    let Some(c) = o.get("char").and_then(|c| c.as_str()) else { continue; };
+                    if c.chars().count() != 1 {
+                        continue;
+                    }
+                    let Some(t) = o.get("trad").and_then(|t| t.as_str()) else { continue; };
+                    if t != c {
+                        m.insert(c.to_string(), t.to_string());
+                    }
+                }
+            }
+        }
+    }
+    m
+}
+
 fn process_json_file(
     path: &Path,
     entries: &mut BTreeMap<String, Vec<DictEntry>>,
@@ -268,6 +300,7 @@ fn process_json_file(
     key_field: Option<&str>,
     strokes_as_aux: Option<&str>,
     skip_category: Option<&str>,
+    simp_trad: &std::collections::HashMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let json: Value = serde_json::from_reader(file)?;
@@ -312,7 +345,18 @@ fn process_json_file(
                                 });
                         } else if let Some(o) = v.as_object() {
                             if let Some(c) = o.get("char").and_then(|c| c.as_str()) {
-                                let trad = o.get("trad").and_then(|t| t.as_str()).unwrap_or(c);
+                                // 繁体：优先取条目自带 trad 字段；多字词缺失时按字查 简→繁 表
+                                let raw_trad = o.get("trad").and_then(|t| t.as_str());
+                                let trad = match raw_trad {
+                                    Some(t) => t.to_string(),
+                                    None if c.chars().count() > 1 => c.chars()
+                                        .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
+                                        .collect::<String>(),
+                                    None => c
+                                        .chars()
+                                        .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
+                                        .collect::<String>(),
+                                };
                                 let en_hint = o.get("en").and_then(|e| e.as_str()).unwrap_or("");
                                 let tone_hint =
                                     o.get("tone").and_then(|t| t.as_str()).unwrap_or("");
