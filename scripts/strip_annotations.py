@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""将"词条内嵌注释"拆分为独立注释表（青简式）。
+"""将"词条内嵌注释"拆分为独立注释表（青简式，TSV 格式）。
 
-- dicts/chinese/**、dicts/chinese_extras/**、dicts/japanese/** 中的 "en" 字段
-  剥离后汇入 dicts/annotations/en.json（key=词/汉字，value=英文释义）。
-- dicts/english/** 的词条译文清空，译文汇入 dicts/annotations/zh.json
-  （key=英文词，value=首个中文释义）。基础词典只保留词表。
+- dicts/chinese/**、dicts/chinese_extras/** 中剥离的 "en" → dicts/annotations/zh-en.tsv
+  （中文词 → 英文释义；同键取最长释义）。
+- dicts/japanese/** 中剥离的 "en" → dicts/annotations/jp-en.tsv
+  （日文词 → 英文释义；同键取权重最高读音的释义）。
+- dicts/english/** 的译文 → dicts/annotations/en-zh.tsv（键=英文词，统一小写）。
+  译文清空，基础词典只保留词表。
+
+TSV 约定：首行 "# 词\t译词" 注释头；每行 "键\t译词"；"#" 开头为注释；无转义，
+生成时保证译词不含 tab/换行。
 """
 import json
 import sys
@@ -31,6 +36,7 @@ ENGLISH_FILES = [
     "dicts/english/dict_enlt5s.json",
     "dicts/english/linux_commands.json",
 ]
+OUTPUTS = ["zh-en.tsv", "jp-en.tsv", "en-zh.tsv"]
 
 
 def write_json(path, data):
@@ -42,18 +48,29 @@ def write_json(path, data):
     tmp.replace(path)
 
 
-def pick_gloss(glosses):
-    """glosses: [(gloss, weight), ...] → 权重最高者；同权重取最长释义。"""
-    best = max(glosses, key=lambda g: (g[1], len(g[0])))
-    return best[0]
+def sanitize(gloss):
+    return gloss.replace("\t", " ").replace("\r", " ").replace("\n", " ").strip()
+
+
+def write_tsv(path, entries, header="# 词\t译词"):
+    lines = [header]
+    for key in sorted(entries):
+        gloss = sanitize(entries[key])
+        if not gloss:
+            continue
+        lines.append(f"{key}\t{gloss}")
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def main():
     ANN_DIR.mkdir(parents=True, exist_ok=True)
-    en = {}       # 中文词/日文词 -> 英文释义
-    zh = {}       # 英文词 -> 中文释义
+    zh_en = {}   # 中文词 -> [(英文释义, weight)]
+    jp_en = {}   # 日文词 -> [(英文释义, weight)]
+    en_zh = {}   # 英文词 -> 中文释义
 
-    # ── 中文词库：剥离 en -> en.json ──
+    # ── 中文词库：剥离 en -> zh-en ──
     for pattern in CHINESE_GLOBS:
         for path in sorted(ROOT.glob(pattern)):
             try:
@@ -73,15 +90,14 @@ def main():
                     char = item.get("char")
                     if gloss and char:
                         key = str(char)
-                        glosses = en.setdefault(key, [])
-                        glosses.append((gloss, 0))
+                        zh_en.setdefault(key, []).append((gloss, 0))
                     del item["en"]
                     changed = True
             if changed:
                 write_json(path, data)
                 print(f"[strip] {path.relative_to(ROOT)}")
 
-    # ── 日文词库：剥离 en -> en.json（同 char 多读音取权重最高释义）──
+    # ── 日文词库：剥离 en -> jp-en（同 char 多读音取权重最高释义）──
     for rel in JAPANESE_FILES:
         path = ROOT / rel
         if not path.exists():
@@ -97,15 +113,14 @@ def main():
                 char = item.get("char")
                 weight = int(item.get("weight") or 0)
                 if item["en"] and char:
-                    glosses = en.setdefault(str(char), [])
-                    glosses.append((item["en"], weight))
+                    jp_en.setdefault(str(char), []).append((item["en"], weight))
                 del item["en"]
                 changed = True
         if changed:
             write_json(path, data)
             print(f"[strip] {rel}")
 
-    # ── 英文词库：译文清空 -> zh.json ──
+    # ── 英文词库：译文清空 -> en-zh（键统一小写）──
     for rel in ENGLISH_FILES:
         path = ROOT / rel
         if not path.exists():
@@ -115,20 +130,27 @@ def main():
         for word, values in data.items():
             if isinstance(values, list) and values:
                 first = next((v for v in values if isinstance(v, str) and v), None)
-                if first and word not in zh:
-                    zh[word] = first
+                key = word.strip().lower()
+                if first and key and key not in en_zh:
+                    en_zh[key] = first
                 data[word] = []
                 changed = True
         if changed:
             write_json(path, data)
             print(f"[strip] {rel}")
 
-    # ── 汇总写出（确定性排序，缩进便于审查版本差异）──
-    en_out = {k: pick_gloss(v) for k, v in sorted(en.items())}
-    zh_out = {k: zh[k] for k in sorted(zh)}
-    write_json(ANN_DIR / "en.json", en_out)
-    write_json(ANN_DIR / "zh.json", zh_out)
-    print(f"[done] en.json: {len(en_out)} 条, zh.json: {len(zh_out)} 条")
+    # ── 汇总写出（确定性排序）──
+    zh_en_out = {k: max(v, key=lambda g: len(g[0]))[0] for k, v in zh_en.items()}
+    jp_en_out = {k: max(v, key=lambda g: (g[1], len(g[0])))[0] for k, v in jp_en.items()}
+    write_tsv(ANN_DIR / "zh-en.tsv", zh_en_out)
+    write_tsv(ANN_DIR / "jp-en.tsv", jp_en_out)
+    write_tsv(ANN_DIR / "en-zh.tsv", en_zh)
+    for old in ("en.json", "zh.json"):
+        (ANN_DIR / old).unlink(missing_ok=True)
+    print(
+        f"[done] zh-en.tsv: {len(zh_en_out)} 条, jp-en.tsv: {len(jp_en_out)} 条, "
+        f"en-zh.tsv: {len(en_zh)} 条"
+    )
 
 
 if __name__ == "__main__":

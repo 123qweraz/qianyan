@@ -114,8 +114,9 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 注释表：dicts/annotations/<lang>.json（{word: gloss 或 [gloss,...]}），
-    // 编译为 data/annotations/<lang>.{index,data}，运行期按 word 查表 join
+    // 注释表：dicts/annotations/<source>-<target>.tsv（青简式：词\t[词性.]译词\t[词性.]译词…），
+    // 兼容 JSON（{word: gloss 或 [gloss,...]}）；编译为 data/annotations/<table>.{index,data}，
+    // 运行期按 word 查表 join
     {
         let src_dir = root.join("dicts/annotations");
         let out_dir = root.join("data/annotations");
@@ -127,19 +128,24 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
                 .filter_map(|e| e.ok())
             {
                 let path = entry.path();
-                if path.extension().is_some_and(|ext| ext == "json") {
-                    let lang = path
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("")
-                        .to_string();
-                    let trie_out = out_dir.join(&lang);
-                    let trie_dat = out_dir.join(format!("{}.data", lang));
-                    if should_compile(path, &trie_dat) {
-                        println!("[Compiler] 注释表 [{}] 需要编译，正在执行...", lang);
-                        compile_annotation_file(path, &trie_out.to_string_lossy())?;
-                        println!("[Compiler] 注释表 [{}] 编译完成。", lang);
-                    }
+                let is_annot = match path.extension().and_then(|e| e.to_str()) {
+                    Some(e) => e.eq_ignore_ascii_case("tsv") || e.eq_ignore_ascii_case("json"),
+                    None => false,
+                };
+                if !is_annot {
+                    continue;
+                }
+                let lang = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                let trie_out = out_dir.join(&lang);
+                let trie_dat = out_dir.join(format!("{}.data", lang));
+                if should_compile(path, &trie_dat) {
+                    println!("[Compiler] 注释表 [{}] 需要编译，正在执行...", lang);
+                    compile_annotation_file(path, &trie_out.to_string_lossy())?;
+                    println!("[Compiler] 注释表 [{}] 编译完成。", lang);
                 }
             }
         }
@@ -493,37 +499,80 @@ fn compile_annotation_file(
     path: &Path,
     trie_out: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let json: Value = serde_json::from_reader(File::open(path)?)?;
     let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
-    if let Some(obj) = json.as_object() {
-        for (word, val) in obj {
-            if word.is_empty() {
+    if path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("tsv"))
+    {
+        // 青简式 TSV：# 开头为注释；键为第一列，其余列均为释义（多义 = 多列 tab，如 "v. develop\tn. development"）
+        let file = File::open(path)?;
+        for line in BufReader::new(file).lines().map_while(Result::ok) {
+            let line = line.trim_end();
+            if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            let gloss = match val {
-                Value::String(s) => s.clone(),
-                Value::Array(arr) => arr
-                    .iter()
-                    .filter_map(|v| v.as_str())
-                    .next()
-                    .unwrap_or("")
-                    .to_string(),
-                _ => String::new(),
-            };
+            let mut cols = line.split('\t');
+            let Some(key) = cols.next() else { continue };
+            if key.is_empty() {
+                continue;
+            }
+            let senses: Vec<&str> = cols
+                .map(|c| c.trim())
+                .filter(|c| !c.is_empty())
+                .collect();
+            if senses.is_empty() {
+                continue;
+            }
+            let gloss = senses.join(" · ");
             if gloss.is_empty() {
                 continue;
             }
             entries.insert(
-                word.clone(),
+                key.to_string(),
                 vec![DictEntry {
                     word: gloss,
-                    trad: word.clone(),
+                    trad: key.to_string(),
                     tone: String::new(),
                     stroke_aux: String::new(),
                     weight: 0,
                     flags: 0,
                 }],
             );
+        }
+    } else {
+        // JSON 兼容分支：{word: gloss 或 [gloss,...]}
+        let json: Value = serde_json::from_reader(File::open(path)?)?;
+        if let Some(obj) = json.as_object() {
+            for (word, val) in obj {
+                if word.is_empty() {
+                    continue;
+                }
+                let gloss = match val {
+                    Value::String(s) => s.clone(),
+                    Value::Array(arr) => arr
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .next()
+                        .unwrap_or("")
+                        .to_string(),
+                    _ => String::new(),
+                };
+                if gloss.is_empty() {
+                    continue;
+                }
+                entries.insert(
+                    word.clone(),
+                    vec![DictEntry {
+                        word: gloss,
+                        trad: word.clone(),
+                        tone: String::new(),
+                        stroke_aux: String::new(),
+                        weight: 0,
+                        flags: 0,
+                    }],
+                );
+            }
         }
     }
     let idx_path = format!("{}.index", trie_out);

@@ -372,13 +372,15 @@ pub(crate) async fn search_dict(
         return Json(results);
     };
 
-    // 注释表懒加载：data/annotations/<lang>.{index,data}（word→gloss）
+    // 注释表懒加载：data/annotations/<source>-<target>.{index,data}（word→gloss，青简式）
     let ann_lang = {
         let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
         if ime.eq_ignore_ascii_case("english") {
-            "zh".to_string()
+            "en-zh".to_string()
+        } else if ime.eq_ignore_ascii_case("japanese") {
+            "jp-en".to_string()
         } else {
-            config_guard.input.annotation_lang.clone()
+            format!("zh-{}", config_guard.input.annotation_lang)
         }
     };
     let ann_key = format!("annotation_{}", ann_lang);
@@ -479,7 +481,8 @@ fn get_dict_cache() -> &'static StdMutex<HashMap<String, (std::time::SystemTime,
 
 const DICT_CACHE_MAX: usize = 20;
 
-/// 注释表（青简式）：dicts/annotations/<lang>.json 懒加载缓存
+/// 注释表（青简式 TSV）：dicts/annotations/<source>-<target>.tsv 懒加载缓存
+/// 每行 "词\t[词性.]译词\t[词性.]译词…"，"#" 开头为注释；多义列以 " · " 拼接
 fn get_annotation_map(
     lang: &str,
 ) -> std::sync::Arc<std::collections::HashMap<String, String>> {
@@ -496,16 +499,26 @@ fn get_annotation_map(
         }
     }
     let mut loaded = std::collections::HashMap::new();
-    let ann_path = find_dicts_root().join("annotations").join(format!("{}.json", lang));
-    if let Ok(f) = std::fs::File::open(ann_path) {
-        if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
-            if let Some(obj) = json.as_object() {
-                for (k, v) in obj {
-                    if let Some(s) = v.as_str() {
-                        loaded.insert(k.clone(), s.to_string());
-                    }
-                }
+    let ann_path = find_dicts_root().join("annotations").join(format!("{}.tsv", lang));
+    if let Ok(content) = std::fs::read_to_string(ann_path) {
+        for line in content.lines() {
+            let line = line.trim_end();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
             }
+            let Some((key, rest)) = line.split_once('\t') else { continue };
+            if key.is_empty() {
+                continue;
+            }
+            let gloss: Vec<&str> = rest
+                .split('\t')
+                .map(|c| c.trim())
+                .filter(|c| !c.is_empty())
+                .collect();
+            if gloss.is_empty() {
+                continue;
+            }
+            loaded.insert(key.to_string(), gloss.join(" · "));
         }
     }
     let arc = std::sync::Arc::new(loaded);
@@ -515,13 +528,25 @@ fn get_annotation_map(
     arc
 }
 
+/// 按词典文件选择对应注释表：dicts/english → en-zh、dicts/japanese → jp-en、其余 → zh-en
+fn annotation_table_for_path(path: &std::path::Path, base: &std::path::Path) -> &'static str {
+    if path.starts_with(base.join("english")) {
+        "en-zh"
+    } else if path.starts_with(base.join("japanese")) {
+        "jp-en"
+    } else {
+        "zh-en"
+    }
+}
+
 fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEntryView>> {
     let mtime = path.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
     let base = find_dicts_root();
-    let ann = get_annotation_map(if path.starts_with(base.join("english")) { "zh" } else { "en" });
+    let table = annotation_table_for_path(path, &base);
+    let ann = get_annotation_map(table);
     let ann_mtime = base
         .join("annotations")
-        .join(if path.starts_with(base.join("english")) { "zh.json" } else { "en.json" })
+        .join(format!("{}.tsv", table))
         .metadata()
         .and_then(|m| m.modified())
         .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
@@ -1317,7 +1342,7 @@ pub(crate) async fn get_chars_dict(axum::extract::Query(query): axum::extract::Q
         None => base_path.join("chinese/chars/chars.json"),
     };
     let mut results = Vec::new();
-    let ann = get_annotation_map("en");
+    let ann = get_annotation_map("zh-en");
 
     if let Ok(f) = std::fs::File::open(&path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {

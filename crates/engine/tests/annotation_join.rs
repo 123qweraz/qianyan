@@ -31,7 +31,9 @@ fn probe_annotation_join() {
         }
     }
     assert!(trie_paths.contains_key("chinese"), "chinese trie missing");
-    assert!(data_dir.join("annotations/en.index").exists(), "en annotation missing");
+    assert!(data_dir.join("annotations/zh-en.index").exists(), "zh-en annotation missing");
+    assert!(data_dir.join("annotations/en-zh.index").exists(), "en-zh annotation missing");
+    assert!(data_dir.join("annotations/jp-en.index").exists(), "jp-en annotation missing");
 
     let mut schemes: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
     schemes.insert("chinese".into(), Box::new(ChineseScheme::new()));

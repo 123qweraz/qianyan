@@ -125,16 +125,21 @@ impl SearchEngine {
             scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
 
             let mut results = Vec::new();
-            // 注释装配：english 方案固定用 zh 注释，其余方案用配置的 annotation_lang
-            let ann_lang = if query.profile.eq_ignore_ascii_case("english") {
-                "zh".to_string()
+            // 注释表按「源方案 → 目标语言」选表（青简式，一张表对应一种语言对）：
+            // chinese→zh-en / japanese→jp-en / english→en-zh
+            let ann_table = if query.profile.eq_ignore_ascii_case("english") {
+                "en-zh".to_string()
+            } else if query.profile.eq_ignore_ascii_case("japanese") {
+                "jp-en".to_string()
+            } else if config_ref.input.annotation_lang.is_empty() {
+                String::new()
             } else {
-                config_ref.input.annotation_lang.clone()
+                format!("zh-{}", config_ref.input.annotation_lang)
             };
-            let ann_trie = if ann_lang.is_empty() {
+            let ann_trie = if ann_table.is_empty() {
                 None
             } else {
-                self.get_annotation(&ann_lang)
+                self.get_annotation(&ann_table)
             };
             for sc in scheme_candidates {
                 let gloss: String = ann_trie
