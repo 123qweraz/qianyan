@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
-pub const TRIE_VERSION: u32 = 4; // v4: 移除内嵌 en 注释槽，注释改为运行时独立 word→gloss 索引
+pub const TRIE_VERSION: u32 = 5; // v5: 块条目追加 strokes + category 字符串槽（候选显示模板用）
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieResult<'a> {
@@ -16,6 +16,8 @@ pub struct TrieResult<'a> {
     pub trad: &'a str,
     pub tone: &'a str,
     pub stroke_aux: &'a str,
+    pub strokes: &'a str,
+    pub category: &'a str,
     pub weight: u32,
     pub flags: u8, // bit0: 1 = level-4 (生僻字)
 }
@@ -28,6 +30,8 @@ pub struct BfsHit {
     pub trad: String,
     pub tone: String,
     pub stroke_aux: String,
+    pub strokes: String,
+    pub category: String,
     pub weight: u32,
     pub flags: u8,
 }
@@ -39,6 +43,8 @@ impl BfsHit {
             trad: hit.trad.to_string(),
             tone: hit.tone.to_string(),
             stroke_aux: hit.stroke_aux.to_string(),
+            strokes: hit.strokes.to_string(),
+            category: hit.category.to_string(),
             weight: hit.weight,
             flags: hit.flags,
         }
@@ -747,6 +753,14 @@ impl Trie {
                 Some(s) => s,
                 None => break,
             };
+            let strokes = match Self::read_str(data, &mut cursor, "strokes") {
+                Some(s) => s,
+                None => break,
+            };
+            let category = match Self::read_str(data, &mut cursor, "category") {
+                Some(s) => s,
+                None => break,
+            };
 
             if cursor + 4 > data.len() {
                 log::warn!("[Trie] read_block: truncated weight at cursor {}", cursor);
@@ -769,6 +783,8 @@ impl Trie {
                 trad,
                 tone,
                 stroke_aux,
+                strokes,
+                category,
                 weight,
                 flags,
             });
@@ -1328,6 +1344,8 @@ mod tests {
             trad: "測試",
             tone: "tēst",
             stroke_aux: "",
+            strokes: "",
+            category: "",
             weight: 100,
             flags: 0,
         };
@@ -1350,6 +1368,8 @@ mod tests {
             trad: "hello",
             tone: "",
             stroke_aux: "",
+            strokes: "",
+            category: "",
             weight: 0,
             flags: 0,
         };

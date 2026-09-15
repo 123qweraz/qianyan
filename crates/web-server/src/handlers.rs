@@ -6,7 +6,7 @@ use axum::{
     middleware,
 };
 use fst::Streamer;
-use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery};
+use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery, render_annotation};
 use qianyan_ime_engine::processor::FilterMode;
 use qianyan_ime_engine::schemes::{BihuaScheme, ChineseScheme, EnglishScheme, JapaneseScheme, PybiScheme, StrokeScheme};
 use qianyan_ime_engine::scheme::InputScheme;
@@ -373,14 +373,15 @@ pub(crate) async fn search_dict(
     };
 
     // 注释表懒加载：data/annotations/<source>-<target>.{index,data}（word→gloss，青简式）
-    let ann_lang = {
+    let (ann_lang, display_template) = {
         let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
+        let template = config_guard.input.candidate_display_for(ime);
         if ime.eq_ignore_ascii_case("english") {
-            "en-zh".to_string()
+            ("en-zh".to_string(), template)
         } else if ime.eq_ignore_ascii_case("japanese") {
-            "jp-en".to_string()
+            ("jp-en".to_string(), template)
         } else {
-            format!("zh-{}", config_guard.input.annotation_lang)
+            (format!("zh-{}", config_guard.input.annotation_lang), template)
         }
     };
     let ann_key = format!("annotation_{}", ann_lang);
@@ -402,17 +403,30 @@ pub(crate) async fn search_dict(
     // FST 前缀匹配（拼音搜索），毫秒级
     let hits = trie.search_bfs(&q, 100);
     for tr in hits {
-        let hint: String = annotation
+        let gloss: String = annotation
             .as_ref()
             .and_then(|t| t.get_all_exact(&tr.word))
             .and_then(|es| es.first().map(|e| e.word.to_string()))
             .unwrap_or_default();
+        let hint = {
+            let mut values = HashMap::with_capacity(8);
+            values.insert("char".to_string(), tr.word.clone());
+            values.insert("pinyin".to_string(), tr.tone.clone());
+            values.insert("tone".to_string(), tr.tone.clone());
+            values.insert("trad".to_string(), tr.trad.clone());
+            values.insert("stroke_aux".to_string(), tr.stroke_aux.clone());
+            values.insert("strokes".to_string(), tr.strokes.clone());
+            values.insert("category".to_string(), tr.category.clone());
+            values.insert("en".to_string(), gloss.clone());
+            values.insert("weight".to_string(), tr.weight.to_string());
+            render_annotation(&display_template, &values)
+        };
         results.push(SearchResult {
             pinyin: tr.tone.to_string(),
             word: tr.word.to_string(),
             hint,
             stroke_aux: tr.stroke_aux.to_string(),
-            strokes: String::new(),
+            strokes: tr.strokes.to_string(),
             file: ime.to_string(),
         });
     }

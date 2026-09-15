@@ -273,6 +273,8 @@ struct DictEntry {
     trad: String,
     tone: String,
     stroke_aux: String,
+    strokes: String,
+    category: String,
     weight: u32,
     flags: u8, // 单字按 category 置位；多字词/未分类词条 = 0（恒显示）
 }
@@ -354,6 +356,8 @@ fn process_json_file(
                             trad: key.clone(),
                             tone: String::new(),
                             stroke_aux: String::new(),
+                            strokes: String::new(),
+                            category: String::new(),
                             weight: 0,
                             flags: 0,
                         });
@@ -368,6 +372,8 @@ fn process_json_file(
                                     trad: s.to_string(),
                                     tone: String::new(),
                                     stroke_aux: String::new(),
+                                    strokes: String::new(),
+                                    category: String::new(),
                                     weight: 0,
                                     flags: 0,
                                 });
@@ -410,6 +416,11 @@ fn process_json_file(
                                     .get("category")
                                     .and_then(|s| s.as_str())
                                     .unwrap_or("");
+                                let strokes_raw = o
+                                    .get("strokes")
+                                    .and_then(|s| s.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
                                 // 简体主词典以外的方案（stroke/bihua/pybi）跳过繁体扩展候选
                                 if skip_category == Some(category) {
                                     continue;
@@ -441,6 +452,8 @@ fn process_json_file(
                                         trad: trad.to_string(),
                                         tone: tone_hint.to_string(),
                                         stroke_aux: stroke_aux.to_string(),
+                                        strokes: strokes_raw,
+                                        category: category.to_string(),
                                         weight,
                                         flags,
                                     },
@@ -487,6 +500,8 @@ fn process_yaml_file(
                 trad: word,
                 tone: String::new(),
                 stroke_aux: String::new(),
+                strokes: String::new(),
+                category: String::new(),
                 weight,
                 flags: 0,
             });
@@ -535,6 +550,8 @@ fn compile_annotation_file(
                     trad: key.to_string(),
                     tone: String::new(),
                     stroke_aux: String::new(),
+                    strokes: String::new(),
+                    category: String::new(),
                     weight: 0,
                     flags: 0,
                 }],
@@ -568,6 +585,8 @@ fn compile_annotation_file(
                         trad: word.clone(),
                         tone: String::new(),
                         stroke_aux: String::new(),
+                        strokes: String::new(),
+                        category: String::new(),
                         weight: 0,
                         flags: 0,
                     }],
@@ -633,6 +652,8 @@ fn write_binary_dict(
                 let tr_bytes = entry.trad.as_bytes();
                 let t_bytes = entry.tone.as_bytes();
                 let s_bytes = entry.stroke_aux.as_bytes();
+                let st_bytes = entry.strokes.as_bytes();
+                let cat_bytes = entry.category.as_bytes();
 
                 block.extend_from_slice(&(w_bytes.len() as u16).to_le_bytes());
                 block.extend_from_slice(w_bytes);
@@ -642,6 +663,10 @@ fn write_binary_dict(
                 block.extend_from_slice(t_bytes);
                 block.extend_from_slice(&(s_bytes.len() as u16).to_le_bytes());
                 block.extend_from_slice(s_bytes);
+                block.extend_from_slice(&(st_bytes.len() as u16).to_le_bytes());
+                block.extend_from_slice(st_bytes);
+                block.extend_from_slice(&(cat_bytes.len() as u16).to_le_bytes());
+                block.extend_from_slice(cat_bytes);
                 block.extend_from_slice(&entry.weight.to_le_bytes());
                 block.push(entry.flags);
             }

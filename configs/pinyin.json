@@ -7,6 +7,13 @@
     "commit_mode": "single",
     "default_profile": "chinese",
     "display_mode": "character_with_english",
+    "candidate_display": {
+      "fields": ["char", "en"],
+      "per_profile": {
+        "stroke": ["char", "stroke_aux"],
+        "bihua": ["char", "stroke_aux"]
+      }
+    },
     "double_tap_timeout_ms": 200,
     "double_tap_uppercase_keys": [
       "a",

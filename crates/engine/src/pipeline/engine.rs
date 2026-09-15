@@ -148,12 +148,29 @@ impl SearchEngine {
                     .and_then(|es| es.into_iter().find(|e| !e.word.is_empty()))
                     .map(|e| e.word.to_string())
                     .unwrap_or_default();
-                let hint = Arc::from(match config_ref.input.display_mode {
-                    crate::DisplayMode::CharacterOnly => "",
-                    crate::DisplayMode::CharacterWithEnglish => gloss.as_str(),
-                    crate::DisplayMode::CharacterWithStroke => sc.stroke_aux.as_str(),
-                    crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
-                });
+                let template = config_ref.input.candidate_display_for(query.profile.as_ref());
+                let hint = if config_ref.input.candidate_display.is_some() {
+                    let mut values: std::collections::HashMap<String, String> =
+                        std::collections::HashMap::with_capacity(8);
+                    values.insert("char".into(), sc.simplified.clone());
+                    values.insert("pinyin".into(), sc.tone.clone());
+                    values.insert("tone".into(), sc.tone.clone());
+                    values.insert("trad".into(), sc.traditional.clone());
+                    values.insert("stroke_aux".into(), sc.stroke_aux.clone());
+                    values.insert("strokes".into(), sc.strokes.clone());
+                    values.insert("category".into(), sc.category.clone());
+                    values.insert("en".into(), gloss.clone());
+                    values.insert("weight".into(), sc.weight.to_string());
+                    crate::pipeline::render_annotation(&template, &values)
+                } else {
+                    // 兼容旧 display_mode：仅用单一字段
+                    match config_ref.input.display_mode {
+                        crate::DisplayMode::CharacterOnly => String::new(),
+                        crate::DisplayMode::CharacterWithEnglish => gloss.as_str().to_string(),
+                        crate::DisplayMode::CharacterWithStroke => sc.stroke_aux.clone(),
+                        crate::DisplayMode::CharacterWithTone => sc.tone.clone(),
+                    }
+                };
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {
                         Arc::from(sc.traditional.as_str())
@@ -162,7 +179,7 @@ impl SearchEngine {
                     },
                     simplified: Arc::from(sc.simplified.as_str()),
                     traditional: Arc::from(sc.traditional.as_str()),
-                    hint,
+                    hint: Arc::from(hint.as_str()),
                     english_aux: Arc::from(gloss.as_str()),
                     stroke_aux: Arc::from(sc.stroke_aux.as_str()),
                     source: if sc.match_level < 3 {

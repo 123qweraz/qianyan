@@ -201,6 +201,44 @@ pub enum DisplayMode {
     CharacterWithTone,
 }
 
+impl DisplayMode {
+    /// 旧 display_mode 的兼容模板（未配置 candidate_display 时回退）
+    pub fn default_template(&self) -> Vec<&'static str> {
+        match self {
+            DisplayMode::CharacterOnly => vec!["char"],
+            DisplayMode::CharacterWithEnglish => vec!["char", "en"],
+            DisplayMode::CharacterWithStroke => vec!["char", "stroke_aux"],
+            DisplayMode::CharacterWithTone => vec!["char", "tone"],
+        }
+    }
+}
+
+/// 候选显示模板：主文本固定为候选字本身；fields 序列决定「副注解串」由哪些字段拼成。
+/// 可用字段：char(候选字) / pinyin(拼音) / trad(繁体) / tone(声调) / stroke_aux(笔画辅助码)
+/// / strokes(完整笔顺) / category(字级) / en(英注释) / weight(权重)。未知字段跳过。
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct CandidateDisplay {
+    /// 全局默认模板：字段序列
+    #[serde(default = "default_candidate_display_fields")]
+    pub fields: Vec<String>,
+    /// 按 profile 覆盖模板（key = profile 名）；空列表表示回落到全局 fields
+    #[serde(default)]
+    pub per_profile: std::collections::HashMap<String, Vec<String>>,
+}
+
+pub fn default_candidate_display_fields() -> Vec<String> {
+    vec!["char".into(), "en".into()]
+}
+
+impl Default for CandidateDisplay {
+    fn default() -> Self {
+        Self {
+            fields: default_candidate_display_fields(),
+            per_profile: std::collections::HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuxFilterMode {
@@ -362,6 +400,8 @@ pub struct Input {
     pub english_aux_mode: EnglishAuxMode,
     #[serde(default)]
     pub display_mode: DisplayMode,
+    #[serde(default)]
+    pub candidate_display: Option<CandidateDisplay>,
     pub ranking: RankingConfig,
     #[serde(default = "default_true")]
     pub enable_context_sorting: bool,
@@ -378,6 +418,28 @@ pub struct Input {
 fn default_enable_auto_english() -> bool { true }
 fn default_auto_english_timeout() -> u64 { 10 }
 fn default_annotation_lang() -> String { "en".to_string() }
+
+impl Input {
+    /// 解析某个 scheme 生效的候选显示模板：
+    /// per_profile 覆盖 → 全局 fields → display_mode 兼容映射
+    pub fn candidate_display_for(&self, profile: &str) -> Vec<String> {
+        if let Some(cd) = &self.candidate_display {
+            if let Some(profile_fields) = cd.per_profile.get(profile) {
+                if !profile_fields.is_empty() {
+                    return profile_fields.clone();
+                }
+            }
+            if !cd.fields.is_empty() {
+                return cd.fields.clone();
+            }
+        }
+        self.display_mode
+            .default_template()
+            .iter()
+            .map(|s| s.to_string())
+            .collect()
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RankingConfig {
@@ -1237,6 +1299,7 @@ impl Config {
                 enable_traditional: false,
                 english_aux_mode: EnglishAuxMode::Prefix,
                 display_mode: DisplayMode::CharacterWithEnglish,
+                candidate_display: None,
                 ranking: RankingConfig {
                     length_penalty: 50000.0,
                     user_dict_bonus: 10000000.0,

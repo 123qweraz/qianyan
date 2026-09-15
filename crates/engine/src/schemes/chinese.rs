@@ -230,20 +230,23 @@ impl InputScheme for ChineseScheme {
         let pinyin_key: String = raw_parsed.iter().map(|p| p.pinyin.clone()).collect();
 
         // 辅助函数：从系统词典查词
-        let lookup_aux = |word: &str, py: &str| -> (String, String, String, u8) {
+        let lookup_aux = |word: &str, py: &str| -> (String, String, String, String, String, u8) {
             if let Some(trie) = context.tries.get("chinese") {
                 if let Some(entries) = trie.get_all_exact(py) {
                     if let Some(tr) = entries.iter().find(|t| t.word == word) {
                         return (tr.trad.to_string(), tr.tone.to_string(),
-                                tr.stroke_aux.to_string(), tr.flags);
+                                tr.stroke_aux.to_string(), tr.strokes.to_string(),
+                                tr.category.to_string(), tr.flags);
                     }
                 }
             }
-            (word.to_string(), String::new(), String::new(), 0)
+            (word.to_string(), String::new(), String::new(), String::new(), String::new(), 0)
         };
 
+        #[allow(clippy::too_many_arguments)]
         fn build_cand(
             word: String, trad: String, tone: String, sa: String,
+            strokes: String, category: String,
             weight: u32, match_level: u8, flags: u8,
         ) -> SchemeCandidate {
             let mut cand = SchemeCandidate::new(word.clone(), weight);
@@ -251,6 +254,8 @@ impl InputScheme for ChineseScheme {
             cand.traditional = trad;
             cand.tone = tone;
             cand.stroke_aux = sa;
+            cand.strokes = strokes;
+            cand.category = category;
             cand.match_level = match_level;
             cand.flags = flags;
             cand
@@ -269,9 +274,10 @@ impl InputScheme for ChineseScheme {
                         for (word, weight) in words {
                             if *weight < threshold { continue; }
                             if seen.insert(word.clone()) {
-                                let (trad, tone, sa, flags) = lookup_aux(word, &pinyin_key);
+                                let (trad, tone, sa, strokes, category, flags) = lookup_aux(word, &pinyin_key);
                                 final_results.push(build_cand(
-                                    word.clone(), trad, tone, sa, *weight, 3, flags,
+                                    word.clone(), trad, tone, sa, strokes, category,
+                                    *weight, 3, flags,
                                 ));
                             }
                         }
@@ -289,9 +295,9 @@ impl InputScheme for ChineseScheme {
                                 for (word, weight) in words {
                                     if *weight < threshold { continue; }
                                     if seen.insert(word.clone()) {
-                                        let (trad, tone, sa, flags) = lookup_aux(word, key);
+                                        let (trad, tone, sa, strokes, category, flags) = lookup_aux(word, key);
                                         user_prefix_matches.push(build_cand(
-                                            word.clone(), trad, tone, sa,
+                                            word.clone(), trad, tone, sa, strokes, category,
                                             ((*weight as f64 * 0.8).max(1.0)) as u32, 1, flags,
                                         ));
                                     }
@@ -308,9 +314,9 @@ impl InputScheme for ChineseScheme {
                                     for (word, weight) in words {
                                         if *weight < threshold { continue; }
                                         if seen.insert(word.clone()) {
-                                            let (trad, tone, sa, flags) = lookup_aux(word, pinyin);
+                                            let (trad, tone, sa, strokes, category, flags) = lookup_aux(word, pinyin);
                                             user_prefix_matches.push(build_cand(
-                                                word.clone(), trad, tone, sa,
+                                                word.clone(), trad, tone, sa, strokes, category,
                                                 ((*weight as f64 * 0.8).max(1.0)) as u32, 1, flags,
                                             ));
                                         }
@@ -339,7 +345,8 @@ impl InputScheme for ChineseScheme {
                         for tr in exact.iter().take(n) {
                             matches.push((
                                 tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
-                                tr.stroke_aux.to_string(), tr.weight, 3u8, tr.flags,
+                                tr.stroke_aux.to_string(), tr.strokes.to_string(),
+                                tr.category.to_string(), tr.weight, 3u8, tr.flags,
                             ));
                         }
                     }
@@ -356,7 +363,8 @@ impl InputScheme for ChineseScheme {
                                 for tr in entries.iter() {
                                     matches.push((
                                         tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
-                                        tr.stroke_aux.to_string(), tr.weight, 1u8, tr.flags,
+                                        tr.stroke_aux.to_string(), tr.strokes.to_string(),
+                                        tr.category.to_string(), tr.weight, 1u8, tr.flags,
                                     ));
                                 }
                             }
@@ -377,7 +385,7 @@ impl InputScheme for ChineseScheme {
                 if !m.3.to_lowercase().starts_with(&aux_lower) { continue; }
             }
             if seen.insert(m.0.clone()) {
-                final_results.push(build_cand(m.0, m.1, m.2, m.3, m.4, m.5, m.6));
+                final_results.push(build_cand(m.0, m.1, m.2, m.3, m.4, m.5, m.6, m.7, m.8));
             }
         }
 
@@ -400,7 +408,8 @@ impl InputScheme for ChineseScheme {
                         if seen.insert(tr.word.to_string()) {
                             final_results.push(build_cand(
                                 tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
-                                tr.stroke_aux.to_string(), tr.weight, 2, tr.flags,
+                                tr.stroke_aux.to_string(), tr.strokes.to_string(),
+                                tr.category.to_string(), tr.weight, 2, tr.flags,
                             ));
                         }
                     }
@@ -423,7 +432,8 @@ impl InputScheme for ChineseScheme {
                             if seen.insert(tr.word.to_string()) {
                                 final_results.push(build_cand(
                                     tr.word.to_string(), tr.trad.to_string(), tr.tone.to_string(),
-                                    tr.stroke_aux.to_string(), tr.weight, 1, tr.flags,
+                                    tr.stroke_aux.to_string(), tr.strokes.to_string(),
+                                    tr.category.to_string(), tr.weight, 1, tr.flags,
                                 ));
                                 if final_results.len() >= max_results { break; }
                             }
@@ -450,6 +460,7 @@ impl InputScheme for ChineseScheme {
                             let weight = (path.score * 1000.0) as u32;
                             final_results.push(build_cand(
                                 text.clone(), text, String::new(), String::new(),
+                                String::new(), String::new(),
                                 weight.max(1), 3, 0,
                             ));
                             if final_results.len() >= max_results { break; }

@@ -24,6 +24,29 @@ pub use compose::*;
 
 pub const MAX_LOOKUP_LIMIT: usize = 500;
 
+/// 候选显示模板渲染：把模板字段序列解析为「副注解串」。
+/// char/word/text 视为主文本，不进入注解串；其余字段取 values 中对值，
+/// 空字段跳过，多段用 " · " 连接。
+pub fn render_annotation(
+    template: &[String],
+    values: &std::collections::HashMap<String, String>,
+) -> String {
+    let mut parts: Vec<&str> = Vec::new();
+    for f in template {
+        match f.as_str() {
+            "char" | "word" | "text" => continue,
+            _ => {}
+        }
+        if let Some(v) = values.get(f.as_str()) {
+            let v = v.trim();
+            if !v.is_empty() {
+                parts.push(v);
+            }
+        }
+    }
+    parts.join(" · ")
+}
+
 /// 候选项
 #[derive(Clone, Debug, PartialEq)]
 pub struct Candidate {
@@ -52,6 +75,24 @@ mod tests {
     use arc_swap::ArcSwap;
     use std::collections::{HashMap, HashSet};
     use std::sync::Arc;
+
+    #[test]
+    fn test_render_annotation_template() {
+        let template = ["char", "en", "tone", "strokes", "missing"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>();
+        let values = [
+            ("char".to_string(), "的".to_string()),
+            ("en".to_string(), "of; ～suffix".to_string()),
+            ("tone".to_string(), "de".to_string()),
+            ("strokes".to_string(), "ピヒ".to_string()),
+        ]
+        .into_iter()
+        .collect::<HashMap<String, String>>();
+        assert_eq!(render_annotation(&template, &values), "of; ～suffix · de · ピヒ");
+        assert_eq!(render_annotation(&["char".to_string()], &values), "");
+    }
 
     #[test]
     fn test_default_segmentor_basic() {

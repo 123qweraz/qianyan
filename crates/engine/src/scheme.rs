@@ -12,6 +12,8 @@ pub struct SchemeCandidate {
     pub traditional: String, // 繁体形式
     pub tone: String,        // 声调/拼音提示
     pub stroke_aux: String,  // 笔画辅助码提示
+    pub strokes: String,     // 完整笔顺（源数据透传，供显示模板用）
+    pub category: String,    // level-1..5 / trad / 空（源数据透传）
     pub weight: u32,         // 排序权重
     pub match_level: u8,     // 匹配级别：3=精确, 2=简拼, 1=前缀
     pub flags: u8,           // bit0: 1 = rare character
@@ -25,6 +27,8 @@ impl SchemeCandidate {
             text,
             tone: String::new(),
             stroke_aux: String::new(),
+            strokes: String::new(),
+            category: String::new(),
             weight,
             match_level: 1,
             flags: 0,
