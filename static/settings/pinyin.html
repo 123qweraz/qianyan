@@ -81,7 +81,22 @@
                             <option value="character_only">仅汉字（不显示辅助信息）</option>
                         </select>
                     </div>
-                    <div class="note" style="margin:0;">
+                    <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
+                    <div class="setting-item" style="display:block;">
+                        <div class="info">
+                            <div class="title">候选字段模板（可自由配置）</div>
+                            <div class="desc">候选 = 主字（char 恒为主文本）+ 副注解串（按字段顺序拼接）。点选下方字段生成模板，也可直接在下框自由输入任意字段名（英文逗号分隔），例如 <code>char,en</code>、<code>char,tone,en,strokes</code>、<code>char,jp</code>。jp/fr 等当前无数据的字段会显示为空。</div>
+                        </div>
+                        <div id="candidate-fields-global" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
+                        <input type="text" id="candidate_fields_global_input" style="width:100%; margin-top:10px;" placeholder="char,en">
+                        <div style="margin-top:14px; font-size:13px; color:var(--apple-secondary);">按拼音方案覆盖（留空 = 使用全局模板）：</div>
+                        <div id="candidate-fields-per-profile" style="margin-top:6px;"></div>
+                        <div style="margin-top:12px;">
+                            <button type="button" class="btn btn-danger" onclick="clearCandidateDisplay()">清除字段模板（恢复上方“显示模式”生效）</button>
+                        </div>
+                    </div>
+                    <div class="note" style="margin:16px 0 0;">
+                        配置了“候选字段模板”时，上方的「显示模式」将被忽略；清除模板后恢复由「显示模式」控制。<br>
                         开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模式不变。<br>
                         例如 "汉字 + 英语辅助码" 搭配繁体输出 → "繁體漢字 + 英語輔助碼"
                     </div>
@@ -149,6 +164,8 @@
             bindInput('enable_number_selection', 'input');
             bindInput('display_mode', 'input');
 
+            initCandidateDisplay();
+
             if (!config.input.double_tap_uppercase_keys) {
                 config.input.double_tap_uppercase_keys = [];
             }
@@ -179,6 +196,90 @@
 
         async function save() {
             await saveConfig();
+        }
+
+        function initCandidateDisplay() {
+            const CD_FIELDS = ['char', 'pinyin', 'tone', 'en', 'jp', 'fr', 'trad', 'stroke_aux', 'strokes', 'category', 'weight'];
+            const CD_LABELS = {
+                char: '字', pinyin: '拼音', tone: '声调', en: '英语注释', jp: '日语注释',
+                fr: '法语注释', trad: '繁体', stroke_aux: '笔画码', strokes: '笔顺', category: '字级', weight: '权重'
+            };
+            const DELIM = /\s*[,，]\s*/;
+
+            function ensureCd() {
+                if (!config.input.candidate_display) {
+                    config.input.candidate_display = { fields: ['char', 'en'], per_profile: {} };
+                }
+                if (!config.input.candidate_display.fields) config.input.candidate_display.fields = ['char', 'en'];
+                if (!config.input.candidate_display.per_profile) config.input.candidate_display.per_profile = {};
+                return config.input.candidate_display;
+            }
+
+            function renderGlobalChips(cd) {
+                const box = document.getElementById('candidate-fields-global');
+                box.innerHTML = '';
+                if (!cd) return;
+                CD_FIELDS.forEach(f => {
+                    const chip = document.createElement('span');
+                    chip.className = 'profile-chip' + (cd.fields.includes(f) ? ' active' : '');
+                    chip.textContent = CD_LABELS[f];
+                    chip.title = f;
+                    chip.onclick = () => {
+                        const i = cd.fields.indexOf(f);
+                        if (i === -1) cd.fields.push(f); else cd.fields.splice(i, 1);
+                        const input = document.getElementById('candidate_fields_global_input');
+                        input.value = cd.fields.join(',');
+                        renderGlobalChips(cd);
+                    };
+                    box.appendChild(chip);
+                });
+            }
+
+            function renderPerProfile(cd) {
+                const box = document.getElementById('candidate-fields-per-profile');
+                box.innerHTML = '';
+                if (!cd) return;
+                const profiles = config.input.enabled_profiles || ['chinese'];
+                profiles.forEach(p => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:6px;';
+                    const label = document.createElement('span');
+                    label.style.cssText = 'min-width:90px; font-size:13px; color:var(--apple-secondary);';
+                    label.textContent = p;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.style.cssText = 'flex:1;';
+                    input.placeholder = '留空 = 全局';
+                    input.value = (cd.per_profile[p] || []).join(',');
+                    input.oninput = () => {
+                        const parsed = input.value.split(DELIM).filter(Boolean);
+                        if (parsed.length) cd.per_profile[p] = parsed;
+                        else delete cd.per_profile[p];
+                    };
+                    row.appendChild(label);
+                    row.appendChild(input);
+                    box.appendChild(row);
+                });
+            }
+
+            let cd = config.input.candidate_display ? ensureCd() : null;
+            const input = document.getElementById('candidate_fields_global_input');
+            input.value = cd ? cd.fields.join(',') : '';
+            input.oninput = () => {
+                cd = ensureCd();
+                cd.fields = input.value.split(DELIM).filter(Boolean);
+                renderGlobalChips(cd);
+            };
+            renderGlobalChips(cd);
+            renderPerProfile(cd);
+
+            window.clearCandidateDisplay = () => {
+                delete config.input.candidate_display;
+                cd = null;
+                input.value = '';
+                renderGlobalChips(cd);
+                renderPerProfile(cd);
+            };
         }
 
         init();
