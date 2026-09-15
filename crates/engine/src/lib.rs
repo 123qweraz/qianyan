@@ -24,7 +24,7 @@ pub use session::InputSession;
 pub use trie::Trie;
 
 pub use qianyan_ime_core::config::{
-    Appearance, Config, DisplayMode, DoublePinyinScheme, DoubleTap, Files,
+    Appearance, Config, DoublePinyinScheme, DoubleTap, Files,
     FuzzyPinyinConfig, Hotkey, Hotkeys, Input, LinuxConfig, LongPressMapping, PhantomType, Profile,
     ProfileKey, ProfileLayout, RankingConfig, TextStyle,
 };

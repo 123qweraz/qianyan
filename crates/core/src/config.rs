@@ -191,28 +191,6 @@ pub struct Profile {
     pub path: String,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum DisplayMode {
-    #[default]
-    CharacterWithEnglish,
-    CharacterOnly,
-    CharacterWithStroke,
-    CharacterWithTone,
-}
-
-impl DisplayMode {
-    /// 旧 display_mode 的兼容模板（未配置 candidate_display 时回退）
-    pub fn default_template(&self) -> Vec<&'static str> {
-        match self {
-            DisplayMode::CharacterOnly => vec!["char"],
-            DisplayMode::CharacterWithEnglish => vec!["char", "en"],
-            DisplayMode::CharacterWithStroke => vec!["char", "stroke_aux"],
-            DisplayMode::CharacterWithTone => vec!["char", "tone"],
-        }
-    }
-}
-
 /// 候选显示模板：主文本固定为候选字本身；fields 序列决定「副注解串」由哪些字段拼成。
 /// 可用字段：char(候选字) / pinyin(拼音) / trad(繁体) / tone(声调) / stroke_aux(笔画辅助码)
 /// / strokes(完整笔顺) / category(字级) / en(英注释) / weight(权重)。未知字段跳过。
@@ -239,13 +217,17 @@ impl Default for CandidateDisplay {
     }
 }
 
+/// 选词（候选过滤）辅助码类型：与「候选显示模板」完全分离，可分别设置。
+/// auto = 英文与笔画辅助码均可过滤（默认，兼容旧行为）；
+/// english = 仅用英注释（en）过滤；stroke = 仅用笔画辅助码过滤；none = 关闭辅助码过滤。
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuxFilterMode {
     #[default]
+    Auto,
     English,
-    None,
     Stroke,
+    None,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -399,9 +381,13 @@ pub struct Input {
     #[serde(default = "default_english_aux_mode")]
     pub english_aux_mode: EnglishAuxMode,
     #[serde(default)]
-    pub display_mode: DisplayMode,
+    pub candidate_display: CandidateDisplay,
+    /// 选词辅助码来源：全局默认，按方案可用 filter_aux_per_profile 覆盖
     #[serde(default)]
-    pub candidate_display: Option<CandidateDisplay>,
+    pub filter_aux_mode: AuxFilterMode,
+    /// 按方案覆盖选词辅助码（key = profile 名；缺省用全局 filter_aux_mode）
+    #[serde(default)]
+    pub filter_aux_per_profile: std::collections::HashMap<String, AuxFilterMode>,
     pub ranking: RankingConfig,
     #[serde(default = "default_true")]
     pub enable_context_sorting: bool,
@@ -420,24 +406,23 @@ fn default_auto_english_timeout() -> u64 { 10 }
 fn default_annotation_lang() -> String { "en".to_string() }
 
 impl Input {
-    /// 解析某个 scheme 生效的候选显示模板：
-    /// per_profile 覆盖 → 全局 fields → display_mode 兼容映射
+    /// 解析某个 scheme 生效的候选显示模板：per_profile 覆盖 → 全局 fields。
+    /// 模板为空（fields 置空）时返回空模板 = 不显示副注解。
     pub fn candidate_display_for(&self, profile: &str) -> Vec<String> {
-        if let Some(cd) = &self.candidate_display {
-            if let Some(profile_fields) = cd.per_profile.get(profile) {
-                if !profile_fields.is_empty() {
-                    return profile_fields.clone();
-                }
-            }
-            if !cd.fields.is_empty() {
-                return cd.fields.clone();
+        if let Some(profile_fields) = self.candidate_display.per_profile.get(profile) {
+            if !profile_fields.is_empty() {
+                return profile_fields.clone();
             }
         }
-        self.display_mode
-            .default_template()
-            .iter()
-            .map(|s| s.to_string())
-            .collect()
+        self.candidate_display.fields.clone()
+    }
+
+    /// 解析某个 scheme 生效的选词辅助码类型：per_profile 覆盖 → 全局。
+    pub fn filter_aux_for(&self, profile: &str) -> AuxFilterMode {
+        self.filter_aux_per_profile
+            .get(profile)
+            .copied()
+            .unwrap_or(self.filter_aux_mode)
     }
 }
 
@@ -1298,8 +1283,9 @@ impl Config {
                 },
                 enable_traditional: false,
                 english_aux_mode: EnglishAuxMode::Prefix,
-                display_mode: DisplayMode::CharacterWithEnglish,
-                candidate_display: None,
+                candidate_display: CandidateDisplay::default(),
+                filter_aux_mode: AuxFilterMode::Auto,
+                filter_aux_per_profile: std::collections::HashMap::new(),
                 ranking: RankingConfig {
                     length_penalty: 50000.0,
                     user_dict_bonus: 10000000.0,

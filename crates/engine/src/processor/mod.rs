@@ -512,13 +512,27 @@ impl Processor {
         if self.ctx.session.filter_mode == FilterMode::Page
             && !self.ctx.session.page_snapshot.is_empty()
         {
+            let page_profile = self
+                .ctx
+                .session_state
+                .active_profiles
+                .first()
+                .cloned()
+                .unwrap_or_default();
+            let page_aux_mode = self
+                .ctx
+                .config
+                .master_config
+                .input
+                .filter_aux_for(&page_profile);
             let mut filtered = Vec::new();
             for c in &self.ctx.session.page_snapshot {
-                if self
-                    .ctx
-                    .engine
-                    .matches_filter(c, &self.ctx.session.aux_filter, self.ctx.config.master_config.input.english_aux_mode)
-                {
+                if self.ctx.engine.matches_filter(
+                    c,
+                    &self.ctx.session.aux_filter,
+                    page_aux_mode,
+                    self.ctx.config.master_config.input.english_aux_mode,
+                ) {
                     filtered.push(c.clone());
                 }
             }
@@ -575,13 +589,14 @@ impl Processor {
 
         // Global 模式：用辅助码过滤候选词
         if self.ctx.session.filter_mode == FilterMode::Global && !self.ctx.session.aux_filter.is_empty() {
-            let mode = self.ctx.config.master_config.input.english_aux_mode;
+            let en_mode = self.ctx.config.master_config.input.english_aux_mode;
+            let aux_mode = self.ctx.config.master_config.input.filter_aux_for(&current_profile);
             let aux_filter = self.ctx.session.aux_filter.clone();
             self
                 .ctx
                 .session
                 .candidates
-                .retain(|c| self.ctx.engine.matches_filter(c, &aux_filter, mode));
+                .retain(|c| self.ctx.engine.matches_filter(c, &aux_filter, aux_mode, en_mode));
             self.ctx.session.has_dict_match = !self.ctx.session.candidates.is_empty();
         }
 

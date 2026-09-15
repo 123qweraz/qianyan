@@ -72,32 +72,39 @@
 
                 <h2 id="display-mode">候选显示模式</h2>
                 <div class="card">
-                    <div class="setting-item">
-                        <div class="info"><div class="title">显示模式</div><div class="desc">选择候选词旁显示何种辅助信息</div></div>
-                        <select id="display_mode">
-                            <option value="character_with_english">汉字 + 英语辅助码</option>
-                            <option value="character_with_stroke">汉字 + 笔画辅助码</option>
-                            <option value="character_with_tone">汉字 + 音调</option>
-                            <option value="character_only">仅汉字（不显示辅助信息）</option>
-                        </select>
-                    </div>
-                    <hr style="margin: 16px 0; border:0; border-top:1px solid var(--apple-border);">
                     <div class="setting-item" style="display:block;">
                         <div class="info">
                             <div class="title">候选字段模板（可自由配置）</div>
-                            <div class="desc">候选 = 主字（char 恒为主文本）+ 副注解串（按字段顺序拼接）。点选下方字段生成模板，也可直接在下框自由输入任意字段名（英文逗号分隔），例如 <code>char,en</code>、<code>char,tone,en,strokes</code>、<code>char,jp</code>。jp/fr 等当前无数据的字段会显示为空。</div>
+                            <div class="desc">候选 = 主字（char 恒为主文本）+ 副注解串（按字段顺序拼接）。点选下方字段生成模板，也可直接在下框自由输入任意字段名（英文逗号分隔），例如 <code>char,en</code>、<code>char,tone,en,strokes</code>、<code>char,jp</code>。jp/fr 等当前无数据的字段会显示为空。清空输入 = 不显示副注解。</div>
                         </div>
                         <div id="candidate-fields-global" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;"></div>
                         <input type="text" id="candidate_fields_global_input" style="width:100%; margin-top:10px;" placeholder="char,en">
                         <div style="margin-top:14px; font-size:13px; color:var(--apple-secondary);">按拼音方案覆盖（留空 = 使用全局模板）：</div>
                         <div id="candidate-fields-per-profile" style="margin-top:6px;"></div>
                         <div style="margin-top:12px;">
-                            <button type="button" class="btn btn-danger" onclick="clearCandidateDisplay()">清除字段模板（恢复上方“显示模式”生效）</button>
+                            <button type="button" class="btn btn-danger" onclick="resetCandidateDisplay()">恢复默认模板（char,en）</button>
                         </div>
                     </div>
-                    <div class="note" style="margin:16px 0 0;">
-                        配置了“候选字段模板”时，上方的「显示模式」将被忽略；清除模板后恢复由「显示模式」控制。<br>
-                        开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模式不变。<br>
+                </div>
+
+                <h2 id="filter-aux">选词方式</h2>
+                <div class="card">
+                    <div class="setting-item" style="display:block;">
+                        <div class="info">
+                            <div class="title">筛选辅助码</div>
+                            <div class="desc">单独设置用哪种辅助码来缩小候选范围，与上面的「候选字段模板」（只决定显示什么）互不影响。例如：显示英文注释的同时，也允许您用笔画辅助码筛选。</div>
+                        </div>
+                        <select id="filter_aux_mode" class="select-input">
+                            <option value="auto">全部（英文 + 笔画均可筛选）</option>
+                            <option value="english">仅英文辅助码</option>
+                            <option value="stroke">仅笔画辅助码</option>
+                            <option value="none">关闭辅助码筛选</option>
+                        </select>
+                        <div style="margin-top:14px; font-size:13px; color:var(--apple-secondary);">按拼音方案覆盖（留空 = 使用全局）：</div>
+                        <div id="filter-aux-per-profile" style="margin-top:6px;"></div>
+                    </div>
+                    <div class="note" style="margin:0 14px 14px;">
+                        开启 <strong>繁体输出</strong> 后，汉字自动变为繁体，显示模板不变。<br>
                         例如 "汉字 + 英语辅助码" 搭配繁体输出 → "繁體漢字 + 英語輔助碼"
                     </div>
                 </div>
@@ -162,9 +169,10 @@
             bindInput('enable_abbreviation_matching', 'input');
             bindInput('enable_english_filter', 'input');
             bindInput('enable_number_selection', 'input');
-            bindInput('display_mode', 'input');
+            bindInput('filter_aux_mode', 'input');
 
             initCandidateDisplay();
+            initFilterAux();
 
             if (!config.input.double_tap_uppercase_keys) {
                 config.input.double_tap_uppercase_keys = [];
@@ -205,15 +213,6 @@
                 fr: '法语注释', trad: '繁体', stroke_aux: '笔画码', strokes: '笔顺', category: '字级', weight: '权重'
             };
             const DELIM = /\s*[,，]\s*/;
-
-            function ensureCd() {
-                if (!config.input.candidate_display) {
-                    config.input.candidate_display = { fields: ['char', 'en'], per_profile: {} };
-                }
-                if (!config.input.candidate_display.fields) config.input.candidate_display.fields = ['char', 'en'];
-                if (!config.input.candidate_display.per_profile) config.input.candidate_display.per_profile = {};
-                return config.input.candidate_display;
-            }
 
             function renderGlobalChips(cd) {
                 const box = document.getElementById('candidate-fields-global');
@@ -262,24 +261,66 @@
                 });
             }
 
-            let cd = config.input.candidate_display ? ensureCd() : null;
+            let cd = config.input.candidate_display || { fields: ['char', 'en'], per_profile: {} };
+            config.input.candidate_display = cd;
+            if (!cd.fields) cd.fields = ['char', 'en'];
+            if (!cd.per_profile) cd.per_profile = {};
             const input = document.getElementById('candidate_fields_global_input');
-            input.value = cd ? cd.fields.join(',') : '';
+            input.value = cd.fields.join(',');
             input.oninput = () => {
-                cd = ensureCd();
                 cd.fields = input.value.split(DELIM).filter(Boolean);
                 renderGlobalChips(cd);
             };
             renderGlobalChips(cd);
             renderPerProfile(cd);
 
-            window.clearCandidateDisplay = () => {
-                delete config.input.candidate_display;
-                cd = null;
-                input.value = '';
+            window.resetCandidateDisplay = () => {
+                cd.fields = ['char', 'en'];
+                cd.per_profile = {};
+                input.value = 'char,en';
                 renderGlobalChips(cd);
                 renderPerProfile(cd);
             };
+        }
+
+        function initFilterAux() {
+            const AUX_OPTIONS = [
+                ['auto', '全部（英文 + 笔画）'],
+                ['english', '仅英文辅助码'],
+                ['stroke', '仅笔画辅助码'],
+                ['none', '关闭筛选']
+            ];
+            if (!config.input.filter_aux_per_profile) config.input.filter_aux_per_profile = {};
+
+            const box = document.getElementById('filter-aux-per-profile');
+            box.innerHTML = '';
+            const profiles = config.input.enabled_profiles || ['chinese'];
+            profiles.forEach(p => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:6px;';
+                const label = document.createElement('span');
+                label.style.cssText = 'min-width:90px; font-size:13px; color:var(--apple-secondary);';
+                label.textContent = p;
+                const sel = document.createElement('select');
+                sel.className = 'select-input';
+                sel.style.cssText = 'flex:1;';
+                let opts = [['', '跟随全局'], ...AUX_OPTIONS];
+                const cur = config.input.filter_aux_per_profile[p] || '';
+                opts.forEach(([v, labelText]) => {
+                    const o = document.createElement('option');
+                    o.value = v;
+                    o.textContent = labelText;
+                    if (v === cur) o.selected = true;
+                    sel.appendChild(o);
+                });
+                sel.onchange = () => {
+                    if (sel.value === '') delete config.input.filter_aux_per_profile[p];
+                    else config.input.filter_aux_per_profile[p] = sel.value;
+                };
+                row.appendChild(label);
+                row.appendChild(sel);
+                box.appendChild(row);
+            });
         }
 
         init();

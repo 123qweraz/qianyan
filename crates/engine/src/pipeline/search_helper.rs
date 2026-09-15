@@ -16,11 +16,19 @@ pub fn lookup(ctx: &mut EngineContext) -> Option<Action> {
     }
 
     if ctx.session.filter_mode == FilterMode::Page && !ctx.session.page_snapshot.is_empty() {
+        let page_profile = ctx
+            .session_state
+            .active_profiles
+            .first()
+            .cloned()
+            .unwrap_or_default();
+        let page_aux_mode = ctx.config.master_config.input.filter_aux_for(&page_profile);
         let mut filtered = Vec::new();
         for c in &ctx.session.page_snapshot {
             if ctx.engine.matches_filter(
                 c,
                 &ctx.session.aux_filter,
+                page_aux_mode,
                 ctx.config.master_config.input.english_aux_mode,
             ) {
                 filtered.push(c.clone());

@@ -148,8 +148,8 @@ impl SearchEngine {
                     .and_then(|es| es.into_iter().find(|e| !e.word.is_empty()))
                     .map(|e| e.word.to_string())
                     .unwrap_or_default();
-                let template = config_ref.input.candidate_display_for(query.profile.as_ref());
-                let hint = if config_ref.input.candidate_display.is_some() {
+                let template = config_ref.input.candidate_display_for(query.profile);
+                let hint = {
                     let mut values: std::collections::HashMap<String, String> =
                         std::collections::HashMap::with_capacity(8);
                     values.insert("char".into(), sc.simplified.clone());
@@ -162,14 +162,6 @@ impl SearchEngine {
                     values.insert("en".into(), gloss.clone());
                     values.insert("weight".into(), sc.weight.to_string());
                     crate::pipeline::render_annotation(&template, &values)
-                } else {
-                    // 兼容旧 display_mode：仅用单一字段
-                    match config_ref.input.display_mode {
-                        crate::DisplayMode::CharacterOnly => String::new(),
-                        crate::DisplayMode::CharacterWithEnglish => gloss.as_str().to_string(),
-                        crate::DisplayMode::CharacterWithStroke => sc.stroke_aux.clone(),
-                        crate::DisplayMode::CharacterWithTone => sc.tone.clone(),
-                    }
                 };
                 results.push(Candidate {
                     text: if config_ref.input.enable_traditional {
@@ -196,8 +188,14 @@ impl SearchEngine {
             if query.filter_mode == crate::processor::FilterMode::Global
                 && !query.aux_filter.is_empty()
             {
+                let aux_mode = config_ref.input.filter_aux_for(query.profile);
                 results.retain(|c| {
-                    self.matches_filter(c, query.aux_filter, config_ref.input.english_aux_mode)
+                    self.matches_filter(
+                        c,
+                        query.aux_filter,
+                        aux_mode,
+                        config_ref.input.english_aux_mode,
+                    )
                 });
             }
 
@@ -354,43 +352,42 @@ impl SearchEngine {
         &self,
         candidate: &Candidate,
         filter: &str,
-        mode: qianyan_ime_core::config::EnglishAuxMode,
+        mode: qianyan_ime_core::config::AuxFilterMode,
+        en_mode: qianyan_ime_core::config::EnglishAuxMode,
     ) -> bool {
-        if filter.is_empty() {
+        if filter.is_empty() || mode == qianyan_ime_core::config::AuxFilterMode::None {
             return true;
         }
         let filter_lower = filter.to_lowercase();
 
-        if !candidate.english_aux.is_empty() {
+        if matches!(
+            mode,
+            qianyan_ime_core::config::AuxFilterMode::English
+                | qianyan_ime_core::config::AuxFilterMode::Auto
+        ) && !candidate.english_aux.is_empty()
+        {
             let en_lower = candidate.english_aux.to_lowercase();
             let parts: Vec<&str> = en_lower
                 .split([' ', '/', '(', ')', ',', ';', '|', '.', ':', '!', '?', '[', ']', '{', '}'])
                 .collect();
 
-            if mode == qianyan_ime_core::config::EnglishAuxMode::FirstLetter {
+            if en_mode == qianyan_ime_core::config::EnglishAuxMode::FirstLetter {
                 if parts.iter().any(|p| p.starts_with(&filter_lower)) {
                     return true;
                 }
-            } else {
-                if parts.iter().any(|p| p.starts_with(&filter_lower))
-                    || en_lower.starts_with(&filter_lower)
-                {
-                    return true;
-                }
+            } else if parts.iter().any(|p| p.starts_with(&filter_lower))
+                || en_lower.starts_with(&filter_lower)
+            {
+                return true;
             }
         }
 
-        if !candidate.stroke_aux.is_empty()
-            && candidate.stroke_aux.to_lowercase().starts_with(&filter_lower) {
-                return true;
-            }
-
-        let hint_lower = candidate.hint.to_lowercase();
-        let parts: Vec<&str> = hint_lower
-            .split([' ', '/', '(', ')', ',', ';', '|', '.'])
-            .collect();
-        parts.iter().any(|p| p.starts_with(&filter_lower))
-            || hint_lower.starts_with(&filter_lower)
+        matches!(
+            mode,
+            qianyan_ime_core::config::AuxFilterMode::Stroke
+                | qianyan_ime_core::config::AuxFilterMode::Auto
+        ) && !candidate.stroke_aux.is_empty()
+            && candidate.stroke_aux.to_lowercase().starts_with(&filter_lower)
     }
 }
 

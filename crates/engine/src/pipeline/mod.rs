@@ -280,28 +280,39 @@ mod tests {
             flags: 0,
         };
 
-        let mode = qianyan_ime_core::config::EnglishAuxMode::Prefix;
+        use qianyan_ime_core::config::{AuxFilterMode, EnglishAuxMode};
+        let en = EnglishAuxMode::Prefix;
 
-        // 匹配 English Aux
-        assert!(engine.matches_filter(&candidate, "h", mode));
-        assert!(engine.matches_filter(&candidate, "he", mode));
-        assert!(engine.matches_filter(&candidate, "hello", mode));
-        assert!(engine.matches_filter(&candidate, "hi", mode));
-        
-        // 匹配 Stroke Aux
-        assert!(engine.matches_filter(&candidate, "hsp", mode));
-        
-        // 匹配 Hint (后备)
-        assert!(engine.matches_filter(&candidate, "nih", mode));
-        
+        // Auto（默认）：英文与笔画辅助码均可过滤
+        assert!(engine.matches_filter(&candidate, "h", AuxFilterMode::Auto, en));
+        assert!(engine.matches_filter(&candidate, "he", AuxFilterMode::Auto, en));
+        assert!(engine.matches_filter(&candidate, "hi", AuxFilterMode::Auto, en));
+        assert!(engine.matches_filter(&candidate, "hsp", AuxFilterMode::Auto, en));
+
+        // English：只用英注释过滤，笔画码不再命中
+        assert!(engine.matches_filter(&candidate, "he", AuxFilterMode::English, en));
+        assert!(!engine.matches_filter(&candidate, "hsp", AuxFilterMode::English, en));
+
+        // Stroke：只用笔画辅助码过滤，英注释不再命中
+        assert!(engine.matches_filter(&candidate, "hsp", AuxFilterMode::Stroke, en));
+        assert!(!engine.matches_filter(&candidate, "he", AuxFilterMode::Stroke, en));
+
+        // hint 不再作为过滤来源（显示模板字段与筛选辅助码分离）
+        assert!(!engine.matches_filter(&candidate, "nih", AuxFilterMode::Auto, en));
+
+        // None：关闭筛选，任何过滤串都放行
+        assert!(engine.matches_filter(&candidate, "xyz", AuxFilterMode::None, en));
+
         // 不匹配
-        assert!(!engine.matches_filter(&candidate, "xyz", mode));
+        assert!(!engine.matches_filter(&candidate, "xyz", AuxFilterMode::Auto, en));
     }
 
     #[test]
     fn test_matches_filter_empty() {
         let engine = create_test_engine();
-        let mode = qianyan_ime_core::config::EnglishAuxMode::Prefix;
+        use qianyan_ime_core::config::{AuxFilterMode, EnglishAuxMode};
+        let mode = AuxFilterMode::Auto;
+        let en = EnglishAuxMode::Prefix;
         let candidate = Candidate {
             text: Arc::from("测试"),
             simplified: Arc::from("测试"),
@@ -315,9 +326,9 @@ mod tests {
             flags: 0,
         };
 
-        assert!(engine.matches_filter(&candidate, "", mode));
-        assert!(engine.matches_filter(&candidate, "ces", mode));
-        assert!(!engine.matches_filter(&candidate, "xyz", mode));
+        assert!(engine.matches_filter(&candidate, "", mode, en));
+        assert!(!engine.matches_filter(&candidate, "ces", mode, en));
+        assert!(!engine.matches_filter(&candidate, "xyz", mode, en));
     }
 
     fn create_test_engine() -> SearchEngine {
