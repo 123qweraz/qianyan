@@ -8,14 +8,13 @@ use std::sync::{Arc, Mutex};
 
 const ABBREVIATION_SCAN_LIMIT: usize = 3000;
 pub const TRIE_MAGIC: &[u8; 4] = b"QYTR";
-pub const TRIE_VERSION: u32 = 3; // v3: 块内词条按权重降序存储，支持搜索提前终止
+pub const TRIE_VERSION: u32 = 4; // v4: 移除内嵌 en 注释槽，注释改为运行时独立 word→gloss 索引
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TrieResult<'a> {
     pub word: &'a str,
     pub trad: &'a str,
     pub tone: &'a str,
-    pub en: &'a str,
     pub stroke_aux: &'a str,
     pub weight: u32,
     pub flags: u8, // bit0: 1 = level-4 (生僻字)
@@ -28,7 +27,6 @@ pub struct BfsHit {
     pub word: String,
     pub trad: String,
     pub tone: String,
-    pub en: String,
     pub stroke_aux: String,
     pub weight: u32,
     pub flags: u8,
@@ -40,7 +38,6 @@ impl BfsHit {
             word: hit.word.to_string(),
             trad: hit.trad.to_string(),
             tone: hit.tone.to_string(),
-            en: hit.en.to_string(),
             stroke_aux: hit.stroke_aux.to_string(),
             weight: hit.weight,
             flags: hit.flags,
@@ -746,10 +743,6 @@ impl Trie {
                 Some(s) => s,
                 None => break,
             };
-            let en = match Self::read_str(data, &mut cursor, "en") {
-                Some(s) => s,
-                None => break,
-            };
             let stroke_aux = match Self::read_str(data, &mut cursor, "stroke_aux") {
                 Some(s) => s,
                 None => break,
@@ -775,7 +768,6 @@ impl Trie {
                 word,
                 trad,
                 tone,
-                en,
                 stroke_aux,
                 weight,
                 flags,
@@ -1335,7 +1327,6 @@ mod tests {
             word: "test",
             trad: "測試",
             tone: "tēst",
-            en: "test",
             stroke_aux: "",
             weight: 100,
             flags: 0,
@@ -1358,7 +1349,6 @@ mod tests {
             word: "hello",
             trad: "hello",
             tone: "",
-            en: "hello",
             stroke_aux: "",
             weight: 0,
             flags: 0,

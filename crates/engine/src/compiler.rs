@@ -114,6 +114,37 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // 注释表：dicts/annotations/<lang>.json（{word: gloss 或 [gloss,...]}），
+    // 编译为 data/annotations/<lang>.{index,data}，运行期按 word 查表 join
+    {
+        let src_dir = root.join("dicts/annotations");
+        let out_dir = root.join("data/annotations");
+        fs::create_dir_all(&out_dir)?;
+        if src_dir.exists() {
+            for entry in WalkDir::new(&src_dir)
+                .sort_by_file_name()
+                .into_iter()
+                .filter_map(|e| e.ok())
+            {
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "json") {
+                    let lang = path
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let trie_out = out_dir.join(&lang);
+                    let trie_dat = out_dir.join(format!("{}.data", lang));
+                    if should_compile(path, &trie_dat) {
+                        println!("[Compiler] 注释表 [{}] 需要编译，正在执行...", lang);
+                        compile_annotation_file(path, &trie_out.to_string_lossy())?;
+                        println!("[Compiler] 注释表 [{}] 编译完成。", lang);
+                    }
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -235,7 +266,6 @@ struct DictEntry {
     word: String,
     trad: String,
     tone: String,
-    en: String,
     stroke_aux: String,
     weight: u32,
     flags: u8, // 单字按 category 置位；多字词/未分类词条 = 0（恒显示）
@@ -310,16 +340,6 @@ fn process_json_file(
             if let Some(arr) = val.as_array() {
                 if is_english {
                     // 词注优先取 string 数组元素；object 元素取其 en 字段（统一为字符串格式的兜底）
-                    let en_hint = arr
-                        .iter()
-                        .filter_map(|v| match v {
-                            Value::String(s) => Some(s.as_str()),
-                            Value::Object(o) => o.get("en").and_then(|e| e.as_str()),
-                            _ => None,
-                        })
-                        .next()
-                        .unwrap_or("")
-                        .to_string();
                     entries
                         .entry(normalized_key.clone())
                         .or_default()
@@ -327,7 +347,6 @@ fn process_json_file(
                             word: key.clone(),
                             trad: key.clone(),
                             tone: String::new(),
-                            en: en_hint,
                             stroke_aux: String::new(),
                             weight: 0,
                             flags: 0,
@@ -342,7 +361,6 @@ fn process_json_file(
                                     word: s.to_string(),
                                     trad: s.to_string(),
                                     tone: String::new(),
-                                    en: String::new(),
                                     stroke_aux: String::new(),
                                     weight: 0,
                                     flags: 0,
@@ -361,7 +379,6 @@ fn process_json_file(
                                         .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
                                         .collect::<String>(),
                                 };
-                                let en_hint = o.get("en").and_then(|e| e.as_str()).unwrap_or("");
                                 let tone_hint =
                                     o.get("tone").and_then(|t| t.as_str()).unwrap_or("");
                                 // 当需以完整笔顺作为 aux 时（pybi），优先取 strokes 字段
@@ -417,7 +434,6 @@ fn process_json_file(
                                         word: c.to_string(),
                                         trad: trad.to_string(),
                                         tone: tone_hint.to_string(),
-                                        en: en_hint.to_string(),
                                         stroke_aux: stroke_aux.to_string(),
                                         weight,
                                         flags,
@@ -464,7 +480,6 @@ fn process_yaml_file(
                 word: word.clone(),
                 trad: word,
                 tone: String::new(),
-                en: String::new(),
                 stroke_aux: String::new(),
                 weight,
                 flags: 0,
@@ -472,6 +487,48 @@ fn process_yaml_file(
         }
     }
     Ok(())
+}
+
+fn compile_annotation_file(
+    path: &Path,
+    trie_out: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let json: Value = serde_json::from_reader(File::open(path)?)?;
+    let mut entries: BTreeMap<String, Vec<DictEntry>> = BTreeMap::new();
+    if let Some(obj) = json.as_object() {
+        for (word, val) in obj {
+            if word.is_empty() {
+                continue;
+            }
+            let gloss = match val {
+                Value::String(s) => s.clone(),
+                Value::Array(arr) => arr
+                    .iter()
+                    .filter_map(|v| v.as_str())
+                    .next()
+                    .unwrap_or("")
+                    .to_string(),
+                _ => String::new(),
+            };
+            if gloss.is_empty() {
+                continue;
+            }
+            entries.insert(
+                word.clone(),
+                vec![DictEntry {
+                    word: gloss,
+                    trad: word.clone(),
+                    tone: String::new(),
+                    stroke_aux: String::new(),
+                    weight: 0,
+                    flags: 0,
+                }],
+            );
+        }
+    }
+    let idx_path = format!("{}.index", trie_out);
+    let dat_path = format!("{}.data", trie_out);
+    write_binary_dict(&idx_path, &dat_path, entries)
 }
 
 fn write_binary_dict(
@@ -526,7 +583,6 @@ fn write_binary_dict(
                 let w_bytes = entry.word.as_bytes();
                 let tr_bytes = entry.trad.as_bytes();
                 let t_bytes = entry.tone.as_bytes();
-                let e_bytes = entry.en.as_bytes();
                 let s_bytes = entry.stroke_aux.as_bytes();
 
                 block.extend_from_slice(&(w_bytes.len() as u16).to_le_bytes());
@@ -535,8 +591,6 @@ fn write_binary_dict(
                 block.extend_from_slice(tr_bytes);
                 block.extend_from_slice(&(t_bytes.len() as u16).to_le_bytes());
                 block.extend_from_slice(t_bytes);
-                block.extend_from_slice(&(e_bytes.len() as u16).to_le_bytes());
-                block.extend_from_slice(e_bytes);
                 block.extend_from_slice(&(s_bytes.len() as u16).to_le_bytes());
                 block.extend_from_slice(s_bytes);
                 block.extend_from_slice(&entry.weight.to_le_bytes());

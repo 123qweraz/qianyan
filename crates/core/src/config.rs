@@ -371,10 +371,13 @@ pub struct Input {
     pub enable_auto_english: bool,
     #[serde(default = "default_auto_english_timeout")]
     pub auto_english_timeout: u64,
+    #[serde(default = "default_annotation_lang")]
+    pub annotation_lang: String,
 }
 
 fn default_enable_auto_english() -> bool { true }
 fn default_auto_english_timeout() -> u64 { 10 }
+fn default_annotation_lang() -> String { "en".to_string() }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct RankingConfig {
@@ -1255,6 +1258,7 @@ impl Config {
                 segmentation_delimiters: "'".to_string(),
                 enable_auto_english: true,
                 auto_english_timeout: 10,
+                annotation_lang: "en".to_string(),
             },
             hotkeys: Hotkeys {
                 switch_language: Hotkey {

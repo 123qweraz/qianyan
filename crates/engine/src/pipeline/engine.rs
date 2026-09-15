@@ -23,6 +23,7 @@ pub struct SearchEngine {
     pub(crate) user_order: Arc<ArcSwap<OrderData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
     pub(crate) trie_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
+    pub(crate) annotation_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
 }
 
 pub struct SearchQuery<'a> {
@@ -55,6 +56,7 @@ impl SearchEngine {
             user_order,
             schemes,
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
+            annotation_cache: Arc::new(RwLock::new(HashMap::new())),
         };
         engine.load_base_syllables();
         engine
@@ -123,15 +125,28 @@ impl SearchEngine {
             scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
 
             let mut results = Vec::new();
+            // 注释装配：english 方案固定用 zh 注释，其余方案用配置的 annotation_lang
+            let ann_lang = if query.profile.eq_ignore_ascii_case("english") {
+                "zh".to_string()
+            } else {
+                config_ref.input.annotation_lang.clone()
+            };
+            let ann_trie = if ann_lang.is_empty() {
+                None
+            } else {
+                self.get_annotation(&ann_lang)
+            };
             for sc in scheme_candidates {
+                let gloss: String = ann_trie
+                    .as_ref()
+                    .and_then(|t| t.get_all_exact(sc.simplified.as_str()))
+                    .and_then(|es| es.into_iter().find(|e| !e.word.is_empty()))
+                    .map(|e| e.word.to_string())
+                    .unwrap_or_default();
                 let hint = Arc::from(match config_ref.input.display_mode {
                     crate::DisplayMode::CharacterOnly => "",
-                    crate::DisplayMode::CharacterWithEnglish => {
-                        sc.english.as_str()
-                    }
-                    crate::DisplayMode::CharacterWithStroke => {
-                        sc.stroke_aux.as_str()
-                    }
+                    crate::DisplayMode::CharacterWithEnglish => gloss.as_str(),
+                    crate::DisplayMode::CharacterWithStroke => sc.stroke_aux.as_str(),
                     crate::DisplayMode::CharacterWithTone => sc.tone.as_str(),
                 });
                 results.push(Candidate {
@@ -143,7 +158,7 @@ impl SearchEngine {
                     simplified: Arc::from(sc.simplified.as_str()),
                     traditional: Arc::from(sc.traditional.as_str()),
                     hint,
-                    english_aux: Arc::from(sc.english.as_str()),
+                    english_aux: Arc::from(gloss.as_str()),
                     stroke_aux: Arc::from(sc.stroke_aux.as_str()),
                     source: if sc.match_level < 3 {
                         Arc::from("Table (Fuzzy)")
@@ -229,6 +244,40 @@ impl SearchEngine {
         Some(trie_arc)
     }
 
+    /// 注释表懒加载：data/annotations/<lang>.{index,data}（word→gloss），mmap，一次只挂载一种语言
+    #[inline]
+    pub fn get_annotation(&self, lang: &str) -> Option<Arc<Trie>> {
+        {
+            if let Ok(cache) = self.annotation_cache.read() {
+                if let Some(trie) = cache.get(lang) {
+                    return Some(trie.clone());
+                }
+            }
+        }
+
+        let data_root = self
+            .trie_paths
+            .values()
+            .find_map(|(idx, _)| idx.parent().and_then(|p| p.parent()).map(|p| p.to_path_buf()))?;
+        let base = data_root.join("annotations").join(lang);
+        let idx_path = base.with_extension("index");
+        if !idx_path.exists() {
+            log::warn!("注释表缺失: lang={} path={}", lang, idx_path.display());
+            return None;
+        }
+        log::info!("Lazy loading annotation: lang={}", lang);
+        let trie = Trie::load(&idx_path, &base.with_extension("data"), false).ok()?;
+        let trie_arc = Arc::new(trie);
+
+        if let Ok(mut cache) = self.annotation_cache.write() {
+            if let Some(cached) = cache.get(lang) {
+                return Some(cached.clone());
+            }
+            cache.entry(lang.to_string()).or_insert(trie_arc.clone());
+        }
+        Some(trie_arc)
+    }
+
     #[inline]
     pub fn has_exact_match(&self, profile: &str, pinyin: &str, word: &str) -> bool {
         if let Some(trie) = self.get_or_load_trie(profile) {
@@ -269,6 +318,9 @@ impl SearchEngine {
     pub fn reload_tries(&self) {
         if let Ok(mut tc) = self.trie_cache.write() {
             tc.clear();
+        }
+        if let Ok(mut ac) = self.annotation_cache.write() {
+            ac.clear();
         }
         for profile in self.trie_paths.keys() {
             self.get_or_load_trie(profile);

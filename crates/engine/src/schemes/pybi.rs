@@ -141,7 +141,6 @@ impl InputScheme for PybiScheme {
                     cand.simplified = tr.word.to_string();
                     cand.traditional = tr.trad.to_string();
                     cand.tone = tr.tone.to_string();
-                    cand.english = tr.en.to_string();
                     cand.stroke_aux = full_strokes.clone();
                     cand.flags = tr.flags;
                     // 有笔画筛选用 3（精确到位），无笔画时用 2
@@ -163,7 +162,6 @@ impl InputScheme for PybiScheme {
                         cand.simplified = tr.word.to_string();
                         cand.traditional = tr.trad.to_string();
                         cand.tone = tr.tone.to_string();
-                        cand.english = tr.en.to_string();
                         cand.flags = tr.flags;
                         cand.match_level = 2;
                         results.push(cand);
@@ -191,7 +189,6 @@ impl InputScheme for PybiScheme {
                             cand.simplified = tr.word.to_string();
                             cand.traditional = tr.trad.to_string();
                             cand.tone = tr.tone.to_string();
-                            cand.english = tr.en.to_string();
                             cand.flags = tr.flags;
                             cand.match_level = 2;
                             results.push(cand);

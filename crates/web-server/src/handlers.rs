@@ -341,7 +341,7 @@ pub(crate) struct SearchQuery {
 }
 
 pub(crate) async fn search_dict(
-    State((_, tries, _)): State<WebState>,
+    State((config, tries, _)): State<WebState>,
     axum::extract::Query(query): axum::extract::Query<SearchQuery>,
 ) -> Json<Vec<SearchResult>> {
     let mut results = Vec::new();
@@ -372,13 +372,43 @@ pub(crate) async fn search_dict(
         return Json(results);
     };
 
+    // 注释表懒加载：data/annotations/<lang>.{index,data}（word→gloss）
+    let ann_lang = {
+        let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
+        if ime.eq_ignore_ascii_case("english") {
+            "zh".to_string()
+        } else {
+            config_guard.input.annotation_lang.clone()
+        }
+    };
+    let ann_key = format!("annotation_{}", ann_lang);
+    let annotation = {
+        let mut cache = tries.write().unwrap_or_else(|e| e.into_inner());
+        if !cache.contains_key(&ann_key) {
+            let project_root = qianyan_ime_core::utils::find_project_root();
+            let idx = project_root.join(format!("data/annotations/{}.index", ann_lang));
+            let dat = project_root.join(format!("data/annotations/{}.data", ann_lang));
+            if idx.exists() && dat.exists() {
+                if let Ok(t) = Trie::load(idx, dat, false) {
+                    cache.insert(ann_key.clone(), t);
+                }
+            }
+        }
+        cache.get(&ann_key).cloned()
+    };
+
     // FST 前缀匹配（拼音搜索），毫秒级
     let hits = trie.search_bfs(&q, 100);
     for tr in hits {
+        let hint: String = annotation
+            .as_ref()
+            .and_then(|t| t.get_all_exact(&tr.word))
+            .and_then(|es| es.first().map(|e| e.word.to_string()))
+            .unwrap_or_default();
         results.push(SearchResult {
             pinyin: tr.tone.to_string(),
             word: tr.word.to_string(),
-            hint: tr.en.to_string(),
+            hint,
             stroke_aux: tr.stroke_aux.to_string(),
             strokes: String::new(),
             file: ime.to_string(),
@@ -449,16 +479,60 @@ fn get_dict_cache() -> &'static StdMutex<HashMap<String, (std::time::SystemTime,
 
 const DICT_CACHE_MAX: usize = 20;
 
+/// 注释表（青简式）：dicts/annotations/<lang>.json 懒加载缓存
+fn get_annotation_map(
+    lang: &str,
+) -> std::sync::Arc<std::collections::HashMap<String, String>> {
+    use std::sync::OnceLock;
+    static CACHE: OnceLock<
+        std::sync::RwLock<std::collections::HashMap<String, std::sync::Arc<std::collections::HashMap<String, String>>>>,
+    > = OnceLock::new();
+    let cache = CACHE.get_or_init(|| std::sync::RwLock::new(std::collections::HashMap::new()));
+    {
+        if let Ok(guard) = cache.read() {
+            if let Some(m) = guard.get(lang) {
+                return m.clone();
+            }
+        }
+    }
+    let mut loaded = std::collections::HashMap::new();
+    let ann_path = find_dicts_root().join("annotations").join(format!("{}.json", lang));
+    if let Ok(f) = std::fs::File::open(ann_path) {
+        if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
+            if let Some(obj) = json.as_object() {
+                for (k, v) in obj {
+                    if let Some(s) = v.as_str() {
+                        loaded.insert(k.clone(), s.to_string());
+                    }
+                }
+            }
+        }
+    }
+    let arc = std::sync::Arc::new(loaded);
+    if let Ok(mut guard) = cache.write() {
+        guard.insert(lang.to_string(), arc.clone());
+    }
+    arc
+}
+
 fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEntryView>> {
     let mtime = path.metadata().and_then(|m| m.modified()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-    let key = path.to_string_lossy().to_string();
+    let base = find_dicts_root();
+    let ann = get_annotation_map(if path.starts_with(base.join("english")) { "zh" } else { "en" });
+    let ann_mtime = base
+        .join("annotations")
+        .join(if path.starts_with(base.join("english")) { "zh.json" } else { "en.json" })
+        .metadata()
+        .and_then(|m| m.modified())
+        .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+    let key = format!("{}|{}", path.to_string_lossy(), ann_mtime.duration_since(std::time::SystemTime::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0));
     let mut cache = get_dict_cache().lock().unwrap_or_else(|e| e.into_inner());
     if let Some((cached_mtime, entries)) = cache.get(&key) {
         if *cached_mtime >= mtime {
             return std::sync::Arc::clone(entries);
         }
     }
-    let entries = load_dict_entries(path);
+    let entries = load_dict_entries(path, &ann);
     let arc = std::sync::Arc::new(entries);
     cache.insert(key, (mtime, std::sync::Arc::clone(&arc)));
     if cache.len() > DICT_CACHE_MAX {
@@ -470,7 +544,10 @@ fn get_cached_dict_entries(path: &std::path::Path) -> std::sync::Arc<Vec<DictEnt
     arc
 }
 
-fn load_dict_entries(path: &std::path::Path) -> Vec<DictEntryView> {
+fn load_dict_entries(
+    path: &std::path::Path,
+    ann: &std::collections::HashMap<String, String>,
+) -> Vec<DictEntryView> {
     let mut all = Vec::new();
     if let Ok(f) = std::fs::File::open(path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
@@ -480,12 +557,18 @@ fn load_dict_entries(path: &std::path::Path) -> Vec<DictEntryView> {
                         for v in arr {
                             let word = v.get("char").and_then(|c| c.as_str()).unwrap_or("").to_string();
                             if word.is_empty() { continue; }
+                            let raw_en = v.get("en").and_then(|e| e.as_str()).unwrap_or("");
+                            let en = if raw_en.is_empty() {
+                                ann.get(&word).cloned().unwrap_or_default()
+                            } else {
+                                raw_en.to_string()
+                            };
                             all.push(DictEntryView {
                                 id: format!("{}::{}", pinyin, word),
                                 pinyin: pinyin.clone(),
                                 word,
                                 trad: v.get("trad").and_then(|t| t.as_str()).unwrap_or("").to_string(),
-                                en: v.get("en").and_then(|e| e.as_str()).unwrap_or("").to_string(),
+                                en,
                                 tone: v.get("tone").and_then(|t| t.as_str()).unwrap_or("").to_string(),
                                 weight: v.get("weight").and_then(|w| w.as_i64()).unwrap_or(0),
                                 stroke_aux: v.get("stroke_aux").and_then(|s| s.as_str()).unwrap_or("").to_string(),
@@ -1234,7 +1317,8 @@ pub(crate) async fn get_chars_dict(axum::extract::Query(query): axum::extract::Q
         None => base_path.join("chinese/chars/chars.json"),
     };
     let mut results = Vec::new();
-    
+    let ann = get_annotation_map("en");
+
     if let Ok(f) = std::fs::File::open(&path) {
         if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(std::io::BufReader::new(f)) {
             if let Some(obj) = json.as_object() {
@@ -1253,7 +1337,12 @@ pub(crate) async fn get_chars_dict(axum::extract::Query(query): axum::extract::Q
                     if let Some(entries) = obj.get(pinyin).and_then(|v| v.as_array()) {
                         for entry in entries {
                             let character = entry.get("char").and_then(|v| v.as_str()).unwrap_or("");
-                            let en_meaning = entry.get("en").and_then(|v| v.as_str()).unwrap_or("");
+                            let raw_en = entry.get("en").and_then(|v| v.as_str()).unwrap_or("");
+                            let en_meaning = if raw_en.is_empty() {
+                                ann.get(character).map(|s| s.as_str()).unwrap_or("")
+                            } else {
+                                raw_en
+                            };
                             let stroke_code = entry.get("stroke_aux").and_then(|v| v.as_str()).unwrap_or("");
                             
                             // 英文辅助码：拼音 + 英文前3位 (如果en存在)

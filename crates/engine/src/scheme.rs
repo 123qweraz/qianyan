@@ -11,7 +11,6 @@ pub struct SchemeCandidate {
     pub simplified: String,  // 简体形式
     pub traditional: String, // 繁体形式
     pub tone: String,        // 声调/拼音提示
-    pub english: String,     // 英文释义/提示
     pub stroke_aux: String,  // 笔画辅助码提示
     pub weight: u32,         // 排序权重
     pub match_level: u8,     // 匹配级别：3=精确, 2=简拼, 1=前缀
@@ -25,7 +24,6 @@ impl SchemeCandidate {
             traditional: text.clone(),
             text,
             tone: String::new(),
-            english: String::new(),
             stroke_aux: String::new(),
             weight,
             match_level: 1,

@@ -26,7 +26,6 @@ impl InputScheme for EnglishScheme {
                     let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
                     cand.traditional = tr.trad.to_string();
                     cand.tone = tr.tone.to_string();
-                    cand.english = tr.en.to_string();
                     cand.stroke_aux = tr.stroke_aux.to_string();
                     cand.match_level = 3;
                     results.push(cand);
@@ -41,7 +40,6 @@ impl InputScheme for EnglishScheme {
                     let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
                     cand.traditional = tr.trad.to_string();
                     cand.tone = tr.tone.to_string();
-                    cand.english = tr.en.to_string();
                     cand.stroke_aux = tr.stroke_aux.to_string();
                     cand.match_level = 1;
                     results.push(cand);

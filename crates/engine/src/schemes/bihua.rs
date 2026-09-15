@@ -77,7 +77,6 @@ impl InputScheme for BihuaScheme {
                     let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
                     cand.traditional = tr.trad.to_string();
                     cand.tone = tr.tone.to_string();
-                    cand.english = tr.en.to_string();
                     cand.stroke_aux = tr.stroke_aux.to_string();
                     cand.flags = tr.flags;
                     cand.match_level = 2; // 通配匹配设为 2
@@ -89,7 +88,6 @@ impl InputScheme for BihuaScheme {
                         let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
                         cand.traditional = tr.trad.to_string();
                         cand.tone = tr.tone.to_string();
-                        cand.english = tr.en.to_string();
                         cand.stroke_aux = tr.stroke_aux.to_string();
                         cand.flags = tr.flags;
                         cand.match_level = 3; // 精确匹配设为 3
@@ -106,7 +104,6 @@ impl InputScheme for BihuaScheme {
                         let mut cand = SchemeCandidate::new(tr.word.to_string(), tr.weight);
                         cand.traditional = tr.trad.to_string();
                         cand.tone = tr.tone.to_string();
-                        cand.english = tr.en.to_string();
                         cand.stroke_aux = tr.stroke_aux.to_string();
                         cand.flags = tr.flags;
                         cand.match_level = 1; // 前缀匹配设为 1
