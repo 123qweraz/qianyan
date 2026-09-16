@@ -8,13 +8,12 @@ use axum::{
 use fst::Streamer;
 use qianyan_ime_engine::pipeline::{SearchEngine, SearchQuery as EngineSearchQuery, render_annotation};
 use qianyan_ime_engine::processor::FilterMode;
-use qianyan_ime_engine::schemes::{BihuaScheme, ChineseScheme, EnglishScheme, JapaneseScheme, PybiScheme, StrokeScheme};
 use qianyan_ime_engine::scheme::InputScheme;
 use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
-use std::sync::{Arc, OnceLock, Mutex as StdMutex};
+use std::sync::{Arc, OnceLock, Mutex as StdMutex, RwLock};
 use std::sync::atomic::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -291,7 +290,7 @@ pub(crate) async fn create_dict_handler(Json(req): Json<CreateDictRequest>) -> S
     }
 }
 
-pub(crate) async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState>) -> impl IntoResponse {
+pub(crate) async fn compile_dicts_handler(State((config, _, tray_tx)): State<WebState>) -> impl IntoResponse {
     let _ = tray_tx.send(TrayEvent::ShowNotification("正在编译词库...".into()));
     if let Ok(mut cache) = get_known_words_cache().lock() {
         *cache = None;
@@ -301,6 +300,27 @@ pub(crate) async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState
     }
     match qianyan_ime_engine::compiler::check_and_compile_all() {
         Ok(_) => {
+            let (annotation_sources, annotation_files): (
+                std::collections::BTreeMap<String, String>,
+                std::collections::BTreeMap<String, String>,
+            ) = if let Ok(cfg) = config.read() {
+                (
+                    cfg.input
+                        .annotation_sources
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect(),
+                    cfg.input
+                        .annotation_files
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect(),
+                )
+            } else {
+                (std::collections::BTreeMap::new(), std::collections::BTreeMap::new())
+            };
+            let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_sources(&annotation_sources);
+            let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_files(&annotation_files, &annotation_sources);
             let _ = tray_tx.send(TrayEvent::ShowNotification("词库编译完成".into()));
             let _ = tray_tx.send(TrayEvent::ReloadConfig);
             (StatusCode::OK, Json(json!({"ok": true}))).into_response()
@@ -311,6 +331,298 @@ pub(crate) async fn compile_dicts_handler(State((_, _, tray_tx)): State<WebState
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{}", e)}))).into_response()
         }
     }
+}
+
+fn schemes_dir() -> std::path::PathBuf {
+    qianyan_ime_core::utils::find_project_root().join("configs/schemes")
+}
+
+pub(crate) fn scheme_def_for(profile: &str) -> Option<qianyan_ime_core::scheme_def::SchemeDefinition> {
+    let reg = qianyan_ime_core::scheme_def::SchemeRegistry::load(&schemes_dir());
+    reg.get(profile).cloned().or_else(|| {
+        qianyan_ime_core::scheme_def::builtin_scheme_specs()
+            .iter()
+            .find(|(id, _, _, _, _)| *id == profile)
+            .map(|(id, label, engine, dict, aux)| qianyan_ime_core::scheme_def::SchemeDefinition {
+                id: id.to_string(),
+                label: label.to_string(),
+                engine: engine.to_string(),
+                dict: dict.to_string(),
+                aux_dicts: aux.iter().map(|s| s.to_string()).collect(),
+                ..qianyan_ime_core::scheme_def::SchemeDefinition::default()
+            })
+    })
+}
+
+fn scheme_dict_for(profile: &str) -> String {
+    scheme_def_for(profile)
+        .map(|d| d.dict)
+        .unwrap_or_else(|| profile.to_string())
+}
+
+fn engine_descriptions() -> Vec<serde_json::Value> {
+    use qianyan_ime_core::scheme_def::KNOWN_ENGINES;
+    let descs: &[(&str, &str)] = &[
+        ("pinyin", "拼音（含简拼/模糊/纠错/联想）"),
+        ("english", "英文（词表/纠错/首字母冲突）"),
+        ("japanese", "日语（假名/词汇）"),
+        ("stroke", "笔顺码（1-5 转双笔一键编码查字）"),
+        ("bihua", "逐笔笔画（一键一画）"),
+        ("pybi", "拼音+逐笔笔画筛选"),
+    ];
+    KNOWN_ENGINES
+        .iter()
+        .map(|id| {
+            let desc = descs
+                .iter()
+                .find(|(e, _)| *e == *id)
+                .map(|(_, d)| *d)
+                .unwrap_or("");
+            json!({"id": id, "desc": desc})
+        })
+        .collect()
+}
+
+/// GET /api/schemes：方案列表 + 引擎清单 + 可用码表目录 + 注释默认信息
+pub(crate) async fn list_schemes(
+    State((config, _, _)): State<WebState>,
+) -> Json<serde_json::Value> {
+    let directory = schemes_dir();
+    let registry = qianyan_ime_core::scheme_def::SchemeRegistry::load(&directory);
+    let root = qianyan_ime_core::utils::find_project_root();
+    let mut dicts: Vec<String> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(root.join("dicts")) {
+        for entry in entries.flatten() {
+            if entry.path().is_dir() {
+                if let Some(n) = entry.file_name().to_str() {
+                    dicts.push(n.to_string());
+                }
+            }
+        }
+    }
+    dicts.sort();
+    let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
+    let global = json!({
+        "annotation_lang": config_guard.input.annotation_lang,
+        "default_candidate_fields": config_guard.input.candidate_display.fields,
+        "default_aux_filter": config_guard.input.filter_aux_mode,
+        "annotation_sources": config_guard.input.annotation_sources,
+        "enabled_profiles": config_guard.input.enabled_profiles,
+        "default_profile": config_guard.input.default_profile,
+    });
+    Json(json!({
+        "ok": true,
+        "engines": engine_descriptions(),
+        "dicts": dicts,
+        "schemes": registry.schemes,
+        "errors": registry.errors,
+        "global": global,
+    }))
+}
+
+#[derive(Deserialize)]
+pub(crate) struct SchemeSaveRequest {
+    action: String,
+    def: Option<qianyan_ime_core::scheme_def::SchemeDefinition>,
+    id: Option<String>,
+}
+
+/// POST /api/scheme：保存 / 删除 / 恢复默认方案，保存后增量编译并触发重载。
+pub(crate) async fn upsert_scheme(
+    State((config, _, tray_tx)): State<WebState>,
+    Json(req): Json<SchemeSaveRequest>,
+) -> Response {
+    let directory = schemes_dir();
+    match req.action.as_str() {
+        "delete" => {
+            let Some(id) = req.id.as_deref() else {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": "缺少 id"}))).into_response();
+            };
+            if !qianyan_ime_core::scheme_def::delete_scheme(id, &directory) {
+                return (StatusCode::NOT_FOUND, Json(json!({"error": "方案不存在"}))).into_response();
+            }
+            if let Ok(mut w) = config.write() {
+                w.input.enabled_profiles.retain(|p| p != id);
+                w.input.profile_keys.retain(|k| k.profile != id);
+                if w.input.default_profile == id {
+                    w.input.default_profile = String::new();
+                }
+                let cfg = w.clone();
+                let _ = cfg.save();
+            }
+            trigger_compile(&config, tray_tx);
+            (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+        }
+        "restore" => {
+            if let Ok(entries) = std::fs::read_dir(&directory) {
+                for entry in entries.flatten() {
+                    let p = entry.path();
+                    if p.extension().and_then(|e| e.to_str()) == Some("json") {
+                        let _ = std::fs::remove_file(p);
+                    }
+                }
+            }
+            let input = config
+                .read()
+                .map(|c| c.input.clone())
+                .unwrap_or_else(|_| Config::default_config().input);
+            if let Err(e) = qianyan_ime_core::scheme_def::ensure_default_schemes(&directory, &input) {
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{}", e)}))).into_response();
+            }
+            trigger_compile(&config, tray_tx);
+            (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+        }
+        "save" => {
+            let def = req.def;
+            let Some(def) = def else {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": "缺少方案内容"}))).into_response();
+            };
+            let id = def.id.clone();
+            let valid_id = !id.is_empty()
+                && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
+            if !valid_id {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": "id 只能包含字母/数字/_/-"}))).into_response();
+            }
+            if def.dict.is_empty() {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": "未选择码表"}))).into_response();
+            }
+            if !qianyan_ime_core::scheme_def::KNOWN_ENGINES.contains(&def.engine.as_str()) {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": "未知引擎"}))).into_response();
+            }
+            let root = qianyan_ime_core::utils::find_project_root();
+            if !root.join("dicts").join(&def.dict).is_dir() {
+                return (StatusCode::BAD_REQUEST, Json(json!({"error": format!("码表目录不存在: {}", def.dict)}))).into_response();
+            }
+            if let Err(e) = qianyan_ime_core::scheme_def::save_scheme(&def, &directory) {
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{}", e)}))).into_response();
+            }
+            trigger_compile(&config, tray_tx);
+            (StatusCode::OK, Json(json!({"ok": true, "id": id}))).into_response()
+        }
+        _ => (StatusCode::BAD_REQUEST, Json(json!({"error": "未知 action"}))).into_response(),
+    }
+}
+
+fn trigger_compile(
+    config: &Arc<RwLock<Config>>,
+    tray_tx: std::sync::mpsc::Sender<qianyan_ime_core::event::TrayEvent>,
+) {
+    let _ = qianyan_ime_engine::compiler::check_and_compile_all();
+    let (annotation_sources, annotation_files, schemes) = if let Ok(c) = config.read() {
+        (
+            c.input
+                .annotation_sources
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<std::collections::BTreeMap<_, _>>(),
+            c.input
+                .annotation_files
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<std::collections::BTreeMap<_, _>>(),
+            qianyan_ime_core::scheme_def::SchemeRegistry::load(&schemes_dir()).schemes,
+        )
+    } else {
+        (
+            std::collections::BTreeMap::new(),
+            std::collections::BTreeMap::new(),
+            Vec::new(),
+        )
+    };
+    let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_sources(&annotation_sources);
+    let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_files(&annotation_files, &annotation_sources);
+    let _ = qianyan_ime_engine::compiler::check_and_compile_scheme_annotations(&schemes, &annotation_sources);
+    let _ = tray_tx.send(qianyan_ime_core::event::TrayEvent::ReloadConfig);
+}
+
+#[derive(Deserialize)]
+pub(crate) struct AnnotationPreviewRequest {
+    file: String,
+}
+
+/// POST /api/scheme_preview：预览任意注释 TSV 文件（表名/语言键/前几行释义）。
+pub(crate) async fn preview_annotation(
+    State((config, _, _)): State<WebState>,
+    Json(req): Json<AnnotationPreviewRequest>,
+) -> Json<serde_json::Value> {
+    let file = req.file.trim().to_string();
+    if file.is_empty() {
+        return Json(json!({"exists": false, "error": "路径为空"}));
+    }
+    let path = std::path::PathBuf::from(&file);
+    let exists = path.is_file();
+    if !exists {
+        return Json(json!({"exists": false, "table": "", "lang": "", "error": "文件不存在"}));
+    }
+    let annotation_sources: std::collections::BTreeMap<String, String> = config
+        .read()
+        .map(|c| {
+            c.input
+                .annotation_sources
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let table =
+        qianyan_ime_core::utils::annotation_table_name_for_path(&file, &annotation_sources);
+    let lang = table
+        .rsplit_once('-')
+        .map(|(_, l)| l.to_string())
+        .unwrap_or_default();
+    let mut preview: Vec<[String; 2]> = Vec::new();
+    let mut error: String = String::new();
+    let is_json = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("json"));
+    if let Ok(text) = std::fs::read_to_string(&path) {
+        if is_json {
+            match serde_json::from_str::<serde_json::Value>(&text) {
+                Ok(v) => {
+                    if let Some(obj) = v.as_object() {
+                        for (word, val) in obj.iter().take(8) {
+                            let gloss = match val {
+                                serde_json::Value::String(s) => s.clone(),
+                                serde_json::Value::Array(a) => a
+                                    .iter()
+                                    .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                                    .collect::<Vec<_>>()
+                                    .join(" · "),
+                                _ => val.to_string(),
+                            };
+                            preview.push([word.clone(), gloss]);
+                        }
+                    }
+                }
+                Err(e) => error = format!("JSON 解析失败: {}", e),
+            }
+        } else {
+            for line in text.lines().take(16) {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                let mut parts = line.split('\t');
+                if let Some(word) = parts.next() {
+                    let gloss = parts.collect::<Vec<_>>().join(" · ");
+                    preview.push([word.to_string(), gloss]);
+                    if preview.len() >= 8 {
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        error = "无法读取文件".to_string();
+    }
+    Json(json!({
+        "exists": true,
+        "table": table,
+        "lang": lang,
+        "preview": preview,
+        "error": error,
+    }))
 }
 
 pub(crate) async fn reload_dicts(State((_, _, tray_tx)): State<WebState>) -> StatusCode {
@@ -352,13 +664,14 @@ pub(crate) async fn search_dict(
         return Json(results);
     }
 
-    // 懒加载 trie（mmap，零额外内存）
+    // 懒加载 trie（mmap，零额外内存）；自定义方案用其声明的码表目录
+    let dict = scheme_dict_for(ime);
     let trie = {
         let mut cache = tries.write().unwrap_or_else(|e| e.into_inner());
         if !cache.contains_key(ime) {
             let project_root = qianyan_ime_core::utils::find_project_root();
-            let idx = project_root.join(format!("data/{}/trie.index", ime));
-            let dat = project_root.join(format!("data/{}/trie.data", ime));
+            let idx = project_root.join(format!("data/{}/trie.index", dict));
+            let dat = project_root.join(format!("data/{}/trie.data", dict));
             if idx.exists() && dat.exists() {
                 if let Ok(t) = Trie::load(idx, dat, false) {
                     cache.insert(ime.to_string(), t);
@@ -375,14 +688,12 @@ pub(crate) async fn search_dict(
     // 注释表懒加载：data/annotations/<source>-<target>.{index,data}（word→gloss，青简式）
     let (ann_lang, display_template) = {
         let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
-        let template = config_guard.input.candidate_display_for(ime);
-        if ime.eq_ignore_ascii_case("english") {
-            ("en-zh".to_string(), template)
-        } else if ime.eq_ignore_ascii_case("japanese") {
-            ("jp-en".to_string(), template)
-        } else {
-            (format!("zh-{}", config_guard.input.annotation_lang), template)
-        }
+        let scheme_def = scheme_def_for(ime);
+        let template = config_guard
+            .input
+            .candidate_display_for_scheme(ime, scheme_def.as_ref());
+        let (table, _) = config_guard.input.annotation_info_for_scheme(ime, scheme_def.as_ref());
+        (table, template)
     };
     let ann_key = format!("annotation_{}", ann_lang);
     let annotation = {
@@ -2243,16 +2554,39 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
         return Err("No trie files found in data/ directory".into());
     }
 
+    // 输入方案：读取 configs/schemes/*.json；目录缺失/为空时回退内置 6 方案。
+    let scheme_registry = qianyan_ime_core::scheme_def::SchemeRegistry::load(&root.join("configs/schemes"));
+    let schemes_defs: Vec<qianyan_ime_core::scheme_def::SchemeDefinition> = if scheme_registry
+        .schemes
+        .is_empty()
+    {
+        qianyan_ime_engine::scheme_registry::builtin_defs()
+    } else {
+        scheme_registry.schemes
+    };
+    log::info!(
+        "web-server: loaded {} schemes from configs/schemes",
+        schemes_defs.len()
+    );
+
+    // 把 data/<dict> 挂到方案 id，并按方案文件装配解析引擎
+    for def in &schemes_defs {
+        if let Some(files) = trie_paths.get(&def.dict).cloned() {
+            let id = def.id.clone();
+            trie_paths.insert(id, files);
+        }
+    }
+    let schemes_map: HashMap<String, Box<dyn InputScheme>> =
+        qianyan_ime_engine::scheme_registry::build_schemes(&schemes_defs);
+    let scheme_defs_map = Arc::new(
+        schemes_defs
+            .into_iter()
+            .map(|s| (s.id.clone(), s))
+            .collect::<HashMap<_, _>>(),
+    );
+
     let syllable_freq_arc = Arc::new(syllable_freq);
     let empty_user_dict = Arc::new(ArcSwap::new(Arc::new(HashMap::<String, HashMap<String, Vec<(String, u32)>>>::new())));
-
-    let mut schemes_map: HashMap<String, Box<dyn InputScheme>> = HashMap::new();
-    schemes_map.insert("chinese".into(), Box::new(ChineseScheme::new()));
-    schemes_map.insert("english".into(), Box::new(EnglishScheme::new()));
-    schemes_map.insert("japanese".into(), Box::new(JapaneseScheme::new()));
-    schemes_map.insert("stroke".into(), Box::new(StrokeScheme::new()));
-    schemes_map.insert("bihua".into(), Box::new(BihuaScheme::new()));
-    schemes_map.insert("pybi".into(), Box::new(PybiScheme::new()));
 
     let single_syllables = Arc::new(load_single_syllables(root));
     let mut engine = SearchEngine::new(
@@ -2264,6 +2598,7 @@ fn prepare_ime_engine(root: &std::path::Path) -> Result<SearchEngine, String> {
         Arc::new(schemes_map),
     );
     engine.single_syllables = single_syllables;
+    engine.scheme_defs = scheme_defs_map;
     Ok(engine)
 }
 

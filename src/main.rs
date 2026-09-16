@@ -118,8 +118,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // 输入方案：configs/schemes/*.json（用户数据化配置；程序只提供解析引擎）。
+    // 首启无方案文件时自动生成内置 6 方案，并迁入遗留的按方案覆盖。
+    let schemes_dir = root.join("configs/schemes");
+    let _ = qianyan_ime_core::scheme_def::ensure_default_schemes(&schemes_dir, &current_config.input);
+    let scheme_registry = qianyan_ime_core::scheme_def::SchemeRegistry::load(&schemes_dir);
+    for err in &scheme_registry.errors {
+        log::warn!("[Scheme] {}", err);
+    }
+    let schemes_defs = scheme_registry.schemes.clone();
+    if !schemes_defs.is_empty() {
+        current_config.files.profiles =
+            qianyan_ime_core::scheme_def::profiles_from_schemes(&schemes_defs);
+    }
+
     // 检查所有方案是否需要编译（should_compile 内部会判断 mtime，已最新时极快）
     let _ = compiler::check_and_compile_all();
+    // 编译用户配置的外部注释表（annotation_sources，可指向桌面等任意目录）
+    let mut annotation_sources: std::collections::BTreeMap<String, String> = current_config
+        .input
+        .annotation_sources
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let _ = compiler::check_and_compile_annotation_sources(&annotation_sources);
+    // 按方案文件声明的注释文档编译（annotation.file/table_name）
+    let _ = compiler::check_and_compile_scheme_annotations(&schemes_defs, &annotation_sources);
+    // 遗留：按方案直接指定源文件的注释表（automatically derive table name）
+    let annotation_files: std::collections::BTreeMap<String, String> = current_config
+        .input
+        .annotation_files
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let _ = compiler::check_and_compile_annotation_files(&annotation_files, &annotation_sources);
 
     {
         let mut punctuations = HashMap::new();
@@ -180,7 +212,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let syllable_freq = load_syllable_frequencies(&root);
     let single_syllables = Arc::new(load_single_syllables(&root));
+
+    // 按方案装配解析引擎：把 data/<dict> 挂到方案 id 上，并按方案文件构建引擎映射
+    let schemes_map = Arc::new(qianyan_ime_engine::scheme_registry::build_schemes(&schemes_defs));
+    let scheme_defs_map = Arc::new(
+        scheme_registry
+            .schemes
+            .into_iter()
+            .map(|s| (s.id.clone(), s))
+            .collect::<std::collections::HashMap<_, _>>(),
+    );
+    for def in &schemes_defs {
+        if let Some(files) = trie_paths.get(&def.dict).cloned() {
+            trie_paths.insert(def.id.clone(), files);
+        }
+    }
+
     let mut processor_obj = Processor::new(trie_paths, syllable_freq);
+    processor_obj.ctx.engine.schemes = schemes_map;
+    processor_obj.ctx.engine.scheme_defs = scheme_defs_map;
     processor_obj.ctx.engine.single_syllables = single_syllables;
     if let Ok(conf) = config.read() {
         processor_obj.apply_config(&conf);

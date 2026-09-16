@@ -1,6 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::processor::Action;
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::sync::Arc;
 
 /// 逐笔笔画输入方案（bihua）
 ///
@@ -11,7 +12,10 @@ use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 ///
 /// 字典笔画数据以 12345 表示（1横 2竖 3撇 4捺 5折），
 /// 输入时把按键翻译回数字序列后直接查询 data/bihua 索引。
-pub struct BihuaScheme;
+pub struct BihuaScheme {
+    /// 主词库挂载键（= 方案 id）
+    dict: Arc<str>,
+}
 
 impl Default for BihuaScheme {
     fn default() -> Self {
@@ -21,7 +25,13 @@ impl Default for BihuaScheme {
 
 impl BihuaScheme {
     pub fn new() -> Self {
-        Self
+        Self::with_dict("bihua")
+    }
+
+    pub fn with_dict(dict: &str) -> Self {
+        Self {
+            dict: Arc::from(dict),
+        }
     }
 
     /// 是否为有效的笔画按键（含通配符 z）
@@ -70,7 +80,7 @@ impl InputScheme for BihuaScheme {
         let mut results = Vec::new();
         let has_wildcard = query.contains('z');
 
-        if let Some(trie) = context.tries.get("bihua") {
+        if let Some(trie) = context.tries.get(self.dict.as_ref()) {
             if has_wildcard {
                 let matches = trie.search_wildcard(query, 50);
                 for tr in matches {

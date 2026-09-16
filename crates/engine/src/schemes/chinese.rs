@@ -1,6 +1,10 @@
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::sync::Arc;
 
-pub struct ChineseScheme;
+pub struct ChineseScheme {
+    /// 主词库挂载键（= 方案 id；数据来自 data/<方案.dict>/trie）
+    dict: Arc<str>,
+}
 
 #[derive(Debug, Clone)]
 struct ParsedPart {
@@ -16,7 +20,14 @@ impl Default for ChineseScheme {
 
 impl ChineseScheme {
     pub fn new() -> Self {
-        Self
+        Self::with_dict("chinese")
+    }
+
+    /// 指定主词库挂载键。自定义方案时传方案 id。
+    pub fn with_dict(dict: &str) -> Self {
+        Self {
+            dict: Arc::from(dict),
+        }
     }
 
     fn parse_buffer(&self, buffer: &str) -> Vec<ParsedPart> {
@@ -231,7 +242,7 @@ impl InputScheme for ChineseScheme {
 
         // 辅助函数：从系统词典查词
         let lookup_aux = |word: &str, py: &str| -> (String, String, String, String, String, u8) {
-            if let Some(trie) = context.tries.get("chinese") {
+            if let Some(trie) = context.tries.get(self.dict.as_ref()) {
                 if let Some(entries) = trie.get_all_exact(py) {
                     if let Some(tr) = entries.iter().find(|t| t.word == word) {
                         return (tr.trad.to_string(), tr.tone.to_string(),
@@ -306,7 +317,7 @@ impl InputScheme for ChineseScheme {
                         }
                     }
                 } else if context.config.input.enable_abbreviation_matching {
-                    if let Some(trie) = context.tries.get("chinese") {
+                    if let Some(trie) = context.tries.get(self.dict.as_ref()) {
                         let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, trie);
                         if !abbr_segs.is_empty() {
                             for (pinyin, words) in profile_dict.iter() {
@@ -334,7 +345,7 @@ impl InputScheme for ChineseScheme {
         for (i, part) in raw_parsed.iter().enumerate() {
             let mut matches = Vec::new();
             for profile in context.active_profiles {
-                if let Some(d) = context.tries.get(profile) {
+                if let Some(d) = context.tries.get(self.dict.as_ref()) {
                     let py = &part.pinyin;
                     if let Some(m) = d.get_all_exact(py) {
                         let mut exact: Vec<_> = m.iter().collect();
@@ -393,7 +404,7 @@ impl InputScheme for ChineseScheme {
         if final_results.is_empty()
             && context.config.input.enable_abbreviation_matching
         {
-            if let Some(d) = context.tries.get("chinese") {
+            if let Some(d) = context.tries.get(self.dict.as_ref()) {
                 let abbr_segs = ChineseScheme::segment_for_abbreviation(&pinyin_key, d);
                 if abbr_segs.len() > 1 {
                     let mut abbr_results = d.search_abbreviation_mixed(&abbr_segs, 200, context.single_syllables);
@@ -421,7 +432,7 @@ impl InputScheme for ChineseScheme {
         if final_results.is_empty() && !query.contains(' ')
             && context.config.input.enable_error_correction
         {
-            if let Some(d) = context.tries.get("chinese") {
+            if let Some(d) = context.tries.get(self.dict.as_ref()) {
                 let similar = crate::pipeline::find_similar_pinyin(
                     &pinyin_key, d, Some(&context.config.input.fuzzy_config),
                     context.syllable_freq, context.base_syllables,
@@ -446,7 +457,7 @@ impl InputScheme for ChineseScheme {
 
         // ── 策略 4: 词图 Viterbi 组句 —— 仅前面策略都无结果时触发 ──
         if final_results.is_empty() && !query.contains(' ') && !raw_parsed.is_empty() {
-            if let Some(d) = context.tries.get("chinese") {
+            if let Some(d) = context.tries.get(self.dict.as_ref()) {
                 if pinyin_key.len() <= 24 {
                     let ngram_guard = context.ngram_history.load();
                     let profile = context.active_profiles.first().cloned().unwrap_or_default();

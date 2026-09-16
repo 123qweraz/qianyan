@@ -1,8 +1,12 @@
 use crate::keys::VirtualKey;
 use crate::processor::Action;
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::sync::Arc;
 
-pub struct JapaneseScheme;
+pub struct JapaneseScheme {
+    /// 主词库挂载键（= 方案 id）
+    dict: Arc<str>,
+}
 
 impl Default for JapaneseScheme {
     fn default() -> Self {
@@ -12,14 +16,20 @@ impl Default for JapaneseScheme {
 
 impl JapaneseScheme {
     pub fn new() -> Self {
-        Self
+        Self::with_dict("japanese")
+    }
+
+    pub fn with_dict(dict: &str) -> Self {
+        Self {
+            dict: Arc::from(dict),
+        }
     }
 }
 
 impl InputScheme for JapaneseScheme {
     fn lookup(&self, query: &str, context: &SchemeContext) -> Vec<SchemeCandidate> {
         let mut results = Vec::new();
-        if let Some(trie) = context.tries.get("japanese") {
+        if let Some(trie) = context.tries.get(self.dict.as_ref()) {
             // 1. 精确匹配 (主要是假名和单词)
             if let Some(matches) = trie.get_all_exact(query) {
                 for tr in matches {

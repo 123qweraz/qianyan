@@ -80,6 +80,11 @@ pub trait InputScheme: Send + Sync {
         context: &SchemeContext,
     );
 
+    /// 方案特有的辅助词库挂载键（如 pybi → ["chinese"]），引擎检索时一并加载。
+    fn aux_dicts(&self) -> &[String] {
+        &[]
+    }
+
     /// 处理方案特有的按键（如快捷键开关）
     fn handle_special_key(
         &self,

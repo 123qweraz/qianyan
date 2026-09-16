@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::sync::OnceLock;
 
 use crate::file_lock;
+use crate::scheme_def::SchemeDefinition;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
@@ -399,6 +400,16 @@ pub struct Input {
     pub auto_english_timeout: u64,
     #[serde(default = "default_annotation_lang")]
     pub annotation_lang: String,
+    /// 外部注释表源映射：表名（如 "zh-jp"）→ 源 TSV 文件路径（绝对路径或相对项目根）。
+    /// 程序启动/编译时按此表名把任意位置的 TSV 编译进 data/annotations/<表名>.{index,data}，
+    /// 使 annotation_lang 等选表规则指向的词典可放在桌面等任意目录。
+    #[serde(default)]
+    pub annotation_sources: std::collections::HashMap<String, String>,
+    /// 按方案直接指定注释源文件（key = profile 名，value = TSV/JSON 文件路径，
+    /// 如 "/home/xiao/Desktop/zh-jp.tsv"）。表名自动推导（文件名主干或稳定哈希），
+    /// 启动时自动编译。值为空串表示该方案不显示注释。
+    #[serde(default)]
+    pub annotation_files: std::collections::HashMap<String, String>,
 }
 
 fn default_enable_auto_english() -> bool { true }
@@ -423,6 +434,84 @@ impl Input {
             .get(profile)
             .copied()
             .unwrap_or(self.filter_aux_mode)
+    }
+
+    /// 解析某个 scheme 生效的注释信息：(表名, 目标语言字段键)。
+    /// 1) annotation_files[profile] 直接指定源文件 → 表名自动推导；
+    ///    语言键取表名目标段（zh-jp → "jp"），供候选模板字段使用；
+    /// 2) 否则默认规则：english→en-zh / japanese→jp-en / 其余→zh-{annotation_lang}。
+    ///    表名为空 = 该方案不显示注释。
+    pub fn annotation_info_for(&self, profile: &str) -> (String, String) {
+        if let Some(path) = self.annotation_files.get(profile) {
+            if path.is_empty() {
+                return (String::new(), String::new());
+            }
+            let table =
+                crate::utils::annotation_table_name_for_path(path, &self.annotation_sources);
+            let lang = table
+                .rsplit_once('-')
+                .map(|(_, l)| l.to_string())
+                .unwrap_or_default();
+            return (table, lang);
+        }
+        if profile.eq_ignore_ascii_case("english") {
+            return ("en-zh".to_string(), "zh".to_string());
+        }
+        if profile.eq_ignore_ascii_case("japanese") {
+            return ("jp-en".to_string(), "en".to_string());
+        }
+        if self.annotation_lang.is_empty() {
+            (String::new(), String::new())
+        } else {
+            (
+                format!("zh-{}", self.annotation_lang),
+                self.annotation_lang.clone(),
+            )
+        }
+    }
+
+    /// 解析某个 scheme 生效的候选显示模板：方案定义优先（display），否则回到全局/遗留覆盖。
+    pub fn candidate_display_for_scheme(
+        &self,
+        profile: &str,
+        def: Option<&SchemeDefinition>,
+    ) -> Vec<String> {
+        if let Some(def) = def {
+            if let Some(fields) = &def.display {
+                return fields.clone();
+            }
+        }
+        self.candidate_display_for(profile)
+    }
+
+    /// 解析某个 scheme 生效的选词辅助码：方案定义优先，否则回到全局/遗留覆盖。
+    pub fn filter_aux_for_scheme(
+        &self,
+        profile: &str,
+        def: Option<&SchemeDefinition>,
+    ) -> AuxFilterMode {
+        if let Some(def) = def {
+            if let Some(mode) = def.aux_filter {
+                return mode;
+            }
+        }
+        self.filter_aux_for(profile)
+    }
+
+    /// 解析某个 scheme 生效的注释信息：方案定义（显式表名/文件）优先，
+    /// 否则回到遗留 annotation_files 与默认规则。
+    pub fn annotation_info_for_scheme(
+        &self,
+        profile: &str,
+        def: Option<&SchemeDefinition>,
+    ) -> (String, String) {
+        if let Some(def) = def {
+            let (table, lang) = def.annotation_table(&self.annotation_sources);
+            if def.annotation.disabled || !table.is_empty() {
+                return (table, lang);
+            }
+        }
+        self.annotation_info_for(profile)
     }
 }
 
@@ -1308,6 +1397,8 @@ impl Config {
                 enable_auto_english: true,
                 auto_english_timeout: 10,
                 annotation_lang: "en".to_string(),
+                annotation_sources: std::collections::HashMap::new(),
+                annotation_files: std::collections::HashMap::new(),
             },
             hotkeys: Hotkeys {
                 switch_language: Hotkey {
@@ -1453,5 +1544,50 @@ mod config_tests {
                 serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
             assert_eq!(loaded["input"]["enable_traditional"], false);
         });
+    }
+
+    #[test]
+    fn annotation_info_resolution() {
+        let mut cfg = Config::default_config();
+        // 默认规则
+        assert_eq!(cfg.input.annotation_info_for("chinese"), ("zh-en".into(), "en".into()));
+        assert_eq!(cfg.input.annotation_info_for("english"), ("en-zh".into(), "zh".into()));
+        assert_eq!(cfg.input.annotation_info_for("japanese"), ("jp-en".into(), "en".into()));
+        assert_eq!(cfg.input.annotation_info_for("pybi"), ("zh-en".into(), "en".into()));
+
+        // annotation_lang 全局兜底：chinese → zh-jp
+        cfg.input.annotation_lang = "jp".into();
+        assert_eq!(cfg.input.annotation_info_for("chinese"), ("zh-jp".into(), "jp".into()));
+        assert_eq!(cfg.input.annotation_info_for("japanese"), ("jp-en".into(), "en".into()));
+
+        // 按方案直接指定源文件：文件名主干推导表名 + 语言键
+        let mut named = std::collections::HashMap::new();
+        named.insert("zh-fr".to_string(), "/data/mydict.tsv".to_string());
+        cfg.input.annotation_sources = named.clone();
+        cfg.input.annotation_files.insert(
+            "chinese".to_string(),
+            "/home/xiao/Desktop/zh-jp.tsv".to_string(),
+        );
+        assert_eq!(cfg.input.annotation_info_for("chinese"), ("zh-jp".into(), "jp".into()));
+
+        // 源路径命中 annotation_sources 的值 → 使用其键名为表名
+        cfg.input.annotation_files.insert(
+            "pybi".to_string(),
+            "/data/mydict.tsv".to_string(),
+        );
+        assert_eq!(cfg.input.annotation_info_for("pybi"), ("zh-fr".into(), "fr".into()));
+
+        // 非 ASCII 文件名 → 稳定哈希表名，无语言键
+        cfg.input.annotation_files.insert(
+            "stroke".to_string(),
+            "/home/xiao/Desktop/鸟汉字典.tsv".to_string(),
+        );
+        let (table, lang) = cfg.input.annotation_info_for("stroke");
+        assert!(table.starts_with("ext_"), "got {}", table);
+        assert_eq!(lang, "");
+
+        // 空串 = 不显示注释
+        cfg.input.annotation_files.insert("japanese".to_string(), "".to_string());
+        assert_eq!(cfg.input.annotation_info_for("japanese").0, "");
     }
 }

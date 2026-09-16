@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>输入方案 - 千言输入法</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .flow-card { background: rgba(9,105,218,0.06); border: 1px solid rgba(9,105,218,0.18); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 13px; color: var(--apple-secondary); line-height: 1.9; }
+        .flow-card b { color: var(--apple-accent); }
+        .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+        @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+        .scheme-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1.5px solid transparent; cursor: pointer; transition: all 0.15s; font-size: 13px; }
+        .scheme-item:hover { background: var(--apple-hover); }
+        .scheme-item.selected { border-color: var(--apple-accent); background: rgba(0,122,255,0.06); }
+        .scheme-item .name { font-weight: 600; }
+        .scheme-item .meta { font-size: 11px; color: var(--apple-secondary); }
+        .scheme-item .star { margin-left: auto; cursor: pointer; color: var(--apple-secondary); font-size: 15px; }
+        .scheme-item .star.default { color: #f5a623; }
+        .scheme-item .enabled-switch { transform: scale(0.7); }
+        .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 8px; }
+        .btn-sm { font-size: 12px; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--apple-border); background: white; cursor: pointer; }
+        .btn-sm:hover { border-color: var(--apple-accent); background: rgba(0,113,227,0.05); }
+        .btn-sm.danger:hover { border-color: var(--apple-red); background: rgba(255,59,48,0.06); color: var(--apple-red); }
+        .field { margin: 12px 0; }
+        .field label { display: block; font-size: 12px; font-weight: 600; color: var(--apple-secondary); margin-bottom: 4px; }
+        .field .help { font-size: 11px; color: var(--apple-secondary); margin-top: 4px; line-height: 1.7; }
+        input[type=text], select { width: 100%; padding: 8px 10px; border: 1px solid var(--apple-border); border-radius: 8px; font-size: 13px; box-sizing: border-box; }
+        .preview-box { margin-top: 8px; background: rgba(0,0,0,0.02); border: 1px dashed var(--apple-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--apple-secondary); }
+        .preview-row { display: flex; gap: 10px; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+        .preview-row span:first-child { font-weight: 600; color: var(--apple-text); }
+        .preview-row span:last-child { color: var(--apple-secondary); }
+        .engine-opt { font-size: 12px; }
+        .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .chip { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--apple-border); font-size: 12px; cursor: pointer; background: white; }
+        .chip:hover { border-color: var(--apple-accent); color: var(--apple-accent); }
+        .err-box { color: var(--apple-red); font-size: 12px; padding: 10px 12px; border: 1px solid var(--apple-red); border-radius: 8px; margin: 10px 0; background: rgba(255,59,48,0.06); }
+        .savebar { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="btn-back">← 返回控制中心</a>
+            <h1>输入方案</h1>
+        </header>
+
+        <div class="flow-card">
+            <b>一个方案 = 解析引擎 + 码表 + 注释文档。</b>输入法只内置解析引擎，方案由 <code>configs/schemes/*.json</code> 全权定义，可自由增删改。<br>
+            流程：① 选解析引擎（拼音 / 英文 / 日语 / 笔顺码 / 逐笔笔画 / 拼音+笔画）→ ② 选码表（dicts/ 下的目录；在码表目录放一个 <code>base.txt</code>（每行「词 编码」）即可直接当码表）→ ③ 选注释文档（一份任意位置的 TSV/JSON 词典，如英文释义、日文释义或自定义码表）→ ④ 保存后立即编译生效 → ⑤ 在托盘 / 快捷键切换输入，行为完全由该方案 JSON 决定。
+        </div>
+
+        <div class="layout">
+            <div>
+                <div class="toolbar">
+                    <button class="btn-sm" onclick="newScheme()">+ 新建</button>
+                    <button class="btn-sm" onclick="copyScheme()">⧉ 复制</button>
+                    <button class="btn-sm danger" onclick="deleteScheme()">🗑 删除</button>
+                    <button class="btn-sm" onclick="restoreDefaults()">↺ 恢复默认</button>
+                    <button class="btn-sm" onclick="refreshAll()">🔃 刷新</button>
+                </div>
+                <div id="scheme-list"></div>
+                <div id="registry-errors"></div>
+            </div>
+
+            <div class="card" id="editor">
+                <div id="editor-body" style="display:none;">
+                    <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                        <h2 style="margin:0;">
+                            <span id="ed-label"></span>
+                            <span id="ed-id" style="font-size:12px; color:var(--apple-secondary); font-weight:400; margin-left:6px;"></span>
+                        </h2>
+                        <span id="ed-file" style="font-size:11px; color:var(--apple-secondary);"></span>
+                    </div>
+
+                    <div class="field">
+                        <label>显示名称</label>
+                        <input type="text" id="f-label" placeholder="如：我的拼音">
+                    </div>
+
+                    <div class="field">
+                        <label>解析引擎</label>
+                        <select id="f-engine"></select>
+                        <div class="help" id="f-engine-desc"></div>
+                    </div>
+
+                    <div class="field">
+                        <label>码表（dicts/ 目录）</label>
+                        <select id="f-dict"></select>
+                        <div class="help">把你的码表放进 <code>dicts/&lt;名&gt;/</code>，最简单的做法是放一个 <code>base.txt</code>：每行「词 空格 编码 / 拼音」。编译后生成 <code>data/&lt;名&gt;/trie</code>。</div>
+                    </div>
+
+                    <div class="field">
+                        <label>候选显示模板（<span id="f-global-template"></span> 全局）</label>
+                        <input type="text" id="f-display" placeholder="char,en（留空=用全局模板）">
+                    </div>
+
+                    <div class="field">
+                        <label>选词辅助码筛选（留空=用全局）</label>
+                        <select id="f-aux">
+                            <option value="">全局默认</option>
+                            <option value="auto">自动（英文+笔画均可）</option>
+                            <option value="english">仅英文注释</option>
+                            <option value="stroke">仅笔画辅助码</option>
+                            <option value="none">关闭</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label>注释文档（释义/翻译，可放任意位置）</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-weight:400; cursor:pointer;">
+                            <input type="checkbox" id="f-annot-off"> 该方案关闭注释显示
+                        </label>
+                        <div class="chip-row">
+                            <button class="chip" onclick="fillBuiltin('en-zh')">内置 中文→英文</button>
+                            <button class="chip" onclick="fillBuiltin('jp-en')">内置 日语→英文</button>
+                            <button class="chip" onclick="fillBuiltin('zh-en')">内置 英文→中文</button>
+                            <button class="chip" onclick="document.getElementById('f-annot').value=''">清空（用全局默认规则）</button>
+                        </div>
+                        <input type="text" id="f-annot" placeholder="/home/xx/Desktop/zh-en.tsv  或  dicts/annotations/en-zh.tsv" style="margin-top:6px;">
+                        <div class="help">留空 = 按全局默认规则选表（中文=zh-en、日语=jp-en、英文=en-zh、其余=zh-全局注释语言）。文件放哪都行，表名自动推导：文件名形如 <code>zh-jp.tsv</code> 时候选模板可用 <code>jp</code> 字段，否则用 <code>en</code> 字段显示。</div>
+                        <div class="field" style="margin-top:8px;">
+                            <label>显式表名（可选，留空则自动推导）</label>
+                            <input type="text" id="f-tablename" placeholder="如：zh-fr">
+                        </div>
+                        <div class="field" style="margin-top:8px;">
+                            <label>文档类型标注（仅界面显示用）</label>
+                            <input type="text" id="f-docype" placeholder="如：english / 日语 / 自定义码表">
+                        </div>
+                        <button class="btn-sm" onclick="previewAnnotation()">🔎 预览注释文档</button>
+                        <div class="preview-box" id="f-annot-preview"></div>
+                    </div>
+
+                    <div class="savebar">
+                        <button class="btn" onclick="saveScheme()">保存方案并编译生效</button>
+                    </div>
+                </div>
+                <div id="editor-empty" style="color:var(--apple-secondary); font-size:13px; padding:24px; text-align:center;">
+                    ← 从左侧选择一个方案，或点击「+ 新建」
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="status-toast"></div>
+    <script src="/static/js/settings.js"></script>
+    <script>
+        let data = null;          // /api/schemes 返回
+        let selectedId = null;
+        let current = {};
+
+        async function init() {
+            await loadConfig();
+            await refreshAll();
+        }
+
+        async function refreshAll() {
+            const r = await fetch('/api/schemes');
+            data = await r.json();
+            renderErrors();
+            renderList();
+            if (selectedId && data.schemes.some(s => s.id === selectedId)) {
+                openScheme(selectedId);
+            } else if (data.schemes.length) {
+                openScheme(data.schemes[0].id);
+            } else {
+                selectedId = null;
+                document.getElementById('editor-body').style.display = 'none';
+                document.getElementById('editor-empty').style.display = 'block';
+            }
+        }
+
+        function renderErrors() {
+            const box = document.getElementById('registry-errors');
+            box.innerHTML = (data.errors || []).map(e =>
+                `<div class="err-box">⚠ ${esc(e)}</div>`).join('');
+        }
+
+        function renderList() {
+            const el = document.getElementById('scheme-list');
+            const enabled = config.input.enabled_profiles || [];
+            const defProf = config.input.default_profile || '';
+            el.innerHTML = data.schemes.map(s => {
+                const star = s.id === defProf ? ' class="star default" title="默认方案"' : ' class="star" title="设为默认"';
+                return `<div class="scheme-item ${s.id===selectedId?'selected':''}" onclick="openScheme('${escAttr(s.id)}')">
+                    <label class="switch enabled-switch" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${enabled.includes(s.id)?'checked':''} onchange="toggleEnabled('${escAttr(s.id)}')">
+                        <span class="slider"></span>
+                    </label>
+                    <div style="min-width:0;">
+                        <div class="name">${esc(s.label||s.id)}</div>
+                        <div class="meta">${esc(engineLabel(s.engine))} · dicts/${esc(s.dict)} · ${s.annotation.disabled?'无注释':(s.annotation.file||'默认注释')}</div>
+                    </div>
+                    <span ${star} onclick="event.stopPropagation(); setDefault('${escAttr(s.id)}')">★</span>
+                </div>`;
+            }).join('');
+        }
+
+        function engineLabel(id) {
+            if (!data) return id;
+            const e = data.engines.find(x => x.id === id);
+            return e ? `${e.id}（${e.desc}）` : id;
+        }
+
+        async function toggleEnabled(id) {
+            const el = [...document.querySelectorAll('.switch input')]
+                .find(i => i.closest('.scheme-item') && i.closest('.scheme-item').querySelector('.name'));
+            const idx = config.input.enabled_profiles.indexOf(id);
+            if (idx === -1) { if (disabledCount() < 1) config.input.enabled_profiles.push(id); }
+            else if (config.input.enabled_profiles.length > 1) { config.input.enabled_profiles.splice(idx, 1); }
+            await saveConfig();
+            renderList();
+        }
+        function disabledCount() { return config.input.enabled_profiles.length; }
+
+        async function setDefault(id) {
+            config.input.default_profile = config.input.default_profile === id ? '' : id;
+            await saveConfig();
+            renderList();
+        }
+
+        function openScheme(id) {
+            selectedId = id;
+            const s = data.schemes.find(x => x.id === id);
+            if (!s) return;
+            current = JSON.parse(JSON.stringify(s));
+            document.getElementById('editor-body').style.display = 'block';
+            document.getElementById('editor-empty').style.display = 'none';
+            document.getElementById('ed-label').textContent = s.label || s.id;
+            document.getElementById('ed-id').textContent = `#${s.id}`;
+            document.getElementById('ed-file').textContent = `configs/schemes/${s.id}.json`;
+            document.getElementById('f-label').value = s.label || '';
+            document.getElementById('f-engine').value = s.engine;
+            document.getElementById('f-dict').value = s.dict;
+            document.getElementById('f-display').value = (s.display && s.display.length) ? s.display.join(',') : '';
+            document.getElementById('f-aux').value = s.aux_filter || '';
+            document.getElementById('f-annot-off').checked = !!s.annotation.disabled;
+            document.getElementById('f-annot').value = s.annotation.file || '';
+            document.getElementById('f-tablename').value = s.annotation.table_name || '';
+            document.getElementById('f-docype').value = s.annotation.doc_type || '';
+            document.getElementById('f-global-template').textContent = (data.global.default_candidate_fields || ['char','en']).join(',');
+            document.getElementById('f-annot-preview').innerHTML = '';
+            updateEngineDesc();
+            renderList();
+        }
+
+        function updateEngineDesc() {
+            const e = data.engines.find(x => x.id === document.getElementById('f-engine').value);
+            document.getElementById('f-engine-desc').textContent = e ? e.desc : '';
+        }
+
+        function collectDef() {
+            const display = document.getElementById('f-display').value.split(',').map(s=>s.trim()).filter(Boolean);
+            return {
+                id: selectedId,
+                label: document.getElementById('f-label').value.trim(),
+                engine: document.getElementById('f-engine').value,
+                dict: document.getElementById('f-dict').value,
+                display: display.length ? display : null,
+                aux_filter: document.getElementById('f-aux').value || null,
+                annotation: {
+                    file: document.getElementById('f-annot').value.trim(),
+                    table_name: document.getElementById('f-tablename').value.trim(),
+                    doc_type: document.getElementById('f-docype').value.trim(),
+                    disabled: document.getElementById('f-annot-off').checked
+                },
+                aux_dicts: []
+            };
+        }
+
+        async function saveScheme() {
+            const def = collectDef();
+            if (!def.label) { showToast('请填写显示名称', 'error'); return; }
+            const r = await fetch('/api/scheme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'save', def })
+            });
+            const j = await r.json();
+            if (r.ok) {
+                showToast(`方案 ${def.id} 已保存并重新编译`, 'success');
+                await refreshAll();
+            } else {
+                showToast(j.error || '保存失败', 'error');
+            }
+        }
+
+        function newScheme() {
+            const id = prompt('方案 id（英文/数字/_/-，不能与现有重复）：');
+            if (!id || !id.match(/^[a-zA-Z0-9_-]+$/)) { showToast('id 只能包含字母/数字/_/-', 'error'); return; }
+            if (data.schemes.some(s => s.id === id)) { showToast('已存在同名方案', 'error'); return; }
+            selectedId = id;
+            current = {
+                id, label: id, engine: 'pinyin', dict: 'chinese', display: null,
+                aux_filter: null,
+                annotation: { file: '', table_name: '', doc_type: '', disabled: false },
+                aux_dicts: []
+            };
+            document.getElementById('editor-body').style.display = 'block';
+            document.getElementById('editor-empty').style.display = 'none';
+            document.getElementById('ed-label').textContent = id;
+            document.getElementById('ed-id').textContent = `#${id}（新方案，保存后生效）`;
+            document.getElementById('ed-file').textContent = `configs/schemes/${id}.json`;
+            document.getElementById('f-label').value = id;
+            document.getElementById('f-engine').value = 'pinyin';
+            document.getElementById('f-dict').value = 'chinese';
+            document.getElementById('f-display').value = '';
+            document.getElementById('f-aux').value = '';
+            document.getElementById('f-annot-off').checked = false;
+            document.getElementById('f-annot').value = '';
+            document.getElementById('f-tablename').value = '';
+            document.getElementById('f-docype').value = '';
+            document.getElementById('f-annot-preview').innerHTML = '';
+            updateEngineDesc();
+            renderList();
+        }
+
+        function copyScheme() {
+            const id = prompt('新方案 id：');
+            if (!id || !id.match(/^[a-zA-Z0-9_-]+$/)) { showToast('id 只能包含字母/数字/_/-', 'error'); return; }
+            if (data.schemes.some(s => s.id === id)) { showToast('已存在同名方案', 'error'); return; }
+            selectedId = id;
+            const base = current && current.id ? current : { label:'', engine:'pinyin', dict:'chinese', display:null, aux_filter:null, annotation:{file:'',table_name:'',doc_type:'',disabled:false}, aux_dicts:[] };
+            current = Object.assign(JSON.parse(JSON.stringify(base)), { id, label: id });
+            document.getElementById('f-label').value = id;
+            document.getElementById('ed-id').textContent = `#${id}（复制，保存后生效）`;
+            openScheme(id);
+        }
+
+        async function deleteScheme() {
+            if (!selectedId) return;
+            if (!confirm(`确定要删除方案「${selectedId}」吗？相应 JSON 文件将被移除。`)) return;
+            const r = await fetch('/api/scheme', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id: selectedId })
+            });
+            if (r.ok) { showToast('方案已删除', 'success'); selectedId = null; await refreshAll(); }
+            else showToast((await r.json()).error || '删除失败', 'error');
+        }
+
+        async function restoreDefaults() {
+            if (!confirm('确定把方案恢复到内置默认（会清空所有自定义方案文件）？')) return;
+            const r = await fetch('/api/scheme', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'restore' })
+            });
+            if (r.ok) { showToast('已恢复默认方案', 'success'); selectedId = null; await refreshAll(); }
+            else showToast('恢复失败', 'error');
+        }
+
+        function fillBuiltin(table) {
+            document.getElementById('f-annot').value = `dicts/annotations/${table}.tsv`;
+            previewAnnotation();
+        }
+
+        async function previewAnnotation() {
+            const file = document.getElementById('f-annot').value.trim();
+            if (!file) { document.getElementById('f-annot-preview').innerHTML = ''; return; }
+            const box = document.getElementById('f-annot-preview');
+            box.innerHTML = '预览中…';
+            const r = await fetch('/api/scheme/preview', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file })
+            });
+            const j = await r.json();
+            if (!j.exists) { box.innerHTML = `⚠ ${esc(j.error || '文件不存在')}`; return; }
+            const langHint = j.lang ? ` → 候选模板可用 <b>${esc(j.lang)}</b> 字段` : '';
+            let rows = (j.preview || []).map(p =>
+                `<div class="preview-row"><span>${esc(p[0])}</span><span>${esc(p[1])}</span></div>`).join('');
+            if (!rows) rows = '<div>（无预览内容）</div>';
+            const err = j.error ? `<div style="color:var(--apple-red);">${esc(j.error)}</div>` : '';
+            box.innerHTML = `<div>表名 <b>${esc(j.table)}</b>${langHint}</div>${err}${rows}`;
+        }
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+                ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function escAttr(s) { return esc(s); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const eng = document.getElementById('f-engine');
+            eng.onchange = updateEngineDesc;
+        });
+
+        init();
+    </script>
+</body>
+</html>

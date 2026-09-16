@@ -1,8 +1,12 @@
 use crate::keys::VirtualKey;
 use crate::processor::Action;
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::sync::Arc;
 
-pub struct StrokeScheme;
+pub struct StrokeScheme {
+    /// 主词库挂载键（= 方案 id）
+    dict: Arc<str>,
+}
 
 impl Default for StrokeScheme {
     fn default() -> Self {
@@ -12,7 +16,13 @@ impl Default for StrokeScheme {
 
 impl StrokeScheme {
     pub fn new() -> Self {
-        Self
+        Self::with_dict("stroke")
+    }
+
+    pub fn with_dict(dict: &str) -> Self {
+        Self {
+            dict: Arc::from(dict),
+        }
     }
 
     /// 将 1-5 数字序列转为字母编码 (双笔一键逻辑)
@@ -95,7 +105,7 @@ impl InputScheme for StrokeScheme {
         let has_wildcard = query.contains('z');
 
         // 使用合并后的笔画词库，支持按等级过滤
-        if let Some(trie) = context.tries.get("stroke") {
+        if let Some(trie) = context.tries.get(self.dict.as_ref()) {
             // 1. 如果包含通配符，使用搜索方法
             if has_wildcard {
                 let matches = trie.search_wildcard(query, 50);

@@ -1,6 +1,7 @@
 use crate::keys::VirtualKey;
 use crate::processor::Action;
 use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
+use std::sync::Arc;
 
 /// 拼音 + 逐笔笔画筛选方案（pybi）
 ///
@@ -20,7 +21,12 @@ use crate::scheme::{InputScheme, SchemeCandidate, SchemeContext};
 ///   - 8/9/0           → 忽略
 ///
 /// 数据：data/pybi 以拼音为 key，每个单字的完整笔顺存放在 stroke_aux 字段。
-pub struct PybiScheme;
+pub struct PybiScheme {
+    /// 主词库挂载键（= 方案 id，拼音→单字+完整笔顺）
+    dict: Arc<str>,
+    /// 附加词库（拼音词组等；如 chinese）
+    aux_dicts: Vec<String>,
+}
 
 impl Default for PybiScheme {
     fn default() -> Self {
@@ -30,7 +36,28 @@ impl Default for PybiScheme {
 
 impl PybiScheme {
     pub fn new() -> Self {
-        Self
+        Self::with_dicts("pybi", &["chinese".to_string()])
+    }
+
+    /// 自定义方案：主词库挂载键 + 附加词库键
+    pub fn with_dicts(dict: &str, aux_dicts: &[String]) -> Self {
+        Self {
+            dict: Arc::from(dict),
+            aux_dicts: aux_dicts.to_vec(),
+        }
+    }
+
+    fn main_trie<'a>(&self, ctx: &'a SchemeContext) -> Option<std::sync::Arc<crate::trie::Trie>> {
+        ctx.tries
+            .get(self.dict.as_ref())
+            .cloned()
+            .or_else(|| self.aux_trie(ctx))
+    }
+
+    fn aux_trie<'a>(&self, ctx: &'a SchemeContext) -> Option<std::sync::Arc<crate::trie::Trie>> {
+        self.aux_dicts
+            .iter()
+            .find_map(|a| ctx.tries.get(a.as_str()).cloned())
     }
 
     /// 1-5 数字都是笔画键
@@ -103,6 +130,10 @@ impl PybiScheme {
 }
 
 impl InputScheme for PybiScheme {
+    fn aux_dicts(&self) -> &[String] {
+        &self.aux_dicts
+    }
+
     fn pre_process(&self, buffer: &str, _context: &SchemeContext) -> String {
         buffer.to_string()
     }
@@ -114,7 +145,7 @@ impl InputScheme for PybiScheme {
 
         // 单字候选：来自 data/pybi（拼音→单字+完整笔顺）。
         // 无 pybi 词库时回退到 chinese 词库的单字。
-        if let Some(trie) = context.tries.get("pybi").or_else(|| context.tries.get("chinese")) {
+        if let Some(trie) = self.main_trie(context) {
             if let Some(entries) = trie.get_all_exact(&pinyin) {
                 for tr in entries {
                     // 笔画筛选只对单字有意义
@@ -152,7 +183,7 @@ impl InputScheme for PybiScheme {
 
         // 拼音词组支持：纯拼音（无任何笔画）时，从左 chinese 词库取多字词组。
         if !has_strokes {
-            if let Some(trie) = context.tries.get("chinese") {
+            if let Some(trie) = self.aux_trie(context) {
                 if let Some(entries) = trie.get_all_exact(&pinyin) {
                     for tr in entries {
                         if tr.word.chars().count() < 2 {
@@ -171,9 +202,9 @@ impl InputScheme for PybiScheme {
 
             // 简拼/混拼词组兜底：前面没有任何候选（单字/词组）时启用，如 zm → 怎么
             if results.is_empty() && context.config.input.enable_abbreviation_matching {
-                if let Some(trie) = context.tries.get("chinese") {
+                if let Some(trie) = self.aux_trie(context) {
                     let abbr_segs =
-                        crate::schemes::chinese::ChineseScheme::segment_for_abbreviation(&pinyin, trie);
+                        crate::schemes::chinese::ChineseScheme::segment_for_abbreviation(&pinyin, &trie);
                     if abbr_segs.len() > 1 {
                         let mut abbr_results = trie.search_abbreviation_mixed(
                             &abbr_segs,

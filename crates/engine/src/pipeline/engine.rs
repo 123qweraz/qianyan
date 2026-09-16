@@ -22,6 +22,8 @@ pub struct SearchEngine {
     pub(crate) ngram_history: Arc<ArcSwap<UserDictData>>,
     pub(crate) user_order: Arc<ArcSwap<OrderData>>,
     pub schemes: Arc<HashMap<String, Box<dyn crate::scheme::InputScheme>>>,
+    /// 方案定义（显示/辅助码/注释解析）；为空时回落到全局 Input 配置
+    pub scheme_defs: Arc<HashMap<String, qianyan_ime_core::scheme_def::SchemeDefinition>>,
     pub(crate) trie_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
     pub(crate) annotation_cache: Arc<RwLock<HashMap<String, Arc<Trie>>>>,
 }
@@ -55,6 +57,7 @@ impl SearchEngine {
             ngram_history,
             user_order,
             schemes,
+            scheme_defs: Arc::new(HashMap::new()),
             trie_cache: Arc::new(RwLock::new(HashMap::new())),
             annotation_cache: Arc::new(RwLock::new(HashMap::new())),
         };
@@ -94,15 +97,14 @@ impl SearchEngine {
         );
 
         if let Some(scheme) = self.schemes.get(query.profile) {
-            let mut tries_map = HashMap::with_capacity(2);
+            let mut tries_map = HashMap::with_capacity(3);
             if let Some(trie) = self.get_or_load_trie(query.profile) {
                 tries_map.insert(query.profile.to_string(), trie);
             }
-            // pybi 方案：拼音词组依赖 chinese 词库，需一并加载
-            let is_pybi = query.profile.eq_ignore_ascii_case("pybi");
-            if is_pybi && !tries_map.contains_key("chinese") {
-                if let Some(trie) = self.get_or_load_trie("chinese") {
-                    tries_map.insert("chinese".to_string(), trie);
+            // 辅助词库（如 pybi → chinese）一并挂载
+            for aux in scheme.aux_dicts() {
+                if let Some(trie) = self.get_or_load_trie(aux) {
+                    tries_map.insert(aux.clone(), trie);
                 }
             }
             let context = crate::scheme::SchemeContext {
@@ -125,17 +127,12 @@ impl SearchEngine {
             scheme.post_process(&pre_processed, &mut scheme_candidates, &context);
 
             let mut results = Vec::new();
-            // 注释表按「源方案 → 目标语言」选表（青简式，一张表对应一种语言对）：
-            // chinese→zh-en / japanese→jp-en / english→en-zh
-            let ann_table = if query.profile.eq_ignore_ascii_case("english") {
-                "en-zh".to_string()
-            } else if query.profile.eq_ignore_ascii_case("japanese") {
-                "jp-en".to_string()
-            } else if config_ref.input.annotation_lang.is_empty() {
-                String::new()
-            } else {
-                format!("zh-{}", config_ref.input.annotation_lang)
-            };
+            // 注释表按「方案文件 → (表名, 目标语言字段)」解析，缺省回落到全局规则
+            let scheme_def = self.scheme_defs.get(query.profile);
+            let (ann_table, gloss_lang) =
+                config_ref
+                    .input
+                    .annotation_info_for_scheme(query.profile, scheme_def);
             let ann_trie = if ann_table.is_empty() {
                 None
             } else {
@@ -148,7 +145,9 @@ impl SearchEngine {
                     .and_then(|es| es.into_iter().find(|e| !e.word.is_empty()))
                     .map(|e| e.word.to_string())
                     .unwrap_or_default();
-                let template = config_ref.input.candidate_display_for(query.profile);
+                let template = config_ref
+                    .input
+                    .candidate_display_for_scheme(query.profile, scheme_def);
                 let hint = {
                     let mut values: std::collections::HashMap<String, String> =
                         std::collections::HashMap::with_capacity(8);
@@ -160,6 +159,10 @@ impl SearchEngine {
                     values.insert("strokes".into(), sc.strokes.clone());
                     values.insert("category".into(), sc.category.clone());
                     values.insert("en".into(), gloss.clone());
+                    // 以目标语言为键再插一份（如 zh-jp → "jp"），支持 [char,jp]
+                    if !gloss_lang.is_empty() {
+                        values.insert(gloss_lang.clone(), gloss.clone());
+                    }
                     values.insert("weight".into(), sc.weight.to_string());
                     crate::pipeline::render_annotation(&template, &values)
                 };
@@ -188,7 +191,9 @@ impl SearchEngine {
             if query.filter_mode == crate::processor::FilterMode::Global
                 && !query.aux_filter.is_empty()
             {
-                let aux_mode = config_ref.input.filter_aux_for(query.profile);
+                let aux_mode = config_ref
+                    .input
+                    .filter_aux_for_scheme(query.profile, scheme_def);
                 results.retain(|c| {
                     self.matches_filter(
                         c,

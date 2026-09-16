@@ -154,6 +154,151 @@ pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// 编译用户配置的外部注释表（config.annotation_sources）：
+/// 表名 → 任意位置 TSV/JSON，编译为 data/annotations/<表名>.{index,data}。
+/// 配合 annotation_lang 选表，词典文件可直接放在桌面等目录。
+pub fn check_and_compile_annotation_sources(
+    sources: &std::collections::BTreeMap<String, String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if sources.is_empty() {
+        return Ok(());
+    }
+    let root = qianyan_ime_core::utils::find_project_root();
+    let out_dir = root.join("data/annotations");
+    fs::create_dir_all(&out_dir)?;
+    for (table, src) in sources {
+        let table = table.trim();
+        if table.is_empty()
+            || !table
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            log::warn!("[Compiler] 忽略非法外部注释表名: {:?}", table);
+            continue;
+        }
+        let src_path = std::path::PathBuf::from(src);
+        if !src_path.exists() {
+            log::warn!("[Compiler] 外部注释表 [{}] 源文件不存在: {}", table, src);
+            println!("[Compiler] 外部注释表 [{}] 源文件不存在，跳过: {}", table, src);
+            continue;
+        }
+        let trie_out = out_dir.join(table);
+        let trie_dat = out_dir.join(format!("{}.data", table));
+        if should_compile(&src_path, &trie_dat) {
+            println!("[Compiler] 外部注释表 [{}] 需要编译: {}", table, src);
+            compile_annotation_file(&src_path, &trie_out.to_string_lossy())?;
+            println!("[Compiler] 外部注释表 [{}] 编译完成。", table);
+        }
+    }
+    Ok(())
+}
+
+/// 编译用户配置的按方案注释文件（config.annotation_files）：
+/// profile → 任意位置 TSV/JSON，表名自动推导，编译为 data/annotations/<表名>.{index,data}。
+/// 同一源文件被多个方案引用时只编译一次。named 为 annotation_sources（用于路径→显式表名）。
+pub fn check_and_compile_annotation_files(
+    files: &std::collections::BTreeMap<String, String>,
+    named: &std::collections::BTreeMap<String, String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if files.is_empty() {
+        return Ok(());
+    }
+    let root = qianyan_ime_core::utils::find_project_root();
+    let out_dir = root.join("data/annotations");
+    fs::create_dir_all(&out_dir)?;
+    let mut compiled: std::collections::HashSet<std::path::PathBuf> =
+        std::collections::HashSet::new();
+    for (profile, path) in files {
+        let path = path.trim();
+        if path.is_empty() {
+            continue;
+        }
+        let src_path = std::path::PathBuf::from(path);
+        if !src_path.exists() {
+            println!("[Compiler] 方案 [{}] 注释源文件不存在，跳过: {}", profile, path);
+            continue;
+        }
+        let table =
+            qianyan_ime_core::utils::annotation_table_name_for_path(path, named);
+        if table.is_empty()
+            || !table
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            log::warn!("[Compiler] 忽略非法注释表名: {:?}", table);
+            continue;
+        }
+        let canonical = std::fs::canonicalize(&src_path).unwrap_or_else(|_| src_path.clone());
+        if !compiled.insert(canonical) {
+            continue;
+        }
+        let trie_out = out_dir.join(&table);
+        let trie_dat = out_dir.join(format!("{}.data", table));
+        if should_compile(&src_path, &trie_dat) {
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 需要编译: {}", profile, table, path);
+            compile_annotation_file(&src_path, &trie_out.to_string_lossy())?;
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 编译完成。", profile, table);
+        } else {
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 已是最新，跳过。", profile, table);
+        }
+    }
+    Ok(())
+}
+
+/// 编译方案文件声明的注释文档（scheme.annotation.file / table_name）。
+/// 同一源文件被多个方案引用时只编译一次。
+pub fn check_and_compile_scheme_annotations(
+    schemes: &[qianyan_ime_core::scheme_def::SchemeDefinition],
+    named: &BTreeMap<String, String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = qianyan_ime_core::utils::find_project_root();
+    let out_dir = root.join("data/annotations");
+    fs::create_dir_all(&out_dir)?;
+    let mut compiled: std::collections::HashSet<std::path::PathBuf> =
+        std::collections::HashSet::new();
+    for def in schemes {
+        if def.annotation.disabled {
+            continue;
+        }
+        let path = def.annotation.file.trim();
+        if path.is_empty() {
+            continue;
+        }
+        let src_path = std::path::PathBuf::from(path);
+        if !src_path.exists() {
+            println!("[Compiler] 方案 [{}] 注释源文件不存在，跳过: {}", def.id, path);
+            continue;
+        }
+        let table = if !def.annotation.table_name.is_empty() {
+            def.annotation.table_name.clone()
+        } else {
+            qianyan_ime_core::utils::annotation_table_name_for_path(path, named)
+        };
+        if table.is_empty()
+            || !table
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            log::warn!("[Compiler] 忽略非法注释表名: {:?}", table);
+            continue;
+        }
+        let canonical = std::fs::canonicalize(&src_path).unwrap_or_else(|_| src_path.clone());
+        if !compiled.insert(canonical) {
+            continue;
+        }
+        let trie_out = out_dir.join(&table);
+        let trie_dat = out_dir.join(format!("{}.data", table));
+        if should_compile(&src_path, &trie_dat) {
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 需要编译: {}", def.id, table, path);
+            compile_annotation_file(&src_path, &trie_out.to_string_lossy())?;
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 编译完成。", def.id, table);
+        } else {
+            println!("[Compiler] 方案 [{}] 注释表 [{}] 已是最新，跳过。", def.id, table);
+        }
+    }
+    Ok(())
+}
+
 fn should_compile(src_dir: &Path, target_file: &Path) -> bool {
     if !target_file.exists() {
         return true;
@@ -235,6 +380,16 @@ fn compile_dict_for_path(
             process_json_file(path, &mut entries, is_english, key_field, strokes_as_aux, skip_category, &simp_trad)?;
         } else if path.extension().is_some_and(|ext| ext == "yaml") {
             process_yaml_file(path, &mut entries)?;
+        } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            // 简易码表：dicts/<dict>/base|main|dict .txt/.tsv，每行「词 编码…（空格分隔）」
+            if (ext.eq_ignore_ascii_case("txt") || ext.eq_ignore_ascii_case("tsv"))
+                && path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .is_some_and(|s| matches!(s, "base" | "main" | "dict"))
+            {
+                process_txt_file(path, &mut entries)?;
+            }
         }
     }
     // 构建倒排 FST: word → pinyin (用于 has_word_in_dict / lookup_pinyin)
@@ -464,6 +619,44 @@ fn process_json_file(
                 }
             }
         }
+    }
+    Ok(())
+}
+
+/// 简易码表：每行「词 编码…」，编码之间允许空格（会被拼接去空格）。
+/// 权重按词长估算（与内置词条量级相当），单字/多字都 flags=0。
+fn process_txt_file(
+    path: &Path,
+    entries: &mut BTreeMap<String, Vec<DictEntry>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    for line in reader.lines().map_while(Result::ok) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+        if tokens.len() < 2 {
+            continue;
+        }
+        let word = tokens[0].to_string();
+        let code: String = tokens[1..].concat().to_lowercase();
+        if word.is_empty() || code.is_empty() {
+            continue;
+        }
+        let n = word.chars().count();
+        let weight = if n <= 1 { 20u32 } else { (n as u32).saturating_mul(12).min(300) };
+        entries.entry(code).or_default().push(DictEntry {
+            word: word.clone(),
+            trad: word.clone(),
+            tone: String::new(),
+            stroke_aux: String::new(),
+            strokes: String::new(),
+            category: String::new(),
+            weight,
+            flags: 0,
+        });
     }
     Ok(())
 }

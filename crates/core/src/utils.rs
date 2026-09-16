@@ -6,6 +6,39 @@ use std::collections::{HashMap, HashSet};
 use serde_json::Value;
 use crate::config::PunctuationEntry;
 
+/// 从注释源文件路径解析表名（稳定、可跨会话）：
+/// 1) 若该路径出现在 named（annotation_sources 的“表名→文件”映射）的值中 → 直接用其键名；
+/// 2) 文件名主干（不含扩展名）为 ASCII 的 `词-词` 形式（如 zh-jp.tsv）→ 主干即表名；
+/// 3) 其余情况（如中文名文件）→ 用路径 FNV-1a 稳定哈希 `ext_<16位hex>`。
+pub fn annotation_table_name_for_path<K, V, I>(path: &str, named: I) -> String
+where
+    K: AsRef<str>,
+    V: AsRef<str>,
+    I: IntoIterator<Item = (K, V)>,
+{
+    for (table, src) in named {
+        if src.as_ref() == path {
+            return table.as_ref().to_string();
+        }
+    }
+    if let Some(stem) = Path::new(path).file_stem().and_then(|s| s.to_str()) {
+        let ok = !stem.is_empty()
+            && stem.contains('-')
+            && stem
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if ok {
+            return stem.to_ascii_lowercase();
+        }
+    }
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in path.as_bytes() {
+        h ^= *b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("ext_{:016x}", h)
+}
+
 pub fn find_project_root() -> PathBuf {
     // Helper: 检查路径是否为合法的项目根目录（必须有编译后的 trie 词典）
     fn is_project_root(p: &Path) -> bool {

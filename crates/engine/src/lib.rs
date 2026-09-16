@@ -8,6 +8,7 @@ pub mod keys;
 pub mod pipeline;
 pub mod processor;
 pub mod scheme;
+pub mod scheme_registry;
 pub mod schemes;
 pub mod session;
 pub mod sound;
