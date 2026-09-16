@@ -1,6 +1,7 @@
 use crate::file_lock;
 use crate::trie::{TRIE_MAGIC, TRIE_VERSION};
 use fst::MapBuilder;
+use serde::de::Deserializer as _;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -8,6 +9,58 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 use std::time::SystemTime;
 use walkdir::WalkDir;
+
+/// 流式读取顶层 JSON 对象：逐个键值对回调，避免一次性把整份 JSON 解析为 Value 树。
+/// 词库 JSON 单文件可达数百 MB，整棵 Value 树会额外占用数 GB 内存。
+fn stream_json_file<F>(path: &Path, mut f: F) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: FnMut(&str, &Value),
+{
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    // 兼容旧行为：顶层非对象（as_object() 为 None）时静默跳过。
+    // 用 fill_buf 窥探首个非空白字节，不真正消费输入，不干扰后续流式解析。
+    let first = {
+        let buf = reader.fill_buf()?;
+        let mut idx = 0;
+        while buf
+            .get(idx)
+            .is_some_and(|b| b.is_ascii_whitespace())
+        {
+            idx += 1;
+        }
+        buf.get(idx).copied()
+    };
+    if first != Some(b'{') {
+        return Ok(());
+    }
+    let mut de = serde_json::Deserializer::from_reader(reader);
+    de.deserialize_map(JsonStream(&mut f)).map_err(Into::into)
+}
+
+struct JsonStream<'a, F>(&'a mut F);
+
+impl<'de, F> serde::de::Visitor<'de> for JsonStream<'_, F>
+where
+    F: FnMut(&str, &Value),
+{
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a JSON object")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::MapAccess<'de>,
+    {
+        while let Some(key) = map.next_key::<String>()? {
+            let val: Value = map.next_value()?;
+            (self.0)(&key, &val);
+        }
+        Ok(())
+    }
+}
 
 pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
     let root = qianyan_ime_core::utils::find_project_root();
@@ -341,7 +394,7 @@ fn should_compile(src_dir: &Path, target_file: &Path) -> bool {
                 .extension()
                 .and_then(|s| s.to_str())
                 .unwrap_or("");
-            if ext == "json" || ext == "yaml" {
+            if ext == "json" || ext == "yaml" || ext == "txt" || ext == "tsv" {
                 if let Ok(mtime) = entry.path().metadata().and_then(|m| m.modified()) {
                     if mtime > max_src_mtime {
                         max_src_mtime = mtime;
@@ -394,19 +447,33 @@ fn compile_dict_for_path(
     }
     // 构建倒排 FST: word → pinyin (用于 has_word_in_dict / lookup_pinyin)
     // English/Japanese 不需要（键即是词本身，或无需反向查找）
+    // 内存优化: 不再整张 BTreeMap<&str,&str>（数百万节点很贵），
+    // 改为收集 (word,pinyin) 引用对后按词稳定排序去重（保留最早拼音），
+    // 再流式写 FST，语义与 BTreeMap.entry().or_insert() 完全一致。
     if !skip_reverse {
         let word_map_path = format!("{}.word_map", out_stem);
         let pinyin_data_path = format!("{}.pinyin_data", out_stem);
-        let mut word_pinyin_map: BTreeMap<&str, &str> = BTreeMap::new();
+        let total: usize = entries.values().map(Vec::len).sum();
+        let mut word_pinyin: Vec<(&str, &str)> = Vec::with_capacity(total);
         for (pinyin, pairs) in &entries {
             for entry in pairs {
-                word_pinyin_map.entry(&entry.word).or_insert(pinyin);
+                word_pinyin.push((entry.word.as_str(), pinyin.as_str()));
             }
         }
+        // 稳定排序：保证同词多次出现时按原（拼音有序）迭代顺序去重取首
+        word_pinyin.sort_by(|a, b| a.0.cmp(b.0));
+        let mut w = 0usize;
+        for i in 0..word_pinyin.len() {
+            if w == 0 || word_pinyin[w - 1].0 != word_pinyin[i].0 {
+                word_pinyin[w] = word_pinyin[i];
+                w += 1;
+            }
+        }
+        word_pinyin.truncate(w);
         let mut pinyin_writer = BufWriter::new(File::create(&pinyin_data_path)?);
         let mut word_map_builder = MapBuilder::new(File::create(&word_map_path)?)?;
         let mut offset = 0u64;
-        for (word, pinyin) in &word_pinyin_map {
+        for &(word, pinyin) in &word_pinyin {
             let pinyin_bytes = pinyin.as_bytes();
             pinyin_writer.write_all(pinyin_bytes)?;
             let value = (offset << 32) | (pinyin_bytes.len() as u64);
@@ -414,6 +481,7 @@ fn compile_dict_for_path(
             offset += pinyin_bytes.len() as u64;
         }
         word_map_builder.finish()?;
+        drop(word_pinyin); // 释放对 entries 的借用，随后 entries 将被 move 写出
     }
 
     write_binary_dict(
@@ -461,25 +529,20 @@ fn collect_simp_to_trad_map(src_dir: &str) -> std::collections::HashMap<String, 
     {
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
-            let Ok(json) = std::fs::read_to_string(path).map(|s| serde_json::from_str::<Value>(&s)).map(|r| r.ok()) else {
-                continue;
-            };
-            let Some(json) = json else { continue; };
-            let Some(obj) = json.as_object() else { continue; };
-            for val in obj.values() {
-                let Some(arr) = val.as_array() else { continue; };
+            let _ = stream_json_file(path, |_key, val| {
+                let Some(arr) = val.as_array() else { return };
                 for v in arr {
-                    let Some(o) = v.as_object() else { continue; };
-                    let Some(c) = o.get("char").and_then(|c| c.as_str()) else { continue; };
+                    let Some(o) = v.as_object() else { continue };
+                    let Some(c) = o.get("char").and_then(|c| c.as_str()) else { continue };
                     if c.chars().count() != 1 {
                         continue;
                     }
-                    let Some(t) = o.get("trad").and_then(|t| t.as_str()) else { continue; };
+                    let Some(t) = o.get("trad").and_then(|t| t.as_str()) else { continue };
                     if t != c {
                         m.insert(c.to_string(), t.to_string());
                     }
                 }
-            }
+            });
         }
     }
     m
@@ -494,133 +557,134 @@ fn process_json_file(
     skip_category: Option<&str>,
     simp_trad: &std::collections::HashMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let json: Value = serde_json::from_reader(file)?;
-    if let Some(obj) = json.as_object() {
-        for (key, val) in obj {
-            // 强制转为小写，确保搜索一致性
-            let normalized_key = key.to_lowercase();
-            if let Some(arr) = val.as_array() {
-                if is_english {
-                    // 词注优先取 string 数组元素；object 元素取其 en 字段（统一为字符串格式的兜底）
-                    entries
-                        .entry(normalized_key.clone())
-                        .or_default()
-                        .push(DictEntry {
-                            word: key.clone(),
-                            trad: key.clone(),
-                            tone: String::new(),
-                            stroke_aux: String::new(),
-                            strokes: String::new(),
-                            category: String::new(),
-                            weight: 0,
-                            flags: 0,
-                        });
-                } else {
-                    for v in arr {
-                        if let Some(s) = v.as_str() {
-                            entries
-                                .entry(normalized_key.clone())
-                                .or_default()
-                                .push(DictEntry {
-                                    word: s.to_string(),
-                                    trad: s.to_string(),
-                                    tone: String::new(),
-                                    stroke_aux: String::new(),
-                                    strokes: String::new(),
-                                    category: String::new(),
-                                    weight: 0,
-                                    flags: 0,
-                                });
-                        } else if let Some(o) = v.as_object() {
-                            if let Some(c) = o.get("char").and_then(|c| c.as_str()) {
-                                // 繁体：优先取条目自带 trad 字段；多字词缺失时按字查 简→繁 表
-                                let raw_trad = o.get("trad").and_then(|t| t.as_str());
-                                let trad = match raw_trad {
-                                    Some(t) => t.to_string(),
-                                    None if c.chars().count() > 1 => c.chars()
-                                        .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
-                                        .collect::<String>(),
-                                    None => c
-                                        .chars()
-                                        .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
-                                        .collect::<String>(),
-                                };
-                                let tone_hint =
-                                    o.get("tone").and_then(|t| t.as_str()).unwrap_or("");
-                                // 当需以完整笔顺作为 aux 时（pybi），优先取 strokes 字段
-                                let stroke_aux = if strokes_as_aux.is_some() {
-                                    let s = o.get("strokes")
-                                        .and_then(|s| s.as_str())
-                                        .unwrap_or("")
-                                        .to_string();
-                                    // pybi 需要完整笔顺做筛选，无笔顺的僻字直接跳过
-                                    if s.is_empty() {
-                                        continue;
-                                    }
-                                    s
-                                } else {
-                                    o.get("stroke_aux")
-                                        .and_then(|s| s.as_str())
-                                        .unwrap_or("")
-                                        .to_string()
-                                };
-                                let weight =
-                                    o.get("weight").and_then(|w| w.as_u64()).unwrap_or(0) as u32;
-                                let category = o
-                                    .get("category")
-                                    .and_then(|s| s.as_str())
-                                    .unwrap_or("");
-                                let strokes_raw = o
-                                    .get("strokes")
+    stream_json_file(path, |key, val| {
+        // 强制转为小写，确保搜索一致性
+        let normalized_key = key.to_lowercase();
+        if let Some(arr) = val.as_array() {
+            if is_english {
+                // 词注优先取 string 数组元素；object 元素取其 en 字段（统一为字符串格式的兜底）
+                entries
+                    .entry(normalized_key.clone())
+                    .or_default()
+                    .push(DictEntry {
+                        word: key.to_string(),
+                        trad: String::new(),
+                        tone: String::new(),
+                        stroke_aux: String::new(),
+                        strokes: String::new(),
+                        category: String::new(),
+                        weight: 0,
+                        flags: 0,
+                    });
+            } else {
+                for v in arr {
+                    if let Some(s) = v.as_str() {
+                        entries
+                            .entry(normalized_key.clone())
+                            .or_default()
+                            .push(DictEntry {
+                                word: s.to_string(),
+                                trad: String::new(),
+                                tone: String::new(),
+                                stroke_aux: String::new(),
+                                strokes: String::new(),
+                                category: String::new(),
+                                weight: 0,
+                                flags: 0,
+                            });
+                    } else if let Some(o) = v.as_object() {
+                        if let Some(c) = o.get("char").and_then(|c| c.as_str()) {
+                            // 繁体：优先取条目自带 trad 字段；多字词缺失时按字查 简→繁 表
+                            let raw_trad = o.get("trad").and_then(|t| t.as_str());
+                            let trad_str = match raw_trad {
+                                Some(t) => t.to_string(),
+                                None if c.chars().count() > 1 => c.chars()
+                                    .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
+                                    .collect::<String>(),
+                                None => c
+                                    .chars()
+                                    .map(|ch| simp_trad.get(&ch.to_string()).cloned().unwrap_or_else(|| ch.to_string()))
+                                    .collect::<String>(),
+                            };
+                            // 繁简一致时不重复存储（写出时回填 word），省内存
+                            let trad = if trad_str == c {
+                                String::new()
+                            } else {
+                                trad_str
+                            };
+                            let tone_hint =
+                                o.get("tone").and_then(|t| t.as_str()).unwrap_or("");
+                            // 当需以完整笔顺作为 aux 时（pybi），优先取 strokes 字段
+                            let stroke_aux = if strokes_as_aux.is_some() {
+                                let s = o.get("strokes")
                                     .and_then(|s| s.as_str())
                                     .unwrap_or("")
                                     .to_string();
-                                // 简体主词典以外的方案（stroke/bihua/pybi）跳过繁体扩展候选
-                                if skip_category == Some(category) {
+                                // pybi 需要完整笔顺做筛选，无笔顺的僻字直接跳过
+                                if s.is_empty() {
                                     continue;
                                 }
-                                // 仅单字按 category 置位；多字词始终 flags=0（恒显示）
-                                let flags = if c.chars().count() == 1 {
-                                    category_flag(category)
-                                } else {
-                                    0
-                                };
-
-                                // 当指定 key_field 时，用该字段的值作为搜索 key
-                                let trie_key = if let Some(field) = key_field {
-                                    let k = o.get(field)
-                                        .and_then(|v| v.as_str())
-                                        .unwrap_or("")
-                                        .to_lowercase();
-                                    if k.is_empty() {
-                                        continue; // 跳过没有该字段的条目
-                                    }
-                                    k
-                                } else {
-                                    normalized_key.clone()
-                                };
-
-                                entries.entry(trie_key).or_default().push(
-                                    DictEntry {
-                                        word: c.to_string(),
-                                        trad: trad.to_string(),
-                                        tone: tone_hint.to_string(),
-                                        stroke_aux: stroke_aux.to_string(),
-                                        strokes: strokes_raw,
-                                        category: category.to_string(),
-                                        weight,
-                                        flags,
-                                    },
-                                );
+                                s
+                            } else {
+                                o.get("stroke_aux")
+                                    .and_then(|s| s.as_str())
+                                    .unwrap_or("")
+                                    .to_string()
+                            };
+                            let weight =
+                                o.get("weight").and_then(|w| w.as_u64()).unwrap_or(0) as u32;
+                            let category = o
+                                .get("category")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("");
+                            let strokes_raw = o
+                                .get("strokes")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            // 简体主词典以外的方案（stroke/bihua/pybi）跳过繁体扩展候选
+                            if skip_category == Some(category) {
+                                continue;
                             }
+                            // 仅单字按 category 置位；多字词始终 flags=0（恒显示）
+                            let flags = if c.chars().count() == 1 {
+                                category_flag(category)
+                            } else {
+                                0
+                            };
+
+                            // 当指定 key_field 时，用该字段的值作为搜索 key
+                            let trie_key = if let Some(field) = key_field {
+                                let k = o.get(field)
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("")
+                                    .to_lowercase();
+                                if k.is_empty() {
+                                    continue; // 跳过没有该字段的条目
+                                }
+                                k
+                            } else {
+                                normalized_key.clone()
+                            };
+
+                            entries.entry(trie_key).or_default().push(
+                                DictEntry {
+                                    word: c.to_string(),
+                                    trad,
+                                    tone: tone_hint.to_string(),
+                                    stroke_aux: stroke_aux.to_string(),
+                                    strokes: strokes_raw,
+                                    category: category.to_string(),
+                                    weight,
+                                    flags,
+                                },
+                            );
                         }
                     }
                 }
             }
         }
-    }
-    Ok(())
+    })
 }
 
 /// 简易码表：每行「词 编码…」，编码之间允许空格（会被拼接去空格）。
@@ -649,7 +713,7 @@ fn process_txt_file(
         let weight = if n <= 1 { 20u32 } else { (n as u32).saturating_mul(12).min(300) };
         entries.entry(code).or_default().push(DictEntry {
             word: word.clone(),
-            trad: word.clone(),
+            trad: String::new(),
             tone: String::new(),
             stroke_aux: String::new(),
             strokes: String::new(),
@@ -690,7 +754,7 @@ fn process_yaml_file(
             };
             entries.entry(pinyin).or_default().push(DictEntry {
                 word: word.clone(),
-                trad: word,
+                trad: String::new(),
                 tone: String::new(),
                 stroke_aux: String::new(),
                 strokes: String::new(),
@@ -752,40 +816,37 @@ fn compile_annotation_file(
         }
     } else {
         // JSON 兼容分支：{word: gloss 或 [gloss,...]}
-        let json: Value = serde_json::from_reader(File::open(path)?)?;
-        if let Some(obj) = json.as_object() {
-            for (word, val) in obj {
-                if word.is_empty() {
-                    continue;
-                }
-                let gloss = match val {
-                    Value::String(s) => s.clone(),
-                    Value::Array(arr) => arr
-                        .iter()
-                        .filter_map(|v| v.as_str())
-                        .next()
-                        .unwrap_or("")
-                        .to_string(),
-                    _ => String::new(),
-                };
-                if gloss.is_empty() {
-                    continue;
-                }
-                entries.insert(
-                    word.clone(),
-                    vec![DictEntry {
-                        word: gloss,
-                        trad: word.clone(),
-                        tone: String::new(),
-                        stroke_aux: String::new(),
-                        strokes: String::new(),
-                        category: String::new(),
-                        weight: 0,
-                        flags: 0,
-                    }],
-                );
+        stream_json_file(path, |word, val| {
+            if word.is_empty() {
+                return;
             }
-        }
+            let gloss = match val {
+                Value::String(s) => s.clone(),
+                Value::Array(arr) => arr
+                    .iter()
+                    .filter_map(|v| v.as_str())
+                    .next()
+                    .unwrap_or("")
+                    .to_string(),
+                _ => String::new(),
+            };
+            if gloss.is_empty() {
+                return;
+            }
+            entries.insert(
+                word.to_string(),
+                vec![DictEntry {
+                    word: gloss,
+                    trad: word.to_string(),
+                    tone: String::new(),
+                    stroke_aux: String::new(),
+                    strokes: String::new(),
+                    category: String::new(),
+                    weight: 0,
+                    flags: 0,
+                }],
+            );
+        })?;
     }
     let idx_path = format!("{}.index", trie_out);
     let dat_path = format!("{}.data", trie_out);
@@ -842,7 +903,12 @@ fn write_binary_dict(
             block.extend_from_slice(&(pairs.len() as u32).to_le_bytes());
             for entry in pairs {
                 let w_bytes = entry.word.as_bytes();
-                let tr_bytes = entry.trad.as_bytes();
+                // trad 为空表示与 word 相同（构建期已去冗余），写出时回填
+                let tr_bytes = if entry.trad.is_empty() {
+                    w_bytes
+                } else {
+                    entry.trad.as_bytes()
+                };
                 let t_bytes = entry.tone.as_bytes();
                 let s_bytes = entry.stroke_aux.as_bytes();
                 let st_bytes = entry.strokes.as_bytes();
