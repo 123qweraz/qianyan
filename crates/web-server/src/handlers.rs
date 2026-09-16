@@ -389,6 +389,24 @@ pub(crate) async fn list_schemes(
 ) -> Json<serde_json::Value> {
     let directory = schemes_dir();
     let registry = qianyan_ime_core::scheme_def::SchemeRegistry::load(&directory);
+    // 配置文件目录为空（首次尚未启动守护进程生成默认方案）时，
+    // 直接展示内置 6 方案，保证页面始终有现有方案可选。
+    let mut schemes = registry.schemes.clone();
+    if schemes.is_empty() {
+        schemes = qianyan_ime_core::scheme_def::builtin_scheme_specs()
+            .iter()
+            .map(|(id, label, engine, dict, aux)| {
+                qianyan_ime_core::scheme_def::SchemeDefinition {
+                    id: id.to_string(),
+                    label: label.to_string(),
+                    engine: engine.to_string(),
+                    dict: dict.to_string(),
+                    aux_dicts: aux.iter().map(|s| s.to_string()).collect(),
+                    ..qianyan_ime_core::scheme_def::SchemeDefinition::default()
+                }
+            })
+            .collect();
+    }
     let root = qianyan_ime_core::utils::find_project_root();
     let mut dicts: Vec<String> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(root.join("dicts")) {
@@ -414,7 +432,7 @@ pub(crate) async fn list_schemes(
         "ok": true,
         "engines": engine_descriptions(),
         "dicts": dicts,
-        "schemes": registry.schemes,
+        "schemes": schemes,
         "errors": registry.errors,
         "global": global,
     }))
