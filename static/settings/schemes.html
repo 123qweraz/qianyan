@@ -157,6 +157,7 @@
             const r = await fetch('/api/schemes');
             data = await r.json();
             renderErrors();
+            renderSelects();
             renderList();
             if (selectedId && data.schemes.some(s => s.id === selectedId)) {
                 openScheme(selectedId);
@@ -167,6 +168,17 @@
                 document.getElementById('editor-body').style.display = 'none';
                 document.getElementById('editor-empty').style.display = 'block';
             }
+        }
+
+        // 用 /api/schemes 返回的引擎/码表清单填充下拉选项
+        function renderSelects() {
+            const engines = data.engines || [];
+            document.getElementById('f-engine').innerHTML =
+                engines.map(e => `<option value="${escAttr(e.id)}">${esc(e.id)}（${esc(e.desc)}）</option>`).join('');
+            const dicts = data.dicts || [];
+            document.getElementById('f-dict').innerHTML =
+                dicts.map(d => `<option value="${escAttr(d)}">dicts/${esc(d)}</option>`).join('') +
+                (dicts.length ? '' : '<option value="">（未发现码表目录）</option>');
         }
 
         function renderErrors() {
