@@ -413,7 +413,9 @@ pub(crate) async fn list_schemes(
         for entry in entries.flatten() {
             if entry.path().is_dir() {
                 if let Some(n) = entry.file_name().to_str() {
-                    dicts.push(n.to_string());
+                    if n != "annotations" {
+                        dicts.push(n.to_string());
+                    }
                 }
             }
         }
