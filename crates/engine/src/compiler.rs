@@ -62,6 +62,29 @@ where
     }
 }
 
+/// 自动编译门控：data 目录已存在内容（发行包/已编译产物）时跳过全量编译，
+/// 只有 data 缺失或为空（首次从源码构建、清空 data 后）才真正执行编译。
+/// 显式触发不受影响：`--compile-only` 与设置页「编译词库」仍会全量编译。
+pub fn check_and_compile_all_if_needed() -> bool {
+    let root = qianyan_ime_core::utils::find_project_root();
+    let data_dir = root.join("data");
+    let n = fs::read_dir(&data_dir)
+        .map(|rd| rd.flatten().count())
+        .unwrap_or(0);
+    if n > 0 {
+        println!("[Compiler] data 目录已有 {} 项编译产物，跳过自动编译。", n);
+        return false;
+    }
+    println!("[Compiler] data 目录为空/不存在，首次全量编译...");
+    match check_and_compile_all() {
+        Ok(_) => true,
+        Err(e) => {
+            log::error!("[Compiler] 首次全量编译失败: {}", e);
+            false
+        }
+    }
+}
+
 pub fn check_and_compile_all() -> Result<(), Box<dyn std::error::Error>> {
     let root = qianyan_ime_core::utils::find_project_root();
     fs::create_dir_all(root.join("data"))?;

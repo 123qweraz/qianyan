@@ -507,7 +507,9 @@ fn trigger_compile(
     config: &Arc<RwLock<Config>>,
     tray_tx: std::sync::mpsc::Sender<qianyan_ime_core::event::TrayEvent>,
 ) {
-    let _ = qianyan_ime_engine::compiler::check_and_compile_all();
+    // data 已有编译产物时跳过自动全量编译（发行包自带），仅 data 为空时首次编译；
+    // 需要强制重编请用「编译词库」按钮（POST /api/dicts/compile）。
+    let _ = qianyan_ime_engine::compiler::check_and_compile_all_if_needed();
     let (annotation_sources, annotation_files, schemes) = if let Ok(c) = config.read() {
         (
             c.input

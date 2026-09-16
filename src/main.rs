@@ -132,8 +132,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             qianyan_ime_core::scheme_def::profiles_from_schemes(&schemes_defs);
     }
 
-    // 检查所有方案是否需要编译（should_compile 内部会判断 mtime，已最新时极快）
-    let _ = compiler::check_and_compile_all();
+    // 自动编译：data 目录已有编译产物时跳过（发行包自带），为空才首次全量编译。
+    // 需要强制重编时用 `--compile-only` 或设置页「编译词库」。
+    let _ = compiler::check_and_compile_all_if_needed();
     // 编译用户配置的外部注释表（annotation_sources，可指向桌面等任意目录）
     let mut annotation_sources: std::collections::BTreeMap<String, String> = current_config
         .input
