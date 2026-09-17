@@ -359,6 +359,17 @@ impl Processor {
         }
 
         // FSM 状态机转换（处理 字母、Shift、Backspace 等核心逻辑）
+        // 退格撤销误学习：Idle 态（组句缓冲区为空）且输入键为 Backspace 时，
+        // 逐次记录删掉的已上屏字符（按下/自动重复都算删字，释放不算），
+        // 供下一次上屏时判断是否要撤销之前的误学习。
+        if key == VirtualKey::Backspace
+            && val != 0
+            && self.ctx.session.state == ImeState::Idle
+            && self.ctx.session.buffer.is_empty()
+        {
+            self.ctx.session_state.note_backspace();
+        }
+
         let fsm_action = self.handle_fsm_transition(
             key,
             shift_pressed,
@@ -804,6 +815,9 @@ impl Processor {
         let del_len = self.ctx.session.phantom_text.chars().count();
         self.clear_composing();
         self.ctx.session_state.commit_history.clear();
+        self.ctx
+            .session_state
+            .push_no_learning_record(&format!("{}{}", commit_text, p_key));
         Some(Action::DeleteAndEmit {
             delete: del_len,
             insert: format!("{}{}", commit_text, p_key),
@@ -914,5 +928,39 @@ mod caps_tests {
         let press = p.handle_key(VirtualKey::CapsLock, 1, false, false, false);
         assert_eq!(press, Action::PassThrough);
         assert!(!p.ctx.session_state.caps_lock_enabled);
+    }
+
+    #[test]
+    fn test_idle_backspace_notes_for_undo() {
+        let mut p = new_proc();
+        p.ctx.session_state.chinese_enabled = true;
+        // 初始 Idle 态：退格按下应被记入 pending_backspaces（用于退格撤销误学习）
+        let action = p.handle_key(VirtualKey::Backspace, 1, false, false, false);
+        assert_eq!(action, Action::PassThrough);
+        assert_eq!(p.ctx.session_state.pending_backspaces, 1);
+
+        // 自动重复（长按连续删字）也计一次
+        let _ = p.handle_key(VirtualKey::Backspace, 2, false, false, false);
+        assert_eq!(p.ctx.session_state.pending_backspaces, 2);
+
+        // 释放不计
+        let _ = p.handle_key(VirtualKey::Backspace, 0, false, false, false);
+        assert_eq!(p.ctx.session_state.pending_backspaces, 2);
+
+        // 中文关闭时退格透传但不记账（英文直通场景）
+        p.ctx.session_state.chinese_enabled = false;
+        let _ = p.handle_key(VirtualKey::Backspace, 1, false, false, false);
+        assert_eq!(p.ctx.session_state.pending_backspaces, 2);
+    }
+
+    #[test]
+    fn test_composing_backspace_does_not_note() {
+        let mut p = new_proc();
+        p.ctx.session_state.chinese_enabled = true;
+        // 组句缓冲区非空：退格是删拼音，不应计入已上屏字符的退格撤销状态
+        p.ctx.session.push_char('w');
+        p.ctx.session.state = ImeState::Composing;
+        let _ = p.handle_key(VirtualKey::Backspace, 1, false, false, false);
+        assert_eq!(p.ctx.session_state.pending_backspaces, 0);
     }
 }

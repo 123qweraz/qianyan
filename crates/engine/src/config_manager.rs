@@ -244,6 +244,70 @@ impl ConfigManager {
         });
     }
 
+    /// 退格撤销：把某词从 user_order（MRU 列表）里移除。
+    pub fn remove_usage_order(&self, profile: &str, word: &str) {
+        self.user_order.rcu(|current| {
+            let mut clone = (**current).clone();
+            if let Some(entries) = clone.get_mut(profile) {
+                entries.retain(|w| w != word);
+            }
+            Arc::new(clone)
+        });
+    }
+
+    /// 退格撤销：把 learned（短期）里的 (pinyin, word) 计数减一，减到 0 移除；
+    /// 同时同步长期记忆（若下降后低于阈值则从长期移除），并重建 combined。
+    pub fn decrement_learned(&self, profile: &str, pinyin: &str, word: &str) {
+        let threshold = self.master_config.input.long_term_threshold;
+
+        // 短期：减一
+        let mut short_changed = false;
+        self.learned_words.rcu(|current| {
+            let mut clone = (**current).clone();
+            if let Some(profile_data) = clone.get_mut(profile) {
+                if let Some(entries) = profile_data.get_mut(pinyin) {
+                    if let Some(pos) = entries.iter().position(|(w, _)| w == word) {
+                        short_changed = true;
+                        if entries[pos].1 > 1 {
+                            entries[pos].1 -= 1;
+                        } else {
+                            entries.remove(pos);
+                            if entries.is_empty() {
+                                profile_data.remove(pinyin);
+                            }
+                        }
+                    }
+                }
+            }
+            Arc::new(clone)
+        });
+
+        // 长期：若该词仍在长期里，减一；减到低于阈值则移除
+        let mut long_changed = false;
+        self.long_term_words.rcu(|current| {
+            let mut clone = (**current).clone();
+            if let Some(profile_data) = clone.get_mut(profile) {
+                if let Some(entries) = profile_data.get_mut(pinyin) {
+                    if let Some(pos) = entries.iter().position(|(w, _)| w == word) {
+                        long_changed = true;
+                        entries[pos].1 = entries[pos].1.saturating_sub(1);
+                        if entries[pos].1 == 0 || entries[pos].1 < threshold {
+                            entries.remove(pos);
+                            if entries.is_empty() {
+                                profile_data.remove(pinyin);
+                            }
+                        }
+                    }
+                }
+            }
+            Arc::new(clone)
+        });
+
+        if short_changed || long_changed {
+            self.rebuild_combined_dict();
+        }
+    }
+
     pub fn insert_ngram(&self, profile: &str, context: &str, entries: &[(String, u32)]) {
         self.ngram_history.rcu(|hist| {
             let mut clone = (**hist).clone();

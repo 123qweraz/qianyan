@@ -176,6 +176,7 @@ pub fn process_intent(
                                 let del_len = ctx.session.phantom_text.chars().count();
                                 ctx.session.clear_composing();
                                 ctx.session_state.commit_history.clear();
+                                ctx.session_state.push_no_learning_record(&commit_text);
                                 return Some(Action::DeleteAndEmit {
                                     delete: del_len,
                                     insert: commit_text,

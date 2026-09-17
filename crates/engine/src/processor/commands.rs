@@ -76,6 +76,7 @@ pub fn execute_command(ctx: &mut EngineContext, cmd: Command) -> Action {
                 }
                 let del = ctx.session.phantom_text.chars().count();
                 ctx.session.clear_composing();
+                ctx.session_state.push_no_learning_record(&english);
                 return Action::DeleteAndEmit {
                     delete: del,
                     insert: english,
@@ -108,10 +109,27 @@ pub(crate) fn commit_candidate(
 
     let now = Instant::now();
     let py = ctx.session.last_lookup_pinyin.clone();
+    let learned_commit = !py.is_empty() && index != 99;
 
-    if !py.is_empty() && index != 99 {
+    // 英文模式下按空格自动补尾随空格（先补好，保证数字符数的记录与实际上屏一致）
+    if ctx.session_state.is_english_mode()
+        && !cand.is_empty()
+        && cand.chars().next_back().unwrap_or(' ').is_alphanumeric()
+    {
+        let mut s = cand.to_string();
+        s.push(' ');
+        cand = Arc::from(s);
+    }
+
+    if learned_commit {
         if now.duration_since(ctx.session_state.last_commit_time) > Duration::from_secs(10) {
             ctx.session_state.commit_history.clear();
+        }
+
+        // 退格撤销误学习：如果最近有被退格完全删掉的记录、且重打的拼音匹配、
+        // 选的又是别的词，就把那次上屏的学习全部退回（青简的 unrecord 语义）
+        if let Some(record) = ctx.session_state.resolve_backspace_undo(&py, &cand) {
+            crate::processor::learning::undo_usage(ctx, &record);
         }
 
         let source = ctx
@@ -123,24 +141,31 @@ pub(crate) fn commit_candidate(
         let last_word_opt = ctx.session_state.get_last_word().map(|s| s.to_string());
         let last_two_opt = ctx.session_state.get_last_two_words()
             .map(|(a, b)| (a.to_string(), b.to_string()));
-        crate::processor::learning::record_usage(
+        let effects = crate::processor::learning::record_usage(
             ctx, &py, &cand, &source,
             last_word_opt.as_deref(),
             last_two_opt.as_ref().map(|(a, b)| (a.as_str(), b.as_str())),
         );
+
+        // 记录这次上屏，供之后的退格撤销学习使用
+        ctx.session_state.push_commit_record(crate::processor::session_state::CommitRecord {
+            learned: true,
+            profile: ctx.session_state.get_current_profile(),
+            pinyin: py.clone(),
+            word: cand.to_string(),
+            word_chars: cand.chars().count(),
+            deleted: false,
+            effects,
+        });
+
         ctx.session_state
             .add_to_history(py.clone(), cand.to_string());
 
         ctx.session_state.update_commit_time();
-    }
-
-    if ctx.session_state.is_english_mode()
-        && !cand.is_empty()
-        && cand.chars().next_back().unwrap_or(' ').is_alphanumeric()
-    {
-        let mut s = cand.to_string();
-        s.push(' ');
-        cand = Arc::from(s);
+    } else {
+        // 没学习的上屏（英文、标点、原样等）也留一条只有长度的记录，
+        // 让退格能数过它们，够到更早的、有学习的词。
+        ctx.session_state.push_no_learning_record(&cand);
     }
 
     let del = ctx.session.phantom_text.chars().count();

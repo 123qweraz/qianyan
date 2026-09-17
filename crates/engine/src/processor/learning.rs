@@ -1,4 +1,5 @@
 use crate::config_manager::UserDictData;
+use crate::processor::session_state::LearnEffects;
 use arc_swap::ArcSwap;
 use std::sync::Arc;
 
@@ -46,6 +47,70 @@ pub fn update_mru(
     result
 }
 
+/// 在指定 key 的 MRU 列表里把 (word, count) 减一；减到 0 就移除整个条目。
+/// 返回是否真的动过这个词（用于撤销）。
+fn decrement_mru_entry(
+    history: &Arc<ArcSwap<UserDictData>>,
+    profile: &str,
+    key: &str,
+    word: &str,
+) -> bool {
+    let mut touched = false;
+    history.rcu(|hist| {
+        let mut clone = (**hist).clone();
+        if let Some(entries) = clone
+            .get_mut(profile)
+            .and_then(|m| m.get_mut(key))
+        {
+            if let Some(pos) = entries.iter().position(|(w, _)| w == word) {
+                touched = true;
+                if entries[pos].1 > 1 {
+                    entries[pos].1 -= 1;
+                } else {
+                    entries.remove(pos);
+                }
+            }
+        }
+        Arc::new(clone)
+    });
+    touched
+}
+
+/// 撤销一次上屏的学习效果（退格重打撤销误学习）。
+/// 对应青简的 `Learner::unrecord*`：退格把选择次数、词转移、整段合成词全部退回。
+pub fn undo_usage(ctx: &mut crate::EngineContext, record: &crate::processor::session_state::CommitRecord) {
+    let profile = if record.profile.is_empty() {
+        ctx.session_state.get_current_profile()
+    } else {
+        record.profile.clone()
+    };
+    let word = &record.word;
+    let effects = &record.effects;
+
+    // 1. user_order：把该词从 MRU 列表移除（相当于退掉一次选择）
+    if effects.order {
+        ctx.config.remove_usage_order(&profile, word);
+    }
+
+    // 2. ngram bigram / trigram：减一（decrement_mru_entry 已原子更新内存表）
+    if let Some(ctx_str) = &effects.ngram_bigram {
+        let _ = decrement_mru_entry(&ctx.config.ngram_history, &profile, ctx_str, word);
+    }
+    if let Some(trigram_key) = &effects.ngram_trigram {
+        let _ = decrement_mru_entry(&ctx.config.ngram_history, &profile, trigram_key, word);
+    }
+
+    // 3. 新词发现 / 长期记忆：减一
+    if let Some((py, w)) = &effects.discovered {
+        ctx.config.decrement_learned(&profile, py, w);
+    }
+
+    // 4. ngram 驱动的新词合成：移除合成词
+    for (py, w) in &effects.synthesized {
+        ctx.config.decrement_learned(&profile, py, w);
+    }
+}
+
 pub fn record_usage(
     ctx: &mut crate::EngineContext,
     _pinyin: &str,
@@ -53,9 +118,10 @@ pub fn record_usage(
     source: &std::sync::Arc<str>,
     context: Option<&str>,
     context_pair: Option<(&str, &str)>,
-) {
+) -> LearnEffects {
+    let mut effects = LearnEffects::default();
     if word.is_empty() {
-        return;
+        return effects;
     }
 
     let profile = ctx.session_state.get_current_profile();
@@ -65,6 +131,7 @@ pub fn record_usage(
         // 按拼音记录用户选词顺序（无计数，纯 MRU 排序）
         if !_pinyin.is_empty() {
             ctx.config.insert_usage_order(&profile, word);
+            effects.order = true;
         }
         // 注意：不调用 engine.clear_cache()。用户词典经 combined_dict(ArcSwap)
         // 实时注入搜索上下文，静态 FST trie 缓存不受 commit 影响，无需失效。
@@ -74,6 +141,7 @@ pub fn record_usage(
             let updated =
                 update_mru(&ctx.config.ngram_history, &profile, ctx_str, word, false);
             ctx.config.insert_ngram(&profile, ctx_str, &updated);
+            effects.ngram_bigram = Some(ctx_str.to_string());
         }
 
         // 上下文 trigram (统一存入 ngram_history, key="prev2|prev1")
@@ -82,6 +150,7 @@ pub fn record_usage(
             let updated =
                 update_mru(&ctx.config.ngram_history, &profile, &trigram_key, word, false);
             ctx.config.insert_ngram(&profile, &trigram_key, &updated);
+            effects.ngram_trigram = Some(trigram_key);
         }
     }
 
@@ -120,6 +189,7 @@ pub fn record_usage(
     {
         let updated = update_mru(&ctx.config.learned_words, &profile, &correct_pinyin, word, true);
         ctx.config.insert_learned(&profile, &correct_pinyin, &updated);
+        effects.discovered = Some((correct_pinyin, word.to_string()));
     }
 
     // N-gram 驱动新词合成：同一对词连续出现达到阈值，自动合并为新词
@@ -145,6 +215,7 @@ pub fn record_usage(
                                             &combined_py, &combined_word, true,
                                         );
                                         ctx.config.insert_learned(&profile, &combined_py, &updated);
+                                        effects.synthesized.push((combined_py, combined_word));
                                     }
                                 }
                             }
@@ -177,6 +248,7 @@ pub fn record_usage(
                                             &combined_py, &combined, true,
                                         );
                                         ctx.config.insert_learned(&profile, &combined_py, &updated);
+                                        effects.synthesized.push((combined_py, combined));
                                     }
                                 }
                             }
@@ -186,6 +258,8 @@ pub fn record_usage(
             }
         }
     }
+
+    effects
 }
 
 #[cfg(test)]

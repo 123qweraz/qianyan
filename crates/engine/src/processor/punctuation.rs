@@ -120,6 +120,8 @@ pub fn handle_punctuation(ctx: &mut EngineContext, key: VirtualKey, shift_presse
     let del_len = ctx.session.phantom_text.chars().count();
     ctx.session.clear_composing();
     ctx.session_state.commit_history.clear();
+    // 标点上屏没有学习，但也要留一条长度记录，让退格能数过它
+    ctx.session_state.push_no_learning_record(&commit_text);
     Action::DeleteAndEmit {
         delete: del_len,
         insert: commit_text,

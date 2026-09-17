@@ -41,6 +41,28 @@ const USER_DICT_TYPES: &[(&str, &str)] = &[
     ("ngrams.json", "ngram"),
     ("usage.json", "usage"),
 ];
+
+/// 原子写：临时文件 + fsync + rename 覆盖，进程被杀不会留下半个文件的损坏数据。
+/// 供用户词典 / 配置 / 备份恢复等落盘使用。
+pub(crate) fn atomic_write(path: &std::path::Path, content: impl AsRef<str>) -> std::io::Result<()> {
+    use std::io::Write;
+    let content = content.as_ref();
+    let mut tmp_os = path.as_os_str().to_owned();
+    tmp_os.push(".tmp");
+    let tmp_path = PathBuf::from(tmp_os);
+    {
+        let mut f = std::fs::File::create(&tmp_path)?;
+        f.write_all(content.as_bytes())?;
+        f.sync_all()?;
+    }
+    std::fs::rename(&tmp_path, path)?;
+    if let Some(dir) = path.parent() {
+        if let Ok(d) = std::fs::File::open(dir) {
+            let _ = d.sync_all();
+        }
+    }
+    Ok(())
+}
 pub(crate) async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
     match config.read() {
         Ok(cfg) => Json(cfg.clone()).into_response(),
@@ -1383,7 +1405,7 @@ pub(crate) async fn cleanup_user_dict() -> Json<Vec<CleanupResult>> {
             }
 
             if removed > 0 {
-                let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
+                let _ = atomic_write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
             }
             results.push(CleanupResult { profile, removed });
         }
@@ -1449,7 +1471,7 @@ pub(crate) async fn promote_to_system_dict(
     }
 
     if added > 0 {
-        let _ = std::fs::write(&dict_file, serde_json::to_string_pretty(&dict).unwrap_or_default());
+        let _ = atomic_write(&dict_file, serde_json::to_string_pretty(&dict).unwrap_or_default());
     }
 
     // 从用户词典中删除已提升的词
@@ -1469,7 +1491,7 @@ pub(crate) async fn promote_to_system_dict(
                     } else { false }
                 } else { false };
                 if modified {
-                    let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
+                    let _ = atomic_write(&learned_path, serde_json::to_string_pretty(&data).unwrap_or_default());
                 }
             }
         }
@@ -1625,7 +1647,7 @@ pub(crate) async fn delete_user_dict_entry(
                 }
             }
         }
-        let _ = std::fs::write(&path, serde_json::to_string_pretty(&data).unwrap_or_default());
+        let _ = atomic_write(&path, serde_json::to_string_pretty(&data).unwrap_or_default());
     }
 
     if !deleted {
@@ -2982,7 +3004,7 @@ pub(crate) async fn import_user_data(
                     };
                     let path = profile_dir.join(file_name);
                     let content = serde_json::to_string_pretty(value).unwrap_or_default();
-                    let _ = std::fs::write(&path, content);
+                    let _ = atomic_write(&path, &content);
                 }
             }
         }
@@ -3014,7 +3036,7 @@ pub(crate) async fn import_user_data(
                     "data": pinyin_map,
                 })
             };
-            let _ = std::fs::write(&learned_path, serde_json::to_string_pretty(&merged).unwrap_or_default());
+            let _ = atomic_write(&learned_path, serde_json::to_string_pretty(&merged).unwrap_or_default());
         }
     }
 
@@ -3146,7 +3168,7 @@ pub(crate) async fn restore_full_backup(
             }
             let path = configs.join(format!("{}.json", name));
             let content = serde_json::to_string_pretty(value).unwrap_or_default();
-            let _ = std::fs::write(&path, content);
+            let _ = atomic_write(&path, &content);
         }
     }
 
@@ -3173,7 +3195,7 @@ pub(crate) async fn restore_full_backup(
                     };
                     let path = profile_dir.join(file_name);
                     let content = serde_json::to_string_pretty(value).unwrap_or_default();
-                    let _ = std::fs::write(&path, content);
+                    let _ = atomic_write(&path, &content);
                 }
             }
         }

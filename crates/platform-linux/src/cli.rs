@@ -14,6 +14,7 @@ pub enum StartupAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartupCommand {
     Bench,
+    TypingBench,
     CompileOnly,
     Register,
     Unregister,
@@ -31,6 +32,7 @@ pub fn parse_startup_command(args: &[String]) -> StartupCommand {
 
     match args[1].as_str() {
         "--bench" => StartupCommand::Bench,
+        "--bench-typing" => StartupCommand::TypingBench,
         "--compile-only" => StartupCommand::CompileOnly,
         "--register" => StartupCommand::Register,
         "--unregister" => StartupCommand::Unregister,
@@ -45,6 +47,12 @@ pub fn handle_startup(args: &[String]) -> Result<StartupAction, Box<dyn Error>> 
     match parse_startup_command(args) {
         StartupCommand::Bench => {
             run_bench_mode();
+            Ok(StartupAction::Exit)
+        }
+        StartupCommand::TypingBench => {
+            // 可选参数：参考文献/文本文件路径（没有则用内置示例）
+            let path = args.get(2).map(PathBuf::from);
+            run_typing_bench_mode(path);
             Ok(StartupAction::Exit)
         }
         StartupCommand::CompileOnly => {
@@ -159,6 +167,232 @@ fn run_bench_mode() {
         avg_latency,
         avg_latency.as_micros() as f64
     );
+}
+
+/// 内置示例文本（用于 --bench-typing 无参时的逐键延时评测）
+const TYPING_BENCH_SAMPLE: &str = "你好，世界。我们正在研究一款智能输入法，希望能够提升输入效率与准确度。今天的天气很好，适合出去散步。学习编程需要耐心与毅力，但收获也会非常丰厚。";
+
+fn run_typing_bench_mode(sample_path: Option<PathBuf>) {
+    println!("--- Qianyan-IME 逐键延时评测 / 回放工具 ---");
+    let root = crate::find_project_root();
+
+    let mut trie_paths = HashMap::new();
+    trie_paths.insert(
+        "chinese".to_string(),
+        (
+            root.join("data/chinese/trie.index"),
+            root.join("data/chinese/trie.data"),
+        ),
+    );
+    let syllable_freq = crate::load_syllable_frequencies(&root);
+    let config = Config::load();
+    let mut processor = Processor::new(trie_paths, syllable_freq);
+    processor.apply_config(&config);
+    processor.ctx.session_state.active_profiles = vec!["chinese".to_string()];
+    processor.ctx.session_state.chinese_enabled = true;
+
+    // 读取测试文本
+    let (label, text) = match &sample_path {
+        Some(path) => match std::fs::read_to_string(path) {
+            Ok(s) => (path.display().to_string(), s),
+            Err(e) => {
+                println!("[Bench] 无法读取文本文件 {}: {e}", path.display());
+                ("内置示例".to_string(), TYPING_BENCH_SAMPLE.to_string())
+            }
+        },
+        None => ("内置示例".to_string(), TYPING_BENCH_SAMPLE.to_string()),
+    };
+    let text: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    println!("[Bench] 测试文本: {} (共 {} 字符)", label, text.chars().count());
+
+    // 预热：触发一次完整 lookup，把 trie 懒加载/预热排除在延时统计之外
+    for _ in 0..3 {
+        processor.reset();
+        for k in [engine::keys::VirtualKey::N, engine::keys::VirtualKey::I] {
+            processor.handle_key(k, 1, false, false, false);
+        }
+    }
+    processor.reset();
+
+    let trie_guard = processor.ctx.engine.get_or_load_trie("chinese");
+    let trie_ref = trie_guard.as_deref();
+
+    // 字典中缺失拼音的字符统计（回放会跳过它们）
+    let mut skipped = 0usize;
+
+    // 逐字符回放：每个字符按拼音逐键敲入并上屏，统计每次按键处理延迟
+    let mut key_latencies: Vec<f64> = Vec::new(); // 微秒
+    let mut char_latencies: Vec<f64> = Vec::new(); // 每个汉字一次选词/上屏的总耗时（微秒）
+    let mut typed_out = String::new();
+    let mut match_count = 0usize;
+    let mut total_chars = 0usize;
+
+    let mut expect_char = Vec::new();
+    for ch in text.chars() {
+        if ch.is_ascii() {
+            // 非汉字（字母/数字/西文标点）：原样计入期望，但不回放（直通输入）
+            expect_char.push((ch.to_string(), "".to_string()));
+            continue;
+        }
+        let pinyin = trie_ref
+            .and_then(|t| t.lookup_pinyin(&ch.to_string()))
+            .map(|s| s.to_string())
+            .filter(|p| !p.is_empty());
+        match pinyin {
+            Some(py) => expect_char.push((ch.to_string(), py)),
+            None => {
+                skipped += 1;
+            }
+        }
+    }
+
+    for (want, pinyin) in &expect_char {
+        if pinyin.is_empty() {
+            continue;
+        }
+        total_chars += 1;
+
+        // 逐键敲拼音
+        for c in pinyin.chars() {
+            if !c.is_ascii_alphabetic() && c != '\'' {
+                continue;
+            }
+            let key = if c == '\'' {
+                engine::keys::VirtualKey::Apostrophe
+            } else {
+                match c {
+                    'a' => engine::keys::VirtualKey::A,
+                    'b' => engine::keys::VirtualKey::B,
+                    'c' => engine::keys::VirtualKey::C,
+                    'd' => engine::keys::VirtualKey::D,
+                    'e' => engine::keys::VirtualKey::E,
+                    'f' => engine::keys::VirtualKey::F,
+                    'g' => engine::keys::VirtualKey::G,
+                    'h' => engine::keys::VirtualKey::H,
+                    'i' => engine::keys::VirtualKey::I,
+                    'j' => engine::keys::VirtualKey::J,
+                    'k' => engine::keys::VirtualKey::K,
+                    'l' => engine::keys::VirtualKey::L,
+                    'm' => engine::keys::VirtualKey::M,
+                    'n' => engine::keys::VirtualKey::N,
+                    'o' => engine::keys::VirtualKey::O,
+                    'p' => engine::keys::VirtualKey::P,
+                    'q' => engine::keys::VirtualKey::Q,
+                    'r' => engine::keys::VirtualKey::R,
+                    's' => engine::keys::VirtualKey::S,
+                    't' => engine::keys::VirtualKey::T,
+                    'u' => engine::keys::VirtualKey::U,
+                    'v' => engine::keys::VirtualKey::V,
+                    'w' => engine::keys::VirtualKey::W,
+                    'x' => engine::keys::VirtualKey::X,
+                    'y' => engine::keys::VirtualKey::Y,
+                    'z' => engine::keys::VirtualKey::Z,
+                    _ => continue,
+                }
+            };
+            let start = std::time::Instant::now();
+            processor.handle_key(key, 1, false, false, false);
+            key_latencies.push(start.elapsed().as_micros() as f64);
+        }
+
+        // 选词上屏：优先选中与期望字符完全一致的候选，否则上屏首选
+        let char_start = std::time::Instant::now();
+        let chosen = {
+            let candidates = &processor.ctx.session.candidates;
+            let exact = candidates.iter().position(|c| c.text.as_ref() == want).or_else(|| {
+                candidates
+                    .iter()
+                    .position(|c| !c.text.is_empty() && c.text.chars().next() == want.chars().next())
+            });
+            match exact {
+                Some(idx) => {
+                    processor.execute_command(engine::Command::Select(idx));
+                    want.clone()
+                }
+                None => {
+                    if !candidates.is_empty() {
+                        processor.execute_command(engine::Command::Commit);
+                        processor.ctx.session.candidates[0].text.to_string()
+                    } else {
+                        // 无候选，直接提交缓冲区（或清空）
+                        if !processor.ctx.session.buffer.is_empty() {
+                            processor.execute_command(engine::Command::CommitRaw);
+                        }
+                        want.clone()
+                    }
+                }
+            }
+        };
+        char_latencies.push(char_start.elapsed().as_micros() as f64);
+
+        if !want.is_empty() && chosen.starts_with(want.chars().next().unwrap_or('\0')) {
+            match_count += 1;
+        }
+        typed_out.push_str(&chosen);
+    }
+
+    // 回放结束：清理
+    processor.clear_composing();
+    if !processor.ctx.session.buffer.is_empty() {
+        processor.execute_command(engine::Command::CommitRaw);
+    }
+
+    fn pct(sorted: &mut Vec<f64>, q: f64) -> f64 {
+        if sorted.is_empty() {
+            return 0.0;
+        }
+        let idx = ((sorted.len() - 1) as f64 * q) as usize;
+        sorted[idx]
+    }
+
+    key_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    char_latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let key_sum: f64 = key_latencies.iter().sum();
+    let char_sum: f64 = char_latencies.iter().sum();
+    let key_avg = if key_latencies.is_empty() { 0.0 } else { key_sum / key_latencies.len() as f64 };
+    let char_avg = if char_latencies.is_empty() { 0.0 } else { char_sum / char_latencies.len() as f64 };
+
+    println!("\n=== 逐键延时统计 ({} 次按键) ===", key_latencies.len());
+    if !key_latencies.is_empty() {
+        println!("  平均: {:.1} µs", key_avg);
+        println!("  中位: {:.1} µs", pct(&mut key_latencies, 0.50));
+        println!("  P95 : {:.1} µs", pct(&mut key_latencies, 0.95));
+        println!("  P99 : {:.1} µs", pct(&mut key_latencies, 0.99));
+        println!("  最大: {:.1} µs", key_latencies.last().unwrap_or(&0.0));
+        println!("  最小: {:.1} µs", key_latencies.first().unwrap_or(&0.0));
+    }
+
+    println!("\n=== 逐字（含选词上屏）延时统计 ({} 字) ===", char_latencies.len());
+    if !char_latencies.is_empty() {
+        println!("  平均: {:.1} µs", char_avg);
+        println!("  中位: {:.1} µs", pct(&mut char_latencies, 0.50));
+        println!("  P95 : {:.1} µs", pct(&mut char_latencies, 0.95));
+        println!("  P99 : {:.1} µs", pct(&mut char_latencies, 0.99));
+        println!("  最大: {:.1} µs", char_latencies.last().unwrap_or(&0.0));
+    }
+
+    // 回放正确性
+    let expected: String = expect_char.iter().map(|(w, _)| w.as_str()).collect();
+    let mut match_lead = 0;
+    let mut expected_chars = expected.chars();
+    let mut typed_chars = typed_out.chars();
+    while let (Some(e), Some(t)) = (expected_chars.next(), typed_chars.next()) {
+        if e == t {
+            match_lead += 1;
+        } else {
+            break;
+        }
+    }
+    println!("\n=== 回放结果 ===");
+    println!("  期望: {}", expected);
+    println!("  实得: {}", typed_out);
+    println!("  前置匹配字符数: {} / {}", match_lead, expected.chars().count());
+    println!("  一字匹配数: {} / {}", match_count, total_chars);
+    if skipped > 0 {
+        println!("  字典缺失拼音、已跳过: {} 字", skipped);
+    }
+    println!("\n[Bench] 完成。");
 }
 
 fn run_test_mode() {
@@ -374,6 +608,7 @@ mod tests {
     fn parse_known_commands() {
         let cases = [
             ("--bench", StartupCommand::Bench),
+            ("--bench-typing", StartupCommand::TypingBench),
             ("--compile-only", StartupCommand::CompileOnly),
             ("--register", StartupCommand::Register),
             ("--unregister", StartupCommand::Unregister),

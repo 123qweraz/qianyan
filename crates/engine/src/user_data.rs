@@ -2,7 +2,30 @@ use crate::config_manager::{UserDictData, OrderData};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+
+/// 原子写：先写同目录临时文件，flush + fsync 落盘后再 rename 覆盖。
+/// 任何时刻磁盘上要么是旧文件要么是新文件，进程被杀不会留下半个文件的损坏数据。
+pub(crate) fn atomic_write(path: &Path, content: &str) -> std::io::Result<()> {
+    let mut tmp_os = path.as_os_str().to_owned();
+    tmp_os.push(".tmp");
+    let tmp_path = PathBuf::from(tmp_os);
+
+    {
+        let mut f = fs::File::create(&tmp_path)?;
+        f.write_all(content.as_bytes())?;
+        f.sync_all()?;
+    }
+    fs::rename(&tmp_path, path)?;
+
+    if let Some(dir) = path.parent() {
+        if let Ok(d) = fs::File::open(dir) {
+            let _ = d.sync_all();
+        }
+    }
+    Ok(())
+}
 
 const DATA_VERSION: &str = "1.0";
 
@@ -144,7 +167,7 @@ impl UserDataManager {
                 data: profile_data.clone(),
             };
             let json = serde_json::to_string_pretty(&data_file)?;
-            fs::write(&file_path, json)?;
+            atomic_write(&file_path, &json)?;
         }
         Ok(())
     }
@@ -182,7 +205,7 @@ impl UserDataManager {
         };
 
         let json = serde_json::to_string_pretty(&data_file)?;
-        fs::write(&file_path, json)?;
+        atomic_write(&file_path, &json)?;
         Ok(())
     }
 
