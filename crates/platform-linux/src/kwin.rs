@@ -91,6 +91,9 @@ pub fn configure_kde_virtual_keyboard() -> Result<(), String> {
     }
 
     let desktop_file = ensure_kde_virtual_keyboard_desktop()?;
+    // KWin 解析 kwinrc [Wayland] InputMethod 时用 readPathEntry -> KDesktopFile(路径)
+    // 相对短名（如 "qianyan-ime-wayland-launcher.desktop"）无法解析，必须写绝对路径。
+    let input_method_value = desktop_file.display().to_string();
     run_first_available_command(
         &["kwriteconfig6", "kwriteconfig5"],
         &[
@@ -100,14 +103,14 @@ pub fn configure_kde_virtual_keyboard() -> Result<(), String> {
             "Wayland",
             "--key",
             "InputMethod",
-            "qianyan-ime-wayland-launcher.desktop",
+            &input_method_value,
         ],
     )
     .map_err(|e| format!("写入 KDE 输入法配置失败: {e}"))?;
 
     log::info!(
         "[KWin] 虚拟键盘已注册: {} → kwinrc [Wayland] InputMethod",
-        desktop_file.display()
+        input_method_value
     );
 
     let _ = run_first_available_command(

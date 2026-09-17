@@ -11,6 +11,50 @@ use qianyan_ime_ui::tray::TrayEvent;
 use std::error::Error;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, RwLock};
+use wayland_client::globals::GlobalListContents;
+use wayland_client::protocol::wl_registry::WlRegistry;
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
+
+/// Minimal state used only to enumerate the registry globals of a connection
+/// before deciding which input-method protocol version to speak.
+struct ProbeState;
+
+impl Dispatch<WlRegistry, GlobalListContents> for ProbeState {
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlRegistry,
+        _event: <WlRegistry as Proxy>::Event,
+        _data: &GlobalListContents,
+        _conn: &Connection,
+        _qh: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+/// Connect to the ambient Wayland socket (honoring `WAYLAND_SOCKET`, i.e. the
+/// private socket KWin hands to its input method) and report which
+/// input-method protocol versions the compositor advertises.
+///
+/// The returned `Connection` must be reused by the host: `WAYLAND_SOCKET` is a
+/// connected fd that can only be consumed once.
+fn connect_and_probe() -> Result<(Connection, bool, bool), Box<dyn Error>> {
+    let conn = Connection::connect_to_env()?;
+    let (globals, _queue) =
+        wayland_client::globals::registry_queue_init::<ProbeState>(&conn)?;
+    let mut has_v1 = false;
+    let mut has_v2 = false;
+    globals.contents().with_list(|list| {
+        for g in list {
+            log::debug!("[Main] wayland global: {} v{}", g.interface, g.version);
+            match g.interface.as_str() {
+                "zwp_input_method_v1" => has_v1 = true,
+                "zwp_input_method_manager_v2" => has_v2 = true,
+                _ => {}
+            }
+        }
+    });
+    Ok((conn, has_v1, has_v2))
+}
 
 pub type InputHostResult = Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>>;
 
@@ -112,24 +156,33 @@ fn create_wayland_host(
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
-    // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set.
-    // On this private socket only zwp_input_method_v1 is available.
+    // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set and
+    // points at a private socket exposing the input-method protocol. On modern
+    // KWin (>= 6.6) that socket also exposes input-method v2 (with popup
+    // surface support); older compositors only expose v1.
     let kwin_socket = crate::kwin::is_kwin_virtual_keyboard();
-    if kwin_socket {
-        log::info!("[Main] KWin Virtual Keyboard mode detected (WAYLAND_SOCKET)");
-        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx)
-            .ok_or("Wayland v1 host init failed (KWin mode)")?;
+
+    let (conn, has_v1, has_v2) = connect_and_probe()?;
+    log::info!(
+        "[Main] input-method protocols: v1={} v2={} (kwin_socket={})",
+        has_v1, has_v2, kwin_socket
+    );
+
+    if has_v2 {
+        let host = WaylandInputHost::new(processor, gui_tx, tray_tx, conn, !kwin_socket);
         let vkbd = host.vkbd();
-        return Ok((Box::new(host), vkbd, " Wayland v1 (KWin)"));
+        let desc = if kwin_socket { " Wayland v2 (KWin)" } else { " Wayland v2" };
+        return Ok((Box::new(host), vkbd, desc));
     }
 
-    // Normal Wayland compositor: zwp_input_method_manager_v2 is the modern standard
-    // (supported by KDE, GNOME, Sway/wlroots, Weston since ~2018).
-    // The protocol is bound lazily in `run()`, so no separate probe connection needed.
-    let host = WaylandInputHost::new(processor, gui_tx, tray_tx)
-        .ok_or("Wayland v2 host init failed")?;
-    let vkbd = host.vkbd();
-    Ok((Box::new(host), vkbd, " Wayland v2"))
+    if has_v1 {
+        log::warn!("[Main] input-method v2 unavailable, falling back to v1 (compat mode)");
+        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx, conn, !kwin_socket);
+        let vkbd = host.vkbd();
+        return Ok((Box::new(host), vkbd, " Wayland v1 (compat)"));
+    }
+
+    Err("no input-method protocol (v1/v2) on this Wayland connection".into())
 }
 
 enum BackendType {

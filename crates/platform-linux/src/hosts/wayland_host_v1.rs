@@ -12,7 +12,7 @@ use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContent
 use wayland_client::protocol::wl_keyboard::{self, KeyState, WlKeyboard};
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::protocol::wl_seat::WlSeat;
-use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum};
+use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum, event_created_child};
 
 use wayland_protocols::wp::input_method::zv1::client::{
     zwp_input_method_context_v1::ZwpInputMethodContextV1,
@@ -61,6 +61,21 @@ impl WlState {
             keysym_to_vk(sym).map(|vk| (vk, utf8))
         } else {
             xkb_to_vk_raw(keycode).map(|vk| (vk, String::new()))
+        }
+    }
+
+    fn modifier_flags(&self) -> (bool, bool, bool) {
+        match self.xkb_state.as_ref() {
+            Some(xkb_st) => (
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE),
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE),
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE),
+            ),
+            None => (
+                self.mods_depressed & 0x0001 != 0,
+                self.mods_depressed & 0x0004 != 0,
+                self.mods_depressed & 0x0008 != 0,
+            ),
         }
     }
 
@@ -119,18 +134,13 @@ impl WlState {
     }
 
     fn send_preedit(&self) {
+        // Wayland v1 (KWin virtual keyboard) 下不做拼音预览：preedit 在部分应用里
+        // 会残留在文本框中。这里仅持续清空 preedit，输入反馈交给候选窗口。
         let ctx = match self.context.as_ref() {
             Some(c) => c,
             None => return,
         };
-        let preedit = self.processor.get_gui_snapshot()
-            .map(|s| s.pinyin)
-            .unwrap_or_default();
-        if preedit.is_empty() {
-            ctx.preedit_string(self.context_serial, String::new(), String::new());
-        } else {
-            ctx.preedit_string(self.context_serial, preedit, String::new());
-        }
+        ctx.preedit_string(self.context_serial, String::new(), String::new());
     }
 
     fn forward_modifiers(
@@ -191,11 +201,16 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
                     ctx.preedit_string(state.context_serial, String::new(), String::new());
                     let _ = conn.flush();
                 }
+                state.forwarded_keys.clear();
                 state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
             }
             _ => {}
         }
     }
+
+    event_created_child!(WlState, ZwpInputMethodV1, [
+        0 => (ZwpInputMethodContextV1, WlUser)
+    ]);
 }
 
 impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
@@ -263,8 +278,12 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 let raw_fd = fd.into_raw_fd();
                 let mut file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
                 use std::io::Read;
-                let mut keymap_str = String::new();
-                if file.read_to_string(&mut keymap_str).is_ok() {
+                let mut keymap_bytes = vec![0u8; size as usize];
+                if file.read_exact(&mut keymap_bytes).is_ok() {
+                    while keymap_bytes.last().is_some_and(|b| *b == 0) {
+                        keymap_bytes.pop();
+                    }
+                    let keymap_str = String::from_utf8_lossy(&keymap_bytes).into_owned();
                     if let Some(keymap) = xkb::Keymap::new_from_string(
                         &state.xkb_context,
                         keymap_str,
@@ -301,12 +320,19 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
 
                 let (vk, utf8_text) = match state.resolve_key(key) {
                     Some(pair) => pair,
-                    None => return,
+                    None => {
+                        // 无法映射为 VirtualKey 的键（F 键、媒体键等）不得被 IME 吞掉，
+                        // 直接以物理键转发给应用程序，并记录供 release 配对。
+                        state.forwarded_keys.insert(key);
+                        if let Some(ctx) = &state.context {
+                            ctx.key(serial, time, key, key_state.into());
+                            let _ = conn.flush();
+                        }
+                        return;
+                    }
                 };
 
-                let shift = state.mods_depressed & 0x0001 != 0;
-                let ctrl = state.mods_depressed & 0x0004 != 0;
-                let alt = state.mods_depressed & 0x0008 != 0;
+                let (shift, ctrl, alt) = state.modifier_flags();
                 let action = match state.processor.handle_key(vk, 1, shift, ctrl, alt, true) {
                     Some(a) => a,
                     None => return,
@@ -392,6 +418,7 @@ pub struct WaylandInputHostV1 {
     tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
+    conn: Connection,
 }
 
 impl InputMethodHost for WaylandInputHostV1 {
@@ -402,11 +429,17 @@ impl InputMethodHost for WaylandInputHostV1 {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let conn = Connection::connect_to_env()?;
+        let conn = &self.conn;
         let (globals, mut event_queue): (GlobalList, EventQueue<WlState>) =
-            registry_queue_init(&conn)?;
+            registry_queue_init(conn)?;
 
         let qh = event_queue.handle();
+
+        globals.contents().with_list(|list| {
+            for g in list {
+                info!("[WaylandIM v1] private-socket global: {} v{}", g.interface, g.version);
+            }
+        });
 
         let input_method: ZwpInputMethodV1 = globals.bind(&qh, 1..=1, WlUser)
             .map_err(|e| {
@@ -450,6 +483,7 @@ impl InputMethodHost for WaylandInputHostV1 {
                     ctx.destroy();
                 }
                 state.keyboard = None;
+                state.forwarded_keys.clear();
                 let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
             }
 
@@ -482,26 +516,24 @@ impl WaylandInputHostV1 {
         processor: ProcessorHandle,
         gui_tx: Sender<GuiEvent>,
         tray_tx: Sender<TrayEvent>,
-    ) -> Option<Self> {
-        let has_conn = std::env::var("WAYLAND_DISPLAY").is_ok()
-            || std::env::var("WAYLAND_SOCKET").is_ok();
-        if !has_conn {
-            return None;
-        }
+        conn: Connection,
+        enable_vkbd: bool,
+    ) -> Self {
         // In KWin virtual keyboard mode (WAYLAND_SOCKET), avoid creating evdev uinput
         // device — all text goes through the Wayland input-method protocol.
-        let vkbd = if std::env::var("WAYLAND_SOCKET").is_err() {
+        let vkbd = if enable_vkbd {
             Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))
         } else {
             None
         };
-        Some(Self {
+        Self {
             processor,
             gui_tx,
             tray_tx,
             running: Arc::new(AtomicBool::new(false)),
             vkbd,
-        })
+            conn,
+        }
     }
 
     pub fn vkbd(&self) -> Option<Arc<std::sync::Mutex<Vkbd>>> {

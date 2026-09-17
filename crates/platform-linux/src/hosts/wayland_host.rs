@@ -59,6 +59,7 @@ struct WlState {
     virtual_keyboard_manager: Option<ZwpVirtualKeyboardManagerV1>,
     virtual_keyboard: Option<ZwpVirtualKeyboardV1>,
     virtual_keymap: Option<std::fs::File>,
+    keymap_installed: bool,
     forwarded_keys: HashSet<u32>,
     last_key_time: u32,
     seat: Option<WlSeat>,
@@ -107,7 +108,6 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 info!("[WaylandIM] activated");
                 state.active = true;
                 state.deactivate_deadline = None;
-                state.serial = 0;
                 if let Some(ref im) = state.input_method {
                     let grab = im.grab_keyboard(qh, WlUser);
                     state.keyboard_grab = Some(grab);
@@ -229,9 +229,7 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
 
                 let prev_enabled = state.prev_chinese_enabled;
 
-                let shift = state.mods_depressed & 0x0001 != 0;
-                let ctrl = state.mods_depressed & 0x0004 != 0;
-                let alt = state.mods_depressed & 0x0008 != 0;
+                let (shift, ctrl, alt) = state.modifier_flags();
                 // Use handle_key_sync to get action + gui + status atomically
                 let (action, gui, status) = match state.processor.handle_key_sync(vk, 1, shift, ctrl, alt) {
                     Some(tuple) => tuple,
@@ -375,6 +373,7 @@ impl WlState {
         use std::os::fd::AsFd;
         vk.keymap(WL_KEYMAP_FORMAT_XKB_V1, file.as_fd(), keymap.len() as u32);
         self.virtual_keymap = Some(file);
+        self.keymap_installed = true;
         info!("[WaylandIM] virtual keyboard keymap installed ({} bytes)", keymap.len());
     }
 
@@ -382,6 +381,10 @@ impl WlState {
         let Some(vk) = &self.virtual_keyboard else {
             return;
         };
+        if !self.keymap_installed {
+            warn!("[WaylandIM] virtual keyboard keymap not installed; cannot forward key {}", evdev_keycode);
+            return;
+        }
         vk.key(self.last_key_time, evdev_keycode, state);
     }
 
@@ -393,6 +396,21 @@ impl WlState {
             return Err(std::io::Error::last_os_error());
         }
         Ok(unsafe { std::fs::File::from_raw_fd(fd) })
+    }
+
+    fn modifier_flags(&self) -> (bool, bool, bool) {
+        match self.xkb_state.as_ref() {
+            Some(xkb_st) => (
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_SHIFT, xkb::STATE_MODS_EFFECTIVE),
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_CTRL, xkb::STATE_MODS_EFFECTIVE),
+                xkb_st.mod_name_is_active(xkb::MOD_NAME_ALT, xkb::STATE_MODS_EFFECTIVE),
+            ),
+            None => (
+                self.mods_depressed & 0x0001 != 0,
+                self.mods_depressed & 0x0004 != 0,
+                self.mods_depressed & 0x0008 != 0,
+            ),
+        }
     }
 
     #[inline]
@@ -506,6 +524,7 @@ pub struct WaylandInputHost {
     tray_tx: Sender<TrayEvent>,
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
+    conn: Connection,
 }
 
 impl InputMethodHost for WaylandInputHost {
@@ -516,9 +535,9 @@ impl InputMethodHost for WaylandInputHost {
     }
 
     fn run(&mut self) -> Result<(), Box<dyn Error>> {
-        let conn = Connection::connect_to_env()?;
+        let conn = &self.conn;
         let (globals, mut event_queue): (GlobalList, EventQueue<WlState>) =
-            registry_queue_init(&conn)?;
+            registry_queue_init(conn)?;
         let qh = event_queue.handle();
 
         let im_manager: ZwpInputMethodManagerV2 = match globals.bind(&qh, 1..=1, WlUser) {
@@ -574,6 +593,7 @@ impl InputMethodHost for WaylandInputHost {
             virtual_keyboard_manager,
             virtual_keyboard: None,
             virtual_keymap: None,
+            keymap_installed: false,
             forwarded_keys: HashSet::new(),
             last_key_time: 0,
             seat: Some(seat),
@@ -630,24 +650,22 @@ impl WaylandInputHost {
         processor: ProcessorHandle,
         gui_tx: Sender<GuiEvent>,
         tray_tx: Sender<TrayEvent>,
-    ) -> Option<Self> {
-        let has_conn = std::env::var("WAYLAND_DISPLAY").is_ok()
-            || std::env::var("WAYLAND_SOCKET").is_ok();
-        if !has_conn {
-            return None;
-        }
-        let vkbd = if std::env::var("WAYLAND_SOCKET").is_err() {
+        conn: Connection,
+        enable_vkbd: bool,
+    ) -> Self {
+        let vkbd = if enable_vkbd {
             Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))
         } else {
             None
         };
-        Some(Self {
+        Self {
             processor,
             gui_tx,
             tray_tx,
             running: Arc::new(AtomicBool::new(false)),
             vkbd,
-        })
+            conn,
+        }
     }
 
     pub fn vkbd(&self) -> Option<Arc<std::sync::Mutex<Vkbd>>> {

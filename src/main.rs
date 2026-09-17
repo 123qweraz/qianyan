@@ -578,12 +578,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let no_gui = args.iter().any(|a| a == "--no-gui");
         let show_gui = config.read().map(|c| c.linux.show_slint_window).unwrap_or(true);
 
-        let launch_gui = !is_kwin && !no_gui && show_gui;
+        let launch_gui = !no_gui && show_gui;
 
         if launch_gui {
             match try_start_gui_process(&config) {
                 Ok((child, stream, socket_path)) => {
-                    log::info!("[Main] GUI 子进程已启动");
+                    if is_kwin {
+                        log::info!("[Main] KWin 虚拟键盘模式：GUI 子进程已启动（候选框走 layer-shell）");
+                    } else {
+                        log::info!("[Main] GUI 子进程已启动");
+                    }
                     spawn_gui_forwarder(gui_rx, stream, child, socket_path);
                 }
                 Err(e) => {
@@ -592,9 +596,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         } else {
-            if is_kwin {
-                log::info!("[Main] KWin 虚拟键盘模式：跳过 Slint GUI");
-            } else if no_gui {
+            if no_gui {
                 log::info!("[Main] --no-gui 参数：无 GUI 模式");
             } else {
                 log::info!("[Main] show_slint_window=false：无 GUI 模式");
