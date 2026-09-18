@@ -224,16 +224,20 @@ impl Processor {
             }
         }
 
-        // 自动切回英文：中文模式下无按键超过设定时间后自动切换
+        // 自动切回英文：中文模式下长时间无按键操作后自动切换。
+        // 仅在无未上屏拼音（buffer 为空）时才可能触发；打字时每次按键都会刷新
+        // 活动时间，且组句过程中绝不切换，避免打断并清空正在输入的拼音。
         if is_press && self.ctx.session_state.chinese_enabled {
-            let enable = self.ctx.config.master_config.input.enable_auto_english;
-            let timeout = self.ctx.config.master_config.input.auto_english_timeout;
-            if enable && timeout > 0
-                && self.ctx.session_state.last_ime_activity.elapsed()
-                    >= Duration::from_secs(timeout * 60)
-            {
-                self.ctx.session_state.chinese_enabled = false;
-                self.clear_composing();
+            if self.ctx.session.buffer.is_empty() {
+                let enable = self.ctx.config.master_config.input.enable_auto_english;
+                let timeout = self.ctx.config.master_config.input.auto_english_timeout;
+                if enable && timeout > 0
+                    && self.ctx.session_state.last_ime_activity.elapsed()
+                        >= Duration::from_secs(timeout * 60)
+                {
+                    self.ctx.session_state.chinese_enabled = false;
+                    self.clear_composing();
+                }
             }
             self.ctx.session_state.last_ime_activity = Instant::now();
         }
