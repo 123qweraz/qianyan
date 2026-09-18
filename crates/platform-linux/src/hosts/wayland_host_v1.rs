@@ -1,23 +1,35 @@
 use std::error::Error;
-use std::os::unix::io::{FromRawFd, IntoRawFd};
+use std::ffi::CString;
+use std::os::fd::{AsFd, AsRawFd, FromRawFd, IntoRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use log::{error, info};
-use qianyan_ime_core::Rect;
+use qianyan_ime_core::{Config, Rect};
 
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
+use wayland_client::protocol::wl_buffer::{self, WlBuffer};
+use wayland_client::protocol::wl_compositor::WlCompositor;
 use wayland_client::protocol::wl_keyboard::{self, KeyState, WlKeyboard};
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::protocol::wl_seat::WlSeat;
+use wayland_client::protocol::wl_shm::{self, WlShm};
+use wayland_client::protocol::wl_shm_pool::WlShmPool;
+use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum, event_created_child};
 
 use wayland_protocols::wp::input_method::zv1::client::{
     zwp_input_method_context_v1::ZwpInputMethodContextV1,
     zwp_input_method_v1::ZwpInputMethodV1,
 };
+use wayland_protocols_wlr::layer_shell::v1::client::{
+    zwlr_layer_shell_v1::{Layer, ZwlrLayerShellV1},
+    zwlr_layer_surface_v1::{Anchor, KeyboardInteractivity, ZwlrLayerSurfaceV1},
+};
+
+use super::wayland_candidates::{CandContent, CandItem, CandStyle};
 
 use xkbcommon::xkb;
 
@@ -50,6 +62,101 @@ struct WlState {
     /// keycodes（evdev scancode）其 press 已透传给系统；
     /// 对应的 release 也必须转发，避免 keys 只按下不释放（如 Shift+CapsLock 卡大写）
     forwarded_keys: std::collections::HashSet<u32>,
+    config: Arc<RwLock<Config>>,
+    /// 自绘候选框（方案 B：绕过 GTK，直接在私有连接上用 layer-shell 渲染）
+    _cand_layer_shell: Option<ZwlrLayerShellV1>,
+    cand_surface: Option<WlSurface>,
+    cand_layer: Option<ZwlrLayerSurfaceV1>,
+    cand_shm: Option<WlShm>,
+    cand_configured: bool,
+    cand_visible: bool,
+    cand_w: i32,
+    cand_h: i32,
+    cand_pending: Option<(WlBuffer, i32, i32)>,
+    cand_live_buffers: Vec<WlBuffer>,
+}
+
+impl WlState {
+    fn candidates_enabled(&self) -> bool {
+        let cfg = match self.config.read() {
+            Ok(c) => c,
+            Err(e) => e.into_inner(),
+        };
+        cfg.appearance.show_candidates && cfg.linux.show_slint_window
+    }
+
+    /// 依据当前配置与候选内容刷新自绘候选框。
+    fn refresh_candidates(&mut self, content: CandContent, qh: &QueueHandle<Self>) {
+        if self.cand_surface.is_none() || !self.cand_configured {
+            return;
+        }
+        let cfg = match self.config.read() {
+            Ok(c) => c.clone(),
+            Err(e) => e.into_inner().clone(),
+        };
+        let visible = !content.pinyin.is_empty() && self.candidates_enabled();
+
+        if !visible {
+            if let Some((pending, _, _)) = self.cand_pending.take() {
+                pending.destroy();
+            }
+            if self.cand_visible {
+                let surface = self.cand_surface.clone().unwrap();
+                surface.attach(None, 0, 0);
+                let _ = surface.commit();
+                self.cand_visible = false;
+            }
+            return;
+        }
+
+        let style = CandStyle::from_config(&cfg);
+        let (pixels, width, height) = match super::wayland_candidates::render(&style, &content) {
+            Some(v) => v,
+            None => return,
+        };
+        let shm = match self.cand_shm.clone() {
+            Some(s) => s,
+            None => return,
+        };
+        let buffer = match upload_shm(&shm, qh, &pixels, width, height) {
+            Some(b) => b,
+            None => return,
+        };
+
+        let surface = self.cand_surface.clone().unwrap();
+        let layer = self.cand_layer.clone().unwrap();
+
+        let mx = cfg.linux.fixed_x.max(0);
+        let my = cfg.linux.fixed_y.max(0);
+        let (anchor, mt, mr, mb, ml) = match cfg.linux.corner.as_str() {
+            "top-right" => (Anchor::Top | Anchor::Right, my, mx, 0, 0),
+            "top-left" => (Anchor::Top | Anchor::Left, my, 0, 0, mx),
+            "bottom-left" => (Anchor::Bottom | Anchor::Left, 0, 0, my, mx),
+            _ => (Anchor::Bottom | Anchor::Right, 0, mx, my, 0),
+        };
+        layer.set_anchor(anchor);
+        layer.set_margin(mt, mr, mb, ml);
+        if width != self.cand_w || height != self.cand_h {
+            // layer-shell 要求先 ack 新的 configure 再贴对应尺寸的 buffer，
+            // 因此尺寸变化时先提交空 buffer 触发 configure，待 configure 到达后再贴。
+            if let Some((stale, _, _)) = self.cand_pending.take() {
+                stale.destroy();
+            }
+            self.cand_w = width;
+            self.cand_h = height;
+            layer.set_size(width.max(0) as u32, height.max(0) as u32);
+            self.cand_pending = Some((buffer, width, height));
+            let _ = surface.commit();
+            self.cand_visible = true;
+            return;
+        }
+
+        surface.attach(Some(&buffer), 0, 0);
+        surface.damage(0, 0, width, height);
+        let _ = surface.commit();
+        self.cand_visible = true;
+        self.cand_live_buffers.push(buffer);
+    }
 }
 
 impl WlState {
@@ -203,6 +310,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
                 }
                 state.forwarded_keys.clear();
                 state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
+                state.refresh_candidates(CandContent::default(), qh);
             }
             _ => {}
         }
@@ -220,7 +328,7 @@ impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
         event: <ZwpInputMethodContextV1 as Proxy>::Event,
         _data: &WlUser,
         _conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
     ) {
         use wayland_protocols::wp::input_method::zv1::client::zwp_input_method_context_v1::Event;
         match event {
@@ -234,7 +342,9 @@ impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
                 state.context_serial = serial;
             }
             Event::Reset => {
+                info!("[WaylandIM v1] reset event received");
                 state.processor.reset();
+                state.refresh_candidates(CandContent::default(), qh);
                 let _ = state.gui_tx.send(GuiEvent::Update {
                     pinyin: String::new(),
                     candidates: vec![],
@@ -270,7 +380,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
         event: <WlKeyboard as Proxy>::Event,
         _data: &WlUser,
         conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
     ) {
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
@@ -345,7 +455,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     });
                 }
 
-                let (update, _preedit) = if let Some(gui) = state.processor.get_gui_snapshot() {
+                let (update, _preedit, cand_content) = if let Some(gui) = state.processor.get_gui_snapshot() {
                     if gui.pinyin.is_empty() || !gui.chinese_enabled {
                         (GuiEvent::Update {
                             pinyin: "".into(),
@@ -353,7 +463,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                             selected: 0, page: 0, total_pages: 0,
                             sentence: "".into(), cursor_pos: 0,
                             commit_mode: gui.commit_mode.clone(),
-                        }, String::new())
+                        }, String::new(), CandContent::default())
                     } else {
                         let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
                             let full_display = if c.is_fuzzy {
@@ -371,6 +481,16 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                                 is_fuzzy: c.is_fuzzy,
                             }
                         }).collect();
+                        let cand_items: Vec<CandItem> = gui.candidates.iter().map(|c| CandItem {
+                            label: c.label.clone(),
+                            text: c.text.clone(),
+                            hint: c.hint.clone(),
+                        }).collect();
+                        let content = CandContent {
+                            pinyin: gui.pinyin.clone(),
+                            candidates: cand_items,
+                            selected: gui.selected,
+                        };
                         (GuiEvent::Update {
                             pinyin: gui.pinyin.clone(),
                             candidates,
@@ -380,7 +500,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                             sentence: gui.sentence.clone(),
                             cursor_pos: gui.cursor_pos,
                             commit_mode: gui.commit_mode,
-                        }, gui.pinyin)
+                        }, gui.pinyin, content)
                     }
                 } else {
                     return;
@@ -388,6 +508,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
 
                 state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
 
+                state.refresh_candidates(cand_content, qh);
                 let _ = state.gui_tx.send(update);
 
                 state.send_preedit();
@@ -412,6 +533,166 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
     }
 }
 
+impl Dispatch<WlCompositor, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlCompositor,
+        _: <WlCompositor as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlShm, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlShm,
+        _: <WlShm as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlShmPool, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlShmPool,
+        _: <WlShmPool as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlBuffer, WlUser> for WlState {
+    fn event(
+        state: &mut Self,
+        proxy: &WlBuffer,
+        event: <WlBuffer as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if matches!(event, wl_buffer::Event::Release) {
+            if let Some(pos) = state.cand_live_buffers.iter().position(|b| b.id() == proxy.id()) {
+                let buf = state.cand_live_buffers.swap_remove(pos);
+                buf.destroy();
+            }
+        }
+    }
+}
+
+impl Dispatch<WlSurface, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlSurface,
+        _: <WlSurface as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwlrLayerShellV1, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &ZwlrLayerShellV1,
+        _: <ZwlrLayerShellV1 as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwlrLayerSurfaceV1, WlUser> for WlState {
+    fn event(
+        state: &mut Self,
+        proxy: &ZwlrLayerSurfaceV1,
+        event: <ZwlrLayerSurfaceV1 as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        use wayland_protocols_wlr::layer_shell::v1::client::zwlr_layer_surface_v1::Event;
+        match event {
+            Event::Configure { serial, width, height } => {
+                proxy.ack_configure(serial);
+                state.cand_configured = true;
+                info!("[WaylandIM v1] candidate overlay configured {}x{}", width, height);
+                if let Some((buffer, w, h)) = state.cand_pending.take() {
+                    if let Some(surface) = state.cand_surface.clone() {
+                        surface.attach(Some(&buffer), 0, 0);
+                        surface.damage(0, 0, w, h);
+                        let _ = surface.commit();
+                        state.cand_visible = true;
+                        state.cand_live_buffers.push(buffer);
+                    }
+                }
+            }
+            Event::Closed => {
+                info!("[WaylandIM v1] candidate overlay closed");
+                if let Some((pending, _, _)) = state.cand_pending.take() {
+                    pending.destroy();
+                }
+                state.cand_surface = None;
+                state.cand_layer = None;
+                state.cand_visible = false;
+            }
+            _ => {}
+        }
+    }
+}
+
+fn upload_shm(
+    shm: &WlShm,
+    qh: &QueueHandle<WlState>,
+    pixels: &[u8],
+    width: i32,
+    height: i32,
+) -> Option<WlBuffer> {
+    let stride = width * 4;
+    let size = stride as usize * height as usize;
+    if pixels.len() < size {
+        return None;
+    }
+    let name = CString::new("qianyan-cand").ok()?;
+    let fd = unsafe { libc::memfd_create(name.as_ptr(), libc::MFD_CLOEXEC) };
+    if fd < 0 {
+        return None;
+    }
+    let owned = unsafe { OwnedFd::from_raw_fd(fd) };
+    if unsafe { libc::ftruncate(owned.as_raw_fd(), size as libc::off_t) } != 0 {
+        return None;
+    }
+    let ptr = unsafe {
+        libc::mmap(
+            std::ptr::null_mut(),
+            size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_SHARED,
+            owned.as_raw_fd(),
+            0,
+        )
+    };
+    if ptr == libc::MAP_FAILED {
+        return None;
+    }
+    unsafe { std::ptr::copy_nonoverlapping(pixels.as_ptr(), ptr as *mut u8, size) };
+    unsafe { libc::munmap(ptr, size) };
+
+    let pool = shm.create_pool(owned.as_fd(), size as i32, qh, WlUser);
+    let buffer = pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, WlUser);
+    pool.destroy();
+    Some(buffer)
+}
+
 pub struct WaylandInputHostV1 {
     processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
@@ -419,6 +700,7 @@ pub struct WaylandInputHostV1 {
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
     conn: Connection,
+    config: Arc<RwLock<Config>>,
 }
 
 impl InputMethodHost for WaylandInputHostV1 {
@@ -450,6 +732,37 @@ impl InputMethodHost for WaylandInputHostV1 {
         self.running.store(true, Ordering::SeqCst);
         info!("[WaylandIM v1] connected, waiting for activate...");
 
+        // 自绘候选框：在同一个私有连接上创建 Overlay layer 表面。
+        let cand_layer_shell: Option<ZwlrLayerShellV1> = globals.bind(&qh, 1..=4, WlUser).ok();
+        let cand_shm: Option<WlShm> = globals.bind(&qh, 1..=1, WlUser).ok();
+        let cand_compositor: Option<WlCompositor> = globals.bind(&qh, 1..=6, WlUser).ok();
+        let (cand_surface, cand_layer) =
+            match (cand_compositor.as_ref(), cand_layer_shell.as_ref()) {
+                (Some(comp), Some(shell)) => {
+                    let surface = comp.create_surface(&qh, WlUser);
+                    let layer = shell.get_layer_surface(
+                        &surface,
+                        None,
+                        Layer::Overlay,
+                        "qianyan-candidates".to_string(),
+                        &qh,
+                        WlUser,
+                    );
+                    layer.set_keyboard_interactivity(KeyboardInteractivity::None);
+                    layer.set_exclusive_zone(0);
+                    layer.set_size(1, 1);
+                    layer.set_anchor(Anchor::Bottom | Anchor::Right);
+                    layer.set_margin(0, 10, 10, 0);
+                    let _ = surface.commit();
+                    info!("[WaylandIM v1] candidate overlay created");
+                    (Some(surface), Some(layer))
+                }
+                _ => {
+                    info!("[WaylandIM v1] candidate overlay unavailable");
+                    (None, None)
+                }
+            };
+
         let mut state = WlState {
             _running: self.running.clone(),
             processor: self.processor.clone(),
@@ -465,6 +778,17 @@ impl InputMethodHost for WaylandInputHostV1 {
             xkb_state: None,
             mods_depressed: 0,
             forwarded_keys: std::collections::HashSet::new(),
+            config: self.config.clone(),
+            _cand_layer_shell: cand_layer_shell,
+            cand_surface,
+            cand_layer,
+            cand_shm,
+            cand_configured: false,
+            cand_visible: false,
+            cand_w: 0,
+            cand_h: 0,
+            cand_pending: None,
+            cand_live_buffers: Vec::new(),
         };
 
         let _ = event_queue.roundtrip(&mut state)?;
@@ -518,6 +842,7 @@ impl WaylandInputHostV1 {
         tray_tx: Sender<TrayEvent>,
         conn: Connection,
         enable_vkbd: bool,
+        config: Arc<RwLock<Config>>,
     ) -> Self {
         // In KWin virtual keyboard mode (WAYLAND_SOCKET), avoid creating evdev uinput
         // device — all text goes through the Wayland input-method protocol.
@@ -533,6 +858,7 @@ impl WaylandInputHostV1 {
             running: Arc::new(AtomicBool::new(false)),
             vkbd,
             conn,
+            config,
         }
     }
 

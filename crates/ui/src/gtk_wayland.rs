@@ -291,7 +291,10 @@ fn update_candidates_inner(
 ) {
     let visible = !pinyin.is_empty()
         && state.candidate_enabled
-        && state.config.as_ref().is_some_and(|c| c.appearance.show_candidates);
+        && state
+            .config
+            .as_ref()
+            .is_some_and(|c| c.appearance.show_candidates && c.linux.show_slint_window);
 
     if !visible {
         state.set_visible_inner(false);
@@ -359,6 +362,11 @@ fn update_candidates_inner(
 
 impl GtkWlState {
     fn set_visible_inner(&mut self, visible: bool) {
+        let visible = visible
+            && self
+                .config
+                .as_ref()
+                .is_some_and(|c| c.linux.show_slint_window);
         if visible == self.window_visible {
             return;
         }
@@ -437,17 +445,39 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
 
     let main_loop_clone = main_loop.clone();
     glib::timeout_add_local(std::time::Duration::from_millis(16), move || {
+        // Drain everything currently queued, but only render the *latest* state.
+        // Rendering every intermediate keystroke rebuilds the whole widget tree
+        // and cannot keep up with fast typing, leaving the bar stuck on an old
+        // frame. Collapse stale commands (keep only the last of each kind).
+        let mut cmds: Vec<GtkCmd> = Vec::new();
         loop {
-            let cmd = match rx.try_recv() {
-                Ok(cmd) => cmd,
+            match rx.try_recv() {
+                Ok(cmd) => cmds.push(cmd),
                 Err(mpsc::TryRecvError::Empty) => break,
                 Err(mpsc::TryRecvError::Disconnected) => {
                     main_loop_clone.quit();
                     return ControlFlow::Break;
                 }
-            };
-            let mut s = state.borrow_mut();
+            }
+        }
+        if cmds.is_empty() {
+            return ControlFlow::Continue;
+        }
+
+        let last_update = cmds
+            .iter()
+            .rposition(|c| matches!(c, GtkCmd::UpdateCandidates { .. }));
+        let last_config = cmds
+            .iter()
+            .rposition(|c| matches!(c, GtkCmd::ApplyConfig(_)));
+        let last_move = cmds.iter().rposition(|c| matches!(c, GtkCmd::MoveTo { .. }));
+
+        let mut s = state.borrow_mut();
+        for (i, cmd) in cmds.into_iter().enumerate() {
             match cmd {
+                GtkCmd::UpdateCandidates { .. } if Some(i) != last_update => {}
+                GtkCmd::ApplyConfig(_) if Some(i) != last_config => {}
+                GtkCmd::MoveTo { .. } if Some(i) != last_move => {}
                 GtkCmd::UpdateCandidates {
                     pinyin,
                     candidates,
@@ -466,8 +496,16 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
                     if let Some(c) = s.config.as_ref() {
                         apply_css(c);
                     }
+                    if !s
+                        .config
+                        .as_ref()
+                        .is_some_and(|c| c.linux.show_slint_window)
+                    {
+                        s.set_visible_inner(false);
+                    }
                 }
                 GtkCmd::Exit => {
+                    drop(s);
                     main_loop_clone.quit();
                     return ControlFlow::Break;
                 }

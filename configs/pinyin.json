@@ -1,23 +1,30 @@
 {
   "input": {
+    "annotation_files": {},
+    "annotation_lang": "en",
+    "annotation_sources": {},
     "auto_commit_stroke": true,
     "auto_commit_unique_en_fuzhuma": false,
     "auto_commit_unique_full_match": false,
     "auto_english_timeout": 1,
-    "commit_mode": "single",
-    "default_profile": "chinese",
     "candidate_display": {
-      "fields": ["char", "en"],
+      "fields": [
+        "char",
+        "en"
+      ],
       "per_profile": {
-        "stroke": ["char", "stroke_aux"],
-        "bihua": ["char", "stroke_aux"]
+        "bihua": [
+          "char",
+          "stroke_aux"
+        ],
+        "stroke": [
+          "char",
+          "stroke_aux"
+        ]
       }
     },
-    "filter_aux_mode": "auto",
-    "filter_aux_per_profile": {
-      "stroke": "stroke",
-      "bihua": "stroke"
-    },
+    "commit_mode": "single",
+    "default_profile": "chinese",
     "double_tap_timeout_ms": 200,
     "double_tap_uppercase_keys": [
       "a",
@@ -62,6 +69,11 @@
     "enable_smart_backspace": false,
     "enable_traditional": false,
     "english_aux_mode": "Prefix",
+    "filter_aux_mode": "auto",
+    "filter_aux_per_profile": {
+      "bihua": "stroke",
+      "stroke": "stroke"
+    },
     "filter_proper_nouns_by_case": true,
     "keyboard_layouts": {},
     "long_press_mappings": [],
@@ -120,8 +132,12 @@
       "single_char_bonus": 1000000.0,
       "user_dict_bonus": 10000000.0
     },
-    "rare_char_mode": "common_only",
     "segmentation_delimiters": "'",
+    "shown_char_categories": [
+      "level-1",
+      "level-2",
+      "level-3"
+    ],
     "swap_arrow_keys": false
   }
 }

@@ -82,7 +82,7 @@ pub fn create_input_host(
     match backend {
         BackendType::Wayland => {
             // Try Wayland IM protocol first
-            match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
+            match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
                 Ok(result) => return Ok(result),
                 Err(e) => println!("[Main] Wayland 不可用 ({}), 尝试 Evdev...", e),
             }
@@ -93,7 +93,7 @@ pub fn create_input_host(
             }
             // Last resort: try Wayland again (maybe a display issue)
             if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match try_start_wayland(processor, gui_tx, tray_tx) {
+                match try_start_wayland(processor, gui_tx, tray_tx, config.clone()) {
                     Ok(result) => return Ok(result),
                     Err(e) => return Err(format!("所有后端均不可用: {}", e).into()),
                 }
@@ -113,7 +113,7 @@ pub fn create_input_host(
 
             // Fallback: try Wayland input method protocol
             if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone()) {
+                match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
                     Ok(result) => return Ok(result),
                     Err(e) => println!("[Main] Wayland 输入法不可用: {}", e),
                 }
@@ -143,8 +143,9 @@ fn try_start_wayland(
     processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
+    config: Arc<RwLock<Config>>,
 ) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
-    let (mut host, vkbd_opt, desc) = create_wayland_host(processor, gui_tx, tray_tx)?;
+    let (mut host, vkbd_opt, desc) = create_wayland_host(processor, gui_tx, tray_tx, config)?;
     println!("[Main] 成功启动{}输入法模式。", desc);
     Ok((vkbd_opt, Box::new(move || {
         let _ = host.run();
@@ -155,6 +156,7 @@ fn create_wayland_host(
     processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
+    config: Arc<RwLock<Config>>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
     // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set and
     // points at a private socket exposing the input-method protocol. On modern
@@ -177,7 +179,7 @@ fn create_wayland_host(
 
     if has_v1 {
         log::warn!("[Main] input-method v2 unavailable, falling back to v1 (compat mode)");
-        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx, conn, !kwin_socket);
+        let host = WaylandInputHostV1::new(processor, gui_tx, tray_tx, conn, !kwin_socket, config);
         let vkbd = host.vkbd();
         return Ok((Box::new(host), vkbd, " Wayland v1 (compat)"));
     }

@@ -159,6 +159,18 @@ pub fn start_gui_ipc(mut stream: UnixStream, config: Config) {
                 }
             };
 
+            match &msg {
+                MainToGui::Update { pinyin, candidates, .. } => {
+                    log::debug!("[GUI_RECV] Update pinyin='{}' n={}", pinyin, candidates.len());
+                }
+                MainToGui::SetVisible(v) => log::debug!("[GUI_RECV] SetVisible({v})"),
+                MainToGui::SyncState(s) => {
+                    log::debug!("[GUI_RECV] SyncState pinyin='{}' n={}", s.pinyin, s.candidates.len());
+                }
+                MainToGui::HideCandidate => log::debug!("[GUI_RECV] HideCandidate"),
+                _ => {}
+            }
+
             match msg {
                 MainToGui::HideCandidate => {
                     let (ack_tx, ack_rx) = std::sync::mpsc::channel();
@@ -312,9 +324,6 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
             }
             MainToGui::ApplyConfig(json) => {
                 if let Ok(new_config) = serde_json::from_str::<Config>(json) {
-                    let old_slint = config.linux.show_slint_window;
-                    let old_notify = config.linux.show_notification;
-                    let old_toggle_notify = config.linux.show_toggle_notification;
                     let ks_changed = config.linux.keystroke_enabled != new_config.linux.keystroke_enabled
                         || config.linux.keystroke_position != new_config.linux.keystroke_position
                         || config.linux.keystroke_hide_ms != new_config.linux.keystroke_hide_ms
@@ -322,21 +331,14 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                         || config.linux.keystroke_font_size != new_config.linux.keystroke_font_size
                         || config.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
                         || config.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
-                    let new_slint = new_config.linux.show_slint_window;
-                    let new_notify = new_config.linux.show_notification;
-                    let new_toggle_notify = new_config.linux.show_toggle_notification;
                     *config = new_config;
 
-                    if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
-                        let new_displays = create_displays(config);
-                        for display in displays.iter_mut() {
-                            display.close();
-                        }
-                        *displays = new_displays;
-                    } else {
-                        for display in displays.iter_mut() {
-                            display.apply_config(config);
-                        }
+                    // Do not recreate displays: the GTK backend initializes GTK on
+                    // a dedicated thread and cannot re-initialize (recreating panics
+                    // with "Attempted to initialize GTK from two different threads").
+                    // Show/hide is gated on `show_slint_window` inside the display.
+                    for display in displays.iter_mut() {
+                        display.apply_config(config);
                     }
 
                     if ks_changed {
@@ -430,9 +432,6 @@ fn handle_event(
         }
         GuiEvent::ApplyConfig(new_config) => {
             let old = config.read().unwrap_or_else(|e| e.into_inner());
-            let old_slint = old.linux.show_slint_window;
-            let old_notify = old.linux.show_notification;
-            let old_toggle_notify = old.linux.show_toggle_notification;
             let ks_changed = old.linux.keystroke_enabled != new_config.linux.keystroke_enabled
                 || old.linux.keystroke_position != new_config.linux.keystroke_position
                 || old.linux.keystroke_hide_ms != new_config.linux.keystroke_hide_ms
@@ -440,25 +439,18 @@ fn handle_event(
                 || old.linux.keystroke_font_size != new_config.linux.keystroke_font_size
                 || old.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
                 || old.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
-            let new_slint = new_config.linux.show_slint_window;
-            let new_notify = new_config.linux.show_notification;
-            let new_toggle_notify = new_config.linux.show_toggle_notification;
             drop(old);
             *config.write().unwrap_or_else(|e| e.into_inner()) = *new_config;
 
-            if new_slint != old_slint || new_notify != old_notify || new_toggle_notify != old_toggle_notify {
-                log::debug!("[GUI_DEBUG] ApplyConfig: display config changed, recreating");
-                let new_displays = create_displays(&config.read().unwrap_or_else(|e| e.into_inner()));
-                for d in displays.iter_mut() {
-                    d.close();
-                }
-                *displays = new_displays;
-            } else {
-                log::debug!("[GUI_DEBUG] ApplyConfig: config unchanged, applying to existing");
-                let cfg = config.read().unwrap_or_else(|e| e.into_inner());
-                for d in displays.iter_mut() {
-                    d.apply_config(&cfg);
-                }
+            // Never recreate displays here. The GTK backend initializes GTK on a
+            // dedicated thread and GTK cannot be re-initialized, so recreating the
+            // display panics with "Attempted to initialize GTK from two different
+            // threads" and the candidate bar is lost for the rest of the session.
+            // Visibility is instead gated on `show_slint_window` inside each display.
+            log::debug!("[GUI_DEBUG] ApplyConfig: applying to existing displays");
+            let cfg = config.read().unwrap_or_else(|e| e.into_inner());
+            for d in displays.iter_mut() {
+                d.apply_config(&cfg);
             }
 
             if ks_changed {

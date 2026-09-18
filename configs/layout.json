@@ -1,5 +1,9 @@
 {
   "layouts": {
+    "bihua": {
+      "mappings": {},
+      "name": "笔画默认布局"
+    },
     "chinese": {
       "mappings": {
         "!": {
@@ -96,10 +100,6 @@
       "name": "日本語デフォルト配列"
     },
     "stroke": {
-      "mappings": {},
-      "name": "笔画默认布局"
-    },
-    "bihua": {
       "mappings": {},
       "name": "笔画默认布局"
     }

@@ -7,6 +7,10 @@
     "data_dir": null,
     "profiles": [
       {
+        "name": "bihua",
+        "path": "data/bihua/trie"
+      },
+      {
         "name": "chinese",
         "path": "data/chinese/trie"
       },
@@ -19,16 +23,12 @@
         "path": "data/japanese/trie"
       },
       {
-        "name": "stroke",
-        "path": "data/stroke/trie"
-      },
-      {
-        "name": "bihua",
-        "path": "data/bihua/trie"
-      },
-      {
         "name": "pybi",
         "path": "data/pybi/trie"
+      },
+      {
+        "name": "stroke",
+        "path": "data/stroke/trie"
       }
     ],
     "punctuation_file": "dicts/chinese/punctuation.json"
@@ -44,7 +44,7 @@
       "pybi"
     ],
     "phantom_separator": ">",
-    "phantom_type": "Pinyin"
+    "phantom_type": "None"
   },
   "linux": {
     "backend_type": "auto",
@@ -52,7 +52,7 @@
     "clipboard_delay_ms": 0,
     "corner": "bottom-right",
     "device_path": "/dev/input/event4",
-    "fixed_position": true,
+    "fixed_position": false,
     "fixed_x": 10,
     "fixed_y": 10,
     "keystroke_bg_color": "rgba(0, 0, 0, 0.78)",

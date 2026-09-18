@@ -421,7 +421,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.chinese_enabled = chinese_enabled;
-                        let _ = gui_tx_tray.send(GuiEvent::SyncState(state.clone()));
+                        state.active_profile = active_profile;
+                        // Status-only sync. This event fires on every keystroke, so it
+                        // must not carry the (empty) composition stored in
+                        // `app_state_tray`: a full `SyncState` here clobbers the
+                        // candidate bar right after the real `Update`, causing it to
+                        // flicker/disappear at random depending on arrival order.
+                        let status_text = state.status_text.clone();
+                        let _ = gui_tx_tray.send(GuiEvent::ShowStatus(status_text, chinese_enabled));
                     }
                 }
                 qianyan_ime_ui::tray::TrayEvent::OpenConfig => {
@@ -576,9 +583,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let is_kwin = qianyan_ime_linux::kwin::is_kwin_virtual_keyboard();
         let no_gui = args.iter().any(|a| a == "--no-gui");
-        let show_gui = config.read().map(|c| c.linux.show_slint_window).unwrap_or(true);
 
-        let launch_gui = !no_gui && show_gui;
+        // Start the GUI subprocess whenever a GUI is allowed, even if the
+        // candidate bar is currently disabled. It creates the overlay once (GTK
+        // cannot be re-initialized) and shows/hides itself according to
+        // `show_slint_window`, so the display mode can be toggled at runtime
+        // without restarting the input method.
+        //
+        // KWin 虚拟键盘模式例外：v1 host 在私有 socket 上自绘候选框（方案 B），
+        // 不再需要 GTK 子进程，避免重复候选窗与跨线程 GTK 初始化问题。
+        let launch_gui = !no_gui && !is_kwin;
 
         if launch_gui {
             match try_start_gui_process(&config) {
@@ -596,11 +610,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         } else {
-            if no_gui {
-                log::info!("[Main] --no-gui 参数：无 GUI 模式");
-            } else {
-                log::info!("[Main] show_slint_window=false：无 GUI 模式");
-            }
+            log::info!("[Main] --no-gui 参数：无 GUI 模式");
             spawn_gui_null_handler(gui_rx);
         }
 
@@ -764,6 +774,17 @@ fn spawn_gui_forwarder(
                 }
                 other => {
                     if let Some(ipc) = gui_event_to_ipc(other) {
+                        match &ipc {
+                            MainToGui::Update { pinyin, candidates, .. } => {
+                                log::debug!("[GUI_FWD] Update pinyin='{}' n={}", pinyin, candidates.len());
+                            }
+                            MainToGui::SetVisible(v) => log::debug!("[GUI_FWD] SetVisible({v})"),
+                            MainToGui::SyncState(s) => {
+                                log::debug!("[GUI_FWD] SyncState pinyin='{}' n={}", s.pinyin, s.candidates.len());
+                            }
+                            MainToGui::HideCandidate => log::debug!("[GUI_FWD] HideCandidate"),
+                            _ => {}
+                        }
                         if send_main_to_gui(stream_ref, &ipc).is_err() {
                             stream_guard.take();
                             break;
