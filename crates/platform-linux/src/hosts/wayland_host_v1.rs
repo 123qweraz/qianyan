@@ -462,6 +462,10 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     });
                 }
 
+                // 先执行动作（可能已上屏并清空缓冲区），再取快照，
+                // 否则 commit 后会拿到上屏前的旧候选，导致候选框不消失。
+                state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
+
                 let (update, _preedit, cand_content) = if let Some(gui) = state.processor.get_gui_snapshot() {
                     if gui.pinyin.is_empty() || !gui.chinese_enabled {
                         (GuiEvent::Update {
@@ -510,10 +514,14 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                         }, gui.pinyin, content)
                     }
                 } else {
-                    return;
+                    (GuiEvent::Update {
+                        pinyin: "".into(),
+                        candidates: vec![],
+                        selected: 0, page: 0, total_pages: 0,
+                        sentence: "".into(), cursor_pos: 0,
+                        commit_mode: String::new(),
+                    }, String::new(), CandContent::default())
                 };
-
-                state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
 
                 state.refresh_candidates(cand_content, qh);
                 let _ = state.gui_tx.send(update);
