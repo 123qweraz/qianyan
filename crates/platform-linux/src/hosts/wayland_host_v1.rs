@@ -414,6 +414,13 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     return;
                 }
                 if key_state == WEnum::Value(KeyState::Released) {
+                    // 通知引擎按键释放，更新内部按键状态（如 tab_down、CapsLock 等）。
+                    // 之前 release 完全不下发，会让 tab_down 在按过一次 Tab 后永久为真，
+                    // 导致数字 1/2 被当成“以词定字”(word_to_char_shift) 而选字而非选词。
+                    if let Some((vk, _)) = state.resolve_key(key) {
+                        let (shift, ctrl, alt) = state.modifier_flags();
+                        let _ = state.processor.handle_key(vk, 0, shift, ctrl, alt, false);
+                    }
                     // 只转发与我们透传过的 press 配对的 release，
                     // 其余 release（如被 IME 吞掉的输入）一律丢弃
                     if state.forwarded_keys.remove(&key) {
