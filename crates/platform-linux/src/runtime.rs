@@ -159,9 +159,10 @@ fn create_wayland_host(
     config: Arc<RwLock<Config>>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
     // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set and
-    // points at a private socket exposing the input-method protocol. On modern
-    // KWin (>= 6.6) that socket also exposes input-method v2 (with popup
-    // surface support); older compositors only expose v1.
+    // points at a private socket exposing the input-method protocol. KWin
+    // (through 6.7) only implements input-method v1; v2 (with popup-surface
+    // cursor follow) is found on wlroots-based compositors and others, where
+    // the IME connects to the regular Wayland display.
     let kwin_socket = crate::kwin::is_kwin_virtual_keyboard();
 
     let (conn, has_v1, has_v2) = connect_and_probe()?;
@@ -171,7 +172,7 @@ fn create_wayland_host(
     );
 
     if has_v2 {
-        let host = WaylandInputHost::new(processor, gui_tx, tray_tx, conn, !kwin_socket);
+        let host = WaylandInputHost::new(processor, gui_tx, tray_tx, conn, !kwin_socket, config.clone());
         let vkbd = host.vkbd();
         let desc = if kwin_socket { " Wayland v2 (KWin)" } else { " Wayland v2" };
         return Ok((Box::new(host), vkbd, desc));

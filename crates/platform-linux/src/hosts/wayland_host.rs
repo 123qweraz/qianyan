@@ -1,25 +1,33 @@
 use std::collections::HashSet;
 use std::error::Error;
+use std::ffi::CString;
 use std::io::{Seek, SeekFrom, Write};
+use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use log::{error, info, warn};
-use qianyan_ime_core::Rect;
+use qianyan_ime_core::{Config, Rect};
 
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
+use wayland_client::protocol::wl_buffer::{self, WlBuffer};
+use wayland_client::protocol::wl_compositor::WlCompositor;
 use wayland_client::protocol::wl_keyboard::KeyState;
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::protocol::wl_seat::WlSeat;
+use wayland_client::protocol::wl_shm::{self, WlShm};
+use wayland_client::protocol::wl_shm_pool::WlShmPool;
+use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle, WEnum};
 
 use wayland_protocols_misc::zwp_input_method_v2::client::{
     zwp_input_method_keyboard_grab_v2::ZwpInputMethodKeyboardGrabV2,
     zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
     zwp_input_method_v2::ZwpInputMethodV2,
+    zwp_input_popup_surface_v2::ZwpInputPopupSurfaceV2,
 };
 use wayland_protocols_misc::zwp_virtual_keyboard_v1::client::{
     zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
@@ -30,6 +38,7 @@ use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
 
 use super::vkbd::Vkbd;
+use super::wayland_candidates::{CandContent, CandItem, CandStyle};
 
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::keys::VirtualKey;
@@ -65,6 +74,15 @@ struct WlState {
     seat: Option<WlSeat>,
     held_keys: HashSet<u32>,
     mods_depressed: u32,
+    config: Arc<RwLock<Config>>,
+    /// 自绘候选框：v2 下用 `zwp_input_popup_surface_v2`，由合成器跟随光标定位。
+    cand_surface: Option<WlSurface>,
+    cand_popup: Option<ZwpInputPopupSurfaceV2>,
+    cand_shm: Option<WlShm>,
+    cand_visible: bool,
+    cand_w: i32,
+    cand_h: i32,
+    cand_live_buffers: Vec<WlBuffer>,
 }
 
 impl Dispatch<WlRegistry, GlobalListContents> for WlState {
@@ -116,6 +134,7 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                     let _ = conn.flush();
                 }
                 state.setup_virtual_keyboard(qh);
+                state.refresh_candidates(CandContent::default(), qh);
             }
             Event::Deactivate => {
                 info!("[WaylandIM] deactivated (debouncing {}ms)", DEACTIVATE_DEBOUNCE.as_millis());
@@ -125,6 +144,7 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                     let _ = conn.flush();
                 }
                 state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
+                state.refresh_candidates(CandContent::default(), qh);
             }
             Event::Done => {
                 state.serial += 1;
@@ -142,6 +162,7 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 warn!("[WaylandIM] unavailable");
                 state.active = false;
                 state.keyboard_grab = None;
+                state.refresh_candidates(CandContent::default(), qh);
                 state.running.store(false, Ordering::SeqCst);
             }
             _ => {}
@@ -168,7 +189,7 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
         event: <ZwpInputMethodKeyboardGrabV2 as Proxy>::Event,
         _data: &WlUser,
         conn: &Connection,
-        _qh: &QueueHandle<Self>,
+        qh: &QueueHandle<Self>,
     ) {
         use wayland_protocols_misc::zwp_input_method_v2::client::zwp_input_method_keyboard_grab_v2::Event;
         match event {
@@ -246,15 +267,18 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                     });
                 }
 
-                // Build GUI update
-                let update = if gui.pinyin.is_empty() || !gui.chinese_enabled {
-                    GuiEvent::Update {
-                        pinyin: "".into(),
-                        candidates: vec![],
-                        selected: 0, page: 0, total_pages: 0,
-                        sentence: "".into(), cursor_pos: 0,
-                        commit_mode: gui.commit_mode.clone(),
-                    }
+                // Build GUI update + 自绘候选内容
+                let (update, cand_content) = if gui.pinyin.is_empty() || !gui.chinese_enabled {
+                    (
+                        GuiEvent::Update {
+                            pinyin: "".into(),
+                            candidates: vec![],
+                            selected: 0, page: 0, total_pages: 0,
+                            sentence: "".into(), cursor_pos: 0,
+                            commit_mode: gui.commit_mode.clone(),
+                        },
+                        CandContent::default(),
+                    )
                 } else {
                     let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
                         let full_display = if c.is_fuzzy {
@@ -272,18 +296,42 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                             is_fuzzy: c.is_fuzzy,
                         }
                     }).collect();
-                    GuiEvent::Update {
-                        pinyin: gui.pinyin.clone(),
-                        candidates,
-                        selected: gui.selected,
-                        page: gui.page,
-                        total_pages: gui.total_pages,
-                        sentence: gui.sentence.clone(),
-                        cursor_pos: gui.cursor_pos,
-                        commit_mode: gui.commit_mode,
-                    }
+                    let cand_items: Vec<CandItem> = gui.candidates.iter().map(|c| CandItem {
+                        label: c.label.clone(),
+                        text: c.text.clone(),
+                        hint: c.hint.clone(),
+                    }).collect();
+                    (
+                        GuiEvent::Update {
+                            pinyin: gui.pinyin.clone(),
+                            candidates,
+                            selected: gui.selected,
+                            page: gui.page,
+                            total_pages: gui.total_pages,
+                            sentence: gui.sentence.clone(),
+                            cursor_pos: gui.cursor_pos,
+                            commit_mode: gui.commit_mode.clone(),
+                        },
+                        CandContent {
+                            pinyin: gui.pinyin.clone(),
+                            candidates: cand_items,
+                            selected: gui.selected,
+                        },
+                    )
                 };
-                let _ = state.gui_tx.send(update);
+                state.refresh_candidates(cand_content, qh);
+                if state.cand_popup.is_some() {
+                    // 自绘候选框已接管显示，给 GUI 子进程送空更新避免出现重复候选窗
+                    let _ = state.gui_tx.send(GuiEvent::Update {
+                        pinyin: String::new(),
+                        candidates: vec![],
+                        selected: 0, page: 0, total_pages: 0,
+                        sentence: String::new(), cursor_pos: 0,
+                        commit_mode: gui.commit_mode.clone(),
+                    });
+                } else {
+                    let _ = state.gui_tx.send(update);
+                }
 
                 // Apply action + preedit in a single commit
                 Self::apply_state(state, &action, conn, utf8_text, key, time, &gui.pinyin);
@@ -334,10 +382,154 @@ impl Dispatch<ZwpVirtualKeyboardV1, WlUser> for WlState {
     }
 }
 
+impl Dispatch<WlCompositor, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlCompositor,
+        _: <WlCompositor as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlShm, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlShm,
+        _: <WlShm as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlShmPool, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlShmPool,
+        _: <WlShmPool as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<WlBuffer, WlUser> for WlState {
+    fn event(
+        state: &mut Self,
+        proxy: &WlBuffer,
+        event: <WlBuffer as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        if matches!(event, wl_buffer::Event::Release) {
+            if let Some(pos) = state.cand_live_buffers.iter().position(|b| b.id() == proxy.id()) {
+                let buf = state.cand_live_buffers.swap_remove(pos);
+                buf.destroy();
+            }
+        }
+    }
+}
+
+impl Dispatch<WlSurface, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &WlSurface,
+        _: <WlSurface as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+    }
+}
+
+impl Dispatch<ZwpInputPopupSurfaceV2, WlUser> for WlState {
+    fn event(
+        _state: &mut Self,
+        _: &ZwpInputPopupSurfaceV2,
+        event: <ZwpInputPopupSurfaceV2 as Proxy>::Event,
+        _: &WlUser,
+        _: &Connection,
+        _: &QueueHandle<Self>,
+    ) {
+        use wayland_protocols_misc::zwp_input_method_v2::client::zwp_input_popup_surface_v2::Event;
+        if let Event::TextInputRectangle { x, y, width, height } = event {
+            log::debug!(
+                "[WaylandIM v2] text_input_rectangle: x={x} y={y} {}x{}",
+                width,
+                height
+            );
+        }
+    }
+}
+
 const WL_KEYMAP_FORMAT_XKB_V1: u32 = 1;
 const DEACTIVATE_DEBOUNCE: Duration = Duration::from_millis(180);
 
 impl WlState {
+    fn candidates_enabled(&self) -> bool {
+        let cfg = match self.config.read() {
+            Ok(c) => c,
+            Err(e) => e.into_inner(),
+        };
+        cfg.appearance.show_candidates && cfg.linux.show_slint_window
+    }
+
+    /// 依据当前配置与候选内容刷新自绘候选框。
+    ///
+    /// v2 的 `zwp_input_popup_surface_v2` 由合成器锚定到文本光标处，
+    /// 因此这里只需贴图/清空，无需自己计算坐标。
+    fn refresh_candidates(&mut self, content: CandContent, qh: &QueueHandle<Self>) {
+        let surface = match self.cand_surface.clone() {
+            Some(s) => s,
+            None => return,
+        };
+
+        let visible = self.active && !content.pinyin.is_empty() && self.candidates_enabled();
+
+        if !visible {
+            if self.cand_visible {
+                surface.attach(None, 0, 0);
+                let _ = surface.commit();
+                self.cand_visible = false;
+            }
+            self.cand_w = 0;
+            self.cand_h = 0;
+            return;
+        }
+
+        let cfg = match self.config.read() {
+            Ok(c) => c.clone(),
+            Err(e) => e.into_inner().clone(),
+        };
+        let style = CandStyle::from_config(&cfg);
+        let (pixels, width, height) = match super::wayland_candidates::render(&style, &content) {
+            Some(v) => v,
+            None => return,
+        };
+        let shm = match self.cand_shm.clone() {
+            Some(s) => s,
+            None => return,
+        };
+        let buffer = match upload_shm(&shm, qh, &pixels, width, height) {
+            Some(b) => b,
+            None => return,
+        };
+
+        surface.attach(Some(&buffer), 0, 0);
+        surface.damage(0, 0, width, height);
+        let _ = surface.commit();
+        self.cand_w = width;
+        self.cand_h = height;
+        self.cand_visible = true;
+        self.cand_live_buffers.push(buffer);
+    }
+
     fn setup_virtual_keyboard(&mut self, qh: &QueueHandle<Self>) {
         let (Some(manager), Some(seat)) = (&self.virtual_keyboard_manager, &self.seat) else {
             return;
@@ -454,6 +646,10 @@ impl WlState {
         _time: u32,
         preedit: &str,
     ) {
+        let show_preedit = match state.config.read() {
+            Ok(c) => c.linux.show_preedit,
+            Err(e) => e.into_inner().linux.show_preedit,
+        };
         let im = match state.input_method.as_ref() {
             Some(im) => im,
             None => return,
@@ -488,6 +684,7 @@ impl WlState {
         }
 
         // Set preedit string
+        let preedit = if show_preedit { preedit } else { "" };
         if preedit.is_empty() {
             im.set_preedit_string(String::new(), 0, 0);
         } else {
@@ -518,6 +715,49 @@ impl WlState {
     }
 }
 
+fn upload_shm(
+    shm: &WlShm,
+    qh: &QueueHandle<WlState>,
+    pixels: &[u8],
+    width: i32,
+    height: i32,
+) -> Option<WlBuffer> {
+    let stride = width * 4;
+    let size = stride as usize * height as usize;
+    if pixels.len() < size {
+        return None;
+    }
+    let name = CString::new("qianyan-cand").ok()?;
+    let fd = unsafe { libc::memfd_create(name.as_ptr(), libc::MFD_CLOEXEC) };
+    if fd < 0 {
+        return None;
+    }
+    let owned = unsafe { OwnedFd::from_raw_fd(fd) };
+    if unsafe { libc::ftruncate(owned.as_raw_fd(), size as libc::off_t) } != 0 {
+        return None;
+    }
+    let ptr = unsafe {
+        libc::mmap(
+            std::ptr::null_mut(),
+            size,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_SHARED,
+            owned.as_raw_fd(),
+            0,
+        )
+    };
+    if ptr == libc::MAP_FAILED {
+        return None;
+    }
+    unsafe { std::ptr::copy_nonoverlapping(pixels.as_ptr(), ptr as *mut u8, size) };
+    unsafe { libc::munmap(ptr, size) };
+
+    let pool = shm.create_pool(owned.as_fd(), size as i32, qh, WlUser);
+    let buffer = pool.create_buffer(0, width, height, stride, wl_shm::Format::Argb8888, qh, WlUser);
+    pool.destroy();
+    Some(buffer)
+}
+
 pub struct WaylandInputHost {
     processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
@@ -525,6 +765,7 @@ pub struct WaylandInputHost {
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
     conn: Connection,
+    config: Arc<RwLock<Config>>,
 }
 
 impl InputMethodHost for WaylandInputHost {
@@ -566,6 +807,27 @@ impl InputMethodHost for WaylandInputHost {
 
         let input_method: ZwpInputMethodV2 = im_manager.get_input_method(&seat, &qh, WlUser);
 
+        // 自绘候选框：用 wl_shm 渲染，创建 `input_popup` 角色表面，
+        // 由合成器锚定到当前文本光标，实现候选框跟随光标。
+        let cand_compositor: Option<WlCompositor> = globals.bind(&qh, 1..=6, WlUser).ok();
+        let cand_shm: Option<WlShm> = globals.bind(&qh, 1..=1, WlUser).ok();
+        let (cand_surface, cand_popup) = match (cand_compositor.as_ref(), cand_shm.as_ref()) {
+            (Some(comp), Some(_)) => {
+                let surface = comp.create_surface(&qh, WlUser);
+                let popup = input_method.get_input_popup_surface(&surface, &qh, WlUser);
+                info!("[WaylandIM v2] candidate popup surface created (cursor-follow)");
+                (Some(surface), Some(popup))
+            }
+            _ => {
+                info!(
+                    "[WaylandIM v2] popup surface unavailable (compositor={} shm={}); falling back to GUI subprocess",
+                    cand_compositor.is_some(),
+                    cand_shm.is_some()
+                );
+                (None, None)
+            }
+        };
+
         self.running.store(true, Ordering::SeqCst);
         info!("[WaylandIM] connected, input_method obtained");
 
@@ -599,6 +861,14 @@ impl InputMethodHost for WaylandInputHost {
             seat: Some(seat),
             held_keys: HashSet::new(),
             mods_depressed: 0,
+            config: self.config.clone(),
+            cand_surface,
+            cand_popup,
+            cand_shm,
+            cand_visible: false,
+            cand_w: 0,
+            cand_h: 0,
+            cand_live_buffers: Vec::new(),
         };
 
         if let Err(e) = event_queue.roundtrip(&mut state) {
@@ -652,6 +922,7 @@ impl WaylandInputHost {
         tray_tx: Sender<TrayEvent>,
         conn: Connection,
         enable_vkbd: bool,
+        config: Arc<RwLock<Config>>,
     ) -> Self {
         let vkbd = if enable_vkbd {
             Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))
@@ -665,6 +936,7 @@ impl WaylandInputHost {
             running: Arc::new(AtomicBool::new(false)),
             vkbd,
             conn,
+            config,
         }
     }
 
