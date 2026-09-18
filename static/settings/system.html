@@ -83,6 +83,10 @@
                 <label class="switch"><input type="checkbox" id="linux_show_toggle_notification"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
+                <div class="info"><div class="title">拼音预览</div><div class="desc">在输入框中内联显示正在输入的拼音串；若某些应用出现拼音残留可关闭</div></div>
+                <label class="switch"><input type="checkbox" id="linux_show_preedit"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">编辑器预览模式</div><div class="desc">在编辑器中实时展示的内容：无预览、汉字预览或拼音预览</div></div>
                 <select id="phantom_type" class="select-input">
                     <option value="None">无预览</option>
@@ -162,6 +166,7 @@
             bindInput('files_data_dir', 'files', 'data_dir');
 
             bindInput('linux_show_toggle_notification', 'linux', 'show_toggle_notification');
+            bindInput('linux_show_preedit', 'linux', 'show_preedit');
             bindInput('phantom_type', 'input');
             bindInput('phantom_separator', 'input');
             bindInput('linux_fixed_position', 'linux', 'fixed_position');

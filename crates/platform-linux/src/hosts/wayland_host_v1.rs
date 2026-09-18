@@ -240,14 +240,19 @@ impl WlState {
         let _ = conn.flush();
     }
 
-    fn send_preedit(&self) {
-        // Wayland v1 (KWin virtual keyboard) 下不做拼音预览：preedit 在部分应用里
-        // 会残留在文本框中。这里仅持续清空 preedit，输入反馈交给候选窗口。
+    fn send_preedit(&self, text: &str) {
+        // 在目标文本框内联显示拼音预览（preedit）。部分应用对 preedit 支持不佳，
+        // 因此提供 linux.show_preedit 开关，关闭时始终发送空串以清空。
         let ctx = match self.context.as_ref() {
             Some(c) => c,
             None => return,
         };
-        ctx.preedit_string(self.context_serial, String::new(), String::new());
+        let enabled = match self.config.read() {
+            Ok(c) => c.linux.show_preedit,
+            Err(e) => e.into_inner().linux.show_preedit,
+        };
+        let preedit = if enabled { text.to_string() } else { String::new() };
+        ctx.preedit_string(self.context_serial, preedit, String::new());
     }
 
     fn forward_modifiers(
@@ -466,7 +471,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 // 否则 commit 后会拿到上屏前的旧候选，导致候选框不消失。
                 state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
 
-                let (update, _preedit, cand_content) = if let Some(gui) = state.processor.get_gui_snapshot() {
+                let (update, preedit, cand_content) = if let Some(gui) = state.processor.get_gui_snapshot() {
                     if gui.pinyin.is_empty() || !gui.chinese_enabled {
                         (GuiEvent::Update {
                             pinyin: "".into(),
@@ -526,7 +531,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 state.refresh_candidates(cand_content, qh);
                 let _ = state.gui_tx.send(update);
 
-                state.send_preedit();
+                state.send_preedit(&preedit);
                 let _ = conn.flush();
             }
             wl_keyboard::Event::Modifiers {

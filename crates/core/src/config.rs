@@ -32,6 +32,8 @@ pub struct LinuxConfig {
     pub backspace_delay_ms: u64,
     #[serde(default = "default_true")]
     pub show_slint_window: bool,
+    #[serde(default = "default_true")]
+    pub show_preedit: bool,
     #[serde(default)]
     pub show_notification: bool,
     #[serde(default)]
@@ -1463,6 +1465,7 @@ impl Config {
                 clipboard_delay_ms: 50,
                 backspace_delay_ms: 10,
                 show_slint_window: true,
+                show_preedit: true,
                 show_notification: false,
                 show_toggle_notification: false,
                 fixed_position: true,
