@@ -154,6 +154,80 @@ pub fn key_to_char(key: VirtualKey, shift: bool, caps_lock: bool) -> Option<char
     }
 }
 
+/// 判断热键字符串（如 `Ctrl+Shift+F`）是否与当前按键状态匹配。
+/// 修饰键需要严格一致；目标键支持字母、数字、符号以及 Space/Tab/CapsLock。
+/// 非修饰键只能出现在末尾，因此像旧的 `CapsLock+F` 这类配置不会被误判成单独的 F。
+pub fn hotkey_matches(binding: &str, key: VirtualKey, ctrl: bool, alt: bool, shift: bool) -> bool {
+    let parts: Vec<&str> = binding
+        .split('+')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .collect();
+    if parts.is_empty() {
+        return false;
+    }
+
+    let mut req_ctrl = false;
+    let mut req_alt = false;
+    let mut req_shift = false;
+    let mut target: Option<&str> = None;
+    let last = parts.len() - 1;
+
+    for (i, part) in parts.iter().enumerate() {
+        match part.to_ascii_lowercase().as_str() {
+            "ctrl" | "control" => {
+                if i == last {
+                    return false;
+                }
+                req_ctrl = true;
+            }
+            "alt" | "option" => {
+                if i == last {
+                    return false;
+                }
+                req_alt = true;
+            }
+            "shift" => {
+                if i == last {
+                    return false;
+                }
+                req_shift = true;
+            }
+            _ => {
+                if i != last {
+                    return false;
+                }
+                target = Some(part);
+            }
+        }
+    }
+
+    if req_ctrl != ctrl || req_alt != alt || req_shift != shift {
+        return false;
+    }
+
+    let Some(target) = target else {
+        return false;
+    };
+
+    if target.eq_ignore_ascii_case("space") {
+        return key == VirtualKey::Space;
+    }
+    if target.eq_ignore_ascii_case("tab") {
+        return key == VirtualKey::Tab;
+    }
+    if target.eq_ignore_ascii_case("capslock") {
+        return key == VirtualKey::CapsLock;
+    }
+
+    if let Some(c) = target.chars().next() {
+        if let Some(k) = key_to_char(key, false, false) {
+            return k.eq_ignore_ascii_case(&c);
+        }
+    }
+    false
+}
+
 pub fn get_punctuation_key(key: VirtualKey, shift: bool) -> Option<&'static str> {
     match (key, shift) {
         (VirtualKey::Space, _) => Some(" "),
@@ -213,4 +287,31 @@ pub fn strip_tones(s: &str) -> String {
         }
     }
     res
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hotkey_matches_modifiers_strictly() {
+        assert!(hotkey_matches("Ctrl+Shift+F", VirtualKey::F, true, false, true));
+        // 缺少或多余的修饰键都不匹配
+        assert!(!hotkey_matches("Ctrl+Shift+F", VirtualKey::F, true, false, false));
+        assert!(!hotkey_matches("Ctrl+Shift+F", VirtualKey::F, false, false, true));
+        assert!(!hotkey_matches("Ctrl+Shift+F", VirtualKey::G, true, false, true));
+    }
+
+    #[test]
+    fn hotkey_matches_named_keys() {
+        assert!(hotkey_matches("Ctrl+Space", VirtualKey::Space, true, false, false));
+        assert!(hotkey_matches("Tab", VirtualKey::Tab, false, false, false));
+        assert!(hotkey_matches("CapsLock", VirtualKey::CapsLock, false, false, false));
+    }
+
+    #[test]
+    fn legacy_capslock_plus_f_binding_never_matches_plain_f() {
+        // 旧的 "CapsLock+F" 配置非修饰键不在末尾，绝不能退化成普通 F 触发
+        assert!(!hotkey_matches("CapsLock+F", VirtualKey::F, false, false, false));
+    }
 }

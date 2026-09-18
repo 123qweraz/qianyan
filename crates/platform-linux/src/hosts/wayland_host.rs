@@ -234,10 +234,9 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 state.send_keystroke_event();
 
                 if key_state == WEnum::Value(KeyState::Released) {
-                    // 通知引擎按键释放，更新内部按键状态（CapsLock 组合态、tab_down 等）。
-                    // 与 v1/evdev 保持一致：release 不下发会让 `capslock_combo_active`
-                    // 永久残留，之后普通按 F 会误触发 CapsLock+F 繁简/中英切换，
-                    // 表现为“按 f 把输入法关掉”。
+                    // 通知引擎按键释放，更新内部按键状态（Shift 组合态、tab_down 等）。
+                    // 与 v1/evdev 保持一致：release 不下发会让 `shift_used_as_modifier`
+                    // 等状态残留，之后会误判 Shift 单击/组合，表现为异常切换。
                     if let Some((vk, _)) = state.resolve_key(key) {
                         let (shift, ctrl, alt) = state.modifier_flags();
                         let _ = state.processor.handle_key(vk, 0, shift, ctrl, alt, false);

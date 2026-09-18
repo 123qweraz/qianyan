@@ -15,7 +15,7 @@
         <div class="note">
             <strong>💡 说明</strong><br>
             • 按键名称使用标准名称，多个按键用逗号分隔（如 <code>Up,PageUp,-</code>）<br>
-            • 组合键使用 <code>+</code> 连接（如 <code>CapsLock+F</code>）<br>
+            • 组合键使用 <code>+</code> 连接（如 <code>Ctrl+Shift+F</code>）<br>
             • Tab 导航模式快捷键说明见 <a href="/static/settings/nav_mode.html" style="color:var(--apple-accent);">导航模式帮助</a>
         </div>
 
@@ -77,12 +77,16 @@
                 <label class="switch"><input type="checkbox" id="enable_ctrl_space_toggle"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
+                <div class="info"><div class="title">Shift 单击切换中/英文</div><div class="desc">不与其他键组合、单独按一下 Shift 时切换中英文</div></div>
+                <label class="switch"><input type="checkbox" id="enable_shift_toggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-item">
                 <div class="info"><div class="title">Ctrl + CapsLock 强制切英文并上屏</div><div class="desc">有拼音内容时直接上屏并切换至英文模式</div></div>
                 <label class="switch"><input type="checkbox" id="enable_ctrl_capslock_commit"><span class="slider"></span></label>
             </div>
             <div class="setting-item">
                 <div class="info"><div class="title">繁简体切换快捷键</div><div class="desc">按快捷键切换繁简体输出（需先开启繁体输出开关）</div></div>
-                <input type="text" id="toggle_traditional_input" style="width:200px;text-align:right;" placeholder="CapsLock+F">
+                <input type="text" id="toggle_traditional_input" style="width:200px;text-align:right;" placeholder="Ctrl+Shift+F">
             </div>
         </div>
 
@@ -99,6 +103,7 @@
         async function init() {
             await loadConfig();
             bindInput('enable_ctrl_space_toggle', 'hotkeys');
+            bindInput('enable_shift_toggle', 'hotkeys');
             bindInput('enable_ctrl_capslock_commit', 'hotkeys');
 
             document.getElementById('page_up_input').value = (config.hotkeys.page_up || []).join(', ');
@@ -110,7 +115,7 @@
             document.getElementById('nav_delete_input').value = (config.hotkeys.nav_delete || []).join(', ');
             document.getElementById('nav_fuzzy_input').value = (config.hotkeys.nav_fuzzy || []).join(', ');
             document.getElementById('nav_clear_input').value = (config.hotkeys.nav_clear || []).join(', ');
-            document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'CapsLock+F';
+            document.getElementById('toggle_traditional_input').value = config.hotkeys.toggle_traditional?.key || 'Ctrl+Shift+F';
         }
 
         async function save() {
@@ -132,7 +137,7 @@
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.nav_clear = document.getElementById('nav_clear_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
-            config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'CapsLock+F';
+            config.hotkeys.toggle_traditional.key = document.getElementById('toggle_traditional_input').value.trim() || 'Ctrl+Shift+F';
             await saveConfig();
         }
 

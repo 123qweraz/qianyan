@@ -625,6 +625,8 @@ pub struct Hotkeys {
     pub next_candidate: Vec<String>,
     pub enable_tab_toggle: bool,
     pub enable_ctrl_space_toggle: bool,
+    #[serde(default = "default_enable_shift_toggle")]
+    pub enable_shift_toggle: bool,
     pub enable_ctrl_capslock_commit: bool,
     #[serde(default = "default_toggle_traditional")]
     pub toggle_traditional: Hotkey,
@@ -660,9 +662,13 @@ fn default_word_to_char_shift() -> Vec<String> {
 
 fn default_toggle_traditional() -> Hotkey {
     Hotkey {
-        key: "CapsLock+F".to_string(),
+        key: "Ctrl+Shift+F".to_string(),
         description: "繁简体切换".to_string(),
     }
+}
+
+fn default_enable_shift_toggle() -> bool {
+    true
 }
 
 fn default_segmentation_delimiters() -> String {
@@ -1058,6 +1064,17 @@ impl Config {
             }
         }
 
+        // 兼容旧版：繁简切换默认快捷键由 CapsLock+F 调整为 Ctrl+Shift+F
+        if let Some(key) = merged
+            .get_mut("hotkeys")
+            .and_then(|h| h.get_mut("toggle_traditional"))
+            .and_then(|t| t.get_mut("key"))
+        {
+            if key.as_str() == Some("CapsLock+F") {
+                *key = Value::String("Ctrl+Shift+F".to_string());
+            }
+        }
+
         serde_json::from_value(merged).unwrap_or_else(|e| {
             log::warn!("Config::load: 配置合并反序列化失败: {:?}，使用默认配置", e);
             Self::default_config()
@@ -1425,9 +1442,10 @@ impl Config {
                 next_candidate: vec!["Right".into()],
                 enable_tab_toggle: false,
                 enable_ctrl_space_toggle: false,
+                enable_shift_toggle: true,
                 enable_ctrl_capslock_commit: true,
                 toggle_traditional: Hotkey {
-                    key: "CapsLock+F".to_string(),
+                    key: "Ctrl+Shift+F".to_string(),
                     description: "繁简体切换".to_string(),
                 },
                 word_to_char: vec![

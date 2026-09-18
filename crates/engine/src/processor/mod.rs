@@ -224,6 +224,16 @@ impl Processor {
             }
         }
 
+        // 记录 Shift 是否被用作修饰键：只要在按住 Shift 期间按下了其它键，
+        // 本次 Shift 就视为组合键，只有单独轻按 Shift 才用于切换中/英文。
+        if is_press {
+            if key == VirtualKey::Shift {
+                self.ctx.session.shift_used_as_modifier = false;
+            } else if shift_pressed {
+                self.ctx.session.shift_used_as_modifier = true;
+            }
+        }
+
         // 自动切回英文：中文模式下长时间无按键操作后自动切换。
         // 仅在无未上屏拼音（buffer 为空）时才可能触发；打字时每次按键都会刷新
         // 活动时间，且组句过程中绝不切换，避免打断并清空正在输入的拼音。
@@ -242,19 +252,6 @@ impl Processor {
             self.ctx.session_state.last_ime_activity = Instant::now();
         }
 
-        // CapsLock+F 组合键：繁简体切换
-        if is_press && key == VirtualKey::F && self.ctx.session_state.capslock_combo_active {
-            self.ctx.session_state.capslock_combo_active = false;
-            // 撤销 CapsLock 按下的语言切换（仅当它真的切换过；有内容时未切，不能误关 IME）
-            if self.ctx.session_state.capslock_switched_language {
-                self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
-            }
-            self.ctx.session_state.capslock_switched_language = false;
-            self.ctx.session_state.traditional_enabled = !self.ctx.session_state.traditional_enabled;
-            let mode = if self.ctx.session_state.traditional_enabled { "繁體" } else { "简体" };
-            return Action::Notify(mode.into(), format!("切換至 {} 模式", mode));
-        }
-
         // 跟踪 Tab 键状态，用于以词定字（Tab + 键）
         if key == VirtualKey::Tab {
             if is_press {
@@ -266,7 +263,7 @@ impl Processor {
         }
 
         if is_press {
-            if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, shift_pressed) {
+            if let Some(action) = self.handle_global_hotkey(key, ctrl_pressed, alt_pressed, shift_pressed) {
                 return action;
             }
 
@@ -316,13 +313,26 @@ impl Processor {
 
         if is_release && key == VirtualKey::CapsLock {
             self.ctx.session_state.capslock_down = false;
-            self.ctx.session_state.capslock_combo_active = false;
-            self.ctx.session_state.capslock_switched_language = false;
             // 只有与透传的按下配对的 release 才转发给系统（保持系统端键态对称），
             // 其余情况一律吞掉，防止注入系统从未见过的“孤儿 release”
             if self.ctx.session_state.capslock_passed_press {
                 self.ctx.session_state.capslock_passed_press = false;
                 return Action::PassThrough;
+            }
+            return Action::Consume;
+        }
+
+        // 单独轻按 Shift（未与其它键组合、且未在组句中）切换中/英文。
+        if is_release
+            && key == VirtualKey::Shift
+            && self.ctx.config.master_config.hotkeys.enable_shift_toggle
+            && !self.ctx.session.shift_used_as_modifier
+            && self.ctx.session.buffer.is_empty()
+        {
+            self.ctx.session.shift_used_as_modifier = false;
+            self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
+            if self.ctx.session_state.chinese_enabled {
+                self.ctx.session_state.last_ime_activity = Instant::now();
             }
             return Action::Consume;
         }
@@ -684,8 +694,31 @@ impl Processor {
         &mut self,
         key: VirtualKey,
         ctrl_pressed: bool,
+        alt_pressed: bool,
         shift_pressed: bool,
     ) -> Option<Action> {
+        // 繁简体切换（默认 Ctrl+Shift+F，可在设置中修改）
+        let toggle_traditional = self
+            .ctx
+            .config
+            .master_config
+            .hotkeys
+            .toggle_traditional
+            .key
+            .clone();
+        if hotkey_matches(
+            &toggle_traditional,
+            key,
+            ctrl_pressed,
+            alt_pressed,
+            shift_pressed,
+        ) {
+            self.ctx.session_state.traditional_enabled =
+                !self.ctx.session_state.traditional_enabled;
+            let mode = if self.ctx.session_state.traditional_enabled { "繁體" } else { "简体" };
+            return Some(Action::Notify(mode.into(), format!("切換至 {} 模式", mode)));
+        }
+
         if key == VirtualKey::Space
             && ctrl_pressed
             && self
@@ -747,8 +780,6 @@ impl Processor {
             if self.ctx.session_state.caps_lock_enabled && self.ctx.session.buffer.is_empty() {
                 self.ctx.session_state.caps_lock_enabled = false;
                 self.ctx.session_state.capslock_passed_press = true;
-                self.ctx.session_state.capslock_combo_active = true;
-                self.ctx.session_state.capslock_switched_language = true;
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
                 if self.ctx.session_state.chinese_enabled {
                     self.ctx.session_state.last_ime_activity = Instant::now();
@@ -756,18 +787,14 @@ impl Processor {
                 return Some(Action::PassThrough);
             }
 
-            self.ctx.session_state.capslock_combo_active = true;
-
             // 单击 CapsLock -> 切换中英文模式；有内容时只设置 capslock_down
             if self.ctx.session.buffer.is_empty() {
-                self.ctx.session_state.capslock_switched_language = true;
                 self.ctx.session_state.chinese_enabled = !self.ctx.session_state.chinese_enabled;
                 if self.ctx.session_state.chinese_enabled {
                     self.ctx.session_state.last_ime_activity = Instant::now();
                 }
                 return Some(Action::Consume);
             } else {
-                self.ctx.session_state.capslock_switched_language = false;
                 self.ctx.session_state.capslock_down = true;
                 return Some(Action::Consume);
             }

@@ -71,10 +71,6 @@ pub struct SessionState {
     /// 上一次 CapsLock 按下是否已透传给系统（用于对称转发与之配对的 release）
     pub capslock_passed_press: bool,
     pub capslock_down: bool,
-    pub capslock_combo_active: bool,
-    /// 本次 CapsLock 按下是否真的切换了中/英文（buffer 为空才切）。
-    /// CapsLock+F 撤销语言切换时只有它是 true 才需要回退。
-    pub capslock_switched_language: bool,
     /// Tab 键是否被按下，用于以词定字（Tab + 键）
     pub tab_down: bool,
     /// 组句外退格累计删掉的字符数（自最近一次上屏后），用于退格撤销误学习
@@ -101,8 +97,6 @@ impl SessionState {
             caps_lock_enabled: false,
             capslock_passed_press: false,
             capslock_down: false,
-            capslock_combo_active: false,
-            capslock_switched_language: false,
             tab_down: false,
             pending_backspaces: 0,
             recent_commits: VecDeque::new(),
