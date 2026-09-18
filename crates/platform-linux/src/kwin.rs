@@ -56,8 +56,13 @@ fn ensure_kde_virtual_keyboard_desktop() -> Result<PathBuf, String> {
 
     let exe = std::env::current_exe()
         .map_err(|e| format!("无法获取当前可执行文件路径: {e}"))?;
-    let exec_cmd = format!("{} --backend=wayland", exe.display());
-    let exec_value = desktop_exec_value(&exec_cmd);
+    // 只对可执行文件路径做 quoting，参数必须留在引号之外：
+    // KWin 用 KShell::splitArgs 解析 Exec，若把整条命令行包进引号会被当成
+    // 单个可执行文件名（含空格）导致 QProcess 启动失败（且 KWin 静默忽略）。
+    let exec_value = format!(
+        "{} --backend=wayland",
+        desktop_exec_value(&exe.display().to_string())
+    );
 
     let desktop_file = applications_dir.join("qianyan-ime-wayland-launcher.desktop");
     let content = format!(
@@ -119,4 +124,32 @@ pub fn configure_kde_virtual_keyboard() -> Result<(), String> {
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exec_value_leaves_plain_path_unquoted() {
+        assert_eq!(desktop_exec_value("/usr/bin/qianyan-ime"), "/usr/bin/qianyan-ime");
+    }
+
+    #[test]
+    fn exec_value_quotes_only_path_with_spaces() {
+        assert_eq!(
+            desktop_exec_value("/opt/my dir/qianyan-ime"),
+            "\"/opt/my dir/qianyan-ime\""
+        );
+    }
+
+    #[test]
+    fn exec_line_arguments_stay_outside_quotes() {
+        let exec_value = format!(
+            "{} --backend=wayland",
+            desktop_exec_value("/opt/my dir/qianyan-ime")
+        );
+        assert_eq!(exec_value, "\"/opt/my dir/qianyan-ime\" --backend=wayland");
+        assert!(!exec_value.starts_with("\"/opt/my dir/qianyan-ime --backend=wayland\""));
+    }
 }
