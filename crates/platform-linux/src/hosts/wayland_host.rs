@@ -126,12 +126,12 @@ impl Dispatch<ZwpInputMethodV2, WlUser> for WlState {
                 info!("[WaylandIM] activated");
                 state.active = true;
                 state.deactivate_deadline = None;
+                // 激活即 grab 键盘以接收按键（无 grab 合成器不会把按键交给 IME）。
+                // 不再在 activate 时提交空 preedit+commit：对齐 fcitx5 行为，
+                // 激活瞬间的额外提交会触发 COSMIC 焦点抖动/上下文菜单关闭。
                 if let Some(ref im) = state.input_method {
                     let grab = im.grab_keyboard(qh, WlUser);
                     state.keyboard_grab = Some(grab);
-                    im.set_preedit_string(String::new(), 0, 0);
-                    im.commit(state.serial);
-                    let _ = conn.flush();
                 }
                 state.setup_virtual_keyboard(qh);
                 state.refresh_candidates(CandContent::default(), qh);
@@ -827,26 +827,11 @@ impl InputMethodHost for WaylandInputHost {
 
         let input_method: ZwpInputMethodV2 = im_manager.get_input_method(&seat, &qh, WlUser);
 
-        // 自绘候选框：用 wl_shm 渲染，创建 `input_popup` 角色表面，
-        // 由合成器锚定到当前文本光标，实现候选框跟随光标。
-        let cand_compositor: Option<WlCompositor> = globals.bind(&qh, 1..=6, WlUser).ok();
-        let cand_shm: Option<WlShm> = globals.bind(&qh, 1..=1, WlUser).ok();
-        let (cand_surface, cand_popup) = match (cand_compositor.as_ref(), cand_shm.as_ref()) {
-            (Some(comp), Some(_)) => {
-                let surface = comp.create_surface(&qh, WlUser);
-                let popup = input_method.get_input_popup_surface(&surface, &qh, WlUser);
-                info!("[WaylandIM v2] candidate popup surface created (cursor-follow)");
-                (Some(surface), Some(popup))
-            }
-            _ => {
-                info!(
-                    "[WaylandIM v2] popup surface unavailable (compositor={} shm={}); falling back to GUI subprocess",
-                    cand_compositor.is_some(),
-                    cand_shm.is_some()
-                );
-                (None, None)
-            }
-        };
+        // 自绘 candidate input popup (input_popup_surface_v2) 在 COSMIC 下不会被映射，
+        // 在 KWin 下行为也不稳定；统一不创建，改由 GUI 子进程（gtk layer-shell）
+        // 显示候选窗，KWin/COSMIC 均可用。若后续需要跟随光标的窗口，
+        // 参考 yinxing 用 wlr-layer-shell 自绘自锚定实现。
+        let (cand_surface, cand_popup): (Option<WlSurface>, Option<ZwpInputPopupSurfaceV2>) = (None, None);
 
         self.running.store(true, Ordering::SeqCst);
         info!("[WaylandIM] connected, input_method obtained");
@@ -884,7 +869,7 @@ impl InputMethodHost for WaylandInputHost {
             config: self.config.clone(),
             cand_surface,
             cand_popup,
-            cand_shm,
+            cand_shm: None,
             cand_visible: false,
             cand_w: 0,
             cand_h: 0,
