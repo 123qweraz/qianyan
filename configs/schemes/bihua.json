@@ -1,0 +1,18 @@
+{
+  "id": "bihua",
+  "label": "逐笔笔画",
+  "engine": "bihua",
+  "dict": "bihua",
+  "display": [
+    "char",
+    "stroke_aux"
+  ],
+  "aux_filter": "stroke",
+  "annotation": {
+    "file": "",
+    "table_name": "",
+    "doc_type": "",
+    "disabled": false
+  },
+  "aux_dicts": []
+}

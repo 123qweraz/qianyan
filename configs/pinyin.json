@@ -56,7 +56,7 @@
     ],
     "double_taps": [],
     "enable_abbreviation_matching": true,
-    "enable_auto_english": true,
+    "enable_auto_english": false,
     "enable_caps_selection": true,
     "enable_double_tap": false,
     "enable_english_filter": true,

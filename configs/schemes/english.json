@@ -1,0 +1,15 @@
+{
+  "id": "english",
+  "label": "英文",
+  "engine": "english",
+  "dict": "english",
+  "display": null,
+  "aux_filter": null,
+  "annotation": {
+    "file": "",
+    "table_name": "",
+    "doc_type": "",
+    "disabled": false
+  },
+  "aux_dicts": []
+}

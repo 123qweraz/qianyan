@@ -1,0 +1,18 @@
+{
+  "id": "stroke",
+  "label": "笔顺码",
+  "engine": "stroke",
+  "dict": "stroke",
+  "display": [
+    "char",
+    "stroke_aux"
+  ],
+  "aux_filter": "stroke",
+  "annotation": {
+    "file": "",
+    "table_name": "",
+    "doc_type": "",
+    "disabled": false
+  },
+  "aux_dicts": []
+}
