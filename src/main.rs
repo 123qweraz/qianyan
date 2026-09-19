@@ -509,23 +509,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 在 KDE 上自动注册虚拟键盘，以便 KWin 通过 WAYLAND_SOCKET 启动输入法
     #[cfg(target_os = "linux")]
-    let is_kwin_vk = {
+    let (is_kwin_vk, kwin_registered) = {
         // 必须在 create_input_host 之前读取：wayland-client 的 connect_to_env()
         // 会消费并移除 WAYLAND_SOCKET，之后再判断就永远为 false。
         let is_kwin_vk = qianyan_ime_linux::kwin::is_kwin_virtual_keyboard();
-        if qianyan_ime_linux::kwin::is_kde_session() && !is_kwin_vk {
+        let kwin_registered = if qianyan_ime_linux::kwin::is_kde_session() && !is_kwin_vk {
             match qianyan_ime_linux::kwin::configure_kde_virtual_keyboard() {
                 Ok(()) => {
                     log::info!(
                         "[Main] KWin 虚拟键盘已注册。重新登入 Wayland 会话或执行 \
                          'kwin_x11 --replace && kwin_wayland --replace' 后生效。"
                     );
+                    true
                 }
-                Err(e) => log::warn!("[Main] KWin 虚拟键盘注册失败: {e}"),
+                Err(e) => {
+                    log::warn!("[Main] KWin 虚拟键盘注册失败: {e}");
+                    false
+                }
             }
-        }
-        is_kwin_vk
+        } else {
+            false
+        };
+        (is_kwin_vk, kwin_registered)
     };
+
+    // 手动直接启动时自动交给 KWin：注册后请求 reconfigure 并退出，让 KWin 以
+    // 私有 socket（WAYLAND_SOCKET）拉起 Wayland 模式实例，避免与 evdev 双实例抢键盘。
+    // 显式要求 evdev（--backend=evdev / 配置 backend_type=evdev）时不做交接。
+    #[cfg(target_os = "linux")]
+    {
+        let force_evdev = args.iter().any(|a| a == "--backend=evdev" || a == "evdev")
+            || config
+                .read()
+                .map(|c| c.linux.backend_type.as_str() == "evdev")
+                .unwrap_or(false);
+        if qianyan_ime_linux::kwin::is_kde_session() && !is_kwin_vk && kwin_registered && !force_evdev
+        {
+            println!(
+                "[Main] 已自动交给 KWin 管理（Wayland 模式）：聚焦文本框时 KWin 会自动启动输入法。\
+                 \n      若未自动启动，请执行 kwin_wayland --replace 一次使注册生效。"
+            );
+            return Ok(());
+        }
+    }
 
     #[cfg(target_os = "linux")]
     let host = qianyan_ime_linux::runtime::create_input_host(
