@@ -179,6 +179,9 @@ A: 访问 `http://localhost:18765`，在“双拼设置”中选择小鹤、自�
 **Q: 候选窗位置不准？**
 A: 不同的桌面环境（GNOME/KDE/Hyprland）对窗口定位支持不同，建议优先使用 Wayland 后端。
 
+**Q: COSMIC (cosmic-comp) 下右键菜单/下拉菜单弹不出来？**
+A: 这是 cosmic-comp 上游已知 bug（[pop-os/cosmic-comp#1763](https://github.com/pop-os/cosmic-comp/issues/1763)，smithay 侧修复见 [smithay#1845](https://github.com/Smithay/smithay/pull/1845)），**所有** Wayland 输入法（包括 fcitx5）都会触发：输入法为接收按键而 grab 键盘时，界面执行的 `xdg_popup.grab` 会被合成器拒绝，导致菜单立即关闭。临时解法：不需要菜单时暂时退出千言。上游合并修复后本问题自动消失，无需改动千言代码。
+
 ---
 
 ## 🤝 参与贡献
