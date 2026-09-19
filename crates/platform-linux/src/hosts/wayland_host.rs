@@ -197,26 +197,32 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 info!("[WaylandIM] received keymap (format={:?}, size={})", format, size);
                 let raw_fd = fd.into_raw_fd();
                 let mut file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
-                use std::io::Read;
+                use std::io::{Read, Seek, SeekFrom};
+                // 合成器（尤其 COSMIC）传回的 fd 偏移可能不在 0，read_to_end 会因此
+                // 读到空；先 seek 回文件头再读，与 v1 的实现保持一致。
                 let mut keymap_bytes = Vec::new();
-                if file.read_to_end(&mut keymap_bytes).is_ok() {
-                    let keymap_str = String::from_utf8_lossy(
-                        keymap_bytes.strip_suffix(&[0]).unwrap_or(&keymap_bytes),
-                    ).into_owned();
-                    if let Some(keymap) = xkb::Keymap::new_from_string(
-                        &state.xkb_context,
-                        keymap_str,
-                        xkb::KEYMAP_FORMAT_TEXT_V1,
-                        xkb::KEYMAP_COMPILE_NO_FLAGS,
-                    ) {
-                        state.xkb_state = Some(xkb::State::new(&keymap));
-                        info!("[WaylandIM] xkb keymap and state created successfully");
-                        state.install_virtual_keymap(&keymap_bytes);
-                    } else {
-                        error!("[WaylandIM] failed to create xkb keymap from string");
-                    }
+                if file.seek(SeekFrom::Start(0)).is_err()
+                    || file.read_to_end(&mut keymap_bytes).is_err()
+                    || keymap_bytes.is_empty()
+                {
+                    error!("[WaylandIM] failed to read keymap fd (size={size}, read={})", keymap_bytes.len());
+                    return;
+                }
+                while keymap_bytes.last().is_some_and(|b| *b == 0) {
+                    keymap_bytes.pop();
+                }
+                let keymap_str = String::from_utf8_lossy(&keymap_bytes).into_owned();
+                if let Some(keymap) = xkb::Keymap::new_from_string(
+                    &state.xkb_context,
+                    keymap_str,
+                    xkb::KEYMAP_FORMAT_TEXT_V1,
+                    xkb::KEYMAP_COMPILE_NO_FLAGS,
+                ) {
+                    state.xkb_state = Some(xkb::State::new(&keymap));
+                    info!("[WaylandIM] xkb keymap and state created successfully");
+                    state.install_virtual_keymap(&keymap_bytes);
                 } else {
-                    error!("[WaylandIM] failed to read keymap fd");
+                    error!("[WaylandIM] failed to create xkb keymap from string (size={})", keymap_bytes.len());
                 }
             }
             Event::Key { serial: _, time, key, state: key_state } => {
@@ -355,8 +361,12 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
-                if let Some(vk) = &state.virtual_keyboard {
-                    vk.modifiers(mods_depressed, mods_latched, mods_locked, group);
+                // 只有已安装 keymap 之后才能给虚拟键盘下发 modifiers，
+                // 否则某些合成器（如 COSMIC）会报 "modifiers sent before keymap"。
+                if state.keymap_installed {
+                    if let Some(vk) = &state.virtual_keyboard {
+                        vk.modifiers(mods_depressed, mods_latched, mods_locked, group);
+                    }
                 }
             }
             Event::RepeatInfo { rate: _, delay: _ } => {}
