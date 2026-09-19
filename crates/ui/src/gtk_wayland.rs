@@ -71,6 +71,7 @@ struct GtkWlState {
     last_x: i32,
     last_y: i32,
     window_visible: bool,
+    ever_mapped: bool,
     candidate_enabled: bool,
     screen_w: i32,
     screen_h: i32,
@@ -373,14 +374,27 @@ impl GtkWlState {
         self.window_visible = visible;
         if visible {
             update_screen_size(self);
+            // layer-shell 表面只在首次真正显示时映射一次，此后保持映射（见 hide 分支）。
+            if !self.ever_mapped {
+                self.window.set_visible(true);
+                self.ever_mapped = true;
+            }
             if self.config.as_ref().is_some_and(|c| c.linux.fixed_position) {
                 apply_corner_position(self);
             } else {
                 apply_cursor_position(self, self.last_x, self.last_y);
             }
-            self.window.set_visible(true);
         } else {
-            self.window.set_visible(false);
+            // 绝不调用 window.set_visible(false)（unmap）：gtk4-layer-shell 的
+            // 隐藏→再显示在 COSMIC/smithay 上会触发 GDK "Lost connection to
+            // Wayland compositor"，GUI 子进程随之退出，候选框整场消失。
+            // 改为保持映射但清空内容并缩到 1x1（KeyboardMode::None +
+            // exclusive_zone(0)，不会拦截按键/点击）。
+            self.pinyin_label.set_text("");
+            while let Some(child) = self.candidate_list.first_child() {
+                self.candidate_list.remove(&child);
+            }
+            self.window.set_default_size(1, 1);
         }
     }
 
@@ -433,6 +447,7 @@ fn run_gtk(rx: mpsc::Receiver<GtkCmd>, config: Box<Config>) {
         last_x: 0,
         last_y: 0,
         window_visible: false,
+        ever_mapped: false,
         candidate_enabled: true,
         screen_w: 1920,
         screen_h: 1080,
