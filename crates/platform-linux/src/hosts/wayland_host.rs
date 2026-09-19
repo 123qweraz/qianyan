@@ -494,7 +494,10 @@ impl WlState {
             Ok(c) => c,
             Err(e) => e.into_inner(),
         };
-        cfg.appearance.show_candidates && cfg.linux.show_slint_window
+        // 自绘候选框（zwp_input_popup_surface_v2）只受候选开关控制，
+        // 与 show_slint_window（旧的 GUI 候选窗口）无关：用户关掉 Slint 窗口后，
+        // 若还要求该开关为 true，自绘候选框也会一并消失。
+        cfg.appearance.show_candidates
     }
 
     /// 依据当前配置与候选内容刷新自绘候选框。
