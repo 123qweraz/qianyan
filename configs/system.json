@@ -47,7 +47,7 @@
     "phantom_type": "None"
   },
   "linux": {
-    "backend_type": "evdev",
+    "backend_type": "auto",
     "backspace_delay_ms": 3,
     "clipboard_delay_ms": 0,
     "corner": "bottom-right",

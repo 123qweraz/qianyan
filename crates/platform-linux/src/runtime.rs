@@ -3,6 +3,7 @@ use crate::hosts::vkbd::Vkbd;
 use crate::hosts::evdev_host;
 use crate::hosts::wayland_host::WaylandInputHost;
 use crate::hosts::wayland_host_v1::WaylandInputHostV1;
+use evdev::Device;
 use qianyan_ime_core::Config;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::processor::actor::ProcessorHandle;
@@ -80,48 +81,94 @@ pub fn create_input_host(
 
     // Try the primary backend, falling back through alternatives
     match backend {
-        BackendType::Wayland => {
-            // Try Wayland IM protocol first
-            match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
-                Ok(result) => return Ok(result),
-                Err(e) => println!("[Main] Wayland 不可用 ({}), 尝试 Evdev...", e),
-            }
-            // Fallback to Evdev
-            match try_start_evdev(processor.clone(), &dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
-                Ok(result) => return Ok(result),
-                Err(e) => println!("[Main] Evdev 也不可用: {:?}", e),
-            }
-            // Last resort: try Wayland again (maybe a display issue)
-            if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match try_start_wayland(processor, gui_tx, tray_tx, config.clone()) {
-                    Ok(result) => return Ok(result),
-                    Err(e) => return Err(format!("所有后端均不可用: {}", e).into()),
-                }
-            }
-            Err("所有后端均不可用".into())
-        }
+        BackendType::Wayland => start_prefer_wayland(processor, &dev_path, gui_tx, tray_tx, config),
         BackendType::Evdev => {
             try_start_evdev(processor, &dev_path, Some(gui_tx), tray_tx)
                 .map_err(|e| format!("Evdev 启动失败: {:?}", e).into())
         }
         BackendType::Auto => {
-            // Default: evdev first (reliable, no compositor dependency)
-            match try_start_evdev(processor.clone(), &dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
-                Ok(result) => return Ok(result),
-                Err(evdev_err) => println!("[Main] Evdev 启动失败 ({:?})，尝试 Wayland。", evdev_err),
+            // 桌面感知自动选择：
+            // - KDE 会话 → 优先 Wayland（KWin 6 仅提供 input-method v1，经
+            //   WAYLAND_SOCKET 由 KWin 虚拟键盘拉起）
+            // - 其余桌面（COSMIC/GNOME/Hyprland 等）→ 优先 evdev 拦截：evdev
+            //   不注册 input-method（input-method-v2 keyboard grab 会被合成器
+            //   拒绝应用 xdg_popup.grab，导致右键/下拉菜单失效，见 cosmic-comp#1763）
+            if crate::kwin::is_kde_session() {
+                println!("[Main] 检测到 KDE 会话，优先 Wayland 输入法...");
+                start_prefer_wayland(processor, &dev_path, gui_tx, tray_tx, config)
+            } else {
+                println!("[Main] 检测到非 KDE 桌面，优先 evdev 拦截...");
+                start_prefer_evdev(processor, &dev_path, gui_tx, tray_tx, config)
             }
-
-            // Fallback: try Wayland input method protocol
-            if std::env::var("WAYLAND_DISPLAY").is_ok() {
-                match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
-                    Ok(result) => return Ok(result),
-                    Err(e) => println!("[Main] Wayland 输入法不可用: {}", e),
-                }
-            }
-
-            // Final fallback: try Evdev again with different device path
-            Err("No input backend available".into())
         }
+    }
+}
+
+/// 优先 Wayland（v1/v2）输入法协议，失败回退 evdev。
+fn start_prefer_wayland(
+    processor: ProcessorHandle,
+    dev_path: &str,
+    gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<TrayEvent>,
+    config: Arc<RwLock<Config>>,
+) -> InputHostResult {
+    // Try Wayland IM protocol first
+    match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
+        Ok(result) => return Ok(result),
+        Err(e) => println!("[Main] Wayland 不可用 ({}), 尝试 Evdev...", e),
+    }
+    // Fallback to Evdev
+    match try_start_evdev(processor.clone(), dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
+        Ok(result) => return Ok(result),
+        Err(e) => println!("[Main] Evdev 也不可用: {:?}", e),
+    }
+    // Last resort: try Wayland again (maybe a display issue)
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        match try_start_wayland(processor, gui_tx, tray_tx, config) {
+            Ok(result) => return Ok(result),
+            Err(e) => return Err(format!("所有后端均不可用: {}", e).into()),
+        }
+    }
+    Err("所有后端均不可用".into())
+}
+
+/// 优先 evdev 硬件拦截（不依赖合成器 input-method），失败回退 Wayland。
+fn start_prefer_evdev(
+    processor: ProcessorHandle,
+    dev_path: &str,
+    gui_tx: Sender<GuiEvent>,
+    tray_tx: Sender<TrayEvent>,
+    config: Arc<RwLock<Config>>,
+) -> InputHostResult {
+    // Default: evdev first (reliable, no compositor dependency)
+    match try_start_evdev(processor.clone(), dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
+        Ok(result) => return Ok(result),
+        Err(evdev_err) => println!("[Main] Evdev 启动失败 ({:?})，尝试 Wayland。", evdev_err),
+    }
+
+    // Fallback: try Wayland input method protocol
+    if std::env::var("WAYLAND_DISPLAY").is_ok() {
+        match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config) {
+            Ok(result) => return Ok(result),
+            Err(e) => println!("[Main] Wayland 输入法不可用: {}", e),
+        }
+    }
+
+    // Final fallback: try Evdev again with different device path
+    Err("No input backend available".into())
+}
+
+/// evdev 设备路径解析：优先用配置的设备；打不开时自动扫描探测物理键盘。
+fn resolve_evdev_device_path(configured: &str) -> String {
+    if !configured.is_empty() && Device::open(configured).is_ok() {
+        return configured.to_string();
+    }
+    match evdev_host::find_keyboard_device() {
+        Some(p) => {
+            println!("[Main] 配置的 evdev 设备不可用，自动探测到物理键盘: {p}");
+            p
+        }
+        None => configured.to_string(),
     }
 }
 
@@ -131,8 +178,9 @@ fn try_start_evdev(
     gui_tx: Option<Sender<GuiEvent>>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
 ) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
-    let mut host = evdev_host::EvdevHost::new(processor, dev_path, gui_tx, tray_tx)?;
-    println!("[Main] 成功启动 Evdev 拦截模式。");
+    let dev_path = resolve_evdev_device_path(dev_path);
+    let mut host = evdev_host::EvdevHost::new(processor, &dev_path, gui_tx, tray_tx)?;
+    println!("[Main] 成功启动 Evdev 拦截模式(设备 {dev_path})。");
     let vkbd = host.vkbd.clone();
     Ok((Some(vkbd), Box::new(move || {
         let _ = host.run();

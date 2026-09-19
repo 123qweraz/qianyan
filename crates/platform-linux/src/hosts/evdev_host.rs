@@ -20,6 +20,43 @@ fn evdev_to_virtual(key: Key) -> Option<VirtualKey> {
     super::keymap::scancode_to_vk(key.code() as u32)
 }
 
+/// 扫描 /dev/input/event* 探测物理键盘设备。
+/// 只接受名称含 keyboard 且有字母键的设备，避开 uinput/虚拟键盘（如 qianyan-ime-v2）。
+pub fn find_keyboard_device() -> Option<String> {
+    let entries = std::fs::read_dir("/dev/input").ok()?;
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let name = file_name.to_string_lossy().to_string();
+        if !name.starts_with("event") {
+            continue;
+        }
+        let path = format!("/dev/input/{name}");
+        let Ok(dev) = Device::open(&path) else { continue };
+        let looks_physical = dev
+            .name()
+            .map(|n| {
+                let n = n.to_lowercase();
+                n.contains("keyboard") && !n.contains("uinput")
+            })
+            .unwrap_or(false);
+        if !looks_physical {
+            continue;
+        }
+        let has_letters = dev.supported_keys().is_some_and(|keys| {
+            keys.contains(Key::KEY_A) && keys.contains(Key::KEY_Z) && keys.contains(Key::KEY_ENTER)
+        });
+        if has_letters {
+            log::info!(
+                "[EvdevHost] 自动探测到键盘设备 {} ({})",
+                path,
+                dev.name().unwrap_or_default()
+            );
+            return Some(path);
+        }
+    }
+    None
+}
+
 pub struct EvdevHost {
     processor: ProcessorHandle,
     pub vkbd: Arc<Mutex<Vkbd>>,
