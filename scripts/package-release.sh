@@ -15,6 +15,9 @@ cp target/release/qianyan-web-settings "$OUT/"
 cp -r data dicts configs sounds picture "$OUT/"
 cp qianyan-ime.desktop "$OUT/"
 cp scripts/install/install.sh "$OUT/"
+cp scripts/install/install-portable.sh "$OUT/"
+cp scripts/register-kwin-vk.sh "$OUT/"
+chmod +x "$OUT/install.sh" "$OUT/install-portable.sh" "$OUT/register-kwin-vk.sh"
 strip "$OUT/qianyan-ime" "$OUT/qianyan-ime-gui" "$OUT/qianyan-web-settings" 2>/dev/null || true
 
 cd release

@@ -18,6 +18,7 @@ pub enum StartupCommand {
     CompileOnly,
     Register,
     Unregister,
+    RegisterKdeVk,
     Test,
     Daemon,
     Foreground,
@@ -36,6 +37,7 @@ pub fn parse_startup_command(args: &[String]) -> StartupCommand {
         "--compile-only" => StartupCommand::CompileOnly,
         "--register" => StartupCommand::Register,
         "--unregister" => StartupCommand::Unregister,
+        "--register-kde-vk" => StartupCommand::RegisterKdeVk,
         "--test" => StartupCommand::Test,
         "--daemon" => StartupCommand::Daemon,
         "--foreground" => StartupCommand::Foreground,
@@ -66,6 +68,10 @@ pub fn handle_startup(args: &[String]) -> Result<StartupAction, Box<dyn Error>> 
         }
         StartupCommand::Unregister => {
             handle_register_or_unregister(false)?;
+            Ok(StartupAction::Exit)
+        }
+        StartupCommand::RegisterKdeVk => {
+            handle_register_kde_vk()?;
             Ok(StartupAction::Exit)
         }
         StartupCommand::Test => {
@@ -600,6 +606,20 @@ fn handle_register_or_unregister(register: bool) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// 注册 KDE 虚拟键盘（供安装脚本调用，等价于首次在 KDE 会话启动时的自动注册）。
+///
+/// 非 KDE 会话下返回错误；调用方可根据情况忽略（例如稍后用户登录 KDE 时
+/// 程序首次启动会自动完成注册）。
+fn handle_register_kde_vk() -> Result<(), Box<dyn Error>> {
+    match crate::kwin::configure_kde_virtual_keyboard() {
+        Ok(()) => {
+            println!("已注册 KDE 虚拟键盘输入法（重新登入 Wayland 会话后生效）。");
+            Ok(())
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{parse_startup_command, StartupCommand};
@@ -612,6 +632,7 @@ mod tests {
             ("--compile-only", StartupCommand::CompileOnly),
             ("--register", StartupCommand::Register),
             ("--unregister", StartupCommand::Unregister),
+            ("--register-kde-vk", StartupCommand::RegisterKdeVk),
             ("--test", StartupCommand::Test),
             ("--daemon", StartupCommand::Daemon),
             ("--foreground", StartupCommand::Foreground),
