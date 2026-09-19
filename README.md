@@ -56,7 +56,33 @@
 
 ### Linux 安装
 
-#### 方式一：使用预编译包 (推荐)
+#### 方式一：绿色版（免 root，推荐）
+程序、词库与配置放在同一个用户目录中，不污染系统目录，卸载只需删目录。
+
+```bash
+# 源码目录里安装（自动使用 target/release 产物；请先 cargo build --release）
+bash scripts/install/install-portable.sh
+
+# release 包解压后安装（包内已含 install-portable.sh）
+tar xzf qianyan-ime-linux-x86_64_*.tar.gz && cd qianyan-ime-*
+./install-portable.sh
+```
+
+可选参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `--prefix DIR` | 安装目录（默认 `~/.local/share/qianyan-ime`） |
+| `--autostart` | 同时写入 `~/.config/autostart` 开机自启 |
+| `--no-kde-vk`  | 跳过 KDE Wayland 虚拟键盘注册 |
+
+脚本会安装三个二进制（`qianyan-ime` / `qianyan-ime-gui` / `qianyan-web-settings`）与 `data/`、`dicts/`、`configs/`、`picture/`、`sounds/` 到同一目录，注册用户级应用菜单项、图标，并在 KDE 会话下自动注册 Wayland 虚拟键盘输入法（写 `~/.local/share/applications/qianyan-ime-wayland-launcher.desktop` 和 `~/.config/kwinrc [Wayland] InputMethod`）。
+
+- 配置中心：运行 `~/.local/share/qianyan-ime/qianyan-ime` 后访问 `http://127.0.0.1:18765`
+- 卸载：删除安装目录、`~/.local/share/applications/qianyan-ime*.desktop`、`~/.config/autostart/qianyan-ime.desktop`，并清理 kwinrc 里的 `InputMethod`
+- 单独注册/注销可执行 `qianyan-ime --register-kde-vk`（或 `scripts/register-kwin-vk.sh`）
+
+#### 方式二：使用预编译包（系统安装）
 ```bash
 # 解压并进入目录
 tar xzf qianyan-ime-linux-x86_64.tar.gz && cd qianyan-ime
@@ -67,7 +93,9 @@ sudo ./install.sh
 qianyan-ime
 ```
 
-#### 方式二：从源码编译
+> **注意**：`install.sh` 会把二进制装到 `/usr/local/bin`、资源/配置装到 `/usr/share/qianyan-ime`，而配置解析按"跟随可执行文件目录"进行，两者分离会导致配置不可写。KDE Wayland 下请优先使用方式一的绿色版；系统级打包（.deb 等）仍在规划中。
+
+#### 方式三：从源码编译
 
 **系统依赖 (Ubuntu/Debian):**
 ```bash
@@ -92,12 +120,17 @@ cargo build --release
 sudo cp target/release/qianyan-ime /usr/local/bin/
 ```
 
+#### KDE Wayland：注销重登后生效
+KWin 只在**自己启动**输入法进程时通过私有 socket 暴露 `input-method v1`（`WAYLAND_SOCKET`）。安装/注册后需**注销并重新登录**（或 `kwin_wayland --replace`）才会拉起千言；KWin 下的候选框由输入法自身绘制（v1 无光标跟随）。
+
 #### 权限配置 (evdev 模式必需)
 1. 将当前用户加入 `input` 组：`sudo usermod -aG input $USER`
 2. 创建 udev 规则：
    `echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/99-qianyan-ime-uinput.rules`
 3. 重载规则：`sudo udevadm control --reload-rules && sudo udevadm trigger`
 4. **注销并重新登录** 即可生效。
+
+> evdev 是硬件级按键拦截，仅在以 evdev/auto 后端运行时需要；KDE Wayland 虚拟键盘走 `input-method v1`，不依赖它。
 
 ---
 
