@@ -29,7 +29,7 @@ use wayland_protocols_wlr::layer_shell::v1::client::{
     zwlr_layer_surface_v1::{Anchor, KeyboardInteractivity, ZwlrLayerSurfaceV1},
 };
 
-use super::wayland_candidates::{CandContent, CandItem, CandStyle};
+use super::wayland_candidates::{CandContent, CandItem};
 
 use xkbcommon::xkb;
 
@@ -109,8 +109,7 @@ impl WlState {
             return;
         }
 
-        let style = CandStyle::from_config(&cfg);
-        let (pixels, width, height) = match super::wayland_candidates::render(&style, &content) {
+        let (pixels, width, height) = match super::wayland_candidates::render_slint(&cfg, &content) {
             Some(v) => v,
             None => return,
         };
@@ -501,6 +500,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                             label: c.label.clone(),
                             text: c.text.clone(),
                             hint: c.hint.clone(),
+                            is_fuzzy: c.is_fuzzy,
                         }).collect();
                         let content = CandContent {
                             pinyin: gui.pinyin.clone(),

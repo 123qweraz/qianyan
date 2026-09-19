@@ -368,29 +368,10 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
 
 fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
     let mut displays: Vec<Box<dyn CandidateDisplay>> = Vec::new();
-    log::debug!("[GUI_DEBUG] create_displays: show_slint={} show_notify={}", config.linux.show_slint_window, config.linux.show_notification);
+    log::debug!("[GUI_DEBUG] create_displays: show_slint={}", config.linux.show_slint_window);
 
-    // On Wayland, use GTK4 layer-shell overlay for proper
-    // fractional scaling support. Falls back to WaylandLayerDisplay
-    // if GTK4 is unavailable, then to SlintDisplay.
-    #[cfg(target_os = "linux")]
-    if std::env::var("WAYLAND_DISPLAY").is_ok() {
-        if let Some(gtk_display) = crate::gtk_wayland::GtkWaylandDisplay::new(config.clone()) {
-            log::debug!("[GUI_DEBUG] Using GtkWaylandDisplay");
-            displays.push(Box::new(gtk_display));
-        } else if let Some(wl_display) = crate::wayland_layer::WaylandLayerDisplay::new(config.clone()) {
-            log::debug!("[GUI_DEBUG] Using WaylandLayerDisplay (fallback)");
-            displays.push(Box::new(wl_display));
-        } else {
-            log::warn!("Both GtkWaylandDisplay and WaylandLayerDisplay failed, falling back to Slint window (XWayland)");
-            displays.push(Box::new(SlintDisplay::new(config.clone())));
-        }
-    } else {
-        log::debug!("[GUI_DEBUG] No WAYLAND_DISPLAY, using SlintDisplay (X11)");
-        displays.push(Box::new(SlintDisplay::new(config.clone())));
-    }
-
-    #[cfg(not(target_os = "linux"))]
+    // 方案 Y：Wayland 候选框由 v1/v2 宿主或主进程 wayland_overlay 自绘，
+    // GUI 子进程只在 X11/XWayland/Windows 场景被启动，统一使用 SlintDisplay。
     displays.push(Box::new(SlintDisplay::new(config.clone())));
 
     log::debug!("[GUI_DEBUG] create_displays: total {} displays (notifications moved to main process)", displays.len());

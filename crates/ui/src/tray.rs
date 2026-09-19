@@ -84,6 +84,10 @@ impl Tray for ImeTray {
         }
     }
 
+    fn activate(&mut self, _x: i32, _y: i32) {
+        let _ = self.tx.send(TrayEvent::ToggleIme);
+    }
+
     fn menu(&self) -> Vec<MenuItem<Self>> {
         use ksni::menu::RadioGroup;
         use ksni::menu::RadioItem;
@@ -443,7 +447,11 @@ unsafe extern "system" fn tray_wnd_proc(
 ) -> LRESULT {
     match msg {
         WM_TRAYICON => {
-            if lparam.0 as u32 == WM_RBUTTONUP {
+            if lparam.0 as u32 == WM_LBUTTONUP {
+                if let Some(tx) = TRAY_TX.get() {
+                    let _ = tx.send(TrayEvent::ToggleIme);
+                }
+            } else if lparam.0 as u32 == WM_RBUTTONUP {
                 let mut pt = POINT::default();
                 let _ = GetCursorPos(&mut pt);
 

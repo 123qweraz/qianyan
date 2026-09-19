@@ -124,6 +124,65 @@ fn set_skip_taskbar_and_hide() -> bool {
 
 slint::include_modules!();
 
+/// 将配置中的颜色字符串解析为 Slint 颜色（#RRGGBB / #RRGGBBAA / rgba(...)）。
+pub(crate) fn parse_slint_color(s: &str) -> slint::Color {
+    if s.starts_with('#') {
+        if s.len() == 7 {
+            let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
+            let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
+            let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
+            slint::Color::from_rgb_u8(r, g, b)
+        } else if s.len() == 9 {
+            let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
+            let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
+            let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
+            let a = u8::from_str_radix(&s[7..9], 16).unwrap_or(255);
+            slint::Color::from_argb_u8(a, r, g, b)
+        } else {
+            slint::Color::from_rgb_u8(255, 255, 255)
+        }
+    } else if s.starts_with("rgba(") {
+        let parts: Vec<&str> = s[5..s.len() - 1].split(',').map(|p| p.trim()).collect();
+        if parts.len() == 4 {
+            let r = parts[0].parse::<u8>().unwrap_or(255);
+            let g = parts[1].parse::<u8>().unwrap_or(255);
+            let b = parts[2].parse::<u8>().unwrap_or(255);
+            let a = (parts[3].parse::<f32>().unwrap_or(1.0) * 255.0) as u8;
+            slint::Color::from_argb_u8(a, r, g, b)
+        } else {
+            slint::Color::from_rgb_u8(255, 255, 255)
+        }
+    } else {
+        slint::Color::from_rgb_u8(9, 105, 218)
+    }
+}
+
+/// 把 `Config` 的外观设置注入到候选窗组件；Slint 窗口与离屏渲染共用，
+/// 保证两条路径的视觉完全一致。
+pub(crate) fn apply_candidate_style(window: &CandidateWindow, config: &Config) {
+    let parse_color = parse_slint_color;
+
+    window.set_is_horizontal(config.appearance.candidate_layout == "horizontal");
+
+    window.set_bg_color(parse_color(&config.appearance.window_bg_color));
+    window.set_accent_color(parse_color(&config.appearance.window_highlight_color));
+    window.set_border_color(parse_color(&config.appearance.window_border_color));
+    window.set_text_color(parse_color(&config.appearance.candidate_text.color));
+    window.set_highlight_text_color(parse_color(&config.appearance.window_highlight_text_color));
+
+    let font_stack = format!(
+        "{}, Noto Color Emoji, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
+        config.appearance.candidate_text.font_family
+    );
+    window.set_pinyin_font_family(SharedString::from(&font_stack));
+    window.set_candidate_font_family(SharedString::from(&font_stack));
+
+    window.set_pinyin_font_size(config.appearance.pinyin_text.font_size as f32);
+    window.set_pinyin_font_weight(config.appearance.pinyin_text.font_weight as i32);
+    window.set_candidate_font_size(config.appearance.candidate_text.font_size as f32);
+    window.set_candidate_font_weight(config.appearance.candidate_text.font_weight as i32);
+}
+
 fn screen_size() -> (i32, i32) {
     use std::sync::OnceLock;
     static CACHED: OnceLock<(i32, i32)> = OnceLock::new();
@@ -189,69 +248,7 @@ impl SlintDisplay {
     }
 
     fn apply_style(&mut self, config: &Config) {
-        let parse_color = |s: &str| -> slint::Color {
-            if s.starts_with('#') {
-                if s.len() == 7 {
-                    let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
-                    let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
-                    let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
-                    slint::Color::from_rgb_u8(r, g, b)
-                } else if s.len() == 9 {
-                    let r = u8::from_str_radix(&s[1..3], 16).unwrap_or(255);
-                    let g = u8::from_str_radix(&s[3..5], 16).unwrap_or(255);
-                    let b = u8::from_str_radix(&s[5..7], 16).unwrap_or(255);
-                    let a = u8::from_str_radix(&s[7..9], 16).unwrap_or(255);
-                    slint::Color::from_argb_u8(a, r, g, b)
-                } else {
-                    slint::Color::from_rgb_u8(255, 255, 255)
-                }
-            } else if s.starts_with("rgba(") {
-                let parts: Vec<&str> = s[5..s.len() - 1].split(',').map(|p| p.trim()).collect();
-                if parts.len() == 4 {
-                    let r = parts[0].parse::<u8>().unwrap_or(255);
-                    let g = parts[1].parse::<u8>().unwrap_or(255);
-                    let b = parts[2].parse::<u8>().unwrap_or(255);
-                    let a = (parts[3].parse::<f32>().unwrap_or(1.0) * 255.0) as u8;
-                    slint::Color::from_argb_u8(a, r, g, b)
-                } else {
-                    slint::Color::from_rgb_u8(255, 255, 255)
-                }
-            } else {
-                slint::Color::from_rgb_u8(9, 105, 218)
-            }
-        };
-
-        self.window
-            .set_is_horizontal(config.appearance.candidate_layout == "horizontal");
-
-        self.window
-            .set_bg_color(parse_color(&config.appearance.window_bg_color));
-        self.window
-            .set_accent_color(parse_color(&config.appearance.window_highlight_color));
-        self.window
-            .set_border_color(parse_color(&config.appearance.window_border_color));
-        self.window
-            .set_text_color(parse_color(&config.appearance.candidate_text.color));
-        self.window
-            .set_highlight_text_color(parse_color(&config.appearance.window_highlight_text_color));
-
-        let font_stack = format!(
-            "{}, Noto Color Emoji, Segoe UI Emoji, Microsoft YaHei, Arial, system-ui",
-            config.appearance.candidate_text.font_family
-        );
-        self.window
-            .set_pinyin_font_family(SharedString::from(&font_stack));
-        self.window
-            .set_candidate_font_family(SharedString::from(&font_stack));
-
-        self.window
-            .set_pinyin_font_size(config.appearance.pinyin_text.font_size as f32);
-        self.window
-            .set_pinyin_font_weight(config.appearance.pinyin_text.font_weight as i32);
-        self.window
-            .set_candidate_font_size(config.appearance.candidate_text.font_size as f32);
-        self.window
-            .set_candidate_font_weight(config.appearance.candidate_text.font_weight as i32);
+        apply_candidate_style(&self.window, config);
     }
 
     #[cfg(target_os = "linux")]

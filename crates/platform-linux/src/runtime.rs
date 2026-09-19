@@ -57,7 +57,16 @@ fn connect_and_probe() -> Result<(Connection, bool, bool), Box<dyn Error>> {
     Ok((conn, has_v1, has_v2))
 }
 
-pub type InputHostResult = Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>>;
+/// 选中的输入后端的运行句柄。
+pub struct InputHost {
+    pub vkbd: Option<Arc<Mutex<Vkbd>>>,
+    pub run: Box<dyn FnOnce() + Send>,
+    /// 宿主是否已在层表面自绘候选框（Wayland v1/v2）。为 false 时（evdev/none）
+    /// 由主进程的 `wayland_overlay` 或 GUI 子进程负责候选框。
+    pub self_draws_candidates: bool,
+}
+
+pub type InputHostResult = Result<InputHost, Box<dyn Error>>;
 
 pub fn create_input_host(
     args: &[String],
@@ -177,14 +186,18 @@ fn try_start_evdev(
     dev_path: &str,
     gui_tx: Option<Sender<GuiEvent>>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
-) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
+) -> Result<InputHost, Box<dyn Error>> {
     let dev_path = resolve_evdev_device_path(dev_path);
     let mut host = evdev_host::EvdevHost::new(processor, &dev_path, gui_tx, tray_tx)?;
     println!("[Main] 成功启动 Evdev 拦截模式(设备 {dev_path})。");
     let vkbd = host.vkbd.clone();
-    Ok((Some(vkbd), Box::new(move || {
-        let _ = host.run();
-    })))
+    Ok(InputHost {
+        vkbd: Some(vkbd),
+        self_draws_candidates: false,
+        run: Box::new(move || {
+            let _ = host.run();
+        }),
+    })
 }
 
 fn try_start_wayland(
@@ -192,12 +205,16 @@ fn try_start_wayland(
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
     config: Arc<RwLock<Config>>,
-) -> Result<(Option<Arc<Mutex<Vkbd>>>, Box<dyn FnOnce() + Send>), Box<dyn Error>> {
+) -> Result<InputHost, Box<dyn Error>> {
     let (mut host, vkbd_opt, desc) = create_wayland_host(processor, gui_tx, tray_tx, config)?;
     println!("[Main] 成功启动{}输入法模式。", desc);
-    Ok((vkbd_opt, Box::new(move || {
-        let _ = host.run();
-    })))
+    Ok(InputHost {
+        vkbd: vkbd_opt,
+        self_draws_candidates: true,
+        run: Box::new(move || {
+            let _ = host.run();
+        }),
+    })
 }
 
 fn create_wayland_host(

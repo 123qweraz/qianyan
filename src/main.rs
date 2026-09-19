@@ -42,6 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let args: Vec<String> = env::args().collect();
+
     #[cfg(target_os = "linux")]
     let should_daemonize = match qianyan_ime_linux::cli::handle_startup(&args)? {
         qianyan_ime_linux::cli::StartupAction::Exit => return Ok(()),
@@ -174,24 +175,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(RwLock::new(current_config));
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
     let (tray_tx, tray_rx) = std::sync::mpsc::channel();
-
-    // 在 Linux 上，在 gui_rx 下游插入通知分发器，
-    // 使桌面通知始终由主进程处理（不依赖 GUI 子进程）。
-    #[cfg(target_os = "linux")]
-    let gui_rx = {
-        let (gui_forward_tx, gui_forward_rx) = std::sync::mpsc::channel();
-        let initial_cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
-        std::thread::spawn(move || {
-            let mut notifier = qianyan_ime_ui::local_notify::LocalNotify::new(&initial_cfg);
-            while let Ok(event) = gui_rx.recv() {
-                notifier.handle(&event);
-                if gui_forward_tx.send(event).is_err() {
-                    break;
-                }
-            }
-        });
-        gui_forward_rx
-    };
 
     let mut trie_paths = HashMap::new();
     if let Ok(entries) = std::fs::read_dir(root.join("data")) {
@@ -526,10 +509,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 在 KDE 上自动注册虚拟键盘，以便 KWin 通过 WAYLAND_SOCKET 启动输入法
     #[cfg(target_os = "linux")]
-    {
-        if qianyan_ime_linux::kwin::is_kde_session()
-            && !qianyan_ime_linux::kwin::is_kwin_virtual_keyboard()
-        {
+    let is_kwin_vk = {
+        // 必须在 create_input_host 之前读取：wayland-client 的 connect_to_env()
+        // 会消费并移除 WAYLAND_SOCKET，之后再判断就永远为 false。
+        let is_kwin_vk = qianyan_ime_linux::kwin::is_kwin_virtual_keyboard();
+        if qianyan_ime_linux::kwin::is_kde_session() && !is_kwin_vk {
             match qianyan_ime_linux::kwin::configure_kde_virtual_keyboard() {
                 Ok(()) => {
                     log::info!(
@@ -540,10 +524,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => log::warn!("[Main] KWin 虚拟键盘注册失败: {e}"),
             }
         }
-    }
+        is_kwin_vk
+    };
 
     #[cfg(target_os = "linux")]
-    let (vkbd_option, host_run) = qianyan_ime_linux::runtime::create_input_host(
+    let host = qianyan_ime_linux::runtime::create_input_host(
         &args,
         processor_handle.clone(),
         gui_tx.clone(),
@@ -551,6 +536,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tray_tx.clone(),
         app_state.clone(),
     )?;
+    #[cfg(target_os = "linux")]
+    let vkbd_option = host.vkbd;
+    #[cfg(target_os = "linux")]
+    let host_self_draws = host.self_draws_candidates;
+    #[cfg(target_os = "linux")]
+    let host_run = host.run;
 
     // 如果有 vkbd（Evdev 模式），可以在这里使用
     #[cfg(target_os = "linux")]
@@ -581,40 +572,67 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(target_os = "linux")]
     {
-        let is_kwin = qianyan_ime_linux::kwin::is_kwin_virtual_keyboard();
+        let is_kwin = is_kwin_vk;
         let no_gui = args.iter().any(|a| a == "--no-gui");
 
-        // Start the GUI subprocess whenever a GUI is allowed, even if the
-        // candidate bar is currently disabled. It creates the overlay once (GTK
-        // cannot be re-initialized) and shows/hides itself according to
-        // `show_slint_window`, so the display mode can be toggled at runtime
-        // without restarting the input method.
-        //
-        // KWin 虚拟键盘模式例外：v1 host 在私有 socket 上自绘候选框（方案 B），
-        // 不再需要 GTK 子进程，避免重复候选窗与跨线程 GTK 初始化问题。
-        let launch_gui = !no_gui && !is_kwin;
+        // 候选框渲染路径（方案 Y：全部走 Slint + 原生 Wayland 输出）：
+        //  1. Wayland v1/v2 宿主 → 宿主自绘（self_draws=true），无需 GUI；
+        //  2. evdev / IBus 等非 KWin Wayland → 主进程 wayland_overlay 自绘；
+        //  3. 其余（X11 / overlay 初始化失败）→ GUI 子进程（SlintDisplay）。
+        let use_overlay = !no_gui
+            && !is_kwin
+            && !host_self_draws
+            && std::env::var("WAYLAND_DISPLAY").is_ok();
 
-        if launch_gui {
-            match try_start_gui_process(&config) {
-                Ok((child, stream, socket_path)) => {
-                    if is_kwin {
-                        log::info!("[Main] KWin 虚拟键盘模式：GUI 子进程已启动（候选框走 layer-shell）");
-                    } else {
-                        log::info!("[Main] GUI 子进程已启动");
-                    }
-                    spawn_gui_forwarder(gui_rx, stream, child, socket_path);
+        let overlay_probe = if use_overlay {
+            qianyan_ime_linux::hosts::wayland_overlay::WaylandOverlay::start(config.clone())
+        } else {
+            Err("overlay disabled".into())
+        };
+
+        // `_overlay_keepalive` 仅为保住 overlay 线程的 sender，防止其退出。
+        let _overlay_keepalive: Option<qianyan_ime_linux::hosts::wayland_overlay::WaylandOverlay> =
+            match overlay_probe {
+                Ok(overlay) => {
+                    log::info!(
+                        "[Main] 候选框走主进程 layer-shell 自绘（evdev/IBus），GUI 子进程不启动"
+                    );
+                    let tx = overlay.sender();
+                    std::thread::spawn(move || {
+                        while let Ok(event) = gui_rx.recv() {
+                            if tx.send(event).is_err() {
+                                break;
+                            }
+                        }
+                    });
+                    Some(overlay)
                 }
                 Err(e) => {
-                    log::warn!("[Main] GUI 启动失败 (无 GUI 继续运行): {e}");
-                    spawn_gui_null_handler(gui_rx);
+                    if use_overlay {
+                        log::warn!("[Main] 主进程候选框不可用 ({e})，回退 GUI 子进程");
+                    }
+                    // 主进程自绘未启用（X11 等），回退到 GUI 子进程（SlintDisplay，X11/XWayland）。
+                    let launch_gui = !no_gui && !is_kwin && !host_self_draws;
+                    if launch_gui {
+                        match try_start_gui_process(&config) {
+                            Ok((child, stream, socket_path)) => {
+                                log::info!("[Main] GUI 子进程已启动");
+                                spawn_gui_forwarder(gui_rx, stream, child, socket_path);
+                            }
+                            Err(e) => {
+                                log::warn!("[Main] GUI 启动失败 (无 GUI 继续运行): {e}");
+                                spawn_gui_null_handler(gui_rx);
+                            }
+                        }
+                    } else {
+                        log::info!("[Main] --no-gui 或宿主自绘：无 GUI 模式");
+                        spawn_gui_null_handler(gui_rx);
+                    }
+                    None
                 }
-            }
-        } else {
-            log::info!("[Main] --no-gui 参数：无 GUI 模式");
-            spawn_gui_null_handler(gui_rx);
-        }
+            };
 
-        // 保持主线程存活，让 IBus/Wayland 后端继续服务
+        // 保持主线程存活，让 IBus/Wayland/overlay 后端继续服务
         loop {
             std::thread::sleep(std::time::Duration::from_secs(3600));
         }

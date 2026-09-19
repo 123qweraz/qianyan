@@ -81,6 +81,7 @@ export component CandidateWindow inherits Window {
     in property <int> candidate_font_weight: 400;
     
     in property <length> win_border_radius: 6px;
+    in property <length> window_shadow_blur: 12px;
     in property <color> accent_color: #0969da;
     in property <color> bg_color: #ffffff;
     in property <color> border_color: #dcdde1;
@@ -88,6 +89,10 @@ export component CandidateWindow inherits Window {
     in property <color> highlight_text_color: #ffffff;
     in property <color> aux_text_color: #95a5a6;
     in property <color> aux_highlight_color: #dcdde1;
+
+    // 离屏渲染时读取的紧凑内容尺寸（逻辑像素）
+    out property <length> content_width: main_rect.preferred-width;
+    out property <length> content_height: main_rect.preferred-height;
 
     no-frame: true;
     background: transparent;
@@ -105,7 +110,7 @@ export component CandidateWindow inherits Window {
         border-width: 1px;
         border-color: border_color;
         
-        drop-shadow-blur: 12px;
+        drop-shadow-blur: window_shadow_blur;
         drop-shadow-color: rgba(0, 0, 0, 0.25);
         drop-shadow-offset-y: 4px;
 

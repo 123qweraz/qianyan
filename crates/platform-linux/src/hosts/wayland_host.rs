@@ -38,7 +38,7 @@ use xkbcommon::xkb;
 use xkbcommon::xkb::keysyms;
 
 use super::vkbd::Vkbd;
-use super::wayland_candidates::{CandContent, CandItem, CandStyle};
+use super::wayland_candidates::{CandContent, CandItem};
 
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::keys::VirtualKey;
@@ -313,6 +313,7 @@ impl Dispatch<ZwpInputMethodKeyboardGrabV2, WlUser> for WlState {
                         label: c.label.clone(),
                         text: c.text.clone(),
                         hint: c.hint.clone(),
+                        is_fuzzy: c.is_fuzzy,
                     }).collect();
                     (
                         GuiEvent::Update {
@@ -527,8 +528,7 @@ impl WlState {
             Ok(c) => c.clone(),
             Err(e) => e.into_inner().clone(),
         };
-        let style = CandStyle::from_config(&cfg);
-        let (pixels, width, height) = match super::wayland_candidates::render(&style, &content) {
+        let (pixels, width, height) = match super::wayland_candidates::render_slint(&cfg, &content) {
             Some(v) => v,
             None => return,
         };
