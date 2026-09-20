@@ -4,7 +4,7 @@ use std::net::TcpStream;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock, mpsc};
 
-use qianyan_ime_core::utils::find_project_root;
+use qianyan_ime_core::utils::{find_project_root, set_project_root};
 use qianyan_ime_core::Config;
 use qianyan_ime_core::event::TrayEvent;
 use qianyan_ime_web_server::WebServer;
@@ -36,6 +36,9 @@ fn main() {
     }
 
     let root = root.unwrap_or_else(find_project_root);
+    // 功能中心子进程从父进程收到 --root，登记为进程级根目录，
+    // 保证其内部 handlers 也解析到同一目录（不受各自探测影响）。
+    set_project_root(root.clone());
     let config = Arc::new(RwLock::new(Config::load()));
 
     let (tray_tx, tray_rx) = mpsc::channel::<TrayEvent>();

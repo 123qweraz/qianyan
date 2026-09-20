@@ -3,7 +3,7 @@ pub use qianyan_ime_windows::{IME_ID, LANG_PROFILE_ID};
 
 // 使用 crates/ 库替代本地模块
 use qianyan_ime_core::config::Config;
-use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllable_frequencies, load_single_syllables};
+use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict, load_syllable_frequencies, load_single_syllables, set_project_root};
 use qianyan_ime_engine::processor::Processor;
 use qianyan_ime_engine::processor::actor::{ProcessorHandle, ProcessorActor};
 use qianyan_ime_engine::compiler;
@@ -97,10 +97,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut root = find_project_root();
     let mut current_config = Config::load();
 
-    // FIXME: Submodules (sound.rs, tray.rs, web handlers) use their own
-    // find_project_root() and ignore this data_dir override. A refactor is
-    // needed to pass the custom root through the system properly.
-    
     // 如果配置中指定了数据目录，则优先使用
     if let Some(ref custom_root) = current_config.files.data_dir {
         let p = std::path::PathBuf::from(custom_root);
@@ -108,6 +104,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             root = p;
         }
     }
+
+    // 全局覆盖数据根目录：sound/tray/compiler/web 处理器等子模块
+    // 通过 find_project_root() 获取，统一到同一目录，避免各自探测不一致。
+    set_project_root(root.clone());
 
     if should_daemonize {
         #[cfg(target_os = "windows")]

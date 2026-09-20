@@ -816,6 +816,12 @@ impl Config {
             return std::path::PathBuf::from(dir);
         }
 
+        // 进程级数据根目录已被覆盖（如配置了 files.data_dir 的便携目录）时，
+        // 配置目录与之一致，避免配置中心/子模块各自探测出不同根目录。
+        if let Some(root) = crate::utils::project_root_override() {
+            return root.join("configs");
+        }
+
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|parent| parent.to_path_buf()))

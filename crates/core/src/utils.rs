@@ -3,8 +3,24 @@ use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 use serde_json::Value;
 use crate::config::PunctuationEntry;
+
+/// 进程级“数据根目录”覆盖。启动早期由 main 依据配置里的
+/// `files.data_dir` 覆盖设置一次；此后所有 `find_project_root()` 调用
+/// 统一走这里，子模块无需各自传参，天然保持一致。
+static PROJECT_ROOT: OnceLock<PathBuf> = OnceLock::new();
+
+/// 记录进程级数据根目录（仅首次生效，重复调用忽略）
+pub fn set_project_root(root: PathBuf) {
+    let _ = PROJECT_ROOT.set(root);
+}
+
+/// 返回已设置的数据根目录覆盖（未设置则为 None）
+pub(crate) fn project_root_override() -> Option<&'static PathBuf> {
+    PROJECT_ROOT.get()
+}
 
 /// 从注释源文件路径解析表名（稳定、可跨会话）：
 /// 1) 若该路径出现在 named（annotation_sources 的“表名→文件”映射）的值中 → 直接用其键名；
@@ -40,6 +56,10 @@ where
 }
 
 pub fn find_project_root() -> PathBuf {
+    // 已覆盖数据根目录（如配置 files.data_dir）时直接返回
+    if let Some(p) = PROJECT_ROOT.get() {
+        return p.clone();
+    }
     // Helper: 检查路径是否为合法的项目根目录（必须有编译后的 trie 词典）
     fn is_project_root(p: &Path) -> bool {
         // 优先以源词典目录为标记（全新检出 data/ 尚不存在时也能定位），
