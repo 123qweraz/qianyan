@@ -344,7 +344,10 @@ impl InputScheme for ChineseScheme {
         let mut last_matches_raw = Vec::new();
         for (i, part) in raw_parsed.iter().enumerate() {
             let mut matches = Vec::new();
-            for profile in context.active_profiles {
+            // 该查找固定使用方案自身的 dict（self.dict），与具体 profile 无关；
+            // 原写法 `for profile in active_profiles` 未使用 profile，只是把同一
+            // 查询重复 N 次（后续 seen 去重，结果不变）。此处仅保留“有启用方案”判定。
+            if !context.active_profiles.is_empty() {
                 if let Some(d) = context.tries.get(self.dict.as_ref()) {
                     let py = &part.pinyin;
                     if let Some(m) = d.get_all_exact(py) {
