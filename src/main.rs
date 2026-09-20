@@ -141,7 +141,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 需要强制重编时用 `--compile-only` 或设置页「编译词库」。
     let _ = compiler::check_and_compile_all_if_needed();
     // 编译用户配置的外部注释表（annotation_sources，可指向桌面等任意目录）
-    let mut annotation_sources: std::collections::BTreeMap<String, String> = current_config
+    let annotation_sources: std::collections::BTreeMap<String, String> = current_config
         .input
         .annotation_sources
         .iter()
