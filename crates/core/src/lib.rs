@@ -16,9 +16,11 @@ pub trait InputMethodHost: Send {
 }
 
 pub mod config;
+pub mod config_store;
 pub mod event;
 pub mod file_lock;
 pub mod scheme_def;
 pub mod utils;
 
 pub use config::Config;
+pub use config_store::ConfigStore;
