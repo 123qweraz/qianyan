@@ -1,4 +1,4 @@
-#![cfg(target_os = "windows")]
+#![cfg_attr(not(target_os = "windows"), allow(dead_code, unused_imports))]
 
 use qianyan_ime_core::Config;
 use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict};
@@ -6,6 +6,7 @@ use qianyan_ime_ui::tray;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+#[cfg(target_os = "windows")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
@@ -101,3 +102,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// 非 Windows 平台的空入口：Windows TSF 后端不适用，仅保证
+/// `cargo check --workspace` / IDE 能在 Linux/macOS 上完整编译。
+#[cfg(not(target_os = "windows"))]
+fn main() {}
