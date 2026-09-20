@@ -45,11 +45,11 @@ component CandidateItem inherits Rectangle {
         }
         Text {
             text: text;
-            color: selected ? highlight_text_color : (is_fuzzy ? fuzzy_text_color : text_color);
+            color: selected ? highlight_text_color : text_color;
             vertical-alignment: center;
             font-size: font_size;
             font-family: font_family != "" ? font_family : "Noto Color Emoji, Segoe UI Emoji, Microsoft YaHei, Segoe UI, system-ui";
-            font-weight: is_fuzzy ? 400 : font_weight;
+            font-weight: font_weight;
         }
         
         // 辅助码/音调内容由引擎根据 display_mode 生成，不为空即显示

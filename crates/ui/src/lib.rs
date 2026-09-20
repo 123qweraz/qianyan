@@ -2,6 +2,8 @@ pub mod tray;
 pub mod gui_slint;
 #[cfg(target_os = "linux")]
 pub mod keystroke_overlay;
+#[cfg(target_os = "linux")]
+pub mod linux_notify;
 pub mod slint_window;
 #[cfg(target_os = "linux")]
 pub mod offscreen;
@@ -74,6 +76,8 @@ pub enum GuiEvent {
     ApplyConfig(Box<Config>),
     ShowStatus(String, bool), // 状态文字, 是否为中文模式 (用于通知)
     SetVisible(bool),         // 窗口显隐 (用于输入法激活/停用)
+    /// 文本上屏（提交到应用），用于“上屏一次一条通知”。
+    Committed(String),
     #[allow(dead_code)]
     OpenTrayMenu { x: i32, y: i32, chinese_enabled: bool, active_profile: String },
     /// 隐藏候选窗口并等待确认（用于避免 uinput 注入的 SPACE 被候选窗口拦截）

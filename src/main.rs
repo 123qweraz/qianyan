@@ -8,6 +8,10 @@ use qianyan_ime_engine::processor::Processor;
 use qianyan_ime_engine::processor::actor::{ProcessorHandle, ProcessorActor};
 use qianyan_ime_engine::compiler;
 use qianyan_ime_ui::GuiEvent;
+#[cfg(target_os = "linux")]
+use qianyan_ime_ui::linux_notify::LinuxNotifyDisplay;
+#[cfg(target_os = "linux")]
+use qianyan_ime_ui::CandidateDisplay;
 use std::collections::HashMap;
 use std::env;
 use std::str::FromStr;
@@ -647,12 +651,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             Err(e) => {
                                 log::warn!("[Main] GUI 启动失败 (无 GUI 继续运行): {e}");
-                                spawn_gui_null_handler(gui_rx);
+                                spawn_gui_null_handler(gui_rx, config.clone());
                             }
                         }
                     } else {
                         log::info!("[Main] --no-gui 或宿主自绘：无 GUI 模式");
-                        spawn_gui_null_handler(gui_rx);
+                        spawn_gui_null_handler(gui_rx, config.clone());
                     }
                     None
                 }
@@ -848,10 +852,21 @@ fn spawn_gui_forwarder(
 
 /// GUI 不可用时接管 gui_rx。
 /// HideAndAck 立即回复 ack，避免 evdev 100ms 超时等待。
+/// 同时驱动“系统通知候选框”（linux.show_notification）。
 #[cfg(target_os = "linux")]
-fn spawn_gui_null_handler(gui_rx: std::sync::mpsc::Receiver<GuiEvent>) {
+fn spawn_gui_null_handler(
+    gui_rx: std::sync::mpsc::Receiver<GuiEvent>,
+    config: Arc<RwLock<Config>>,
+) {
     std::thread::spawn(move || {
+        let mut notify = LinuxNotifyDisplay::new(
+            match config.read() {
+                Ok(c) => c.clone(),
+                Err(e) => e.into_inner().clone(),
+            },
+        );
         while let Ok(event) = gui_rx.recv() {
+            drive_notify(&mut notify, &event);
             match event {
                 GuiEvent::HideAndAck(ack) => {
                     let _ = ack.send(());
@@ -860,6 +875,18 @@ fn spawn_gui_null_handler(gui_rx: std::sync::mpsc::Receiver<GuiEvent>) {
                 _ => {}
             }
         }
+        notify.close();
     });
+}
+
+/// 把 gui 事件喂给系统通知（只在上屏时弹一条，不随按键刷新）。
+#[cfg(target_os = "linux")]
+fn drive_notify(notify: &mut LinuxNotifyDisplay, event: &GuiEvent) {
+    match event {
+        GuiEvent::Committed(text) => notify.on_commit(text),
+        GuiEvent::SetVisible(v) => notify.set_visible(*v),
+        GuiEvent::ApplyConfig(c) => notify.apply_config(&*c),
+        _ => {}
+    }
 }
 

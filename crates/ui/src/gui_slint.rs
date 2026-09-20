@@ -272,11 +272,7 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
                 for display in displays.iter_mut() {
                     display.update_status(&state.status_text, state.chinese_enabled);
                     let candidates: Vec<_> = state.candidates.iter().map(|c| {
-                        let full_display = if c.is_fuzzy {
-                            format!("{}.{}(模糊)", c.label, c.text)
-                        } else {
-                            format!("{}.{}({})", c.label, c.text, c.hint)
-                        };
+                        let full_display = format!("{}.{}({})", c.label, c.text, c.hint);
                         crate::DisplayCandidate {
                             text: c.text.clone(),
                             label: c.label.clone(),
@@ -290,11 +286,7 @@ fn handle_ipc_event(msg: &MainToGui, config: &mut Config) {
             }
             MainToGui::Update { pinyin, candidates, selected, page, total_pages } => {
                 let cands: Vec<_> = candidates.iter().map(|c| {
-                    let full_display = if c.is_fuzzy {
-                        format!("{}.{}(模糊)", c.label, c.text)
-                    } else {
-                        format!("{}.{}({})", c.label, c.text, c.hint)
-                    };
+                    let full_display = format!("{}.{}({})", c.label, c.text, c.hint);
                     crate::DisplayCandidate {
                         text: c.text.clone(),
                         label: c.label.clone(),

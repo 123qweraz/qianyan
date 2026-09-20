@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::CString;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, IntoRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::{Duration, Instant};
 
 use log::{error, info};
@@ -36,7 +37,7 @@ use xkbcommon::xkb;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::keys::VirtualKey;
 use qianyan_ime_engine::processor::Action;
-use qianyan_ime_engine::processor::actor::ProcessorHandle;
+use qianyan_ime_engine::processor::actor::{ProcessorHandle, diag_file};
 use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 
@@ -65,6 +66,7 @@ struct WlState {
     config: Arc<RwLock<Config>>,
     /// 自绘候选框（方案 B：绕过 GTK，直接在私有连接上用 layer-shell 渲染）
     _cand_layer_shell: Option<ZwlrLayerShellV1>,
+    cand_compositor: Option<WlCompositor>,
     cand_surface: Option<WlSurface>,
     cand_layer: Option<ZwlrLayerSurfaceV1>,
     cand_shm: Option<WlShm>,
@@ -74,40 +76,57 @@ struct WlState {
     cand_h: i32,
     cand_pending: Option<(WlBuffer, i32, i32)>,
     cand_live_buffers: Vec<WlBuffer>,
+    /// 键盘自动重复（zwp_input_method_v1 不会替输入法做 key repeat，
+    /// KWin 里按住退格要能连续删必须自己合成 repeat）
+    repeat_rate: u32,
+    repeat_delay_ms: u64,
+    held_keys: HashMap<u32, HeldKey>,
+    diag_stage: Arc<Mutex<&'static str>>,
+    /// 最近一次分发的 Wayland 事件，用于卡死时定位是哪个处理器
+    last_event: &'static str,
+}
+
+struct HeldKey {
+    serial: u32,
+    time: u32,
+    next_repeat: Option<Instant>,
 }
 
 impl WlState {
-    fn candidates_enabled(&self) -> bool {
-        let cfg = match self.config.read() {
-            Ok(c) => c,
-            Err(e) => e.into_inner(),
-        };
-        cfg.appearance.show_candidates && cfg.linux.show_slint_window
-    }
-
     /// 依据当前配置与候选内容刷新自绘候选框。
+    ///
+    /// 关键时序：wlr-layer-shell 的表面一旦用空 buffer commit 取消映射，再次显示
+    /// 必须重新走“set_size → configure → ack → 贴同尺寸 buffer”流程；直接往旧表面
+    /// 再贴 buffer 会被 KWin 忽略（表现就是“只有第一次置顶，之后再打字都被普通窗口
+    /// 挡着”）。因此这里隐藏时直接拆掉表面，显示时重建一个全新表面（保证 KWin 始终
+    /// 按 layer-shell OVERLAY 规则压在所有普通窗口之上）。
     fn refresh_candidates(&mut self, content: CandContent, qh: &QueueHandle<Self>) {
-        if self.cand_surface.is_none() || !self.cand_configured {
-            return;
-        }
-        let cfg = match self.config.read() {
-            Ok(c) => c.clone(),
-            Err(e) => e.into_inner().clone(),
+        let cfg = {
+            let g = self.config.read();
+            match g {
+                Ok(c) => c.clone(),
+                Err(e) => e.into_inner().clone(),
+            }
         };
-        let visible = !content.pinyin.is_empty() && self.candidates_enabled();
+        let visible = !content.pinyin.is_empty() && cfg.appearance.show_candidates;
 
         if !visible {
-            if let Some((pending, _, _)) = self.cand_pending.take() {
-                pending.destroy();
-            }
-            if self.cand_visible {
-                let surface = self.cand_surface.clone().unwrap();
-                surface.attach(None, 0, 0);
-                let _ = surface.commit();
-                self.cand_visible = false;
-            }
+            self.hide_candidates();
             return;
         }
+
+        // 显示前确保表面上存在（首次 / 隐藏后重建）
+        if self.cand_surface.is_none() {
+            self.ensure_candidate_surface(&cfg, qh);
+        }
+        let surface = match self.cand_surface.clone() {
+            Some(s) => s,
+            None => return,
+        };
+        let layer = match self.cand_layer.clone() {
+            Some(l) => l,
+            None => return,
+        };
 
         let (pixels, width, height) = match super::wayland_candidates::render_slint(&cfg, &content) {
             Some(v) => v,
@@ -122,25 +141,26 @@ impl WlState {
             None => return,
         };
 
-        let surface = self.cand_surface.clone().unwrap();
-        let layer = self.cand_layer.clone().unwrap();
-
-        let mx = cfg.linux.fixed_x.max(0);
-        let my = cfg.linux.fixed_y.max(0);
-        let (anchor, mt, mr, mb, ml) = match cfg.linux.corner.as_str() {
-            "top-right" => (Anchor::Top | Anchor::Right, my, mx, 0, 0),
-            "top-left" => (Anchor::Top | Anchor::Left, my, 0, 0, mx),
-            "bottom-left" => (Anchor::Bottom | Anchor::Left, 0, 0, my, mx),
-            _ => (Anchor::Bottom | Anchor::Right, 0, mx, my, 0),
-        };
-        layer.set_anchor(anchor);
-        layer.set_margin(mt, mr, mb, ml);
-        if width != self.cand_w || height != self.cand_h {
-            // layer-shell 要求先 ack 新的 configure 再贴对应尺寸的 buffer，
-            // 因此尺寸变化时先提交空 buffer 触发 configure，待 configure 到达后再贴。
+        if self.cand_pending.is_some() {
+            // 上一个尺寸变更的 configure 还没到达：此时直接 attach 违反 layer-shell
+            // 时序，且会与先前 pending 的 buffer 竞态（configure 到达后会把旧的贴出来）。
+            // 统一丢弃旧的 pending，用本次最新渲染结果替换，等 configure 到达后再贴。
             if let Some((stale, _, _)) = self.cand_pending.take() {
                 stale.destroy();
             }
+            layer.set_size(width.max(0) as u32, height.max(0) as u32);
+            self.cand_w = width;
+            self.cand_h = height;
+            self.cand_pending = Some((buffer, width, height));
+            let _ = surface.commit();
+            self.cand_visible = true;
+            return;
+        }
+
+        if width != self.cand_w || height != self.cand_h {
+            // layer-shell 要求先 ack 新的 configure 再贴对应尺寸的 buffer，
+            // 因此尺寸变化时先提交空 buffer 触发 configure(实为 set_size 请求)，
+            // 待 configure 到达后再贴。
             self.cand_w = width;
             self.cand_h = height;
             layer.set_size(width.max(0) as u32, height.max(0) as u32);
@@ -155,6 +175,68 @@ impl WlState {
         let _ = surface.commit();
         self.cand_visible = true;
         self.cand_live_buffers.push(buffer);
+    }
+
+    /// 隐藏候选框：拆掉 layer surface。再次显示时会重建全新表面，
+    /// 按 OVERLAY 层级重新置顶，避免“贴回旧表面被忽略”的问题。
+    fn hide_candidates(&mut self) {
+        if self.cand_surface.is_none() && self.cand_layer.is_none() {
+            if let Some((pending, _, _)) = self.cand_pending.take() {
+                pending.destroy();
+            }
+            return;
+        }
+        if let Some((pending, _, _)) = self.cand_pending.take() {
+            pending.destroy();
+        }
+        if let Some(layer) = self.cand_layer.take() {
+            layer.destroy();
+        }
+        if let Some(surface) = self.cand_surface.take() {
+            surface.destroy();
+        }
+        self.cand_configured = false;
+        self.cand_visible = false;
+        self.cand_w = 0;
+        self.cand_h = 0;
+    }
+
+    /// 重建候选框 layer surface（OVERLAY，压住所有普通窗口）。重新走到
+    /// “set_size → configure → ack → 贴图”即首屏置顶流程。
+    fn ensure_candidate_surface(&mut self, cfg: &Config, qh: &QueueHandle<Self>) {
+        let (comp, shell) = match (self.cand_compositor.as_ref(), self._cand_layer_shell.as_ref()) {
+            (Some(c), Some(s)) => (c.clone(), s.clone()),
+            _ => return,
+        };
+        let surface = comp.create_surface(qh, WlUser);
+        let layer = shell.get_layer_surface(
+            &surface,
+            None,
+            Layer::Overlay,
+            "qianyan-candidates".to_string(),
+            qh,
+            WlUser,
+        );
+        layer.set_keyboard_interactivity(KeyboardInteractivity::None);
+        layer.set_exclusive_zone(0);
+        layer.set_size(1, 1);
+
+        let (anchor, mt, mr, mb, ml) = match cfg.linux.corner.as_str() {
+            "top-right" => (Anchor::Top | Anchor::Right, cfg.linux.fixed_y.max(0), cfg.linux.fixed_x.max(0), 0, 0),
+            "top-left" => (Anchor::Top | Anchor::Left, cfg.linux.fixed_y.max(0), 0, 0, cfg.linux.fixed_x.max(0)),
+            "bottom-left" => (Anchor::Bottom | Anchor::Left, 0, 0, cfg.linux.fixed_y.max(0), cfg.linux.fixed_x.max(0)),
+            _ => (Anchor::Bottom | Anchor::Right, 0, cfg.linux.fixed_x.max(0), cfg.linux.fixed_y.max(0), 0),
+        };
+        layer.set_anchor(anchor);
+        layer.set_margin(mt, mr, mb, ml);
+        let _ = surface.commit();
+
+        self.cand_surface = Some(surface);
+        self.cand_layer = Some(layer);
+        self.cand_configured = false;
+        self.cand_visible = true;
+        info!("[WaylandIM v1] candidate overlay (re)created on top");
+        diag_file("[V1] candidate overlay (re)created on top");
     }
 }
 
@@ -185,6 +267,208 @@ impl WlState {
         }
     }
 
+    fn set_stage(&self, stage: &'static str) {
+        if let Ok(mut s) = self.diag_stage.lock() {
+            *s = stage;
+        }
+    }
+
+    fn set_last_event(&mut self, event: &'static str) {
+        self.last_event = event;
+    }
+
+    fn arm_key_repeat(&mut self, key: u32, serial: u32, time: u32) {
+        if self.repeat_rate == 0 {
+            return;
+        }
+        let repeatable = match self.resolve_key(key) {
+            Some((vk, _)) => {
+                !vk.is_modifier()
+                    && vk != VirtualKey::CapsLock
+            }
+            None => false,
+        };
+        if !repeatable {
+            self.held_keys.remove(&key);
+            return;
+        }
+        self.held_keys.insert(
+            key,
+            HeldKey {
+                serial,
+                time,
+                next_repeat: Some(Instant::now() + Duration::from_millis(self.repeat_delay_ms)),
+            },
+        );
+    }
+
+    fn next_repeat_deadline(&self, now: Instant) -> Option<Instant> {
+        self.held_keys
+            .values()
+            .filter_map(|h| h.next_repeat)
+            .filter(|d| *d > now)
+            .min()
+    }
+
+    fn synthesize_repeats(&mut self, conn: &Connection, qh: &QueueHandle<Self>, now: Instant) {
+        if self.repeat_rate == 0 {
+            self.held_keys.clear();
+            return;
+        }
+        let interval = Duration::from_millis((1000u64 / (self.repeat_rate as u64).max(1)).max(1));
+        let due: Vec<(u32, u32, u32)> = self
+            .held_keys
+            .iter_mut()
+            .filter(|(_, h)| h.next_repeat.is_some_and(|d| d <= now))
+            .map(|(k, h)| {
+                h.next_repeat = Some(now + interval);
+                (*k, h.serial, h.time)
+            })
+            .collect();
+        for (key, serial, time) in due {
+            // 合成期间该键可能已被释放，跳过
+            if !self.held_keys.contains_key(&key) {
+                continue;
+            }
+            self.set_stage("synthesize_repeat");
+            self.process_key_press(conn, qh, key, serial, time);
+        }
+        self.set_stage("idle");
+    }
+
+    /// 统一的按键按下处理路径：真实 press 与合成 repeat 都走这里。
+    fn process_key_press(&mut self, conn: &Connection, qh: &QueueHandle<Self>, key: u32, serial: u32, time: u32) {
+        if !self.active {
+            self.held_keys.remove(&key);
+            return;
+        }
+        self.set_stage("resolve_key");
+        let (vk, utf8_text) = match self.resolve_key(key) {
+            Some(pair) => pair,
+            None => {
+                self.set_stage("forward_unmapped");
+                self.forwarded_keys.insert(key);
+                if let Some(ctx) = &self.context {
+                    ctx.key(serial, time, key, KeyState::Pressed.into());
+                    let _ = conn.flush();
+                }
+                self.set_stage("idle");
+                return;
+            }
+        };
+
+        let (shift, ctrl, alt) = self.modifier_flags();
+        self.set_stage("engine.handle_key");
+        let action = match self.processor.handle_key(vk, 1, shift, ctrl, alt, true) {
+            Some(a) => a,
+            None => {
+                self.set_stage("idle");
+                return;
+            }
+        };
+
+        self.set_stage("engine.get_basic_status");
+        if let Some(status) = self.processor.get_basic_status() {
+            let _ = self.tray_tx.send(TrayEvent::SyncStatus {
+                chinese_enabled: status.chinese_enabled,
+                active_profile: status.active_profile.clone(),
+            });
+        }
+
+        // 先执行动作（可能已上屏并清空缓冲区），再取快照，
+        // 否则 commit 后会拿到上屏前的旧候选，导致候选框不消失。
+        self.set_stage("handle_action");
+        self.handle_action(&action, conn, utf8_text, serial, time, key, KeyState::Pressed.into());
+
+        self.set_stage("engine.get_gui_snapshot");
+        let (update, preedit, cand_content) = if let Some(gui) = self.processor.get_gui_snapshot() {
+            if gui.pinyin.is_empty() || !gui.chinese_enabled {
+                (
+                    GuiEvent::Update {
+                        pinyin: "".into(),
+                        candidates: vec![],
+                        selected: 0,
+                        page: 0,
+                        total_pages: 0,
+                        sentence: "".into(),
+                        cursor_pos: 0,
+                        commit_mode: gui.commit_mode.clone(),
+                    },
+                    String::new(),
+                    CandContent::default(),
+                )
+            } else {
+                let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui
+                    .candidates
+                    .iter()
+                    .map(|c| {
+                        let full_display = if c.hint.is_empty() {
+                            format!("{}{}", c.label, c.text)
+                        } else {
+                            format!("{}{}({})", c.label, c.text, c.hint)
+                        };
+                        qianyan_ime_ui::DisplayCandidate {
+                            text: c.text.clone(),
+                            label: c.label.clone(),
+                            hint: c.hint.clone(),
+                            full_display,
+                            is_fuzzy: c.is_fuzzy,
+                        }
+                    })
+                    .collect();
+                let cand_items: Vec<CandItem> = gui.candidates.iter().map(|c| CandItem {
+                    label: c.label.clone(),
+                    text: c.text.clone(),
+                    hint: c.hint.clone(),
+                    is_fuzzy: c.is_fuzzy,
+                }).collect();
+                let content = CandContent {
+                    pinyin: gui.pinyin.clone(),
+                    candidates: cand_items,
+                    selected: gui.selected,
+                };
+                (
+                    GuiEvent::Update {
+                        pinyin: gui.pinyin.clone(),
+                        candidates,
+                        selected: gui.selected,
+                        page: gui.page,
+                        total_pages: gui.total_pages,
+                        sentence: gui.sentence.clone(),
+                        cursor_pos: gui.cursor_pos,
+                        commit_mode: gui.commit_mode,
+                    },
+                    gui.pinyin,
+                    content,
+                )
+            }
+        } else {
+            (
+                GuiEvent::Update {
+                    pinyin: "".into(),
+                    candidates: vec![],
+                    selected: 0,
+                    page: 0,
+                    total_pages: 0,
+                    sentence: "".into(),
+                    cursor_pos: 0,
+                    commit_mode: String::new(),
+                },
+                String::new(),
+                CandContent::default(),
+            )
+        };
+
+        self.set_stage("refresh_candidates");
+        self.refresh_candidates(cand_content, qh);
+        let _ = self.gui_tx.send(update);
+
+        self.set_stage("send_preedit");
+        self.send_preedit(&preedit);
+        let _ = conn.flush();
+        self.set_stage("idle");
+    }
+
     fn handle_action(
         &mut self,
         action: &Action,
@@ -202,10 +486,16 @@ impl WlState {
         match action {
             Action::Emit(text) => {
                 ctx.commit_string(self.context_serial, text.clone());
+                if is_chinese_commit(text) {
+                    let _ = self.gui_tx.send(GuiEvent::Committed(text.clone()));
+                }
             }
             Action::DeleteAndEmit { delete, insert } => {
                 ctx.delete_surrounding_text(-(i32::try_from(*delete).unwrap_or(0)), 0);
                 ctx.commit_string(self.context_serial, insert.clone());
+                if is_chinese_commit(insert) {
+                    let _ = self.gui_tx.send(GuiEvent::Committed(insert.clone()));
+                }
             }
             Action::PassThrough => {
                 if utf8_text.is_empty()
@@ -215,7 +505,10 @@ impl WlState {
                     // 记录透传的 press，供后续 release 配对转发
                     self.forwarded_keys.insert(key);
                 } else {
-                    ctx.commit_string(self.context_serial, utf8_text);
+                    ctx.commit_string(self.context_serial, utf8_text.clone());
+                    if is_chinese_commit(&utf8_text) {
+                        let _ = self.gui_tx.send(GuiEvent::Committed(utf8_text.clone()));
+                    }
                 }
             }
             Action::Alert => {
@@ -225,13 +518,11 @@ impl WlState {
                     let _ = std::process::Command::new("canberra-gtk-play")
                         .arg("-f")
                         .arg(sound_path)
-                        .spawn()
-                        .map(|mut c| c.wait());
+                        .spawn();
                 } else {
                     let _ = std::process::Command::new("canberra-gtk-play")
                         .arg("--id=dialog-error")
-                        .spawn()
-                        .map(|mut c| c.wait());
+                        .spawn();
                 }
             }
             _ => {}
@@ -294,6 +585,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
         use wayland_protocols::wp::input_method::zv1::client::zwp_input_method_v1::Event;
         match event {
             Event::Activate { id } => {
+                state.set_last_event("IME-Activate");
                 info!("[WaylandIM v1] activated");
                 state.active = true;
                 state.deactivate_deadline = None;
@@ -306,6 +598,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
                 }
             }
             Event::Deactivate { context: _ } => {
+                state.set_last_event("IME-Deactivate");
                 info!("[WaylandIM v1] deactivated (debouncing {}ms)", DEACTIVATE_DEBOUNCE.as_millis());
                 state.active = false;
                 if let Some(ref ctx) = state.context {
@@ -313,6 +606,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
                     let _ = conn.flush();
                 }
                 state.forwarded_keys.clear();
+                state.held_keys.clear();
                 state.deactivate_deadline = Some(Instant::now() + DEACTIVATE_DEBOUNCE);
                 state.refresh_candidates(CandContent::default(), qh);
             }
@@ -337,15 +631,19 @@ impl Dispatch<ZwpInputMethodContextV1, WlUser> for WlState {
         use wayland_protocols::wp::input_method::zv1::client::zwp_input_method_context_v1::Event;
         match event {
             Event::SurroundingText { text: _, cursor, anchor } => {
+                state.set_last_event("Ctx-SurroundingText");
                 info!("[WaylandIM v1] surrounding_text: cursor={} anchor={}", cursor, anchor);
             }
             Event::ContentType { hint, purpose } => {
+                state.set_last_event("Ctx-ContentType");
                 info!("[WaylandIM v1] content_type: hint={:?} purpose={:?}", hint, purpose);
             }
             Event::CommitState { serial } => {
+                state.set_last_event("Ctx-CommitState");
                 state.context_serial = serial;
             }
             Event::Reset => {
+                state.set_last_event("Ctx-Reset");
                 info!("[WaylandIM v1] reset event received");
                 state.processor.reset();
                 state.refresh_candidates(CandContent::default(), qh);
@@ -388,6 +686,7 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
     ) {
         match event {
             wl_keyboard::Event::Keymap { format, fd, size } => {
+                state.set_last_event("Kbd-Keymap");
                 info!("[WaylandIM v1] received keymap (format={:?}, size={})", format, size);
                 let raw_fd = fd.into_raw_fd();
                 let mut file = unsafe { std::fs::File::from_raw_fd(raw_fd) };
@@ -414,10 +713,12 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 }
             }
             wl_keyboard::Event::Key { serial, time, key, state: key_state } => {
+                state.set_last_event("Kbd-Key");
                 if !state.active {
                     return;
                 }
                 if key_state == WEnum::Value(KeyState::Released) {
+                    state.held_keys.remove(&key);
                     // 通知引擎按键释放，更新内部按键状态（如 tab_down、CapsLock 等）。
                     // 之前 release 完全不下发，会让 tab_down 在按过一次 Tab 后永久为真，
                     // 导致数字 1/2 被当成“以词定字”(word_to_char_shift) 而选字而非选词。
@@ -439,100 +740,10 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     return;
                 }
 
-                let (vk, utf8_text) = match state.resolve_key(key) {
-                    Some(pair) => pair,
-                    None => {
-                        // 无法映射为 VirtualKey 的键（F 键、媒体键等）不得被 IME 吞掉，
-                        // 直接以物理键转发给应用程序，并记录供 release 配对。
-                        state.forwarded_keys.insert(key);
-                        if let Some(ctx) = &state.context {
-                            ctx.key(serial, time, key, key_state.into());
-                            let _ = conn.flush();
-                        }
-                        return;
-                    }
-                };
-
-                let (shift, ctrl, alt) = state.modifier_flags();
-                let action = match state.processor.handle_key(vk, 1, shift, ctrl, alt, true) {
-                    Some(a) => a,
-                    None => return,
-                };
-
-                if let Some(status) = state.processor.get_basic_status() {
-                    let _ = state.tray_tx.send(TrayEvent::SyncStatus {
-                        chinese_enabled: status.chinese_enabled,
-                        active_profile: status.active_profile.clone(),
-                    });
-                }
-
-                // 先执行动作（可能已上屏并清空缓冲区），再取快照，
-                // 否则 commit 后会拿到上屏前的旧候选，导致候选框不消失。
-                state.handle_action(&action, conn, utf8_text, serial, time, key, key_state.into());
-
-                let (update, preedit, cand_content) = if let Some(gui) = state.processor.get_gui_snapshot() {
-                    if gui.pinyin.is_empty() || !gui.chinese_enabled {
-                        (GuiEvent::Update {
-                            pinyin: "".into(),
-                            candidates: vec![],
-                            selected: 0, page: 0, total_pages: 0,
-                            sentence: "".into(), cursor_pos: 0,
-                            commit_mode: gui.commit_mode.clone(),
-                        }, String::new(), CandContent::default())
-                    } else {
-                        let candidates: Vec<qianyan_ime_ui::DisplayCandidate> = gui.candidates.iter().map(|c| {
-                            let full_display = if c.is_fuzzy {
-                                format!("{}{}(模糊)", c.label, c.text)
-                            } else if c.hint.is_empty() {
-                                format!("{}{}", c.label, c.text)
-                            } else {
-                                format!("{}{}({})", c.label, c.text, c.hint)
-                            };
-                            qianyan_ime_ui::DisplayCandidate {
-                                text: c.text.clone(),
-                                label: c.label.clone(),
-                                hint: c.hint.clone(),
-                                full_display,
-                                is_fuzzy: c.is_fuzzy,
-                            }
-                        }).collect();
-                        let cand_items: Vec<CandItem> = gui.candidates.iter().map(|c| CandItem {
-                            label: c.label.clone(),
-                            text: c.text.clone(),
-                            hint: c.hint.clone(),
-                            is_fuzzy: c.is_fuzzy,
-                        }).collect();
-                        let content = CandContent {
-                            pinyin: gui.pinyin.clone(),
-                            candidates: cand_items,
-                            selected: gui.selected,
-                        };
-                        (GuiEvent::Update {
-                            pinyin: gui.pinyin.clone(),
-                            candidates,
-                            selected: gui.selected,
-                            page: gui.page,
-                            total_pages: gui.total_pages,
-                            sentence: gui.sentence.clone(),
-                            cursor_pos: gui.cursor_pos,
-                            commit_mode: gui.commit_mode,
-                        }, gui.pinyin, content)
-                    }
-                } else {
-                    (GuiEvent::Update {
-                        pinyin: "".into(),
-                        candidates: vec![],
-                        selected: 0, page: 0, total_pages: 0,
-                        sentence: "".into(), cursor_pos: 0,
-                        commit_mode: String::new(),
-                    }, String::new(), CandContent::default())
-                };
-
-                state.refresh_candidates(cand_content, qh);
-                let _ = state.gui_tx.send(update);
-
-                state.send_preedit(&preedit);
-                let _ = conn.flush();
+                // KWin(input-method v1)不会替输入法发送重复按键。
+                // 先登记“按住中”，再走统一按键处理；合成 repeat 时也会走这条路径。
+                state.arm_key_repeat(key, serial, time);
+                state.process_key_press(conn, qh, key, serial, time);
             }
             wl_keyboard::Event::Modifiers {
                 serial,
@@ -541,13 +752,18 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 mods_locked,
                 group,
             } => {
+                state.set_last_event("Kbd-Modifiers");
                 state.mods_depressed = mods_depressed;
                 if let Some(ref mut xkb_st) = state.xkb_state {
                     xkb_st.update_mask(mods_depressed, mods_latched, mods_locked, 0, 0, group);
                 }
                 state.forward_modifiers(serial, mods_depressed, mods_latched, mods_locked, group);
             }
-            wl_keyboard::Event::RepeatInfo { rate: _, delay: _ } => {}
+            wl_keyboard::Event::RepeatInfo { rate, delay } => {
+                state.set_last_event("Kbd-RepeatInfo");
+                state.repeat_rate = rate.max(0) as u32;
+                state.repeat_delay_ms = if rate <= 0 { 0 } else { delay.max(1) as u64 };
+            }
             _ => {}
         }
     }
@@ -751,38 +967,26 @@ impl InputMethodHost for WaylandInputHostV1 {
 
         self.running.store(true, Ordering::SeqCst);
         info!("[WaylandIM v1] connected, waiting for activate...");
+        diag_file("[V1] connected to KWin private socket, input_method_v1 bound");
 
-        // 自绘候选框：在同一个私有连接上创建 Overlay layer 表面。
+        let last_tick = Arc::new(Mutex::new(Instant::now()));
+        let diag_stage = Arc::new(Mutex::new("startup"));
+
+        // 自绘候选框：延迟到首次有候选时再创建(ensure_candidate_surface)，
+        // 隐藏时拆掉、再显示时重建全新 OVERLAY 表面，保证每次都压得住普通窗口。
         let cand_layer_shell: Option<ZwlrLayerShellV1> = globals.bind(&qh, 1..=4, WlUser).ok();
         let cand_shm: Option<WlShm> = globals.bind(&qh, 1..=1, WlUser).ok();
         let cand_compositor: Option<WlCompositor> = globals.bind(&qh, 1..=6, WlUser).ok();
-        let (cand_surface, cand_layer) =
-            match (cand_compositor.as_ref(), cand_layer_shell.as_ref()) {
-                (Some(comp), Some(shell)) => {
-                    let surface = comp.create_surface(&qh, WlUser);
-                    let layer = shell.get_layer_surface(
-                        &surface,
-                        None,
-                        Layer::Overlay,
-                        "qianyan-candidates".to_string(),
-                        &qh,
-                        WlUser,
-                    );
-                    layer.set_keyboard_interactivity(KeyboardInteractivity::None);
-                    layer.set_exclusive_zone(0);
-                    layer.set_size(1, 1);
-                    layer.set_anchor(Anchor::Bottom | Anchor::Right);
-                    layer.set_margin(0, 10, 10, 0);
-                    let _ = surface.commit();
-                    info!("[WaylandIM v1] candidate overlay created");
-                    (Some(surface), Some(layer))
-                }
-                _ => {
-                    info!("[WaylandIM v1] candidate overlay unavailable");
-                    (None, None)
-                }
-            };
+        let cand_surface: Option<WlSurface> = None;
+        let cand_layer: Option<ZwlrLayerSurfaceV1> = None;
+        diag_file(&format!(
+            "[V1] globals: layer_shell={} compositor={} shm={}",
+            cand_layer_shell.is_some(),
+            cand_compositor.is_some(),
+            cand_shm.is_some()
+        ));
 
+        let cand_layer_shell_present = cand_layer_shell.is_some();
         let mut state = WlState {
             _running: self.running.clone(),
             processor: self.processor.clone(),
@@ -800,6 +1004,7 @@ impl InputMethodHost for WaylandInputHostV1 {
             forwarded_keys: std::collections::HashSet::new(),
             config: self.config.clone(),
             _cand_layer_shell: cand_layer_shell,
+            cand_compositor,
             cand_surface,
             cand_layer,
             cand_shm,
@@ -809,7 +1014,52 @@ impl InputMethodHost for WaylandInputHostV1 {
             cand_h: 0,
             cand_pending: None,
             cand_live_buffers: Vec::new(),
+            // KWin 不给输入法下发 RepeatInfo 时 fallback 到通用参数
+            repeat_rate: 25,
+            repeat_delay_ms: 500,
+            held_keys: HashMap::new(),
+            diag_stage: diag_stage.clone(),
+            last_event: "startup",
         };
+
+        diag_file(&format!(
+            "[V1] startup ok: repeat={}/{}s layer_shell={}",
+            state.repeat_rate,
+            state.repeat_delay_ms,
+            cand_layer_shell_present
+        ));
+
+        // 看门狗：Wayland 事件循环必须每 ~8s 至少醒一次，
+        // 一旦超过就认为“键盘卡死”，把停滞时长、现场阶段与最近事件写入诊断日志。
+        {
+            let w_last = last_tick.clone();
+            let w_stage = diag_stage.clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(Duration::from_secs(5));
+                let stale = Instant::now().duration_since(*w_last.lock().unwrap());
+                if stale >= Duration::from_secs(8) {
+                    let stage = *w_stage.lock().unwrap();
+                    diag_file(&format!(
+                        "[WATCHDOG] Wayland 主机循环已停滞 {:.1}s，阶段: {stage}",
+                        stale.as_secs_f64()
+                    ));
+                }
+            });
+        }
+
+        // 事件循环期间我们的写操作（flush）绝不能阻塞：
+        // 若 KWin 端输入法协议卡住不再读 socket，阻塞式 send 会让键盘线程
+        // 永久卡死（此前正是“打字后鼠标动一下光标 → 打不出字”的元凶候选）。
+        // 这里把连接 fd 设为 O_NONBLOCK，写不出去就记录，而不是挂死。
+        {
+            use std::os::fd::AsRawFd;
+            let fd = conn.as_fd().as_raw_fd();
+            let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+            if flags >= 0 {
+                unsafe { libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK); }
+            }
+            diag_file(&format!("[V1] conn fd O_NONBLOCK: flags={flags}"));
+        }
 
         let _ = event_queue.roundtrip(&mut state)?;
         let _ = conn.flush();
@@ -831,22 +1081,69 @@ impl InputMethodHost for WaylandInputHostV1 {
                 let _ = state.gui_tx.send(GuiEvent::SetVisible(false));
             }
 
-            let _ = conn.flush();
-            if let Err(e) = event_queue.dispatch_pending(&mut state) {
-                error!("[WaylandIM v1] dispatch error: {e}");
-                break;
-            }
-            if self.running.load(Ordering::SeqCst) {
-                if let Some(guard) = conn.prepare_read() {
-                    if let Err(e) = guard.read() {
-                        error!("[WaylandIM v1] read error: {e}");
-                        break;
+            // 事件分发在共享键盘线程里执行，任意处理器 panic 都会
+            // 直接退出该线程导致“键盘卡死”。这里 catch_unwind 兜住 panic：记录到日志文件
+            // 后继续事件循环，而不是让整个 Wayland 端退出。
+            // 另外用 poll 替换 blocking_dispatch：带超时等待，循环不会被 compositor 一直没事件
+            // 而卡死，同时留出时间片做 KWin 不做合成、需要自己做的 key repeat。
+            let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let now = Instant::now();
+                *last_tick.lock().unwrap() = now;
+
+                // 等待超时 = min(1s 兜底, deactivate 截止, 下一次 repeat 合成时间点)
+                let mut timeout_ms: i64 = 1_000;
+                if let Some(deadline) = state.deactivate_deadline {
+                    if deadline > now {
+                        timeout_ms = timeout_ms.min(deadline.duration_since(now).as_millis() as i64);
                     }
                 }
-                if let Err(e) = event_queue.blocking_dispatch(&mut state) {
-                    error!("[WaylandIM v1] dispatch error: {e}");
+                if let Some(next_repeat) = state.next_repeat_deadline(now) {
+                    if next_repeat > now {
+                        timeout_ms = timeout_ms.min(next_repeat.duration_since(now).as_millis() as i64);
+                    }
+                }
+
+                state.set_stage("loop.flush");
+                if let Err(e) = conn.flush() {
+                    diag_file(&format!("[V1] flush error: {e} (last_event={})", state.last_event));
+                }
+                state.set_stage("loop.poll");
+                let readable = poll_readable(conn, timeout_ms.max(1).min(i32::MAX as i64) as i32);
+                state.set_stage("loop.read");
+                if readable {
+                    if let Some(guard) = conn.prepare_read() {
+                        if let Err(e) = guard.read() {
+                            return Err(format!("read error: {e}"));
+                        }
+                    }
+                }
+                state.set_stage("loop.dispatch");
+                if let Err(e) = event_queue.dispatch_pending(&mut state) {
+                    return Err(format!("dispatch error: {e}"));
+                }
+                if self.running.load(Ordering::SeqCst) {
+                    state.set_stage("loop.synth");
+                    state.synthesize_repeats(conn, &qh, Instant::now());
+                }
+                state.set_stage("idle");
+                Ok(())
+            }));
+
+            match stepped {
+                Ok(Err(msg)) => {
+                    error!("[WaylandIM v1] {msg}");
                     break;
                 }
+                Err(payload) => {
+                    let bt = std::backtrace::Backtrace::force_capture();
+                    let dump = format!(
+                        "[WaylandIM v1] panic in event dispatch: {payload:?}\n{bt}"
+                    );
+                    error!("{dump}");
+                    log_panic_file(&dump);
+                    diag_file(&format!("[V1 PANIC] {dump}"));
+                }
+                Ok(Ok(())) => {}
             }
         }
 
@@ -884,5 +1181,36 @@ impl WaylandInputHostV1 {
 
     pub fn vkbd(&self) -> Option<Arc<std::sync::Mutex<Vkbd>>> {
         self.vkbd.clone()
+    }
+}
+
+fn poll_readable(conn: &Connection, timeout_ms: i32) -> bool {
+    let mut pfd = libc::pollfd {
+        fd: conn.as_fd().as_raw_fd(),
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    let r = unsafe { libc::poll(&mut pfd, 1, timeout_ms) };
+    r > 0 && (pfd.revents & (libc::POLLIN | libc::POLLHUP | libc::POLLERR)) != 0
+}
+
+/// 上屏文本里含非 ASCII（中文）才算中文上屏，避免每个英文字母都弹通知。
+fn is_chinese_commit(s: &str) -> bool {
+    s.chars().any(|c| c > '\u{7f}')
+}
+
+/// KWin 从桌面启动本进程时不会保留终端 stderr，panic 信息可能直接丢失。
+/// 把 panic 现场落盘到配置目录，便于复现排查随机卡死。
+fn log_panic_file(dump: &str) {
+    use std::io::Write;
+    let path = qianyan_ime_core::Config::get_config_dir().join("wayland_v1_panic.log");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let mut stamp = String::new();
+    use std::fmt::Write as _;
+    let _ = write!(stamp, "{:?}", std::time::SystemTime::now());
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = writeln!(f, "\n===== {} =====\n{}", stamp, dump);
     }
 }

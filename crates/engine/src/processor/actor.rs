@@ -1,5 +1,7 @@
+use std::io::Write;
 use std::sync::mpsc::{self, Sender};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use crate::keys::VirtualKey;
 use crate::pipeline::{Candidate, SearchQuery, MAX_LOOKUP_LIMIT};
@@ -156,8 +158,22 @@ impl ProcessorHandle {
     }
 
     fn call<T: Send>(&self, msg: ProcessorMsg, rx: mpsc::Receiver<T>) -> Option<T> {
-        self.tx.send(msg).ok()?;
-        rx.recv().ok()
+        let label = msg_label(&msg);
+        if self.tx.send(msg).is_err() {
+            return None;
+        }
+        // 引擎 actor 是单线程逐条处理；若某条消息卡住（疑似死循环/死锁），
+        // 等待方会永久阻塞 → 键盘“卡死”。这里用超时轮询，卡住时把现场落盘，
+        // 便于定位是哪条引擎消息在哪个调用方一直等。
+        loop {
+            match rx.recv_timeout(Duration::from_millis(2_000)) {
+                Ok(v) => return Some(v),
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    diag_file(&format!("[Engine->{label}] reply stall >2s, still waiting"));
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => return None,
+            }
+        }
     }
 
     pub fn handle_key(
@@ -411,11 +427,21 @@ impl ProcessorActor {
     fn handle(&mut self, msg: ProcessorMsg) {
         match msg {
             ProcessorMsg::HandleKey { key, val, shift, ctrl, alt, perform_lookup, reply } => {
+                let t0 = Instant::now();
                 let action = self.processor.handle_key_ext(key, val, shift, ctrl, alt, perform_lookup);
+                let dt = t0.elapsed();
+                if dt.as_millis() > 500 {
+                    diag_file(&format!("[Engine] HandleKey SLOW {dt:?} key={key:?}"));
+                }
                 if reply.send(action).is_err() { log::warn!("[ProcessorActor] HandleKey reply.send 失败"); }
             }
             ProcessorMsg::HandleKeySync { key, val, shift, ctrl, alt, reply } => {
+                let t0 = Instant::now();
                 let action = self.processor.handle_key_ext(key, val, shift, ctrl, alt, true);
+                let dt = t0.elapsed();
+                if dt.as_millis() > 500 {
+                    diag_file(&format!("[Engine] HandleKeySync SLOW {dt:?} key={key:?}"));
+                }
                 let snapshot = self.build_gui_snapshot();
                 let status = self.build_basic_status();
                 if reply.send((action, snapshot, status)).is_err() { log::warn!("[ProcessorActor] HandleKeySync reply.send 失败"); }
@@ -496,5 +522,39 @@ impl ProcessorActor {
             }
             ProcessorMsg::Exit => {}
         }
+    }
+}
+
+fn msg_label(msg: &ProcessorMsg) -> &'static str {
+    match msg {
+        ProcessorMsg::HandleKey { .. } => "HandleKey",
+        ProcessorMsg::HandleKeySync { .. } => "HandleKeySync",
+        ProcessorMsg::Toggle { .. } => "Toggle",
+        ProcessorMsg::ToggleEnabled { .. } => "ToggleEnabled",
+        ProcessorMsg::SetCapsLock { .. } => "SetCapsLock",
+        ProcessorMsg::NextProfile { .. } => "NextProfile",
+        ProcessorMsg::SetProfile { .. } => "SetProfile",
+        ProcessorMsg::ApplyConfig { .. } => "ApplyConfig",
+        ProcessorMsg::ReloadTries { .. } => "ReloadTries",
+        ProcessorMsg::Reset { .. } => "Reset",
+        ProcessorMsg::ClearUserData { .. } => "ClearUserData",
+        ProcessorMsg::ListProfiles { .. } => "ListProfiles",
+        ProcessorMsg::PerformSearch { .. } => "PerformSearch",
+        ProcessorMsg::GetGuiSnapshot { .. } => "GetGuiSnapshot",
+        ProcessorMsg::GetBasicStatus { .. } => "GetBasicStatus",
+        ProcessorMsg::GetConfig { .. } => "GetConfig",
+        ProcessorMsg::Exit => "Exit",
+    }
+}
+
+/// 与宿主共用同一份诊断日志（KWin 托管启动时 stderr 不可见）。
+pub fn diag_file(msg: &str) {
+    let path = qianyan_ime_core::Config::get_config_dir().join("ime_diag.log");
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let stamp = format!("{:?}", std::time::SystemTime::now());
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let _ = writeln!(f, "\n[{}] {}", stamp, msg);
     }
 }

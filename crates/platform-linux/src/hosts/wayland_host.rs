@@ -678,10 +678,16 @@ impl WlState {
         match action {
             Action::Emit(text) => {
                 im.commit_string(text.clone());
+                if Self::is_chinese_commit(text) {
+                    let _ = state.gui_tx.send(GuiEvent::Committed(text.clone()));
+                }
             }
             Action::DeleteAndEmit { delete, insert } => {
                 im.delete_surrounding_text(u32::try_from(*delete).unwrap_or(0), 0);
                 im.commit_string(insert.clone());
+                if Self::is_chinese_commit(insert) {
+                    let _ = state.gui_tx.send(GuiEvent::Committed(insert.clone()));
+                }
             }
             Action::PassThrough if utf8_text.is_empty()
                 || utf8_text.chars().next().is_some_and(|c| c.is_control()) =>
@@ -695,7 +701,10 @@ impl WlState {
                 }
             }
             Action::PassThrough => {
-                im.commit_string(utf8_text);
+                im.commit_string(utf8_text.clone());
+                if Self::is_chinese_commit(&utf8_text) {
+                    let _ = state.gui_tx.send(GuiEvent::Committed(utf8_text.clone()));
+                }
             }
             Action::Alert => {
                 Self::play_beep();
@@ -715,6 +724,11 @@ impl WlState {
         // Single commit to apply all pending state
         im.commit(state.serial);
         let _ = conn.flush();
+    }
+
+    /// 上屏文本里含非 ASCII（中文）才算中文上屏，避免每个英文字母都弹通知。
+    fn is_chinese_commit(s: &str) -> bool {
+        s.chars().any(|c| c > '\u{7f}')
     }
 
     fn play_beep() {

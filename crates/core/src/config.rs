@@ -34,6 +34,10 @@ pub struct LinuxConfig {
     pub show_slint_window: bool,
     #[serde(default = "default_true")]
     pub show_preedit: bool,
+    #[serde(default = "default_true")]
+    pub show_notification: bool,
+    #[serde(default = "default_false")]
+    pub show_toggle_notification: bool,
     pub fixed_position: bool,
     pub corner: String, // "top-left", "top-right", "bottom-left", "bottom-right"
     #[serde(default = "default_fixed_x")]
@@ -67,6 +71,10 @@ pub struct LinuxConfig {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
 }
 
 fn default_mru_length() -> u32 {
@@ -1480,6 +1488,10 @@ impl Config {
                 backspace_delay_ms: 10,
                 show_slint_window: true,
                 show_preedit: true,
+                #[cfg(target_os = "linux")]
+                show_notification: true,
+                #[cfg(target_os = "linux")]
+                show_toggle_notification: true,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
                 fixed_x: 10,

@@ -47,7 +47,7 @@
     "phantom_type": "None"
   },
   "linux": {
-    "backend_type": "wayland",
+    "backend_type": "evdev",
     "backspace_delay_ms": 3,
     "clipboard_delay_ms": 0,
     "corner": "bottom-right",
@@ -63,7 +63,8 @@
     "keystroke_position": "top-right",
     "keystroke_text_color": "#ffffff",
     "paste_method": "shift_insert",
+    "show_notification": true,
     "show_preedit": true,
-    "show_slint_window": true
+    "show_slint_window": false
   }
 }
