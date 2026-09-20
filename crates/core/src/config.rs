@@ -1499,7 +1499,16 @@ impl Config {
 mod config_tests {
     use super::*;
 
+    // 这些测试都通过 set_var 修改进程级环境变量 QIANYAN_CONFIG_DIR，
+    // 并行执行会互相干扰（A 写入目录 A、B 断言目录 B）。用静态锁串行化。
+    static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> =
+        std::sync::OnceLock::new();
+
     fn with_temp_config_dir<F: FnOnce()>(label: &str, f: F) {
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
         let dir = std::env::temp_dir().join(format!(
             "qianyan_config_test_{}_{}",
             std::process::id(),
