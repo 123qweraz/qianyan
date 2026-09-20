@@ -39,18 +39,6 @@
             </div>
         </div>
 
-        <h2 id="word-to-char">以词定字</h2>
-        <div class="card">
-            <div class="setting-item">
-                <div class="info"><div class="title">以词定字（单键）</div><div class="desc">按指定键快速输入首个候选词中的第 N 个字，9=第1字，0=第2字</div></div>
-                <input type="text" id="word_to_char_input" style="width:250px;text-align:right;" placeholder="9,0">
-            </div>
-            <div class="setting-item">
-                <div class="info"><div class="title">以词定字（Tab + 键）</div><div class="desc">按住 Tab 再按指定键，1=第1字，2=第2字</div></div>
-                <input type="text" id="word_to_char_shift_input" style="width:250px;text-align:right;" placeholder="1,2">
-            </div>
-        </div>
-
         <h2 id="nav-mode">Tab 导航模式</h2>
         <div class="card">
             <div class="note" style="margin:0 0 16px;">
@@ -110,8 +98,6 @@
             document.getElementById('page_down_input').value = (config.hotkeys.page_down || []).join(', ');
             document.getElementById('prev_candidate_input').value = (config.hotkeys.prev_candidate || []).join(', ');
             document.getElementById('next_candidate_input').value = (config.hotkeys.next_candidate || []).join(', ');
-            document.getElementById('word_to_char_input').value = (config.hotkeys.word_to_char || []).join(', ');
-            document.getElementById('word_to_char_shift_input').value = (config.hotkeys.word_to_char_shift || []).join(', ');
             document.getElementById('nav_delete_input').value = (config.hotkeys.nav_delete || []).join(', ');
             document.getElementById('nav_fuzzy_input').value = (config.hotkeys.nav_fuzzy || []).join(', ');
             document.getElementById('nav_clear_input').value = (config.hotkeys.nav_clear || []).join(', ');
@@ -126,10 +112,6 @@
             config.hotkeys.prev_candidate = document.getElementById('prev_candidate_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.next_candidate = document.getElementById('next_candidate_input').value
-                .split(',').map(s => s.trim()).filter(s => s.length > 0);
-            config.hotkeys.word_to_char = document.getElementById('word_to_char_input').value
-                .split(',').map(s => s.trim()).filter(s => s.length > 0);
-            config.hotkeys.word_to_char_shift = document.getElementById('word_to_char_shift_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);
             config.hotkeys.nav_delete = document.getElementById('nav_delete_input').value
                 .split(',').map(s => s.trim()).filter(s => s.length > 0);

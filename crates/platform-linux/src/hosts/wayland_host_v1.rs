@@ -346,6 +346,12 @@ impl WlState {
         let (vk, utf8_text) = match self.resolve_key(key) {
             Some(pair) => pair,
             None => {
+                // 无法解析的键直接原样转发给应用（如个别媒体键）。
+                // CapsLock 的 keycode 各家合成器不统一（evdev=58 / xkb=66），
+                // 这里单独记录，便于判断 CapsLock 是否被意外走了透传把大写锁打开。
+                if key == 58 || key == 66 {
+                    diag_file(&format!("[V1] CAPSLOCK unmapped key={key} FORWARDED RAW"));
+                }
                 self.set_stage("forward_unmapped");
                 self.forwarded_keys.insert(key);
                 if let Some(ctx) = &self.context {
@@ -366,6 +372,12 @@ impl WlState {
                 return;
             }
         };
+        if vk == VirtualKey::CapsLock {
+            diag_file(&format!(
+                "[V1] CAPSLOCK press key={key} active={} shift={shift} ctrl={ctrl} action={:?}",
+                self.active, action
+            ));
+        }
 
         self.set_stage("engine.get_basic_status");
         if let Some(status) = self.processor.get_basic_status() {
@@ -381,7 +393,7 @@ impl WlState {
         self.handle_action(&action, conn, utf8_text, serial, time, key, KeyState::Pressed.into());
 
         self.set_stage("engine.get_gui_snapshot");
-        let (update, preedit, cand_content) = if let Some(gui) = self.processor.get_gui_snapshot() {
+        let (update, preedit, cursor_pos, cand_content) = if let Some(gui) = self.processor.get_gui_snapshot() {
             if gui.pinyin.is_empty() || !gui.chinese_enabled {
                 (
                     GuiEvent::Update {
@@ -395,6 +407,7 @@ impl WlState {
                         commit_mode: gui.commit_mode.clone(),
                     },
                     String::new(),
+                    0,
                     CandContent::default(),
                 )
             } else {
@@ -439,6 +452,7 @@ impl WlState {
                         commit_mode: gui.commit_mode,
                     },
                     gui.pinyin,
+                    gui.cursor_pos,
                     content,
                 )
             }
@@ -455,6 +469,7 @@ impl WlState {
                     commit_mode: String::new(),
                 },
                 String::new(),
+                0,
                 CandContent::default(),
             )
         };
@@ -464,7 +479,7 @@ impl WlState {
         let _ = self.gui_tx.send(update);
 
         self.set_stage("send_preedit");
-        self.send_preedit(&preedit);
+        self.send_preedit(&preedit, cursor_pos);
         let _ = conn.flush();
         self.set_stage("idle");
     }
@@ -530,7 +545,7 @@ impl WlState {
         let _ = conn.flush();
     }
 
-    fn send_preedit(&self, text: &str) {
+    fn send_preedit(&self, text: &str, cursor_pos: usize) {
         // 在目标文本框内联显示拼音预览（preedit）。部分应用对 preedit 支持不佳，
         // 因此提供 linux.show_preedit 开关，关闭时始终发送空串以清空。
         let ctx = match self.context.as_ref() {
@@ -542,7 +557,19 @@ impl WlState {
             Err(e) => e.into_inner().linux.show_preedit,
         };
         let preedit = if enabled { text.to_string() } else { String::new() };
-        ctx.preedit_string(self.context_serial, preedit, String::new());
+        ctx.preedit_string(self.context_serial, preedit.clone(), String::new());
+        // preedit_cursor 让应用把光标放到拼音串内（字节偏移，协议要求按字节），
+        // 否则各应用内联预览时光标一直停在开头，不跟随输入的拼音。
+        let cursor = if enabled {
+            preedit
+                .char_indices()
+                .nth(cursor_pos)
+                .map(|(i, _)| i)
+                .unwrap_or(preedit.len())
+        } else {
+            0
+        };
+        ctx.preedit_cursor(cursor as i32);
     }
 
     fn forward_modifiers(
@@ -587,6 +614,7 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
             Event::Activate { id } => {
                 state.set_last_event("IME-Activate");
                 info!("[WaylandIM v1] activated");
+                diag_file("[V1] IME-Activate: context grabbed, keyboard acquired");
                 state.active = true;
                 state.deactivate_deadline = None;
                 state.context = Some(id);
@@ -600,9 +628,11 @@ impl Dispatch<ZwpInputMethodV1, WlUser> for WlState {
             Event::Deactivate { context: _ } => {
                 state.set_last_event("IME-Deactivate");
                 info!("[WaylandIM v1] deactivated (debouncing {}ms)", DEACTIVATE_DEBOUNCE.as_millis());
+                diag_file("[V1] IME-Deactivate: keyboard released");
                 state.active = false;
                 if let Some(ref ctx) = state.context {
                     ctx.preedit_string(state.context_serial, String::new(), String::new());
+                    ctx.preedit_cursor(0);
                     let _ = conn.flush();
                 }
                 state.forwarded_keys.clear();
@@ -720,9 +750,9 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                 // 即“只按了一次 c 却一直 cccc”。
                 if key_state == WEnum::Value(KeyState::Released) {
                     state.held_keys.remove(&key);
-                    // 通知引擎按键释放，更新内部按键状态（如 tab_down、CapsLock 等）。
-                    // 之前 release 完全不下发，会让 tab_down 在按过一次 Tab 后永久为真，
-                    // 导致数字 1/2 被当成“以词定字”(word_to_char_shift) 而选字而非选词。
+                    // 通知引擎按键释放，更新内部按键状态（修饰键组合态、Shift 单击等）。
+                    // 之前 release 完全不下发，会让 `shift_used_as_modifier` 等状态残留，
+                    // 之后误判 Shift 单击切换等，表现为异常的中/英切换。
                     if state.active {
                         if let Some((vk, _)) = state.resolve_key(key) {
                             let (shift, ctrl, alt) = state.modifier_flags();
@@ -740,6 +770,13 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     return;
                 }
                 if !state.active {
+                    // 不活跃时能收到键即异常路径（正常时 KWin 直接把键发给应用）。
+                    // 若此处频繁出现，说明键盘 grab 未生效/激活未发生。
+                    if key == 58 || key == 66 {
+                        diag_file(&format!("[V1] CAPSLOCK key={key} PRESS dropped while inactive (grab bug?)"));
+                    } else {
+                        diag_file(&format!("[V1] key={key} PRESS dropped while inactive (grab bug?)"));
+                    }
                     return;
                 }
                 if key_state != WEnum::Value(KeyState::Pressed) {

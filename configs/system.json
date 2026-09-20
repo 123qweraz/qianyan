@@ -1,6 +1,6 @@
 {
   "appearance": {
-    "show_candidates": true,
+    "show_candidates": false,
     "show_tray": true
   },
   "files": {
@@ -33,19 +33,28 @@
     ],
     "punctuation_file": "dicts/chinese/punctuation.json"
   },
-  "input": {
-    "autostart": false,
-    "enabled_profiles": [
-      "chinese",
-      "english",
-      "japanese",
-      "stroke",
-      "bihua",
-      "pybi"
-    ],
-    "phantom_separator": ">",
-    "phantom_type": "None"
+"hotkeys": {
+  "switch_language": {
+   "key": "CapsLock",
+   "description": "核心: 切换中/英文模式"
   },
+  "enable_tab_toggle": false,
+  "enable_ctrl_space_toggle": true,
+  "enable_ctrl_capslock_commit": true
+ },
+ "input": {
+  "autostart": false,
+  "enabled_profiles": [
+   "chinese",
+   "english",
+   "japanese",
+   "stroke",
+   "bihua",
+   "pybi"
+  ],
+  "phantom_separator": ">",
+  "phantom_type": "None"
+ },
   "linux": {
     "backend_type": "evdev",
     "backspace_delay_ms": 3,

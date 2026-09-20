@@ -71,8 +71,6 @@ pub struct SessionState {
     /// 上一次 CapsLock 按下是否已透传给系统（用于对称转发与之配对的 release）
     pub capslock_passed_press: bool,
     pub capslock_down: bool,
-    /// Tab 键是否被按下，用于以词定字（Tab + 键）
-    pub tab_down: bool,
     /// 组句外退格累计删掉的字符数（自最近一次上屏后），用于退格撤销误学习
     pub pending_backspaces: usize,
     /// 最近几次上屏（最近的在前），用于退格撤销误学习
@@ -97,7 +95,6 @@ impl SessionState {
             caps_lock_enabled: false,
             capslock_passed_press: false,
             capslock_down: false,
-            tab_down: false,
             pending_backspaces: 0,
             recent_commits: VecDeque::new(),
             last_committed: None,

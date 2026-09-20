@@ -634,10 +634,6 @@ pub struct Hotkeys {
     pub enable_ctrl_capslock_commit: bool,
     #[serde(default = "default_toggle_traditional")]
     pub toggle_traditional: Hotkey,
-    #[serde(default = "default_word_to_char")]
-    pub word_to_char: Vec<String>,
-    #[serde(default = "default_word_to_char_shift")]
-    pub word_to_char_shift: Vec<String>,
     #[serde(default = "default_nav_delete")]
     pub nav_delete: Vec<String>,
     #[serde(default = "default_nav_fuzzy")]
@@ -654,14 +650,6 @@ fn default_nav_fuzzy() -> Vec<String> {
 }
 fn default_nav_clear() -> Vec<String> {
     vec!["R".into()]
-}
-
-fn default_word_to_char() -> Vec<String> {
-    vec!["9".into(), "0".into()]
-}
-
-fn default_word_to_char_shift() -> Vec<String> {
-    vec!["1".into(), "2".into()]
 }
 
 fn default_toggle_traditional() -> Hotkey {
@@ -1445,21 +1433,13 @@ impl Config {
                 prev_candidate: vec!["Left".into()],
                 next_candidate: vec!["Right".into()],
                 enable_tab_toggle: false,
-                enable_ctrl_space_toggle: false,
+                enable_ctrl_space_toggle: true,
                 enable_shift_toggle: true,
                 enable_ctrl_capslock_commit: true,
                 toggle_traditional: Hotkey {
                     key: "Ctrl+Shift+F".to_string(),
                     description: "繁简体切换".to_string(),
                 },
-                word_to_char: vec![
-                    "9".into(),
-                    "0".into(),
-                ],
-                word_to_char_shift: vec![
-                    "1".into(),
-                    "2".into(),
-                ],
                 nav_delete: vec!["D".into()],
                 nav_fuzzy: vec!["S".into()],
                 nav_clear: vec!["R".into()],
