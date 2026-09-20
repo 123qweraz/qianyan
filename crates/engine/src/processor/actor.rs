@@ -5,32 +5,8 @@ use std::time::{Duration, Instant};
 
 use crate::keys::VirtualKey;
 use crate::pipeline::{Candidate, SearchQuery, MAX_LOOKUP_LIMIT};
-use crate::processor::{Action, FilterMode, Processor};
+use crate::processor::{Action, Processor};
 use qianyan_ime_core::config::Config;
-
-/// Snapshot of processor state for background search
-#[derive(Clone)]
-pub struct SearchSnapshot {
-    pub buffer: String,
-    pub profile: String,
-    pub config: Config,
-    pub aux_filter: String,
-    pub filter_mode: FilterMode,
-}
-
-/// Result from background search
-#[derive(Clone)]
-pub struct SearchResult {
-    pub candidates: Vec<Candidate>,
-    pub best_segmentation: Vec<String>,
-    pub has_dict_match: bool,
-}
-
-impl SearchResult {
-    pub fn new(candidates: Vec<Candidate>, best_segmentation: Vec<String>, has_dict_match: bool) -> Self {
-        Self { candidates, best_segmentation, has_dict_match }
-    }
-}
 
 /// A single candidate's display info
 #[derive(Clone)]
