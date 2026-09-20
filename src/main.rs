@@ -879,11 +879,22 @@ fn spawn_gui_null_handler(
     });
 }
 
-/// 把 gui 事件喂给系统通知（只在上屏时弹一条，不随按键刷新）。
+/// 把 gui 事件喂给系统通知候选框（实时候选列表，上屏时自动关闭）。
 #[cfg(target_os = "linux")]
 fn drive_notify(notify: &mut LinuxNotifyDisplay, event: &GuiEvent) {
     match event {
-        GuiEvent::Committed(text) => notify.on_commit(text),
+        GuiEvent::Update { pinyin, candidates, selected, page, total_pages, .. } => {
+            notify.update_candidates(pinyin, candidates.clone(), *selected, *page, *total_pages);
+        }
+        GuiEvent::SyncState(state) => {
+            notify.update_candidates(
+                &state.pinyin,
+                state.candidates.clone(),
+                state.selected_index,
+                state.page,
+                state.total_pages,
+            );
+        }
         GuiEvent::SetVisible(v) => notify.set_visible(*v),
         GuiEvent::ApplyConfig(c) => notify.apply_config(&*c),
         _ => {}

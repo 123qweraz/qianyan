@@ -714,17 +714,20 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
             }
             wl_keyboard::Event::Key { serial, time, key, state: key_state } => {
                 state.set_last_event("Kbd-Key");
-                if !state.active {
-                    return;
-                }
+                // 释放必须先于 active 判断处理：某些应用会触发 activate/deactivate
+                // 抖动，若释放恰好落在 180ms 防抖窗口内（active=false）被直接丢弃，
+                // held_keys 里就会残留“假按住”，导致这个键被无限合成 repeat——
+                // 即“只按了一次 c 却一直 cccc”。
                 if key_state == WEnum::Value(KeyState::Released) {
                     state.held_keys.remove(&key);
                     // 通知引擎按键释放，更新内部按键状态（如 tab_down、CapsLock 等）。
                     // 之前 release 完全不下发，会让 tab_down 在按过一次 Tab 后永久为真，
                     // 导致数字 1/2 被当成“以词定字”(word_to_char_shift) 而选字而非选词。
-                    if let Some((vk, _)) = state.resolve_key(key) {
-                        let (shift, ctrl, alt) = state.modifier_flags();
-                        let _ = state.processor.handle_key(vk, 0, shift, ctrl, alt, false);
+                    if state.active {
+                        if let Some((vk, _)) = state.resolve_key(key) {
+                            let (shift, ctrl, alt) = state.modifier_flags();
+                            let _ = state.processor.handle_key(vk, 0, shift, ctrl, alt, false);
+                        }
                     }
                     // 只转发与我们透传过的 press 配对的 release，
                     // 其余 release（如被 IME 吞掉的输入）一律丢弃
@@ -736,9 +739,19 @@ impl Dispatch<WlKeyboard, WlUser> for WlState {
                     }
                     return;
                 }
+                if !state.active {
+                    return;
+                }
                 if key_state != WEnum::Value(KeyState::Pressed) {
                     return;
                 }
+
+                // 若该键已处于 held（上一次 release 丢失导致的“假按住”），先清除
+                // 旧条目，阻断旧 repeat 续命；再重新登记并走统一按键处理。
+                state.held_keys.remove(&key);
+                // 这次新的物理按键说明此前所有按键的按压周期都已结束，
+                // 顺手清掉其它残留的假按住，防止任一键跑成无限连发。
+                state.held_keys.clear();
 
                 // KWin(input-method v1)不会替输入法发送重复按键。
                 // 先登记“按住中”，再走统一按键处理；合成 repeat 时也会走这条路径。

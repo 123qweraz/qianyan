@@ -1491,7 +1491,7 @@ impl Config {
                 #[cfg(target_os = "linux")]
                 show_notification: true,
                 #[cfg(target_os = "linux")]
-                show_toggle_notification: true,
+                show_toggle_notification: false,
                 fixed_position: true,
                 corner: "bottom-right".to_string(),
                 fixed_x: 10,

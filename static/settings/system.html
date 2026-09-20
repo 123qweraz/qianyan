@@ -181,11 +181,15 @@
         }
 
         function loadCandidateDisplayMode() {
-            let showCandidates = config.appearance.show_candidates !== false;
-            let showSlint = config.linux.show_slint_window !== false;
+            // 注意：在 KWin 自绘宿主上，候选栏是 layer-shell overlay，
+            // 只受 appearance.show_candidates 控制（show_slint_window 不启动 GUI 子进程）。
+            let showCand = config.appearance.show_candidates !== false;
+            let showSlint = config.linux.show_slint_window === true;
             let showNotif = config.linux.show_notification === true;
             let mode;
-            if (!showCandidates) {
+            if (!showCand && !showSlint && showNotif) {
+                mode = 'notification';
+            } else if (!showCand) {
                 mode = 'none';
             } else if (showSlint && showNotif) {
                 mode = 'both';
@@ -213,7 +217,9 @@
                     config.linux.show_notification = false;
                     break;
                 case 'notification':
-                    config.appearance.show_candidates = true;
+                    // 系统桌面通知：必须同时关掉自绘候选栏/候选窗口，
+                    // 否则 KWin 下 layer-shell 候选框还亮着，看不出切换效果。
+                    config.appearance.show_candidates = false;
                     config.linux.show_slint_window = false;
                     config.linux.show_notification = true;
                     break;

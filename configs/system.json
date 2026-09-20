@@ -65,6 +65,7 @@
     "paste_method": "shift_insert",
     "show_notification": true,
     "show_preedit": true,
-    "show_slint_window": false
+    "show_slint_window": false,
+    "show_toggle_notification": false
   }
 }
