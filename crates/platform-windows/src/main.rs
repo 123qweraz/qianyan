@@ -1,10 +1,10 @@
 #![cfg_attr(not(target_os = "windows"), allow(dead_code, unused_imports))]
 
-use qianyan_ime_core::Config;
+use qianyan_ime_core::{Config, ConfigStore};
 use qianyan_ime_core::utils::{find_project_root, load_punctuation_dict};
 use qianyan_ime_ui::tray;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[cfg(target_os = "windows")]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -76,20 +76,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         current_config.punctuations = punctuations;
     }
 
-    let config = Arc::new(RwLock::new(current_config));
+    let config = Arc::new(ConfigStore::new(current_config));
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
     let (tray_tx, _tray_rx) = std::sync::mpsc::channel();
 
-    let gui_config = config
-        .read()
-        .map_or_else(|_| Config::default_config(), |c| c.clone());
+    let gui_config = config.clone();
     let tray_tx_for_gui = tray_tx.clone();
     std::thread::spawn(move || {
         ui::gui::start_gui(gui_rx, gui_config, tray_tx_for_gui);
     });
 
     let _tray_handle = tray::start_tray(tray::TrayParams {
-        active_profile: config.read().map(|c| c.input.default_profile.clone()).unwrap_or_else(|_| "chinese".into()),
+        active_profile: config.get().input.default_profile.clone(),
         enabled_profiles: vec![],
         tx: tray_tx.clone(),
     });

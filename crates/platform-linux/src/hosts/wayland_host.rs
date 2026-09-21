@@ -6,11 +6,11 @@ use std::os::fd::{AsFd, AsRawFd, OwnedFd};
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use log::{error, info, warn};
-use qianyan_ime_core::{Config, Rect};
+use qianyan_ime_core::{ConfigStore, Rect};
 
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
 use wayland_client::protocol::wl_buffer::{self, WlBuffer};
@@ -74,7 +74,7 @@ struct WlState {
     seat: Option<WlSeat>,
     held_keys: HashSet<u32>,
     mods_depressed: u32,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     /// 自绘候选框：v2 下用 `zwp_input_popup_surface_v2`，由合成器跟随光标定位。
     cand_surface: Option<WlSurface>,
     cand_popup: Option<ZwpInputPopupSurfaceV2>,
@@ -491,10 +491,7 @@ const DEACTIVATE_DEBOUNCE: Duration = Duration::from_millis(180);
 
 impl WlState {
     fn candidates_enabled(&self) -> bool {
-        let cfg = match self.config.read() {
-            Ok(c) => c,
-            Err(e) => e.into_inner(),
-        };
+        let cfg = self.config.get();
         // 自绘候选框（zwp_input_popup_surface_v2）只受候选开关控制，
         // 与 show_slint_window（旧的 GUI 候选窗口）无关：用户关掉 Slint 窗口后，
         // 若还要求该开关为 true，自绘候选框也会一并消失。
@@ -524,10 +521,7 @@ impl WlState {
             return;
         }
 
-        let cfg = match self.config.read() {
-            Ok(c) => c.clone(),
-            Err(e) => e.into_inner().clone(),
-        };
+        let cfg = self.config.get();
         let (pixels, width, height) = match super::wayland_candidates::render_slint(&cfg, &content) {
             Some(v) => v,
             None => return,
@@ -666,10 +660,7 @@ impl WlState {
         _time: u32,
         preedit: &str,
     ) {
-        let show_preedit = match state.config.read() {
-            Ok(c) => c.linux.show_preedit,
-            Err(e) => e.into_inner().linux.show_preedit,
-        };
+        let show_preedit = state.config.get().linux.show_preedit;
         let im = match state.input_method.as_ref() {
             Some(im) => im,
             None => return,
@@ -799,7 +790,7 @@ pub struct WaylandInputHost {
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
     conn: Connection,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 }
 
 impl InputMethodHost for WaylandInputHost {
@@ -941,7 +932,7 @@ impl WaylandInputHost {
         tray_tx: Sender<TrayEvent>,
         conn: Connection,
         enable_vkbd: bool,
-        config: Arc<RwLock<Config>>,
+        config: Arc<ConfigStore>,
     ) -> Self {
         let vkbd = if enable_vkbd {
             Vkbd::new_wayland().ok().map(|v| Arc::new(std::sync::Mutex::new(v)))

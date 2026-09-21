@@ -4,11 +4,11 @@ use std::ffi::CString;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, IntoRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use log::{error, info};
-use qianyan_ime_core::{Config, Rect};
+use qianyan_ime_core::{Config, ConfigStore, Rect};
 
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
 use wayland_client::protocol::wl_buffer::{self, WlBuffer};
@@ -63,7 +63,7 @@ struct WlState {
     /// keycodes（evdev scancode）其 press 已透传给系统；
     /// 对应的 release 也必须转发，避免 keys 只按下不释放（如 Shift+CapsLock 卡大写）
     forwarded_keys: std::collections::HashSet<u32>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     /// 自绘候选框（方案 B：绕过 GTK，直接在私有连接上用 layer-shell 渲染）
     _cand_layer_shell: Option<ZwlrLayerShellV1>,
     cand_compositor: Option<WlCompositor>,
@@ -101,13 +101,7 @@ impl WlState {
     /// 挡着”）。因此这里隐藏时直接拆掉表面，显示时重建一个全新表面（保证 KWin 始终
     /// 按 layer-shell OVERLAY 规则压在所有普通窗口之上）。
     fn refresh_candidates(&mut self, content: CandContent, qh: &QueueHandle<Self>) {
-        let cfg = {
-            let g = self.config.read();
-            match g {
-                Ok(c) => c.clone(),
-                Err(e) => e.into_inner().clone(),
-            }
-        };
+        let cfg = self.config.get();
         let visible = !content.pinyin.is_empty() && cfg.appearance.show_candidates;
 
         if !visible {
@@ -552,10 +546,7 @@ impl WlState {
             Some(c) => c,
             None => return,
         };
-        let enabled = match self.config.read() {
-            Ok(c) => c.linux.show_preedit,
-            Err(e) => e.into_inner().linux.show_preedit,
-        };
+        let enabled = self.config.get().linux.show_preedit;
         let preedit = if enabled { text.to_string() } else { String::new() };
         ctx.preedit_string(self.context_serial, preedit.clone(), String::new());
         // preedit_cursor 让应用把光标放到拼音串内（字节偏移，协议要求按字节），
@@ -986,7 +977,7 @@ pub struct WaylandInputHostV1 {
     running: Arc<AtomicBool>,
     vkbd: Option<Arc<std::sync::Mutex<Vkbd>>>,
     conn: Connection,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 }
 
 impl InputMethodHost for WaylandInputHostV1 {
@@ -1209,7 +1200,7 @@ impl WaylandInputHostV1 {
         tray_tx: Sender<TrayEvent>,
         conn: Connection,
         enable_vkbd: bool,
-        config: Arc<RwLock<Config>>,
+        config: Arc<ConfigStore>,
     ) -> Self {
         // In KWin virtual keyboard mode (WAYLAND_SOCKET), avoid creating evdev uinput
         // device — all text goes through the Wayland input-method protocol.

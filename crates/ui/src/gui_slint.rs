@@ -3,11 +3,11 @@ use crate::keystroke_overlay::KeystrokeOverlay;
 use crate::slint_window::SlintDisplay;
 use crate::tray::TrayEvent;
 use crate::{CandidateDisplay, GuiEvent};
-use qianyan_ime_core::Config;
+use qianyan_ime_core::{Config, ConfigStore};
 use std::cell::RefCell;
 use std::os::unix::net::UnixStream;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::panic;
 use std::time::Duration;
@@ -22,11 +22,11 @@ thread_local! {
 
 pub fn start_gui(
     rx: Receiver<GuiEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     _tray_tx: Sender<TrayEvent>,
 ) {
     {
-        let cfg = config.read().unwrap_or_else(|e| e.into_inner());
+        let cfg = config.get();
         let initial = create_displays(&cfg);
         DISPLAYS.with(|d| {
             *d.borrow_mut() = initial;
@@ -373,7 +373,7 @@ fn create_displays(config: &Config) -> Vec<Box<dyn CandidateDisplay>> {
 fn handle_event(
     displays: &mut Vec<Box<dyn CandidateDisplay>>,
     event: GuiEvent,
-    config: &Arc<RwLock<Config>>,
+    config: &Arc<ConfigStore>,
 ) {
     match event {
         GuiEvent::Update { pinyin, candidates, selected, page, total_pages, .. } => {
@@ -404,7 +404,7 @@ fn handle_event(
             }
         }
         GuiEvent::ApplyConfig(new_config) => {
-            let old = config.read().unwrap_or_else(|e| e.into_inner());
+            let old = config.get();
             let ks_changed = old.linux.keystroke_enabled != new_config.linux.keystroke_enabled
                 || old.linux.keystroke_position != new_config.linux.keystroke_position
                 || old.linux.keystroke_hide_ms != new_config.linux.keystroke_hide_ms
@@ -412,8 +412,7 @@ fn handle_event(
                 || old.linux.keystroke_font_size != new_config.linux.keystroke_font_size
                 || old.linux.keystroke_bg_color != new_config.linux.keystroke_bg_color
                 || old.linux.keystroke_text_color != new_config.linux.keystroke_text_color;
-            drop(old);
-            *config.write().unwrap_or_else(|e| e.into_inner()) = *new_config;
+            config.replace(*new_config);
 
             // Never recreate displays here. The GTK backend initializes GTK on a
             // dedicated thread and GTK cannot be re-initialized, so recreating the
@@ -421,13 +420,13 @@ fn handle_event(
             // threads" and the candidate bar is lost for the rest of the session.
             // Visibility is instead gated on `show_slint_window` inside each display.
             log::debug!("[GUI_DEBUG] ApplyConfig: applying to existing displays");
-            let cfg = config.read().unwrap_or_else(|e| e.into_inner());
+            let cfg = config.get();
             for d in displays.iter_mut() {
                 d.apply_config(&cfg);
             }
 
             if ks_changed {
-                let cfg = config.read().unwrap_or_else(|e| e.into_inner());
+                let cfg = config.get();
                 KEYSTROKE.with(|k| {
                     *k.borrow_mut() = if cfg.linux.keystroke_enabled {
                         KeystrokeOverlay::new(&cfg)

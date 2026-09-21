@@ -10,11 +10,11 @@ use std::ffi::CString;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use log::{error, info};
-use qianyan_ime_core::Config;
+use qianyan_ime_core::ConfigStore;
 
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
 use wayland_client::protocol::wl_buffer::{self, WlBuffer};
@@ -40,7 +40,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(8);
 struct OverlayUser;
 
 struct OverlayState {
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     qh: QueueHandle<OverlayState>,
     _compositor: WlCompositor,
     _layer_shell: ZwlrLayerShellV1,
@@ -61,18 +61,12 @@ struct OverlayState {
 
 impl OverlayState {
     fn candidates_enabled(&self) -> bool {
-        let cfg = match self.config.read() {
-            Ok(c) => c,
-            Err(e) => e.into_inner(),
-        };
+        let cfg = self.config.get();
         cfg.appearance.show_candidates && cfg.linux.show_slint_window
     }
 
     fn refresh(&mut self) {
-        let cfg = match self.config.read() {
-            Ok(c) => c.clone(),
-            Err(e) => e.into_inner().clone(),
-        };
+        let cfg = self.config.get();
         let visible = !self.content.pinyin.is_empty() && self.candidates_enabled();
 
         if !visible {
@@ -422,7 +416,7 @@ pub struct WaylandOverlay {
 impl WaylandOverlay {
     /// 建立一条独立 Wayland 连接并启动候选框事件循环线程。
     /// 失败（无 Wayland / 无 layer-shell）时返回 Err，调用方回退 GUI 子进程。
-    pub fn start(config: Arc<RwLock<Config>>) -> Result<Self, Box<dyn Error>> {
+    pub fn start(config: Arc<ConfigStore>) -> Result<Self, Box<dyn Error>> {
         let conn = Connection::connect_to_env()?;
         let (globals, queue): (GlobalList, EventQueue<OverlayState>) = registry_queue_init(&conn)?;
         let qh = queue.handle();

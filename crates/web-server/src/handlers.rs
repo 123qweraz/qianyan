@@ -13,7 +13,7 @@ use qianyan_ime_core::utils::{load_single_syllables, load_syllable_frequencies};
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, json};
-use std::sync::{Arc, OnceLock, Mutex as StdMutex, RwLock};
+use std::sync::{Arc, OnceLock, Mutex as StdMutex};
 use std::sync::atomic::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -64,10 +64,7 @@ pub(crate) fn atomic_write(path: &std::path::Path, content: impl AsRef<str>) -> 
     Ok(())
 }
 pub(crate) async fn get_config(State((config, _, _)): State<WebState>) -> impl IntoResponse {
-    match config.read() {
-        Ok(cfg) => Json(cfg.clone()).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "config lock poisoned").into_response(),
-    }
+    Json((*config.get()).clone()).into_response()
 }
 
 pub(crate) async fn update_config(
@@ -81,23 +78,17 @@ pub(crate) async fn update_config(
         return StatusCode::INTERNAL_SERVER_ERROR;
     }
 
-    {
-        let mut w = match config.write() {
-            Ok(w) => w,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-        };
-
-        // 处理自启逻辑变化
-        if w.input.autostart != new_config.input.autostart {
-            if new_config.input.autostart {
-                let _ = crate::platform::setup_autostart();
-            } else {
-                let _ = crate::platform::remove_autostart();
-            }
+    // 处理自启逻辑变化（基于替换前的内存副本判断）
+    let prev = config.get();
+    if prev.input.autostart != new_config.input.autostart {
+        if new_config.input.autostart {
+            let _ = crate::platform::setup_autostart();
+        } else {
+            let _ = crate::platform::remove_autostart();
         }
-
-        *w = new_config.clone();
     }
+
+    config.replace(new_config);
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
 }
@@ -106,13 +97,7 @@ pub(crate) async fn reset_config(
     State((config, _, tray_tx)): State<WebState>,
 ) -> StatusCode {
     let default_conf = Config::default_config();
-    {
-        let mut w = match config.write() {
-            Ok(w) => w,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        *w = default_conf.clone();
-    }
+    config.replace(default_conf.clone());
     if let Err(_e) = default_conf.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
@@ -123,31 +108,34 @@ pub(crate) async fn reset_config_section(
     axum::extract::Path(sections): axum::extract::Path<String>,
 ) -> StatusCode {
     let default_conf = Config::default_config();
-    let mut w = match config.write() {
-        Ok(w) => w,
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR,
-    };
-    for section in sections.split(',') {
-        match section.trim() {
-            "appearance" => w.appearance = default_conf.appearance.clone(),
-            "hotkeys" => w.hotkeys = default_conf.hotkeys.clone(),
-            "input" => w.input = default_conf.input.clone(),
-            "quickfinals" => {
-                w.enable_quick_finals = default_conf.enable_quick_finals;
-                w.quick_finals = default_conf.quick_finals.clone();
-            },
-            "punctuations" => {
-                w.punctuations = default_conf.punctuations.clone();
-            },
-            "layouts" => {
-                w.layouts = default_conf.layouts.clone();
-            },
-            "linux" => w.linux = default_conf.linux.clone(),
-            "files" => w.files = default_conf.files.clone(),
-            _ => return StatusCode::BAD_REQUEST,
+    let (valid, _) = config.update(|w| {
+        for section in sections.split(',') {
+            match section.trim() {
+                "appearance" => w.appearance = default_conf.appearance.clone(),
+                "hotkeys" => w.hotkeys = default_conf.hotkeys.clone(),
+                "input" => w.input = default_conf.input.clone(),
+                "quickfinals" => {
+                    w.enable_quick_finals = default_conf.enable_quick_finals;
+                    w.quick_finals = default_conf.quick_finals.clone();
+                },
+                "punctuations" => {
+                    w.punctuations = default_conf.punctuations.clone();
+                },
+                "layouts" => {
+                    w.layouts = default_conf.layouts.clone();
+                },
+                "linux" => w.linux = default_conf.linux.clone(),
+                "files" => w.files = default_conf.files.clone(),
+                _ => return false,
+            }
         }
+        true
+    });
+    if !valid {
+        return StatusCode::BAD_REQUEST;
     }
-    if let Err(_e) = w.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
+    let conf = config.get();
+    if let Err(_e) = conf.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
     let _ = tray_tx.send(TrayEvent::ReloadConfig);
     StatusCode::OK
 }
@@ -322,25 +310,22 @@ pub(crate) async fn compile_dicts_handler(State((config, _, tray_tx)): State<Web
     }
     match qianyan_ime_engine::compiler::check_and_compile_all() {
         Ok(_) => {
+            let cfg = config.get();
             let (annotation_sources, annotation_files): (
                 std::collections::BTreeMap<String, String>,
                 std::collections::BTreeMap<String, String>,
-            ) = if let Ok(cfg) = config.read() {
-                (
-                    cfg.input
-                        .annotation_sources
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect(),
-                    cfg.input
-                        .annotation_files
-                        .iter()
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect(),
-                )
-            } else {
-                (std::collections::BTreeMap::new(), std::collections::BTreeMap::new())
-            };
+            ) = (
+                cfg.input
+                    .annotation_sources
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+                cfg.input
+                    .annotation_files
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+            );
             let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_sources(&annotation_sources);
             let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_files(&annotation_files, &annotation_sources);
             let _ = tray_tx.send(TrayEvent::ShowNotification("词库编译完成".into()));
@@ -443,7 +428,7 @@ pub(crate) async fn list_schemes(
         }
     }
     dicts.sort();
-    let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
+    let config_guard = config.get();
     let global = json!({
         "annotation_lang": config_guard.input.annotation_lang,
         "default_candidate_fields": config_guard.input.candidate_display.fields,
@@ -483,15 +468,14 @@ pub(crate) async fn upsert_scheme(
             if !qianyan_ime_core::scheme_def::delete_scheme(id, &directory) {
                 return (StatusCode::NOT_FOUND, Json(json!({"error": "方案不存在"}))).into_response();
             }
-            if let Ok(mut w) = config.write() {
+            config.update(|w| {
                 w.input.enabled_profiles.retain(|p| p != id);
                 w.input.profile_keys.retain(|k| k.profile != id);
                 if w.input.default_profile == id {
                     w.input.default_profile = String::new();
                 }
-                let cfg = w.clone();
-                let _ = cfg.save();
-            }
+                let _ = w.save();
+            });
             trigger_compile(&config, tray_tx);
             (StatusCode::OK, Json(json!({"ok": true}))).into_response()
         }
@@ -504,10 +488,7 @@ pub(crate) async fn upsert_scheme(
                     }
                 }
             }
-            let input = config
-                .read()
-                .map(|c| c.input.clone())
-                .unwrap_or_else(|_| Config::default_config().input);
+            let input = config.get().input.clone();
             if let Err(e) = qianyan_ime_core::scheme_def::ensure_default_schemes(&directory, &input) {
                 return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{}", e)}))).into_response();
             }
@@ -546,33 +527,26 @@ pub(crate) async fn upsert_scheme(
 }
 
 fn trigger_compile(
-    config: &Arc<RwLock<Config>>,
+    config: &Arc<qianyan_ime_core::ConfigStore>,
     tray_tx: std::sync::mpsc::Sender<qianyan_ime_core::event::TrayEvent>,
 ) {
     // data 已有编译产物时跳过自动全量编译（发行包自带），仅 data 为空时首次编译；
     // 需要强制重编请用「编译词库」按钮（POST /api/dicts/compile）。
     let _ = qianyan_ime_engine::compiler::check_and_compile_all_if_needed();
-    let (annotation_sources, annotation_files, schemes) = if let Ok(c) = config.read() {
-        (
-            c.input
-                .annotation_sources
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect::<std::collections::BTreeMap<_, _>>(),
-            c.input
-                .annotation_files
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect::<std::collections::BTreeMap<_, _>>(),
-            qianyan_ime_core::scheme_def::SchemeRegistry::load(&schemes_dir()).schemes,
-        )
-    } else {
-        (
-            std::collections::BTreeMap::new(),
-            std::collections::BTreeMap::new(),
-            Vec::new(),
-        )
-    };
+    let c = config.get();
+    let (annotation_sources, annotation_files, schemes) = (
+        c.input
+            .annotation_sources
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<std::collections::BTreeMap<_, _>>(),
+        c.input
+            .annotation_files
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<std::collections::BTreeMap<_, _>>(),
+        qianyan_ime_core::scheme_def::SchemeRegistry::load(&schemes_dir()).schemes,
+    );
     let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_sources(&annotation_sources);
     let _ = qianyan_ime_engine::compiler::check_and_compile_annotation_files(&annotation_files, &annotation_sources);
     let _ = qianyan_ime_engine::compiler::check_and_compile_scheme_annotations(&schemes, &annotation_sources);
@@ -599,15 +573,12 @@ pub(crate) async fn preview_annotation(
         return Json(json!({"exists": false, "table": "", "lang": "", "error": "文件不存在"}));
     }
     let annotation_sources: std::collections::BTreeMap<String, String> = config
-        .read()
-        .map(|c| {
-            c.input
-                .annotation_sources
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect()
-        })
-        .unwrap_or_default();
+        .get()
+        .input
+        .annotation_sources
+        .iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
     let table =
         qianyan_ime_core::utils::annotation_table_name_for_path(&file, &annotation_sources);
     let lang = table
@@ -731,7 +702,7 @@ pub(crate) async fn search_dict(
 
     // 注释表懒加载：data/annotations/<source>-<target>.{index,data}（word→gloss，青简式）
     let (ann_lang, display_template) = {
-        let config_guard = config.read().unwrap_or_else(|e| e.into_inner());
+        let config_guard = config.get();
         let scheme_def = scheme_def_for(ime);
         let template = config_guard
             .input
@@ -2709,9 +2680,7 @@ pub(crate) async fn ime_search_handler(
         }
     };
 
-    let cfg = config.read()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone();
+    let cfg = config.get();
     let fm = match req.filter_mode.as_str() {
         "global" => FilterMode::Global,
         "page" => FilterMode::Page,
@@ -2872,7 +2841,7 @@ pub(crate) async fn ime_session_handler(
 ) -> Result<Json<ImeSessionResponse>, StatusCode> {
     let shared_engine = ensure_engine(&ime_handle).ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let cfg = config.read().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.clone();
+    let cfg = config.get();
     let mut processor = create_processor(&ime_handle.root, shared_engine)
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
     processor.apply_config(&cfg);
@@ -3413,6 +3382,7 @@ async fn extract_file_bytes(
 mod restore_backup_tests {
     use super::*;
     use std::sync::{mpsc, RwLock};
+    use qianyan_ime_core::ConfigStore;
 
     fn temp_roots(prefix: &str) -> std::path::PathBuf {
         let base = std::env::temp_dir().join(format!(
@@ -3429,7 +3399,7 @@ mod restore_backup_tests {
     fn state() -> WebState {
         let (tx, _rx) = mpsc::channel();
         (
-            Arc::new(RwLock::new(Config::default_config())),
+            Arc::new(ConfigStore::new(Config::default_config())),
             Arc::new(RwLock::new(HashMap::new())),
             tx,
         )

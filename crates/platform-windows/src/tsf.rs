@@ -1,8 +1,8 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::sync::mpsc::Sender;
 use qianyan_ime_core::{InputMethodHost, Rect};
-use qianyan_ime_core::Config;
+use qianyan_ime_core::ConfigStore;
 use qianyan_ime_engine::Processor;
 use qianyan_ime_ui::GuiEvent;
 
@@ -10,13 +10,13 @@ pub struct TsfHost {
     processor: Arc<Mutex<Processor>>,
     gui_tx: Option<Sender<GuiEvent>>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
     running: Arc<AtomicBool>,
 }
 
 impl TsfHost {
-    pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>, config: Arc<RwLock<Config>>, tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) -> Self {
+    pub fn new(processor: Arc<Mutex<Processor>>, gui_tx: Option<Sender<GuiEvent>>, config: Arc<ConfigStore>, tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) -> Self {
         Self { processor, gui_tx, tray_tx, config, app_state, running: Arc::new(AtomicBool::new(true)) }
     }
 }
@@ -160,7 +160,7 @@ fn is_hk_match(config_key: &str, pressed_key_code: u32, ctrl: bool, alt: bool, s
 }
 
 #[cfg(target_os = "windows")]
-unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: std::sync::Arc<std::sync::Mutex<qianyan_ime_engine::Processor>>, gui_tx: Option<std::sync::mpsc::Sender<qianyan_ime_ui::GuiEvent>>, tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>, config: Arc<RwLock<Config>>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) {
+unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: std::sync::Arc<std::sync::Mutex<qianyan_ime_engine::Processor>>, gui_tx: Option<std::sync::mpsc::Sender<qianyan_ime_ui::GuiEvent>>, tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>, config: Arc<ConfigStore>, app_state: Arc<Mutex<qianyan_ime_ui::AppState>>) {
     use windows::Win32::Storage::FileSystem::*;
     use qianyan_ime_engine::processor::Action;
     let mut buffer = [0u8; 1024];
@@ -200,11 +200,8 @@ unsafe fn handle_client(handle: windows::Win32::Foundation::HANDLE, processor: s
 
         // 核心热键判定
         let (enable_tab, enable_ctrl_space, switch_key) = {
-            if let Ok(c) = config.read() {
-                (c.hotkeys.enable_tab_toggle, c.hotkeys.enable_ctrl_space_toggle, c.hotkeys.switch_language.key.clone())
-            } else {
-                (false, false, "".into())
-            }
+            let c = config.get();
+            (c.hotkeys.enable_tab_toggle, c.hotkeys.enable_ctrl_space_toggle, c.hotkeys.switch_language.key.clone())
         };
 
         let is_tab_match = enable_tab && is_hk_match(&switch_key, key_code, ctrl, alt, shift);

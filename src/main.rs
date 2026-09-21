@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::env;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, RwLock};
+use qianyan_ime_core::ConfigStore;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -176,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         current_config.punctuations = punctuations;
     }
 
-    let config = Arc::new(RwLock::new(current_config));
+    let config = Arc::new(ConfigStore::new(current_config));
     let (gui_tx, gui_rx) = std::sync::mpsc::channel();
     let (tray_tx, tray_rx) = std::sync::mpsc::channel();
 
@@ -220,15 +221,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     processor_obj.ctx.engine.schemes = schemes_map;
     processor_obj.ctx.engine.scheme_defs = scheme_defs_map;
     processor_obj.ctx.engine.single_syllables = single_syllables;
-    if let Ok(conf) = config.read() {
-        processor_obj.apply_config(&conf);
-    }
+    processor_obj.apply_config(&config.get());
     let (actor_tx, actor_rx) = std::sync::mpsc::channel();
     let processor_actor = ProcessorActor::new(processor_obj, actor_rx);
     std::thread::spawn(move || processor_actor.run());
     let processor_handle = ProcessorHandle::new(actor_tx);
 
-    let tray_handle = if let Ok(conf) = config.read() {
+    let tray_handle = {
+        let conf = config.get();
         if conf.appearance.show_tray {
             Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
                 active_profile: conf.input.default_profile.clone(),
@@ -238,12 +238,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } else {
             None
         }
-    } else {
-        Some(qianyan_ime_ui::tray::start_tray(qianyan_ime_ui::tray::TrayParams {
-            active_profile: "chinese".into(),
-            enabled_profiles: vec!["chinese".into()],
-            tx: tray_tx.clone(),
-        }))
     };
 
     // 全局状态维护
@@ -251,7 +245,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         chinese_enabled: false,
         ime_enabled: true,
         active_profile: "".into(),
-        show_candidates_pref: config.read().map_or(true, |c| c.appearance.show_candidates),
+        show_candidates_pref: config.get().appearance.show_candidates,
         is_ime_active: true,
         pinyin: "".into(),
         candidates: vec![],
@@ -457,9 +451,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let new_conf = Config::load();
                     processor_clone.apply_config(new_conf.clone());
                     processor_clone.reload_tries();
-                    if let Ok(mut cfg) = config_msg.write() {
-                        *cfg = new_conf.clone();
-                    }
+                    config_msg.replace(new_conf.clone());
                     if let Some(ref handle) = tray_handle {
                         let enabled = new_conf.input.enabled_profiles.clone();
                         handle.update(move |t| {
@@ -543,10 +535,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
         let force_evdev = args.iter().any(|a| a == "--backend=evdev" || a == "evdev")
-            || config
-                .read()
-                .map(|c| c.linux.backend_type.as_str() == "evdev")
-                .unwrap_or(false);
+            || config.get().linux.backend_type.as_str() == "evdev";
         if qianyan_ime_linux::kwin::is_kde_session() && !is_kwin_vk && kwin_registered && !force_evdev
         {
             println!(
@@ -721,7 +710,7 @@ fn gui_event_to_ipc(event: GuiEvent) -> Option<qianyan_ime_ui::ipc::transport::M
 /// 返回 (child, stream, socket_path)，主线程不再阻塞等待 child。
 #[cfg(target_os = "linux")]
 fn try_start_gui_process(
-    config: &std::sync::Arc<std::sync::RwLock<Config>>,
+    config: &std::sync::Arc<ConfigStore>,
 ) -> Result<
     (
         std::process::Child,
@@ -770,8 +759,8 @@ fn try_start_gui_process(
     listener.set_nonblocking(false)?;
 
     // 发送初始配置
-    let cfg = config.read().unwrap_or_else(|e| e.into_inner()).clone();
-    send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(serde_json::to_string(&cfg)?))?;
+    let cfg = config.get();
+    send_main_to_gui(&mut stream, &MainToGui::ApplyConfig(serde_json::to_string(&*cfg)?))?;
 
     match recv_gui_to_main(&mut stream, Some(Duration::from_secs(5))) {
         Ok(Some(GuiToMain::Ready)) => {}
@@ -856,15 +845,10 @@ fn spawn_gui_forwarder(
 #[cfg(target_os = "linux")]
 fn spawn_gui_null_handler(
     gui_rx: std::sync::mpsc::Receiver<GuiEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 ) {
     std::thread::spawn(move || {
-        let mut notify = LinuxNotifyDisplay::new(
-            match config.read() {
-                Ok(c) => c.clone(),
-                Err(e) => e.into_inner().clone(),
-            },
-        );
+        let mut notify = LinuxNotifyDisplay::new((*config.get()).clone());
         while let Ok(event) = gui_rx.recv() {
             drive_notify(&mut notify, &event);
             match event {

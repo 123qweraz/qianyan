@@ -12,20 +12,20 @@ use std::path::PathBuf;
 
 use qianyan_ime_engine::pipeline::SearchEngine;
 use qianyan_ime_engine::trie::Trie;
-use qianyan_ime_core::Config;
+use qianyan_ime_core::ConfigStore;
 use qianyan_ime_core::event::TrayEvent;
 
 pub struct WebServer {
     pub port: u16,
     pub actual_port: Arc<AtomicU16>,
-    pub config: Arc<RwLock<Config>>,
+    pub config: Arc<ConfigStore>,
     pub tries: Arc<RwLock<HashMap<String, Trie>>>,
     pub tray_tx: std::sync::mpsc::Sender<TrayEvent>,
     pub root: PathBuf,
 }
 
 pub type WebState = (
-    Arc<RwLock<Config>>,
+    Arc<ConfigStore>,
     Arc<RwLock<HashMap<String, Trie>>>,
     std::sync::mpsc::Sender<TrayEvent>,
 );
@@ -52,7 +52,7 @@ impl WebServer {
     pub fn new(
         port: u16,
         actual_port: Arc<AtomicU16>,
-        config: Arc<RwLock<Config>>,
+        config: Arc<ConfigStore>,
         tries: Arc<RwLock<HashMap<String, Trie>>>,
         tray_tx: std::sync::mpsc::Sender<TrayEvent>,
         root: PathBuf,

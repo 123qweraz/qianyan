@@ -4,14 +4,14 @@ use crate::hosts::evdev_host;
 use crate::hosts::wayland_host::WaylandInputHost;
 use crate::hosts::wayland_host_v1::WaylandInputHostV1;
 use evdev::Device;
-use qianyan_ime_core::Config;
+use qianyan_ime_core::ConfigStore;
 use qianyan_ime_core::InputMethodHost;
 use qianyan_ime_engine::processor::actor::ProcessorHandle;
 use qianyan_ime_ui::GuiEvent;
 use qianyan_ime_ui::tray::TrayEvent;
 use std::error::Error;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use wayland_client::globals::GlobalListContents;
 use wayland_client::protocol::wl_registry::WlRegistry;
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
@@ -72,17 +72,11 @@ pub fn create_input_host(
     args: &[String],
     processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
     tray_tx: std::sync::mpsc::Sender<qianyan_ime_ui::tray::TrayEvent>,
     _app_state: Arc<Mutex<qianyan_ime_ui::AppState>>,
 ) -> InputHostResult {
-    let linux_config = match config.read() {
-        Ok(c) => c.linux.clone(),
-        Err(e) => {
-            log::warn!("[Runtime] Config lock poisoned, using fallback device path");
-            e.into_inner().linux.clone()
-        }
-    };
+    let linux_config = config.get().linux.clone();
 
 
     let dev_path = linux_config.device_path.clone();
@@ -119,7 +113,7 @@ fn start_prefer_wayland(
     dev_path: &str,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 ) -> InputHostResult {
     // Try Wayland IM protocol first
     match try_start_wayland(processor.clone(), gui_tx.clone(), tray_tx.clone(), config.clone()) {
@@ -147,7 +141,7 @@ fn start_prefer_evdev(
     dev_path: &str,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<TrayEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 ) -> InputHostResult {
     // Default: evdev first (reliable, no compositor dependency)
     match try_start_evdev(processor.clone(), dev_path, Some(gui_tx.clone()), tray_tx.clone()) {
@@ -204,7 +198,7 @@ fn try_start_wayland(
     processor: ProcessorHandle,
     gui_tx: Sender<GuiEvent>,
     tray_tx: Sender<qianyan_ime_ui::tray::TrayEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 ) -> Result<InputHost, Box<dyn Error>> {
     let (mut host, vkbd_opt, desc) = create_wayland_host(processor, gui_tx, tray_tx, config)?;
     println!("[Main] 成功启动{}输入法模式。", desc);
@@ -221,7 +215,7 @@ fn create_wayland_host(
     processor: ProcessorHandle,
     gui_tx: std::sync::mpsc::Sender<GuiEvent>,
     tray_tx: std::sync::mpsc::Sender<TrayEvent>,
-    config: Arc<RwLock<Config>>,
+    config: Arc<ConfigStore>,
 ) -> Result<(Box<dyn InputMethodHost>, Option<Arc<Mutex<Vkbd>>>, &'static str), Box<dyn Error>> {
     // When launched by KWin as a virtual keyboard, WAYLAND_SOCKET is set and
     // points at a private socket exposing the input-method protocol. KWin
