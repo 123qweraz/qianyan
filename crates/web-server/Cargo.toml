@@ -26,3 +26,6 @@ epub = "2"
 regex = "1"
 tempfile = "3"
 base64 = "0.22"
+
+[dev-dependencies]
+tower = { workspace = true }

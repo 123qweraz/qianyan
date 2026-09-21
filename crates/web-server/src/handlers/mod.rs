@@ -135,6 +135,14 @@ async fn extract_file_bytes(
 }
 
 #[cfg(test)]
+pub(crate) static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+#[cfg(test)]
+pub(crate) fn test_env_lock() -> &'static std::sync::Mutex<()> {
+    &TEST_ENV_LOCK
+}
+
+#[cfg(test)]
 mod restore_backup_tests {
     use super::*;
     use std::sync::{mpsc, RwLock};
@@ -169,6 +177,7 @@ mod restore_backup_tests {
     /// 全部放在同一测试内避免并行测试对进程级 env 的竞态。
     #[test]
     fn restore_rejects_path_traversal_names() {
+        let _guard = test_env_lock().lock().unwrap_or_else(|e| e.into_inner());
         let base = temp_roots("traversal");
         let configs = base.join("configs");
         std::env::set_var("QIANYAN_CONFIG_DIR", &configs);

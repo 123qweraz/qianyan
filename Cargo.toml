@@ -28,6 +28,7 @@ notify-rust = "4"
 arboard = "3.2"
 arc-swap = "1.7"
 axum = { version = "0.7", features = ["multipart"] }
+tower = { version = "0.4", features = ["util"] }
 tokio = { version = "1", features = ["full"] }
 rust-embed = "8.2"
 mime_guess = "2.0"
