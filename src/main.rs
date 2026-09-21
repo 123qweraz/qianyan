@@ -460,6 +460,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     let _ = gui_tx_tray.send(GuiEvent::ApplyConfig(Box::new(new_conf)));
                 }
+                // Web 端改动在进入消息队列前已写入内存副本（Arc<ConfigStore>），
+                // 这里只负责把新配置转发给 engine / 托盘 / GUI，避免二次读盘、
+                // 二次 replace 导致版本号每次变更重复自增。
+                qianyan_ime_ui::tray::TrayEvent::ReloadConfigFromWeb => {
+                    let new_conf = (*config_msg.get()).clone();
+                    processor_clone.apply_config(new_conf.clone());
+                    if let Some(ref handle) = tray_handle {
+                        let enabled = new_conf.input.enabled_profiles.clone();
+                        handle.update(move |t| {
+                            t.enabled_profiles = enabled;
+                        });
+                    }
+                    let _ = gui_tx_tray.send(GuiEvent::ApplyConfig(Box::new(new_conf)));
+                }
                 qianyan_ime_ui::tray::TrayEvent::ShowNotification(msg) => {
                     if let Ok(mut state) = app_state_tray.lock() {
                         state.status_text = msg;

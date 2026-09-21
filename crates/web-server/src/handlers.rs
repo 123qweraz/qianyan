@@ -89,7 +89,7 @@ pub(crate) async fn update_config(
     }
 
     config.replace(new_config);
-    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    let _ = tray_tx.send(TrayEvent::ReloadConfigFromWeb);
     StatusCode::OK
 }
 
@@ -99,7 +99,7 @@ pub(crate) async fn reset_config(
     let default_conf = Config::default_config();
     config.replace(default_conf.clone());
     if let Err(_e) = default_conf.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
-    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    let _ = tray_tx.send(TrayEvent::ReloadConfigFromWeb);
     StatusCode::OK
 }
 
@@ -136,7 +136,7 @@ pub(crate) async fn reset_config_section(
     }
     let conf = config.get();
     if let Err(_e) = conf.save() { return StatusCode::INTERNAL_SERVER_ERROR; }
-    let _ = tray_tx.send(TrayEvent::ReloadConfig);
+    let _ = tray_tx.send(TrayEvent::ReloadConfigFromWeb);
     StatusCode::OK
 }
 

@@ -7,6 +7,7 @@ pub enum TrayEvent {
     OpenFeatureCenter,
     Exit,
     ReloadConfig,
+    ReloadConfigFromWeb,
     SyncStatus {
         chinese_enabled: bool,
         active_profile: String,
