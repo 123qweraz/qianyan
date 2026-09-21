@@ -225,6 +225,11 @@ impl SessionState {
             }
             remaining = remaining.saturating_sub(rec.word_chars);
         }
+        // 被退格完全删掉的词不再算作 ngram 上下文（avoid_history 与
+        // recent_commits 是同一状态的两个视图：词被删掉后从历史里同步剔除）。
+        self.commit_history.retain(|(py, w)| {
+            !self.recent_commits.iter().any(|r| r.deleted && r.pinyin == *py && r.word == *w)
+        });
     }
 
     pub fn get_last_word(&self) -> Option<&str> {
@@ -367,6 +372,24 @@ mod tests {
         let rec = s.resolve_backspace_undo("wode", "我的");
         assert!(rec.is_none());
         assert_eq!(s.pending_backspaces, 0);
+    }
+
+    #[test]
+    fn test_deleted_commit_no_longer_ngram_context() {
+        let mut s = SessionState::new();
+        s.push_commit_record(make_learned("wodeshu", "我的书"));
+        s.add_to_history("wodeshu".to_string(), "我的书".to_string());
+        assert_eq!(s.get_last_word(), Some("我的书"));
+        // 退格完全删掉
+        s.note_backspace();
+        s.note_backspace();
+        s.note_backspace();
+        // 删除的词不能再作为 ngram 上文（否则撤销/重打会用错上下文学习）
+        assert_eq!(s.get_last_word(), None);
+        // 重打别的词后，新的词才是上下文
+        s.push_commit_record(make_learned("wode", "我的"));
+        s.add_to_history("wode".to_string(), "我的".to_string());
+        assert_eq!(s.get_last_word(), Some("我的"));
     }
 
     #[test]
