@@ -1,5 +1,11 @@
 use super::*;
 
+#[derive(serde::Deserialize)]
+pub(crate) struct SendKeyRequest {
+    key: String,
+    action: Option<String>,
+}
+
 pub(crate) async fn send_key_handler(
     State(state): State<WebState>,
     Json(req): Json<SendKeyRequest>
